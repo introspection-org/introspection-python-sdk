@@ -1,0 +1,152 @@
+interactions:
+- request:
+    body: '{"include":[],"input":[{"content":"What programming language is the openai/openai-agents-python
+      repo written in? One word answer.","role":"user"}],"instructions":"Use the DeepWiki
+      MCP tools to answer questions about code repositories. Be very concise.","model":"gpt-4o","tools":[{"type":"mcp","server_label":"deepwiki","server_url":"https://mcp.deepwiki.com/mcp","require_approval":"never"}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '392'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_00462c9793590e2a0069d47ec8c1c88195a2bfcacfe8ced219\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533768,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533771,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"Use the DeepWiki MCP tools to answer questions about code repositories.
+        Be very concise.\",\n  \"max_output_tokens\": null,\n  \"max_tool_calls\":
+        null,\n  \"model\": \"gpt-4o-2024-08-06\",\n  \"output\": [\n    {\n      \"id\":
+        \"mcpl_00462c9793590e2a0069d47ec8dab08195b1dc4aebc4db9b8b\",\n      \"type\":
+        \"mcp_list_tools\",\n      \"server_label\": \"deepwiki\",\n      \"tools\":
+        [\n        {\n          \"annotations\": {\n            \"read_only\": false\n
+        \         },\n          \"description\": \"Get a list of documentation topics
+        for a GitHub repository.\\n\\nArgs:\\n    repoName: GitHub repository in owner/repo
+        format (e.g. \\\"facebook/react\\\")\",\n          \"input_schema\": {\n            \"properties\":
+        {\n              \"repoName\": {\n                \"type\": \"string\"\n              }\n
+        \           },\n            \"required\": [\n              \"repoName\"\n
+        \           ],\n            \"type\": \"object\"\n          },\n          \"name\":
+        \"read_wiki_structure\"\n        },\n        {\n          \"annotations\":
+        {\n            \"read_only\": false\n          },\n          \"description\":
+        \"View documentation about a GitHub repository.\\n\\nArgs:\\n    repoName:
+        GitHub repository in owner/repo format (e.g. \\\"facebook/react\\\")\",\n
+        \         \"input_schema\": {\n            \"properties\": {\n              \"repoName\":
+        {\n                \"type\": \"string\"\n              }\n            },\n
+        \           \"required\": [\n              \"repoName\"\n            ],\n
+        \           \"type\": \"object\"\n          },\n          \"name\": \"read_wiki_contents\"\n
+        \       },\n        {\n          \"annotations\": {\n            \"read_only\":
+        false\n          },\n          \"description\": \"Ask any question about a
+        GitHub repository and get an AI-powered, context-grounded response.\\n\\nArgs:\\n
+        \   repoName: GitHub repository or list of repositories (max 10) in owner/repo
+        format\\n    question: The question to ask about the repository\",\n          \"input_schema\":
+        {\n            \"properties\": {\n              \"repoName\": {\n                \"anyOf\":
+        [\n                  {\n                    \"type\": \"string\"\n                  },\n
+        \                 {\n                    \"items\": {\n                      \"type\":
+        \"string\"\n                    },\n                    \"type\": \"array\"\n
+        \                 }\n                ]\n              },\n              \"question\":
+        {\n                \"type\": \"string\"\n              }\n            },\n
+        \           \"required\": [\n              \"repoName\",\n              \"question\"\n
+        \           ],\n            \"type\": \"object\"\n          },\n          \"name\":
+        \"ask_question\"\n        }\n      ]\n    },\n    {\n      \"id\": \"mcp_00462c9793590e2a0069d47ecacb7481959471f66dd0869bf8\",\n
+        \     \"type\": \"mcp_call\",\n      \"status\": \"completed\",\n      \"approval_request_id\":
+        null,\n      \"arguments\": \"{\\\"repoName\\\":\\\"openai/openai-agents-python\\\",\\\"question\\\":\\\"What
+        programming language is this repository written in?\\\"}\",\n      \"error\":
+        null,\n      \"name\": \"ask_question\",\n      \"output\": \"Error processing
+        question: Repository not found. Visit https://deepwiki.com to index it. Requested
+        repos: openai/openai-agents-python\",\n      \"server_label\": \"deepwiki\"\n
+        \   },\n    {\n      \"id\": \"msg_00462c9793590e2a0069d47ecbef4c81958f19f1a8cef6fbdd\",\n
+        \     \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\":
+        [\n        {\n          \"type\": \"output_text\",\n          \"annotations\":
+        [],\n          \"logprobs\": [],\n          \"text\": \"Unknown. The repository
+        could not be found.\"\n        }\n      ],\n      \"role\": \"assistant\"\n
+        \   }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n
+        \ \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\":
+        null,\n  \"reasoning\": {\n    \"effort\": null,\n    \"summary\": null\n
+        \ },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\":
+        true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\":
+        \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\":
+        \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"mcp\",\n      \"allowed_tools\":
+        null,\n      \"headers\": null,\n      \"require_approval\": \"never\",\n
+        \     \"server_description\": null,\n      \"server_label\": \"deepwiki\",\n
+        \     \"server_url\": \"https://mcp.deepwiki.com/mcp\"\n    }\n  ],\n  \"top_logprobs\":
+        0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        320,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 48,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        0\n    },\n    \"total_tokens\": 368\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      CF-RAY:
+      - 9e861003f9c94cff-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:32 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '4755'
+      openai-processing-ms:
+      - '3372'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '30000000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '29999661'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_a37fdb666ce64af396553d0cae93e524
+    status:
+      code: 200
+      message: OK
+version: 1

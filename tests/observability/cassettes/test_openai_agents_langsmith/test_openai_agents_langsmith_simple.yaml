@@ -1,0 +1,492 @@
+interactions:
+- request:
+    body: "--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition: form-data; name=\"post.019ce8f7-4d92-7282-b400-4ee098abc670\"\r\nContent-Type:
+      application/json\r\nContent-Length: 311\r\n\r\n{\"id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"start_time\":\"2026-03-13T20:50:47.314303+00:00\",\"tags\":[],\"dotted_order\":\"20260313T205047314303Z019ce8f7-4d92-7282-b400-4ee098abc670\",\"trace_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"Agent
+      workflow\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7282-b400-4ee098abc670.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7282-b400-4ee098abc670.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7282-b400-4ee098abc670.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7282-b400-4ee098abc670.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 360\r\n\r\n{\"metadata\":{\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7a73-baa8-cf8bf543b13b\"\r\nContent-Type:
+      application/json\r\nContent-Length: 418\r\n\r\n{\"id\":\"019ce8f7-4d92-7a73-baa8-cf8bf543b13b\",\"start_time\":\"2026-03-13T20:50:47.314744+00:00\",\"parent_run_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"tags\":[],\"dotted_order\":\"20260313T205047314303Z019ce8f7-4d92-7282-b400-4ee098abc670.20260313T205047314744Z019ce8f7-4d92-7a73-baa8-cf8bf543b13b\",\"trace_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"Greeter\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7a73-baa8-cf8bf543b13b.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7a73-baa8-cf8bf543b13b.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7a73-baa8-cf8bf543b13b.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d92-7a73-baa8-cf8bf543b13b.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 429\r\n\r\n{\"invocation_params\":{\"tools\":null,\"handoffs\":[]},\"metadata\":{\"output_type\":\"str\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d93-75e0-a693-f108231e5f58\"\r\nContent-Type:
+      application/json\r\nContent-Length: 484\r\n\r\n{\"id\":\"019ce8f7-4d93-75e0-a693-f108231e5f58\",\"start_time\":\"2026-03-13T20:50:47.315482+00:00\",\"parent_run_id\":\"019ce8f7-4d92-7a73-baa8-cf8bf543b13b\",\"tags\":[],\"dotted_order\":\"20260313T205047314303Z019ce8f7-4d92-7282-b400-4ee098abc670.20260313T205047314744Z019ce8f7-4d92-7a73-baa8-cf8bf543b13b.20260313T205047315482Z019ce8f7-4d93-75e0-a693-f108231e5f58\",\"trace_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"Greeter
+      Response\",\"run_type\":\"llm\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d93-75e0-a693-f108231e5f58.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d93-75e0-a693-f108231e5f58.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d93-75e0-a693-f108231e5f58.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d93-75e0-a693-f108231e5f58.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 360\r\n\r\n{\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"},\"metadata\":{\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-4d93-75e0-a693-f108231e5f58.serialized\"\r\nContent-Type:
+      application/json\r\nContent-Length: 27\r\n\r\n{\"name\":\"Greeter Response\"}\r\n--415c59607d93413fbf28584e45dbd321--\r\n"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '5321'
+      Content-Type:
+      - multipart/form-data; boundary=415c59607d93413fbf28584e45dbd321
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: POST
+    uri: https://api.smith.langchain.com/runs/multipart
+  response:
+    body:
+      string: '{"success":true}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '17'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:47 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - c655bc9a9de4351655b846691b6c7897
+    status:
+      code: 202
+      message: Accepted
+- request:
+    body: '{"include":[],"input":[{"content":"Say hello in one word.","role":"user"}],"instructions":"You
+      are a helpful assistant. Be concise.","model":"gpt-5-nano","tools":[]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '165'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.7.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.16.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.13
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/31UTW+jMBC991cgzk1lEghkj3vav7CqKjTAkHprbNYfUaMq/33HhjjQpnuDeTPP
+        M/Oe/fGQJCnv0h9JqtGMNStKVvRZwbKy3HbllrH9ocnLCsoSIa+yA6t25b5o8FDumuJwYGX66ClU
+        8wdbe6VR0uAUbzWCxa4GjxHnLt8VLC8DZixYZ3xNq4ZRIOVNRQ20b0etnPR99SAMTmEuBJdHin3Q
+        LwVGOKP29R2eUKiRfgi4TAdfKT8dXQUUtVa+UjohQqDX+NehbM/1iBKEPRPInljAuLyS1R1a4MIs
+        K7k0VrvWchra9/JbuQQ0JpC8ohh7JxIwhtOs0j4lPzFplWy5wadp1AHea+Xs6Gxt1RvKFbUHrVKi
+        bkGsDx1Uh8KfdhztpthIkGqzZdtiw6pNlCTQUtJz2Na0s5va5j9atx3p7LXu9912x5q8A8j7bpIn
+        kNjziJPaYJT0qkTIuGEA7Rf4/BJil8d7DQzm+H0H1Z7NbttCVVRZn7VNXmR987WDAY2BIy7O/8ZW
+        AaTtW5S3rSwbW9FeRcF3G6tDAkip6IRZ7ueXFSjUcdSquYMEIuL9hUKoNCKX+Ssmp1qJ0EB0zZTs
+        E0MSuV6THVCsrUEenG7JSBeQjIx3jEzQiStn6usdrYMU0VXU+jBaomxfsX7D87eYRr9EWsEy42aF
+        eEGx75W2k0odd8O8yYVFfHW8swZ6tGdqypP3HFc31KA+cRrL8uud78GJSRzSXGlcbsHiQM8BGSGE
+        s3kBswhzd9TbALf/hfghb+nd9IS6UYaHdV6HiX1PQrwqai8o56xKI3DzAv2O9cIhLAbHZY/ayRbm
+        5aYdN9CI68PogtPjAFyu3o1t8fg1vniy4phBxO5WyFajfn6Osiy7h9wjjha4Ve/zFbmluyMW3Lt9
+        3KIza8EH4u/Agj/g8nD5Bw8f0eyqBgAA
+    headers:
+      CF-RAY:
+      - 9dbde9b69a71888e-SJC
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:48 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      openai-processing-ms:
+      - '1079'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_352f2b5212c64120afbe01d7e278169a
+    status:
+      code: 200
+      message: OK
+- request:
+    body: !!binary |
+      CuM3CkAKGwoMc2VydmljZS5uYW1lEgsKCWxhbmdzbWl0aAohChtsYW5nc21pdGguaW50ZXJuYWxf
+      cHJvdmlkZXISAhABEp43CgsKCWxhbmdzbWl0aBL1BQoQH6QvnQkn7v07T0lb+d5XnRIIItUTV2fu
+      BbciCDWAE5Vq/EJRKgtnZXRfd2VhdGhlcjABOQAhFrHGgZwYQQDPGbHGgZwYSh0KE2xhbmdzbWl0
+      aC5zcGFuLmtpbmQSBgoEdG9vbEolChRsYW5nc21pdGgudHJhY2UubmFtZRINCgtnZXRfd2VhdGhl
+      ckopChxsYW5nc21pdGgudHJhY2Uuc2Vzc2lvbl9uYW1lEgkKB2RlZmF1bHRKJwoVZ2VuX2FpLm9w
+      ZXJhdGlvbi5uYW1lEg4KDGV4ZWN1dGVfdG9vbEocCg1nZW5fYWkuc3lzdGVtEgsKCWxhbmdjaGFp
+      bkpGCiNsYW5nc21pdGgubWV0YWRhdGEub3BlbmFpX3BhcmVudF9pZBIfCh1zcGFuXzQwYTgyNDQy
+      YzlmYTRkNGY4ZWRiMjZlZEpOCiJsYW5nc21pdGgubWV0YWRhdGEub3BlbmFpX3RyYWNlX2lkEigK
+      JnRyYWNlX2Q3NWEwYTM1OTRlNjRlODQ5MjA0OTI3Nzk4NDgzOTcySkQKIWxhbmdzbWl0aC5tZXRh
+      ZGF0YS5vcGVuYWlfc3Bhbl9pZBIfCh1zcGFuXzFiYWViMTZiODE0MjQwMTE4NWFkZmZiNUouCiRs
+      YW5nc21pdGgubWV0YWRhdGEuTEFOR1NNSVRIX1RSQUNJTkcSBgoEdHJ1ZUozCilsYW5nc21pdGgu
+      bWV0YWRhdGEuTEFOR1NNSVRIX09URUxfRU5BQkxFRBIGCgR0cnVlSjEKHmxhbmdzbWl0aC5tZXRh
+      ZGF0YS5yZXZpc2lvbl9pZBIPCg1jNTFmNWY5LWRpcnR5SisKDWdlbl9haS5wcm9tcHQSGgoYeyJj
+      aXR5IjoiU2FuIEZyYW5jaXNjbyJ9SkcKEWdlbl9haS5jb21wbGV0aW9uEjIKMHsib3V0cHV0Ijoi
+      SXQncyBhbHdheXMgc3VubnkgaW4gU2FuIEZyYW5jaXNjbyEifXoCGAGFAQABAAASoA8KEB+kL50J
+      J+79O09JW/neV50SCLBgY0ULmfDPIgg1gBOVavxCUSoWV2VhdGhlciBBZ2VudCBSZXNwb25zZTAB
+      OQAiTUzGgZwYQQDMD7HGgZwYSh8KFWdlbl9haS5vcGVyYXRpb24ubmFtZRIGCgRjaGF0SjIKFmdl
+      bl9haS5zZXJpYWxpemVkLm5hbWUSGAoWV2VhdGhlciBBZ2VudCBSZXNwb25zZUocChNsYW5nc21p
+      dGguc3Bhbi5raW5kEgUKA2xsbUowChRsYW5nc21pdGgudHJhY2UubmFtZRIYChZXZWF0aGVyIEFn
+      ZW50IFJlc3BvbnNlSikKHGxhbmdzbWl0aC50cmFjZS5zZXNzaW9uX25hbWUSCQoHZGVmYXVsdEoZ
+      Cg1nZW5fYWkuc3lzdGVtEggKBm9wZW5haUovChRnZW5fYWkucmVxdWVzdC5tb2RlbBIXChVncHQt
+      NS1uYW5vLTIwMjUtMDgtMDdKRgojbGFuZ3NtaXRoLm1ldGFkYXRhLm9wZW5haV9wYXJlbnRfaWQS
+      Hwodc3Bhbl80MGE4MjQ0MmM5ZmE0ZDRmOGVkYjI2ZWRKTgoibGFuZ3NtaXRoLm1ldGFkYXRhLm9w
+      ZW5haV90cmFjZV9pZBIoCiZ0cmFjZV9kNzVhMGEzNTk0ZTY0ZTg0OTIwNDkyNzc5ODQ4Mzk3MkpE
+      CiFsYW5nc21pdGgubWV0YWRhdGEub3BlbmFpX3NwYW5faWQSHwodc3Bhbl85ZDM5YzYyNGIwOTI0
+      NTJjYmZmYjYyNzBKUgoVbGFuZ3NtaXRoLm1ldGFkYXRhLmlkEjkKN3Jlc3BfMGQ2OWZlNzFiOWJi
+      ODlmODAwNjliNDc4YTIyNjcwODE5NTk2NTE2YTdjY2NhYmM3MTRKKgodbGFuZ3NtaXRoLm1ldGFk
+      YXRhLmNyZWF0ZWRfYXQSCSEAAIAoHm3aQUonChlsYW5nc21pdGgubWV0YWRhdGEub2JqZWN0EgoK
+      CHJlc3BvbnNlSiMKHWxhbmdzbWl0aC5tZXRhZGF0YS5iYWNrZ3JvdW5kEgIQAEosCh9sYW5nc21p
+      dGgubWV0YWRhdGEuY29tcGxldGVkX2F0EgkhAADAKB5t2kFKLAofbGFuZ3NtaXRoLm1ldGFkYXRh
+      LnNlcnZpY2VfdGllchIJCgdkZWZhdWx0SigKGWxhbmdzbWl0aC5tZXRhZGF0YS5zdGF0dXMSCwoJ
+      Y29tcGxldGVkSiUKH2xhbmdzbWl0aC5tZXRhZGF0YS50b3BfbG9ncHJvYnMSAhgASjEKJGxhbmdz
+      bWl0aC5tZXRhZGF0YS5mcmVxdWVuY3lfcGVuYWx0eRIJIQAAAAAAAAAASjAKI2xhbmdzbWl0aC5t
+      ZXRhZGF0YS5wcmVzZW5jZV9wZW5hbHR5EgkhAAAAAAAAAABKHgoYbGFuZ3NtaXRoLm1ldGFkYXRh
+      LnN0b3JlEgIQAUo7CiBsYW5nc21pdGgubWV0YWRhdGEubHNfbW9kZWxfbmFtZRIXChVncHQtNS1u
+      YW5vLTIwMjUtMDgtMDdKLgohbGFuZ3NtaXRoLm1ldGFkYXRhLmxzX3RlbXBlcmF0dXJlEgkhAAAA
+      AAAA8D9KKgogbGFuZ3NtaXRoLm1ldGFkYXRhLmxzX21vZGVsX3R5cGUSBgoEY2hhdEoqCh5sYW5n
+      c21pdGgubWV0YWRhdGEubHNfcHJvdmlkZXISCAoGb3BlbmFpSi4KJGxhbmdzbWl0aC5tZXRhZGF0
+      YS5MQU5HU01JVEhfVFJBQ0lORxIGCgR0cnVlSjMKKWxhbmdzbWl0aC5tZXRhZGF0YS5MQU5HU01J
+      VEhfT1RFTF9FTkFCTEVEEgYKBHRydWVKMQoebGFuZ3NtaXRoLm1ldGFkYXRhLnJldmlzaW9uX2lk
+      Eg8KDWM1MWY1ZjktZGlydHlKjgEKDWdlbl9haS5wcm9tcHQSfQp7eyJpbnB1dCI6W3siY29udGVu
+      dCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCJyb2xlIjoidXNlciJ9
+      XSwiaW5zdHJ1Y3Rpb25zIjoiWW91IGFyZSBhIGhlbHBmdWwgYXNzaXN0YW50LiJ9StkCChFnZW5f
+      YWkuY29tcGxldGlvbhLDAgrAAnsib3V0cHV0IjpbeyJpZCI6InJzXzBkNjlmZTcxYjliYjg5Zjgw
+      MDY5YjQ3OGEyOTgzMDgxOTViOThlNWRhM2M4ODlhYmZjIiwic3VtbWFyeSI6W10sInR5cGUiOiJy
+      ZWFzb25pbmcifSx7ImFyZ3VtZW50cyI6IntcImNpdHlcIjpcIlNhbiBGcmFuY2lzY29cIn0iLCJj
+      YWxsX2lkIjoiY2FsbF9jZVZ5SlVuTmk5dGtPZzdXQURYSENNN2IiLCJuYW1lIjoiZ2V0X3dlYXRo
+      ZXIiLCJ0eXBlIjoiZnVuY3Rpb25fY2FsbCIsImlkIjoiZmNfMGQ2OWZlNzFiOWJiODlmODAwNjli
+      NDc4YTM2OGJjODE5NWFjYzY0ZGM5NzlhYWZhYjgiLCJzdGF0dXMiOiJjb21wbGV0ZWQifV19egIY
+      AYUBAAEAABKUFAoQH6QvnQkn7v07T0lb+d5XnRIISdfDe+kxhg4iCDWAE5Vq/EJRKhZXZWF0aGVy
+      IEFnZW50IFJlc3BvbnNlMAE5AHIgscaBnBhBAGYdeseBnBhKHwoVZ2VuX2FpLm9wZXJhdGlvbi5u
+      YW1lEgYKBGNoYXRKMgoWZ2VuX2FpLnNlcmlhbGl6ZWQubmFtZRIYChZXZWF0aGVyIEFnZW50IFJl
+      c3BvbnNlShwKE2xhbmdzbWl0aC5zcGFuLmtpbmQSBQoDbGxtSjAKFGxhbmdzbWl0aC50cmFjZS5u
+      YW1lEhgKFldlYXRoZXIgQWdlbnQgUmVzcG9uc2VKKQocbGFuZ3NtaXRoLnRyYWNlLnNlc3Npb25f
+      bmFtZRIJCgdkZWZhdWx0ShkKDWdlbl9haS5zeXN0ZW0SCAoGb3BlbmFpSi8KFGdlbl9haS5yZXF1
+      ZXN0Lm1vZGVsEhcKFWdwdC01LW5hbm8tMjAyNS0wOC0wN0pGCiNsYW5nc21pdGgubWV0YWRhdGEu
+      b3BlbmFpX3BhcmVudF9pZBIfCh1zcGFuXzQwYTgyNDQyYzlmYTRkNGY4ZWRiMjZlZEpOCiJsYW5n
+      c21pdGgubWV0YWRhdGEub3BlbmFpX3RyYWNlX2lkEigKJnRyYWNlX2Q3NWEwYTM1OTRlNjRlODQ5
+      MjA0OTI3Nzk4NDgzOTcySkQKIWxhbmdzbWl0aC5tZXRhZGF0YS5vcGVuYWlfc3Bhbl9pZBIfCh1z
+      cGFuXzI1MTBjNWZlZjE0NjQzYmVhMGQ1OWM0ZkpSChVsYW5nc21pdGgubWV0YWRhdGEuaWQSOQo3
+      cmVzcF8wZDY5ZmU3MWI5YmI4OWY4MDA2OWI0NzhhM2Q2Yzg4MTk1ODg0OWE4YzYyMGNhYTViZUoq
+      Ch1sYW5nc21pdGgubWV0YWRhdGEuY3JlYXRlZF9hdBIJIQAAwCgebdpBSicKGWxhbmdzbWl0aC5t
+      ZXRhZGF0YS5vYmplY3QSCgoIcmVzcG9uc2VKIwodbGFuZ3NtaXRoLm1ldGFkYXRhLmJhY2tncm91
+      bmQSAhAASiwKH2xhbmdzbWl0aC5tZXRhZGF0YS5jb21wbGV0ZWRfYXQSCSEAAIApHm3aQUosCh9s
+      YW5nc21pdGgubWV0YWRhdGEuc2VydmljZV90aWVyEgkKB2RlZmF1bHRKKAoZbGFuZ3NtaXRoLm1l
+      dGFkYXRhLnN0YXR1cxILCgljb21wbGV0ZWRKJQofbGFuZ3NtaXRoLm1ldGFkYXRhLnRvcF9sb2dw
+      cm9icxICGABKMQokbGFuZ3NtaXRoLm1ldGFkYXRhLmZyZXF1ZW5jeV9wZW5hbHR5EgkhAAAAAAAA
+      AABKMAojbGFuZ3NtaXRoLm1ldGFkYXRhLnByZXNlbmNlX3BlbmFsdHkSCSEAAAAAAAAAAEoeChhs
+      YW5nc21pdGgubWV0YWRhdGEuc3RvcmUSAhABSjsKIGxhbmdzbWl0aC5tZXRhZGF0YS5sc19tb2Rl
+      bF9uYW1lEhcKFWdwdC01LW5hbm8tMjAyNS0wOC0wN0ouCiFsYW5nc21pdGgubWV0YWRhdGEubHNf
+      dGVtcGVyYXR1cmUSCSEAAAAAAADwP0oqCiBsYW5nc21pdGgubWV0YWRhdGEubHNfbW9kZWxfdHlw
+      ZRIGCgRjaGF0SioKHmxhbmdzbWl0aC5tZXRhZGF0YS5sc19wcm92aWRlchIICgZvcGVuYWlKLgok
+      bGFuZ3NtaXRoLm1ldGFkYXRhLkxBTkdTTUlUSF9UUkFDSU5HEgYKBHRydWVKMwopbGFuZ3NtaXRo
+      Lm1ldGFkYXRhLkxBTkdTTUlUSF9PVEVMX0VOQUJMRUQSBgoEdHJ1ZUoxCh5sYW5nc21pdGgubWV0
+      YWRhdGEucmV2aXNpb25faWQSDwoNYzUxZjVmOS1kaXJ0eUq9BAoNZ2VuX2FpLnByb21wdBKrBAqo
+      BHsiaW5wdXQiOlt7ImNvbnRlbnQiOiJXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBGcmFuY2lz
+      Y28/Iiwicm9sZSI6InVzZXIifSx7ImlkIjoicnNfMGQ2OWZlNzFiOWJiODlmODAwNjliNDc4YTI5
+      ODMwODE5NWI5OGU1ZGEzYzg4OWFiZmMiLCJzdW1tYXJ5IjpbXSwidHlwZSI6InJlYXNvbmluZyJ9
+      LHsiYXJndW1lbnRzIjoie1wiY2l0eVwiOlwiU2FuIEZyYW5jaXNjb1wifSIsImNhbGxfaWQiOiJj
+      YWxsX2NlVnlKVW5OaTl0a09nN1dBRFhIQ003YiIsIm5hbWUiOiJnZXRfd2VhdGhlciIsInR5cGUi
+      OiJmdW5jdGlvbl9jYWxsIiwiaWQiOiJmY18wZDY5ZmU3MWI5YmI4OWY4MDA2OWI0NzhhMzY4YmM4
+      MTk1YWNjNjRkYzk3OWFhZmFiOCIsInN0YXR1cyI6ImNvbXBsZXRlZCJ9LHsiY2FsbF9pZCI6ImNh
+      bGxfY2VWeUpVbk5pOXRrT2c3V0FEWEhDTTdiIiwib3V0cHV0IjoiSXQncyBhbHdheXMgc3Vubnkg
+      aW4gU2FuIEZyYW5jaXNjbyEiLCJ0eXBlIjoiZnVuY3Rpb25fY2FsbF9vdXRwdXQifV0sImluc3Ry
+      dWN0aW9ucyI6IllvdSBhcmUgYSBoZWxwZnVsIGFzc2lzdGFudC4ifUqeBAoRZ2VuX2FpLmNvbXBs
+      ZXRpb24SiAQKhQR7Im91dHB1dCI6W3siaWQiOiJyc18wZDY5ZmU3MWI5YmI4OWY4MDA2OWI0Nzhh
+      NDM4MDQ4MTk1YTlmZTAyNWY2ZDRkZjhmOCIsInN1bW1hcnkiOltdLCJ0eXBlIjoicmVhc29uaW5n
+      In0seyJpZCI6Im1zZ18wZDY5ZmU3MWI5YmI4OWY4MDA2OWI0NzhhNjgxODA4MTk1YmVhNjlmOWVi
+      NWNhM2I1NyIsImNvbnRlbnQiOlt7ImFubm90YXRpb25zIjpbXSwidGV4dCI6IkN1cnJlbnQgd2Vh
+      dGhlciBpbiBTYW4gRnJhbmNpc2NvOiBJdCdzIGFsd2F5cyBzdW5ueSBpbiBTYW4gRnJhbmNpc2Nv
+      IVxuXG5JZiB5b3XigJlkIGxpa2UgbW9yZSBkZXRhaWxzICh0ZW1wZXJhdHVyZSwgaHVtaWRpdHks
+      IHdpbmQsIG9yIGFuIGhvdXJseSBmb3JlY2FzdCksIEkgY2FuIGZldGNoIHRoZSBsYXRlc3QgZGF0
+      YSBvciBzd2l0Y2ggdGhlIHVuaXRzIChGIHZzIEMpLiIsInR5cGUiOiJvdXRwdXRfdGV4dCIsImxv
+      Z3Byb2JzIjpbXX1dLCJyb2xlIjoiYXNzaXN0YW50Iiwic3RhdHVzIjoiY29tcGxldGVkIiwidHlw
+      ZSI6Im1lc3NhZ2UifV19egIYAYUBAAEAABLJCAoQH6QvnQkn7v07T0lb+d5XnRIIzQ3hHpmsA2kq
+      DkFnZW50IHdvcmtmbG93MAE5AI0/TMaBnBhBAO8seseBnBhKIAoVZ2VuX2FpLm9wZXJhdGlvbi5u
+      YW1lEgcKBWNoYWluSh4KE2xhbmdzbWl0aC5zcGFuLmtpbmQSBwoFY2hhaW5KKAoUbGFuZ3NtaXRo
+      LnRyYWNlLm5hbWUSEAoOQWdlbnQgd29ya2Zsb3dKKQocbGFuZ3NtaXRoLnRyYWNlLnNlc3Npb25f
+      bmFtZRIJCgdkZWZhdWx0ShwKDWdlbl9haS5zeXN0ZW0SCwoJbGFuZ2NoYWluSi4KJGxhbmdzbWl0
+      aC5tZXRhZGF0YS5MQU5HU01JVEhfVFJBQ0lORxIGCgR0cnVlSjMKKWxhbmdzbWl0aC5tZXRhZGF0
+      YS5MQU5HU01JVEhfT1RFTF9FTkFCTEVEEgYKBHRydWVKMQoebGFuZ3NtaXRoLm1ldGFkYXRhLnJl
+      dmlzaW9uX2lkEg8KDWM1MWY1ZjktZGlydHlKjgEKDWdlbl9haS5wcm9tcHQSfQp7eyJpbnB1dCI6
+      W3siY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCJyb2xl
+      IjoidXNlciJ9XSwiaW5zdHJ1Y3Rpb25zIjoiWW91IGFyZSBhIGhlbHBmdWwgYXNzaXN0YW50LiJ9
+      Sp4EChFnZW5fYWkuY29tcGxldGlvbhKIBAqFBHsib3V0cHV0IjpbeyJpZCI6InJzXzBkNjlmZTcx
+      YjliYjg5ZjgwMDY5YjQ3OGE0MzgwNDgxOTVhOWZlMDI1ZjZkNGRmOGY4Iiwic3VtbWFyeSI6W10s
+      InR5cGUiOiJyZWFzb25pbmcifSx7ImlkIjoibXNnXzBkNjlmZTcxYjliYjg5ZjgwMDY5YjQ3OGE2
+      ODE4MDgxOTViZWE2OWY5ZWI1Y2EzYjU3IiwiY29udGVudCI6W3siYW5ub3RhdGlvbnMiOltdLCJ0
+      ZXh0IjoiQ3VycmVudCB3ZWF0aGVyIGluIFNhbiBGcmFuY2lzY286IEl0J3MgYWx3YXlzIHN1bm55
+      IGluIFNhbiBGcmFuY2lzY28hXG5cbklmIHlvdeKAmWQgbGlrZSBtb3JlIGRldGFpbHMgKHRlbXBl
+      cmF0dXJlLCBodW1pZGl0eSwgd2luZCwgb3IgYW4gaG91cmx5IGZvcmVjYXN0KSwgSSBjYW4gZmV0
+      Y2ggdGhlIGxhdGVzdCBkYXRhIG9yIHN3aXRjaCB0aGUgdW5pdHMgKEYgdnMgQykuIiwidHlwZSI6
+      Im91dHB1dF90ZXh0IiwibG9ncHJvYnMiOltdfV0sInJvbGUiOiJhc3Npc3RhbnQiLCJzdGF0dXMi
+      OiJjb21wbGV0ZWQiLCJ0eXBlIjoibWVzc2FnZSJ9XX16AhgBhQEAAQAAEpAFChAfpC+dCSfu/TtP
+      SVv53ledEgg1gBOVavxCUSIIzQ3hHpmsA2kqDVdlYXRoZXIgQWdlbnQwATkAM0VMxoGcGEEAvSp6
+      x4GcGEogChVnZW5fYWkub3BlcmF0aW9uLm5hbWUSBwoFY2hhaW5KFQoNZ2VuX2FpLnByb21wdBIE
+      CgJ7fUoZChFnZW5fYWkuY29tcGxldGlvbhIECgJ7fUoeChNsYW5nc21pdGguc3Bhbi5raW5kEgcK
+      BWNoYWluSicKFGxhbmdzbWl0aC50cmFjZS5uYW1lEg8KDVdlYXRoZXIgQWdlbnRKKQocbGFuZ3Nt
+      aXRoLnRyYWNlLnNlc3Npb25fbmFtZRIJCgdkZWZhdWx0ShwKDWdlbl9haS5zeXN0ZW0SCwoJbGFu
+      Z2NoYWluSicKHmxhbmdzbWl0aC5tZXRhZGF0YS5vdXRwdXRfdHlwZRIFCgNzdHJKTgoibGFuZ3Nt
+      aXRoLm1ldGFkYXRhLm9wZW5haV90cmFjZV9pZBIoCiZ0cmFjZV9kNzVhMGEzNTk0ZTY0ZTg0OTIw
+      NDkyNzc5ODQ4Mzk3MkpECiFsYW5nc21pdGgubWV0YWRhdGEub3BlbmFpX3NwYW5faWQSHwodc3Bh
+      bl80MGE4MjQ0MmM5ZmE0ZDRmOGVkYjI2ZWRKLgokbGFuZ3NtaXRoLm1ldGFkYXRhLkxBTkdTTUlU
+      SF9UUkFDSU5HEgYKBHRydWVKMwopbGFuZ3NtaXRoLm1ldGFkYXRhLkxBTkdTTUlUSF9PVEVMX0VO
+      QUJMRUQSBgoEdHJ1ZUoxCh5sYW5nc21pdGgubWV0YWRhdGEucmV2aXNpb25faWQSDwoNYzUxZjVm
+      OS1kaXJ0eXoCGAGFAQABAAA=
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '7142'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      langsmith-project:
+      - default
+    method: POST
+    uri: https://api.smith.langchain.com/otel/v1/traces
+  response:
+    body:
+      string: ''
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '0'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Date:
+      - Fri, 13 Mar 2026 20:50:48 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 331f9ed78432a00172ff47d82863ff7b
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition: form-data; name=\"patch.019ce8f7-4d93-75e0-a693-f108231e5f58\"\r\nContent-Type:
+      application/json\r\nContent-Length: 534\r\n\r\n{\"id\":\"019ce8f7-4d93-75e0-a693-f108231e5f58\",\"name\":\"Greeter
+      Response\",\"run_type\":\"llm\",\"trace_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"parent_run_id\":\"019ce8f7-4d92-7a73-baa8-cf8bf543b13b\",\"dotted_order\":\"20260313T205047314303Z019ce8f7-4d92-7282-b400-4ee098abc670.20260313T205047314744Z019ce8f7-4d92-7a73-baa8-cf8bf543b13b.20260313T205047315482Z019ce8f7-4d93-75e0-a693-f108231e5f58\",\"tags\":[],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:47.315482+00:00\",\"end_time\":\"2026-03-13T20:50:48.544430+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d93-75e0-a693-f108231e5f58.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 120\r\n\r\n{\"input\":[{\"content\":\"Say
+      hello in one word.\",\"role\":\"user\"}],\"instructions\":\"You are a helpful
+      assistant. Be concise.\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d93-75e0-a693-f108231e5f58.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 309\r\n\r\n{\"output\":[{\"id\":\"rs_05705f1501772d720069b478a7cd9081908f6d230b4daa4fdd\",\"summary\":[],\"type\":\"reasoning\"},{\"id\":\"msg_05705f1501772d720069b478a860a4819082a8581f1cb451fb\",\"content\":[{\"annotations\":[],\"text\":\"Hello\",\"type\":\"output_text\",\"logprobs\":[]}],\"role\":\"assistant\",\"status\":\"completed\",\"type\":\"message\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d93-75e0-a693-f108231e5f58.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d93-75e0-a693-f108231e5f58.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1381\r\n\r\n{\"metadata\":{\"openai_parent_id\":\"span_9266404b2228448abfdeea35\",\"openai_trace_id\":\"trace_808b472fddd544e68928d280e58c5a39\",\"openai_span_id\":\"span_d4ee43893028470ea375a965\",\"id\":\"resp_05705f1501772d720069b478a77ea4819083765be973b59907\",\"created_at\":1773435047.0,\"metadata\":{},\"object\":\"response\",\"background\":false,\"completed_at\":1773435048.0,\"service_tier\":\"default\",\"status\":\"completed\",\"top_logprobs\":0,\"billing\":{\"payer\":\"developer\"},\"frequency_penalty\":0.0,\"presence_penalty\":0.0,\"store\":true,\"ls_model_name\":\"gpt-5-nano-2025-08-07\",\"ls_max_tokens\":null,\"ls_temperature\":1.0,\"ls_model_type\":\"chat\",\"ls_provider\":\"openai\",\"usage_metadata\":{\"input_tokens\":25,\"output_tokens\":111,\"total_tokens\":136,\"input_token_details\":{\"cache_read\":0},\"output_token_details\":{\"reasoning\":64}},\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"invocation_params\":{\"model\":\"gpt-5-nano-2025-08-07\",\"parallel_tool_calls\":true,\"temperature\":1.0,\"tool_choice\":\"auto\",\"tools\":[],\"top_p\":1.0,\"reasoning\":{\"effort\":\"medium\"},\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"truncation\":\"disabled\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7282-b400-4ee098abc670\"\r\nContent-Type:
+      application/json\r\nContent-Length: 382\r\n\r\n{\"id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"name\":\"Agent
+      workflow\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"parent_run_id\":null,\"dotted_order\":\"20260313T205047314303Z019ce8f7-4d92-7282-b400-4ee098abc670\",\"tags\":[],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:47.314303+00:00\",\"end_time\":\"2026-03-13T20:50:48.545200+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7282-b400-4ee098abc670.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 120\r\n\r\n{\"input\":[{\"content\":\"Say
+      hello in one word.\",\"role\":\"user\"}],\"instructions\":\"You are a helpful
+      assistant. Be concise.\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7282-b400-4ee098abc670.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 309\r\n\r\n{\"output\":[{\"id\":\"rs_05705f1501772d720069b478a7cd9081908f6d230b4daa4fdd\",\"summary\":[],\"type\":\"reasoning\"},{\"id\":\"msg_05705f1501772d720069b478a860a4819082a8581f1cb451fb\",\"content\":[{\"annotations\":[],\"text\":\"Hello\",\"type\":\"output_text\",\"logprobs\":[]}],\"role\":\"assistant\",\"status\":\"completed\",\"type\":\"message\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7282-b400-4ee098abc670.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7282-b400-4ee098abc670.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 360\r\n\r\n{\"metadata\":{\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7a73-baa8-cf8bf543b13b\"\r\nContent-Type:
+      application/json\r\nContent-Length: 468\r\n\r\n{\"id\":\"019ce8f7-4d92-7a73-baa8-cf8bf543b13b\",\"name\":\"Greeter\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"parent_run_id\":\"019ce8f7-4d92-7282-b400-4ee098abc670\",\"dotted_order\":\"20260313T205047314303Z019ce8f7-4d92-7282-b400-4ee098abc670.20260313T205047314744Z019ce8f7-4d92-7a73-baa8-cf8bf543b13b\",\"tags\":[],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:47.314744+00:00\",\"end_time\":\"2026-03-13T20:50:48.545091+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7a73-baa8-cf8bf543b13b.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-4d92-7a73-baa8-cf8bf543b13b.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 559\r\n\r\n{\"invocation_params\":{\"tools\":[],\"handoffs\":[]},\"metadata\":{\"output_type\":\"str\",\"openai_parent_id\":null,\"openai_trace_id\":\"trace_808b472fddd544e68928d280e58c5a39\",\"openai_span_id\":\"span_9266404b2228448abfdeea35\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321--\r\n"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '6938'
+      Content-Type:
+      - multipart/form-data; boundary=415c59607d93413fbf28584e45dbd321
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: POST
+    uri: https://api.smith.langchain.com/runs/multipart
+  response:
+    body:
+      string: '{"success":true}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '17'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:48 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 97ab9174695824a4b6845042dfcc55eb
+    status:
+      code: 202
+      message: Accepted
+version: 1

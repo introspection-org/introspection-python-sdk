@@ -1,0 +1,289 @@
+interactions:
+- request:
+    body: '{"include":[],"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"What
+      is 10 + 20?"}]},{"type":"function_call","call_id":"call_abc123","name":"add_logged","arguments":"{\"a\":
+      10, \"b\": 20}"},{"type":"function_call_output","call_id":"call_abc123","output":"30.0"},{"type":"message","role":"user","content":[{"type":"input_text","text":"Now
+      divide that by 2"}]},{"type":"function_call","call_id":"call_def456","name":"divide_logged","arguments":"{\"a\":
+      30, \"b\": 2}"},{"type":"function_call_output","call_id":"call_def456","output":"15.0"},{"type":"message","role":"user","content":[{"type":"input_text","text":"Subtract
+      5 from that"}]}],"instructions":"You are a helpful math assistant. Use the tools
+      to perform calculations.","model":"gpt-5-nano","tools":[{"name":"add_logged","parameters":{"properties":{"a":{"description":"First
+      number","title":"A","type":"number"},"b":{"description":"Second number","title":"B","type":"number"}},"required":["a","b"],"title":"add_logged_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Add
+      two numbers together."},{"name":"divide_logged","parameters":{"properties":{"a":{"description":"Numerator","title":"A","type":"number"},"b":{"description":"Denominator","title":"B","type":"number"}},"required":["a","b"],"title":"divide_logged_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Divide
+      first number by second."},{"name":"subtract_logged","parameters":{"properties":{"a":{"description":"First
+      number","title":"A","type":"number"},"b":{"description":"Second number","title":"B","type":"number"}},"required":["a","b"],"title":"subtract_logged_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Subtract
+      second number from first."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1850'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_061c85a993f8eb090069d47ebd3c0481968f33c4f8da060819\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533757,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533757,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You are a helpful math assistant. Use the tools to perform calculations.\",\n
+        \ \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"fc_061c85a993f8eb090069d47ebd948481969ea1eab80cf211e5\",\n
+        \     \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"a\\\": 15, \\\"b\\\": 5}\",\n      \"call_id\": \"call_jliQm4c4OlaRKGq05CuHS3x1\",\n
+        \     \"name\": \"subtract_logged\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Add two numbers together.\",\n      \"name\":
+        \"add_logged\",\n      \"parameters\": {\n        \"properties\": {\n          \"a\":
+        {\n            \"description\": \"First number\",\n            \"title\":
+        \"A\",\n            \"type\": \"number\"\n          },\n          \"b\": {\n
+        \           \"description\": \"Second number\",\n            \"title\": \"B\",\n
+        \           \"type\": \"number\"\n          }\n        },\n        \"required\":
+        [\n          \"a\",\n          \"b\"\n        ],\n        \"title\": \"add_logged_args\",\n
+        \       \"type\": \"object\",\n        \"additionalProperties\": false\n      },\n
+        \     \"strict\": true\n    },\n    {\n      \"type\": \"function\",\n      \"description\":
+        \"Divide first number by second.\",\n      \"name\": \"divide_logged\",\n
+        \     \"parameters\": {\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"Numerator\",\n            \"title\": \"A\",\n            \"type\": \"number\"\n
+        \         },\n          \"b\": {\n            \"description\": \"Denominator\",\n
+        \           \"title\": \"B\",\n            \"type\": \"number\"\n          }\n
+        \       },\n        \"required\": [\n          \"a\",\n          \"b\"\n        ],\n
+        \       \"title\": \"divide_logged_args\",\n        \"type\": \"object\",\n
+        \       \"additionalProperties\": false\n      },\n      \"strict\": true\n
+        \   },\n    {\n      \"type\": \"function\",\n      \"description\": \"Subtract
+        second number from first.\",\n      \"name\": \"subtract_logged\",\n      \"parameters\":
+        {\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"title\": \"A\",\n            \"type\": \"number\"\n
+        \         },\n          \"b\": {\n            \"description\": \"Second number\",\n
+        \           \"title\": \"B\",\n            \"type\": \"number\"\n          }\n
+        \       },\n        \"required\": [\n          \"a\",\n          \"b\"\n        ],\n
+        \       \"title\": \"subtract_logged_args\",\n        \"type\": \"object\",\n
+        \       \"additionalProperties\": false\n      },\n      \"strict\": true\n
+        \   }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 265,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 25,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 290\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e860fbe79dfccc3-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:18 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '3444'
+      openai-processing-ms:
+      - '786'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_c257198660c043788fc7d51d79cb6ed2
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":[],"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"What
+      is 10 + 20?"}]},{"type":"function_call","call_id":"call_abc123","name":"add_logged","arguments":"{\"a\":
+      10, \"b\": 20}"},{"type":"function_call_output","call_id":"call_abc123","output":"30.0"},{"type":"message","role":"user","content":[{"type":"input_text","text":"Now
+      divide that by 2"}]},{"type":"function_call","call_id":"call_def456","name":"divide_logged","arguments":"{\"a\":
+      30, \"b\": 2}"},{"type":"function_call_output","call_id":"call_def456","output":"15.0"},{"type":"message","role":"user","content":[{"type":"input_text","text":"Subtract
+      5 from that"}]},{"arguments":"{\"a\": 15, \"b\": 5}","call_id":"call_jliQm4c4OlaRKGq05CuHS3x1","name":"subtract_logged","type":"function_call","id":"fc_061c85a993f8eb090069d47ebd948481969ea1eab80cf211e5","status":"completed"},{"call_id":"call_jliQm4c4OlaRKGq05CuHS3x1","output":"10.0","type":"function_call_output"}],"instructions":"You
+      are a helpful math assistant. Use the tools to perform calculations.","model":"gpt-5-nano","tools":[{"name":"add_logged","parameters":{"properties":{"a":{"description":"First
+      number","title":"A","type":"number"},"b":{"description":"Second number","title":"B","type":"number"}},"required":["a","b"],"title":"add_logged_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Add
+      two numbers together."},{"name":"divide_logged","parameters":{"properties":{"a":{"description":"Numerator","title":"A","type":"number"},"b":{"description":"Denominator","title":"B","type":"number"}},"required":["a","b"],"title":"divide_logged_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Divide
+      first number by second."},{"name":"subtract_logged","parameters":{"properties":{"a":{"description":"First
+      number","title":"A","type":"number"},"b":{"description":"Second number","title":"B","type":"number"}},"required":["a","b"],"title":"subtract_logged_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Subtract
+      second number from first."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2150'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_061c85a993f8eb090069d47ebe93908196a8da7bac2389dddd\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533758,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533763,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You are a helpful math assistant. Use the tools to perform calculations.\",\n
+        \ \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_061c85a993f8eb090069d47ebf018c8196b8c151271a6e311c\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"msg_061c85a993f8eb090069d47ec301b4819690073a269c40e8e2\",\n      \"type\":
+        \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n
+        \         \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\":
+        [],\n          \"text\": \"10.0\\n\\nFinal result: 10.0.\"\n        }\n      ],\n
+        \     \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n
+        \ \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Add two numbers together.\",\n      \"name\":
+        \"add_logged\",\n      \"parameters\": {\n        \"properties\": {\n          \"a\":
+        {\n            \"description\": \"First number\",\n            \"title\":
+        \"A\",\n            \"type\": \"number\"\n          },\n          \"b\": {\n
+        \           \"description\": \"Second number\",\n            \"title\": \"B\",\n
+        \           \"type\": \"number\"\n          }\n        },\n        \"required\":
+        [\n          \"a\",\n          \"b\"\n        ],\n        \"title\": \"add_logged_args\",\n
+        \       \"type\": \"object\",\n        \"additionalProperties\": false\n      },\n
+        \     \"strict\": true\n    },\n    {\n      \"type\": \"function\",\n      \"description\":
+        \"Divide first number by second.\",\n      \"name\": \"divide_logged\",\n
+        \     \"parameters\": {\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"Numerator\",\n            \"title\": \"A\",\n            \"type\": \"number\"\n
+        \         },\n          \"b\": {\n            \"description\": \"Denominator\",\n
+        \           \"title\": \"B\",\n            \"type\": \"number\"\n          }\n
+        \       },\n        \"required\": [\n          \"a\",\n          \"b\"\n        ],\n
+        \       \"title\": \"divide_logged_args\",\n        \"type\": \"object\",\n
+        \       \"additionalProperties\": false\n      },\n      \"strict\": true\n
+        \   },\n    {\n      \"type\": \"function\",\n      \"description\": \"Subtract
+        second number from first.\",\n      \"name\": \"subtract_logged\",\n      \"parameters\":
+        {\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"title\": \"A\",\n            \"type\": \"number\"\n
+        \         },\n          \"b\": {\n            \"description\": \"Second number\",\n
+        \           \"title\": \"B\",\n            \"type\": \"number\"\n          }\n
+        \       },\n        \"required\": [\n          \"a\",\n          \"b\"\n        ],\n
+        \       \"title\": \"subtract_logged_args\",\n        \"type\": \"object\",\n
+        \       \"additionalProperties\": false\n      },\n      \"strict\": true\n
+        \   }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 301,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 463,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 384\n    },\n    \"total_tokens\": 764\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e860fc47a353e87-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:23 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '3655'
+      openai-processing-ms:
+      - '4777'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_1caf5e7bd8a44a78accacbdb8a199751
+    status:
+      code: 200
+      message: OK
+version: 1

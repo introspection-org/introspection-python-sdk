@@ -1,0 +1,240 @@
+interactions:
+- request:
+    body: '{"include":[],"input":[{"content":"What''s the weather in Tokyo?","role":"user"}],"instructions":"You
+      are a helpful weather assistant.","model":"gpt-5-nano","tools":[{"name":"get_weather","parameters":{"properties":{"city":{"description":"The
+      city to get the weather for","title":"City","type":"string"}},"required":["city"],"title":"get_weather_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Get
+      the current weather information for a specified city."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '505'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0211345efb56b5ca0069d47e9f0a608195bf24edb90c3dd66e\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533727,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533728,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You are a helpful weather assistant.\",\n  \"max_output_tokens\": null,\n
+        \ \"max_tool_calls\": null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n  \"output\":
+        [\n    {\n      \"id\": \"rs_0211345efb56b5ca0069d47e9f73b88195a69864c1c5edfbb1\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"fc_0211345efb56b5ca0069d47ea077cc8195b17d0caecb5ab59d\",\n      \"type\":
+        \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"city\\\":\\\"Tokyo\\\"}\",\n      \"call_id\": \"call_5pqucuue3HnqPyYZsAD2SQWq\",\n
+        \     \"name\": \"get_weather\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n
+        \ \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Get the current weather information
+        for a specified city.\",\n      \"name\": \"get_weather\",\n      \"parameters\":
+        {\n        \"properties\": {\n          \"city\": {\n            \"description\":
+        \"The city to get the weather for\",\n            \"title\": \"City\",\n            \"type\":
+        \"string\"\n          }\n        },\n        \"required\": [\n          \"city\"\n
+        \       ],\n        \"title\": \"get_weather_args\",\n        \"type\": \"object\",\n
+        \       \"additionalProperties\": false\n      },\n      \"strict\": true\n
+        \   }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 80,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 155,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 128\n    },\n    \"total_tokens\": 235\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e860eff3eaa9063-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:48:48 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2183'
+      openai-processing-ms:
+      - '1776'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_f640dc801b284b018715a12998dc92d9
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":[],"input":[{"content":"What''s the weather in Tokyo?","role":"user"},{"id":"rs_0211345efb56b5ca0069d47e9f73b88195a69864c1c5edfbb1","summary":[],"type":"reasoning"},{"arguments":"{\"city\":\"Tokyo\"}","call_id":"call_5pqucuue3HnqPyYZsAD2SQWq","name":"get_weather","type":"function_call","id":"fc_0211345efb56b5ca0069d47ea077cc8195b17d0caecb5ab59d","status":"completed"},{"call_id":"call_5pqucuue3HnqPyYZsAD2SQWq","output":"city=''Tokyo''
+      temperature_range=''14-20C'' conditions=''Sunny with wind.''","type":"function_call_output"}],"instructions":"You
+      are a helpful weather assistant.","model":"gpt-5-nano","tools":[{"name":"get_weather","parameters":{"properties":{"city":{"description":"The
+      city to get the weather for","title":"City","type":"string"}},"required":["city"],"title":"get_weather_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Get
+      the current weather information for a specified city."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '960'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0211345efb56b5ca0069d47ea18eb88195972120ca1e95292a\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533729,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533733,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You are a helpful weather assistant.\",\n  \"max_output_tokens\": null,\n
+        \ \"max_tool_calls\": null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n  \"output\":
+        [\n    {\n      \"id\": \"rs_0211345efb56b5ca0069d47ea2019081958979079e4ee11306\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"msg_0211345efb56b5ca0069d47ea52f5c81959bfc2da260f016d0\",\n      \"type\":
+        \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n
+        \         \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\":
+        [],\n          \"text\": \"In Tokyo right now: sunny with some wind, and temperatures
+        around 14\\u201320\\u00b0C. Want an hourly forecast or details like humidity
+        or wind speed?\"\n        }\n      ],\n      \"role\": \"assistant\"\n    }\n
+        \ ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\":
+        null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": null,\n
+        \ \"reasoning\": {\n    \"effort\": \"medium\",\n    \"summary\": null\n  },\n
+        \ \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\":
+        true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\":
+        \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\":
+        \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"description\":
+        \"Get the current weather information for a specified city.\",\n      \"name\":
+        \"get_weather\",\n      \"parameters\": {\n        \"properties\": {\n          \"city\":
+        {\n            \"description\": \"The city to get the weather for\",\n            \"title\":
+        \"City\",\n            \"type\": \"string\"\n          }\n        },\n        \"required\":
+        [\n          \"city\"\n        ],\n        \"title\": \"get_weather_args\",\n
+        \       \"type\": \"object\",\n        \"additionalProperties\": false\n      },\n
+        \     \"strict\": true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\":
+        1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        264,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 398,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        320\n    },\n    \"total_tokens\": 662\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      CF-RAY:
+      - 9e860f0eae811b5e-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:48:53 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2389'
+      openai-processing-ms:
+      - '4060'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_55e7779e6afb4ec1917ba4e89963c74f
+    status:
+      code: 200
+      message: OK
+version: 1

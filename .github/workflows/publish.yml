@@ -1,0 +1,126 @@
+name: Publish to PyPI
+
+run-name: "${{ inputs.version && format('Publish v{0}', inputs.version) || format('Publish {0}', github.ref_name) }}"
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (without v prefix). Defaults to tag name."
+        required: false
+        type: string
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  # ── Resolve version from tag ───────────────────────────────────────
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [ -z "${VERSION}" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION}"
+
+  # ── Test ───────────────────────────────────────────────────────────
+  test:
+    name: Test
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        run: uv sync --extra test --extra langfuse --extra arize --extra braintrust
+
+      - name: Run tests
+        run: uv run pytest tests/ -v
+
+  # ── Publish to PyPI ────────────────────────────────────────────────
+  publish:
+    name: Publish v${{ needs.resolve-version.outputs.version }} to PyPI
+    needs: [resolve-version, test]
+    runs-on: ubuntu-latest
+    environment: publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Stamp version from tag
+        run: |
+          VERSION="${{ needs.resolve-version.outputs.version }}"
+          sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
+          echo "Stamped pyproject.toml with version ${VERSION}"
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ── GitHub Release ─────────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    needs: [resolve-version, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ needs.resolve-version.outputs.version }}" \
+            --title "v${{ needs.resolve-version.outputs.version }}" \
+            --generate-notes

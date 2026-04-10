@@ -1,0 +1,1662 @@
+interactions:
+- request:
+    body: "--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition: form-data; name=\"post.019ce8f6-eb02-72a0-945e-845f3516287b\"\r\nContent-Type:
+      application/json\r\nContent-Length: 306\r\n\r\n{\"id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"start_time\":\"2026-03-13T20:50:22.083015+00:00\",\"tags\":[],\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"LangGraph\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb02-72a0-945e-845f3516287b.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 80\r\n\r\n{\"messages\":[{\"role\":\"user\",\"content\":\"What
+      is the weather in San Francisco?\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb02-72a0-945e-845f3516287b.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb02-72a0-945e-845f3516287b.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:22.083015+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb02-72a0-945e-845f3516287b.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 391\r\n\r\n{\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"},\"metadata\":{\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb03-72c0-bda1-ba9fd0750d31\"\r\nContent-Type:
+      application/json\r\nContent-Length: 430\r\n\r\n{\"id\":\"019ce8f6-eb03-72c0-bda1-ba9fd0750d31\",\"start_time\":\"2026-03-13T20:50:22.083578+00:00\",\"parent_run_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"tags\":[\"graph:step:1\"],\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205022083578Z019ce8f6-eb03-72c0-bda1-ba9fd0750d31\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"model\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 171\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8db04b68-ec87-4771-9b88-c27035718e00\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:22.083578+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 590\r\n\r\n{\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:1b8a1f8e-23fd-e1bb-8ce6-d77a9adae137\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb04-7241-86e6-613dfd93b8a2\"\r\nContent-Type:
+      application/json\r\nContent-Length: 490\r\n\r\n{\"id\":\"019ce8f6-eb04-7241-86e6-613dfd93b8a2\",\"start_time\":\"2026-03-13T20:50:22.085044+00:00\",\"parent_run_id\":\"019ce8f6-eb03-72c0-bda1-ba9fd0750d31\",\"tags\":[\"seq:step:1\"],\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205022083578Z019ce8f6-eb03-72c0-bda1-ba9fd0750d31.20260313T205022085044Z019ce8f6-eb04-7241-86e6-613dfd93b8a2\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"ChatOpenAI\",\"run_type\":\"llm\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb04-7241-86e6-613dfd93b8a2.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 372\r\n\r\n{\"messages\":[[{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"SystemMessage\"],\"kwargs\":{\"content\":\"You
+      are a helpful assistant\",\"type\":\"system\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"HumanMessage\"],\"kwargs\":{\"content\":\"What
+      is the weather in San Francisco?\",\"type\":\"human\",\"id\":\"8db04b68-ec87-4771-9b88-c27035718e00\"}}]]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb04-7241-86e6-613dfd93b8a2.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb04-7241-86e6-613dfd93b8a2.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:22.085044+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb04-7241-86e6-613dfd93b8a2.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1106\r\n\r\n{\"invocation_params\":{\"model\":\"gpt-5-nano\",\"model_name\":\"gpt-5-nano\",\"stream\":false,\"_type\":\"openai-chat\",\"stop\":null,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a given city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]},\"options\":{\"stop\":null},\"batch_size\":1,\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:1b8a1f8e-23fd-e1bb-8ce6-d77a9adae137\",\"checkpoint_ns\":\"model:1b8a1f8e-23fd-e1bb-8ce6-d77a9adae137\",\"ls_provider\":\"openai\",\"ls_model_name\":\"gpt-5-nano\",\"ls_model_type\":\"chat\",\"ls_temperature\":null,\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-eb04-7241-86e6-613dfd93b8a2.serialized\"\r\nContent-Type:
+      application/json\r\nContent-Length: 227\r\n\r\n{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"chat_models\",\"openai\",\"ChatOpenAI\"],\"kwargs\":{\"model_name\":\"gpt-5-nano\",\"openai_api_key\":{\"lc\":1,\"type\":\"secret\",\"id\":[\"OPENAI_API_KEY\"]},\"stream_usage\":true},\"name\":\"ChatOpenAI\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decb-7a61-8daa-83e868f25e4d\"\r\nContent-Type:
+      application/json\r\nContent-Length: 480\r\n\r\n{\"id\":\"019ce8f6-decb-7a61-8daa-83e868f25e4d\",\"name\":\"model\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"parent_run_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205018955803Z019ce8f6-decb-7a61-8daa-83e868f25e4d\",\"tags\":[\"graph:step:3\"],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:18.955803+00:00\",\"end_time\":\"2026-03-13T20:50:22.050333+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decb-7a61-8daa-83e868f25e4d.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1356\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"},{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}}},{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"dd5dc53d-dd46-4ea0-be91-2122dc5459c7\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"status\":\"success\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decb-7a61-8daa-83e868f25e4d.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1017\r\n\r\n{\"messages\":[{\"content\":\"The
+      current weather in San Francisco: \\\"It's always sunny in San Francisco!\\\"
+      \\n\\nWould you like me to fetch the actual temperature, humidity, wind speed,
+      or a short forecast?\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":365,\"prompt_tokens\":178,\"total_tokens\":543,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":320,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kZVqVLda2nhZO3yQZOTfQ4qJso\",\"service_tier\":\"default\",\"finish_reason\":\"stop\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-decd-7a51-8af2-a74d060dc7e1-0\",\"tool_calls\":[],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":178,\"output_tokens\":365,\"total_tokens\":543,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":320}}}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decb-7a61-8daa-83e868f25e4d.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:18.955803+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:22.050333+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decb-7a61-8daa-83e868f25e4d.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 590\r\n\r\n{\"metadata\":{\"langgraph_step\":3,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:d67e8196-bb4d-3770-48f5-e7fd2ff93c78\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decd-7a51-8af2-a74d060dc7e1\"\r\nContent-Type:
+      application/json\r\nContent-Length: 540\r\n\r\n{\"id\":\"019ce8f6-decd-7a51-8af2-a74d060dc7e1\",\"name\":\"ChatOpenAI\",\"run_type\":\"llm\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"parent_run_id\":\"019ce8f6-decb-7a61-8daa-83e868f25e4d\",\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205018955803Z019ce8f6-decb-7a61-8daa-83e868f25e4d.20260313T205018957482Z019ce8f6-decd-7a51-8af2-a74d060dc7e1\",\"tags\":[\"seq:step:1\"],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:18.957482+00:00\",\"end_time\":\"2026-03-13T20:50:22.049416+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decd-7a51-8af2-a74d060dc7e1.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1693\r\n\r\n{\"messages\":[[{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"SystemMessage\"],\"kwargs\":{\"content\":\"You
+      are a helpful assistant\",\"type\":\"system\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"HumanMessage\"],\"kwargs\":{\"content\":\"What
+      is the weather in San Francisco?\",\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"AIMessage\"],\"kwargs\":{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}},\"invalid_tool_calls\":[]}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"ToolMessage\"],\"kwargs\":{\"content\":\"It's
+      always sunny in San Francisco!\",\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"dd5dc53d-dd46-4ea0-be91-2122dc5459c7\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"status\":\"success\"}}]]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decd-7a51-8af2-a74d060dc7e1.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1869\r\n\r\n{\"generations\":[[{\"text\":\"The
+      current weather in San Francisco: \\\"It's always sunny in San Francisco!\\\"
+      \\n\\nWould you like me to fetch the actual temperature, humidity, wind speed,
+      or a short forecast?\",\"generation_info\":{\"finish_reason\":\"stop\",\"logprobs\":null},\"type\":\"ChatGeneration\",\"message\":{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"AIMessage\"],\"kwargs\":{\"content\":\"The
+      current weather in San Francisco: \\\"It's always sunny in San Francisco!\\\"
+      \\n\\nWould you like me to fetch the actual temperature, humidity, wind speed,
+      or a short forecast?\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":365,\"prompt_tokens\":178,\"total_tokens\":543,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":320,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kZVqVLda2nhZO3yQZOTfQ4qJso\",\"service_tier\":\"default\",\"finish_reason\":\"stop\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-decd-7a51-8af2-a74d060dc7e1-0\",\"usage_metadata\":{\"input_tokens\":178,\"output_tokens\":365,\"total_tokens\":543,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":320}},\"tool_calls\":[],\"invalid_tool_calls\":[]}}}]],\"llm_output\":{\"token_usage\":{\"completion_tokens\":365,\"prompt_tokens\":178,\"total_tokens\":543,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":320,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kZVqVLda2nhZO3yQZOTfQ4qJso\",\"service_tier\":\"default\"},\"run\":null,\"type\":\"LLMResult\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decd-7a51-8af2-a74d060dc7e1.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:18.957482+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:22.049416+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-decd-7a51-8af2-a74d060dc7e1.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1106\r\n\r\n{\"invocation_params\":{\"model\":\"gpt-5-nano\",\"model_name\":\"gpt-5-nano\",\"stream\":false,\"_type\":\"openai-chat\",\"stop\":null,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a given city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]},\"options\":{\"stop\":null},\"batch_size\":1,\"metadata\":{\"langgraph_step\":3,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:d67e8196-bb4d-3770-48f5-e7fd2ff93c78\",\"checkpoint_ns\":\"model:d67e8196-bb4d-3770-48f5-e7fd2ff93c78\",\"ls_provider\":\"openai\",\"ls_model_name\":\"gpt-5-nano\",\"ls_model_type\":\"chat\",\"ls_temperature\":null,\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d7fa-7f03-8d14-5485a2e126d9\"\r\nContent-Type:
+      application/json\r\nContent-Length: 377\r\n\r\n{\"id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"name\":\"LangGraph\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"parent_run_id\":null,\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"tags\":[],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:17.210244+00:00\",\"end_time\":\"2026-03-13T20:50:22.051017+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 80\r\n\r\n{\"messages\":[{\"role\":\"user\",\"content\":\"What
+      is the weather in San Francisco?\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2359\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"},{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}}},{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"dd5dc53d-dd46-4ea0-be91-2122dc5459c7\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"status\":\"success\"},{\"content\":\"The
+      current weather in San Francisco: \\\"It's always sunny in San Francisco!\\\"
+      \\n\\nWould you like me to fetch the actual temperature, humidity, wind speed,
+      or a short forecast?\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":365,\"prompt_tokens\":178,\"total_tokens\":543,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":320,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kZVqVLda2nhZO3yQZOTfQ4qJso\",\"service_tier\":\"default\",\"finish_reason\":\"stop\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-decd-7a51-8af2-a74d060dc7e1-0\",\"tool_calls\":[],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":178,\"output_tokens\":365,\"total_tokens\":543,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":320}}}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:17.210244+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:22.051017+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 391\r\n\r\n{\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"},\"metadata\":{\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"}}\r\n--415c59607d93413fbf28584e45dbd321--\r\n"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '22211'
+      Content-Type:
+      - multipart/form-data; boundary=415c59607d93413fbf28584e45dbd321
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: POST
+    uri: https://api.smith.langchain.com/runs/multipart
+  response:
+    body:
+      string: '{"success":true}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '17'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:22 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 4c9da6993e670a1ea172d19d0096bdff
+    status:
+      code: 202
+      message: Accepted
+- request:
+    body: !!binary |
+      CtKXAQpAChsKDHNlcnZpY2UubmFtZRILCglsYW5nc21pdGgKIQobbGFuZ3NtaXRoLmludGVybmFs
+      X3Byb3ZpZGVyEgIQARKMlwEKCwoJbGFuZ3NtaXRoEtwRChDJPe5DbVUBNN9UXfyvannqEgjAqsOo
+      obiGIyIIgRByVQimML8qBXRvb2xzMAE5AAv98MCBnBhBAOcT8cCBnBhKHgoTbGFuZ3NtaXRoLnNw
+      YW4ua2luZBIHCgVjaGFpbkofChRsYW5nc21pdGgudHJhY2UubmFtZRIHCgV0b29sc0opChxsYW5n
+      c21pdGgudHJhY2Uuc2Vzc2lvbl9uYW1lEgkKB2RlZmF1bHRKIAoVZ2VuX2FpLm9wZXJhdGlvbi5u
+      YW1lEgcKBWNoYWluShwKDWdlbl9haS5zeXN0ZW0SCwoJbGFuZ2NoYWluSicKIWxhbmdzbWl0aC5t
+      ZXRhZGF0YS5sYW5nZ3JhcGhfc3RlcBICGAJKLAohbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFw
+      aF9ub2RlEgcKBXRvb2xzSjwKJWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhfdHJpZ2dlcnMS
+      EyoRCg8KDV9fcHJlZ2VsX3B1c2hKWgoqbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF9jaGVj
+      a3BvaW50X25zEiwKKnRvb2xzOjgzZThiNzRlLWI4MTAtYzJlNC0yMTAxLWFjNDQ3NDVjYWEyMkou
+      CiRsYW5nc21pdGgubWV0YWRhdGEuTEFOR1NNSVRIX1RSQUNJTkcSBgoEdHJ1ZUozCilsYW5nc21p
+      dGgubWV0YWRhdGEuTEFOR1NNSVRIX09URUxfRU5BQkxFRBIGCgR0cnVlSjEKHmxhbmdzbWl0aC5t
+      ZXRhZGF0YS5yZXZpc2lvbl9pZBIPCg1jNTFmNWY5LWRpcnR5SiUKE2xhbmdzbWl0aC5zcGFuLnRh
+      Z3MSDgoMZ3JhcGg6c3RlcDoySpcKCg1nZW5fYWkucHJvbXB0EoUKCoIKeyJfX3R5cGUiOiJ0b29s
+      X2NhbGxfd2l0aF9jb250ZXh0IiwidG9vbF9jYWxsIjp7Im5hbWUiOiJnZXRfd2VhdGhlciIsImFy
+      Z3MiOnsiY2l0eSI6IlNhbiBGcmFuY2lzY28ifSwiaWQiOiJjYWxsX0VPQW5rV080cjFNVm9wQlUx
+      dldQdnFxdCIsInR5cGUiOiJ0b29sX2NhbGwifSwic3RhdGUiOnsibWVzc2FnZXMiOlt7ImNvbnRl
+      bnQiOiJXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBGcmFuY2lzY28/IiwiYWRkaXRpb25hbF9r
+      d2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJodW1hbiIsImlkIjoiOGQx
+      MjRjYzUtNmRhYS00OTgwLWI0MWQtYzAxYTg2NTY2ODE2In0seyJjb250ZW50IjoiIiwiYWRkaXRp
+      b25hbF9rd2FyZ3MiOnsicmVmdXNhbCI6bnVsbH0sInJlc3BvbnNlX21ldGFkYXRhIjp7InRva2Vu
+      X3VzYWdlIjp7ImNvbXBsZXRpb25fdG9rZW5zIjoyMTYsInByb21wdF90b2tlbnMiOjE0MiwidG90
+      YWxfdG9rZW5zIjozNTgsImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMiOnsiYWNjZXB0ZWRfcHJl
+      ZGljdGlvbl90b2tlbnMiOjAsImF1ZGlvX3Rva2VucyI6MCwicmVhc29uaW5nX3Rva2VucyI6MTky
+      LCJyZWplY3RlZF9wcmVkaWN0aW9uX3Rva2VucyI6MH0sInByb21wdF90b2tlbnNfZGV0YWlscyI6
+      eyJhdWRpb190b2tlbnMiOjAsImNhY2hlZF90b2tlbnMiOjB9fSwibW9kZWxfcHJvdmlkZXIiOiJv
+      cGVuYWkiLCJtb2RlbF9uYW1lIjoiZ3B0LTUtbmFuby0yMDI1LTA4LTA3Iiwic3lzdGVtX2Zpbmdl
+      cnByaW50IjpudWxsLCJpZCI6ImNoYXRjbXBsLURKM2tYV2RBTkV2ZmluSWNWUGdPc2loaGJpOGpn
+      Iiwic2VydmljZV90aWVyIjoiZGVmYXVsdCIsImZpbmlzaF9yZWFzb24iOiJ0b29sX2NhbGxzIiwi
+      bG9ncHJvYnMiOm51bGx9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDE5Y2U4ZjYtZDgxNS03
+      ZGMwLThlN2UtOTA4ZmY4OTJkZjM4LTAiLCJ0b29sX2NhbGxzIjpbeyJuYW1lIjoiZ2V0X3dlYXRo
+      ZXIiLCJhcmdzIjp7ImNpdHkiOiJTYW4gRnJhbmNpc2NvIn0sImlkIjoiY2FsbF9FT0Fua1dPNHIx
+      TVZvcEJVMXZXUHZxcXQiLCJ0eXBlIjoidG9vbF9jYWxsIn1dLCJpbnZhbGlkX3Rvb2xfY2FsbHMi
+      OltdLCJ1c2FnZV9tZXRhZGF0YSI6eyJpbnB1dF90b2tlbnMiOjE0Miwib3V0cHV0X3Rva2VucyI6
+      MjE2LCJ0b3RhbF90b2tlbnMiOjM1OCwiaW5wdXRfdG9rZW5fZGV0YWlscyI6eyJhdWRpbyI6MCwi
+      Y2FjaGVfcmVhZCI6MH0sIm91dHB1dF90b2tlbl9kZXRhaWxzIjp7ImF1ZGlvIjowLCJyZWFzb25p
+      bmciOjE5Mn19fV19fUqYAgoRZ2VuX2FpLmNvbXBsZXRpb24SggIK/wF7Im1lc3NhZ2VzIjpbeyJj
+      b250ZW50IjoiSXQncyBhbHdheXMgc3VubnkgaW4gU2FuIEZyYW5jaXNjbyEiLCJhZGRpdGlvbmFs
+      X2t3YXJncyI6e30sInJlc3BvbnNlX21ldGFkYXRhIjp7fSwidHlwZSI6InRvb2wiLCJuYW1lIjoi
+      Z2V0X3dlYXRoZXIiLCJpZCI6ImRkNWRjNTNkLWRkNDYtNGVhMC1iZTkxLTIxMjJkYzU0NTljNyIs
+      InRvb2xfY2FsbF9pZCI6ImNhbGxfRU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0Iiwic3RhdHVzIjoi
+      c3VjY2VzcyJ9XX16AhgBhQEAAQAAEq4IChDJPe5DbVUBNN9UXfyvannqEghNccUSm4mxxCIIwKrD
+      qKG4hiMqC2dldF93ZWF0aGVyMAE5AH8H8cCBnBhBAIoN8cCBnBhKHQoTbGFuZ3NtaXRoLnNwYW4u
+      a2luZBIGCgR0b29sSiUKFGxhbmdzbWl0aC50cmFjZS5uYW1lEg0KC2dldF93ZWF0aGVySikKHGxh
+      bmdzbWl0aC50cmFjZS5zZXNzaW9uX25hbWUSCQoHZGVmYXVsdEonChVnZW5fYWkub3BlcmF0aW9u
+      Lm5hbWUSDgoMZXhlY3V0ZV90b29sShwKDWdlbl9haS5zeXN0ZW0SCwoJbGFuZ2NoYWluSicKIWxh
+      bmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhfc3RlcBICGAJKLAohbGFuZ3NtaXRoLm1ldGFkYXRh
+      LmxhbmdncmFwaF9ub2RlEgcKBXRvb2xzSjwKJWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhf
+      dHJpZ2dlcnMSEyoRCg8KDV9fcHJlZ2VsX3B1c2hKWgoqbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdn
+      cmFwaF9jaGVja3BvaW50X25zEiwKKnRvb2xzOjgzZThiNzRlLWI4MTAtYzJlNC0yMTAxLWFjNDQ3
+      NDVjYWEyMkpQCiBsYW5nc21pdGgubWV0YWRhdGEuY2hlY2twb2ludF9ucxIsCip0b29sczo4M2U4
+      Yjc0ZS1iODEwLWMyZTQtMjEwMS1hYzQ0NzQ1Y2FhMjJKLgokbGFuZ3NtaXRoLm1ldGFkYXRhLkxB
+      TkdTTUlUSF9UUkFDSU5HEgYKBHRydWVKMwopbGFuZ3NtaXRoLm1ldGFkYXRhLkxBTkdTTUlUSF9P
+      VEVMX0VOQUJMRUQSBgoEdHJ1ZUoxCh5sYW5nc21pdGgubWV0YWRhdGEucmV2aXNpb25faWQSDwoN
+      YzUxZjVmOS1kaXJ0eUojChNsYW5nc21pdGguc3Bhbi50YWdzEgwKCnNlcTpzdGVwOjFKOAoNZ2Vu
+      X2FpLnByb21wdBInCiV7ImlucHV0IjoieydjaXR5JzogJ1NhbiBGcmFuY2lzY28nfSJ9SugBChFn
+      ZW5fYWkuY29tcGxldGlvbhLSAQrPAXsib3V0cHV0Ijp7ImNvbnRlbnQiOiJJdCdzIGFsd2F5cyBz
+      dW5ueSBpbiBTYW4gRnJhbmNpc2NvISIsImFkZGl0aW9uYWxfa3dhcmdzIjp7fSwicmVzcG9uc2Vf
+      bWV0YWRhdGEiOnt9LCJ0eXBlIjoidG9vbCIsIm5hbWUiOiJnZXRfd2VhdGhlciIsInRvb2xfY2Fs
+      bF9pZCI6ImNhbGxfRU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0Iiwic3RhdHVzIjoic3VjY2VzcyJ9
+      fXoCGAGFAQABAAASiQ8KEMk97kNtVQE031Rd/K9qeeoSCEMMelTm6czDIgiBEHJVCKYwvyoFbW9k
+      ZWwwATkAroiKwIGcGEEAxPXwwIGcGEogChVnZW5fYWkub3BlcmF0aW9uLm5hbWUSBwoFY2hhaW5K
+      HgoTbGFuZ3NtaXRoLnNwYW4ua2luZBIHCgVjaGFpbkofChRsYW5nc21pdGgudHJhY2UubmFtZRIH
+      CgVtb2RlbEopChxsYW5nc21pdGgudHJhY2Uuc2Vzc2lvbl9uYW1lEgkKB2RlZmF1bHRKHAoNZ2Vu
+      X2FpLnN5c3RlbRILCglsYW5nY2hhaW5KJwohbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF9z
+      dGVwEgIYAUosCiFsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX25vZGUSBwoFbW9kZWxKPgol
+      bGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF90cmlnZ2VycxIVKhMKEQoPYnJhbmNoOnRvOm1v
+      ZGVsSkEKIWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhfcGF0aBIcKhoKDwoNX19wcmVnZWxf
+      cHVsbAoHCgVtb2RlbEpaCipsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX2NoZWNrcG9pbnRf
+      bnMSLAoqbW9kZWw6ZWY4M2FlNTktMzkwOC1kYmViLTNkNDQtNjA0N2Y1ODJiOGYySi4KJGxhbmdz
+      bWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfVFJBQ0lORxIGCgR0cnVlSjMKKWxhbmdzbWl0aC5tZXRh
+      ZGF0YS5MQU5HU01JVEhfT1RFTF9FTkFCTEVEEgYKBHRydWVKMQoebGFuZ3NtaXRoLm1ldGFkYXRh
+      LnJldmlzaW9uX2lkEg8KDWM1MWY1ZjktZGlydHlKJQoTbGFuZ3NtaXRoLnNwYW4udGFncxIOCgxn
+      cmFwaDpzdGVwOjFKwAEKDWdlbl9haS5wcm9tcHQSrgEKqwF7Im1lc3NhZ2VzIjpbeyJjb250ZW50
+      IjoiV2hhdCBpcyB0aGUgd2VhdGhlciBpbiBTYW4gRnJhbmNpc2NvPyIsImFkZGl0aW9uYWxfa3dh
+      cmdzIjp7fSwicmVzcG9uc2VfbWV0YWRhdGEiOnt9LCJ0eXBlIjoiaHVtYW4iLCJpZCI6IjhkMTI0
+      Y2M1LTZkYWEtNDk4MC1iNDFkLWMwMWE4NjU2NjgxNiJ9XX1K1wcKEWdlbl9haS5jb21wbGV0aW9u
+      EsEHCr4HeyJtZXNzYWdlcyI6W3siY29udGVudCI6IiIsImFkZGl0aW9uYWxfa3dhcmdzIjp7InJl
+      ZnVzYWwiOm51bGx9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJ0b2tlbl91c2FnZSI6eyJjb21wbGV0
+      aW9uX3Rva2VucyI6MjE2LCJwcm9tcHRfdG9rZW5zIjoxNDIsInRvdGFsX3Rva2VucyI6MzU4LCJj
+      b21wbGV0aW9uX3Rva2Vuc19kZXRhaWxzIjp7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjow
+      LCJhdWRpb190b2tlbnMiOjAsInJlYXNvbmluZ190b2tlbnMiOjE5MiwicmVqZWN0ZWRfcHJlZGlj
+      dGlvbl90b2tlbnMiOjB9LCJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOnsiYXVkaW9fdG9rZW5zIjow
+      LCJjYWNoZWRfdG9rZW5zIjowfX0sIm1vZGVsX3Byb3ZpZGVyIjoib3BlbmFpIiwibW9kZWxfbmFt
+      ZSI6ImdwdC01LW5hbm8tMjAyNS0wOC0wNyIsInN5c3RlbV9maW5nZXJwcmludCI6bnVsbCwiaWQi
+      OiJjaGF0Y21wbC1ESjNrWFdkQU5FdmZpbkljVlBnT3NpaGhiaThqZyIsInNlcnZpY2VfdGllciI6
+      ImRlZmF1bHQiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyIsImxvZ3Byb2JzIjpudWxsfSwi
+      dHlwZSI6ImFpIiwiaWQiOiJsY19ydW4tLTAxOWNlOGY2LWQ4MTUtN2RjMC04ZTdlLTkwOGZmODky
+      ZGYzOC0wIiwidG9vbF9jYWxscyI6W3sibmFtZSI6ImdldF93ZWF0aGVyIiwiYXJncyI6eyJjaXR5
+      IjoiU2FuIEZyYW5jaXNjbyJ9LCJpZCI6ImNhbGxfRU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0Iiwi
+      dHlwZSI6InRvb2xfY2FsbCJ9XSwiaW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRh
+      dGEiOnsiaW5wdXRfdG9rZW5zIjoxNDIsIm91dHB1dF90b2tlbnMiOjIxNiwidG90YWxfdG9rZW5z
+      IjozNTgsImlucHV0X3Rva2VuX2RldGFpbHMiOnsiYXVkaW8iOjAsImNhY2hlX3JlYWQiOjB9LCJv
+      dXRwdXRfdG9rZW5fZGV0YWlscyI6eyJhdWRpbyI6MCwicmVhc29uaW5nIjoxOTJ9fX1dfXoCGAGF
+      AQABAAASkBkKEMk97kNtVQE031Rd/K9qeeoSCMwT4SH3mG1dIghDDHpU5unMwyoKQ2hhdE9wZW5B
+      STABOQDdr4rAgZwYQQCs7vDAgZwYSh8KFWdlbl9haS5vcGVyYXRpb24ubmFtZRIGCgRjaGF0SiYK
+      Fmdlbl9haS5zZXJpYWxpemVkLm5hbWUSDAoKQ2hhdE9wZW5BSUocChNsYW5nc21pdGguc3Bhbi5r
+      aW5kEgUKA2xsbUokChRsYW5nc21pdGgudHJhY2UubmFtZRIMCgpDaGF0T3BlbkFJSikKHGxhbmdz
+      bWl0aC50cmFjZS5zZXNzaW9uX25hbWUSCQoHZGVmYXVsdEoZCg1nZW5fYWkuc3lzdGVtEggKBm9w
+      ZW5haUokChRnZW5fYWkucmVxdWVzdC5tb2RlbBIMCgpncHQtNS1uYW5vSicKIWxhbmdzbWl0aC5t
+      ZXRhZGF0YS5sYW5nZ3JhcGhfc3RlcBICGAFKLAohbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFw
+      aF9ub2RlEgcKBW1vZGVsSj4KJWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhfdHJpZ2dlcnMS
+      FSoTChEKD2JyYW5jaDp0bzptb2RlbEpBCiFsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX3Bh
+      dGgSHCoaCg8KDV9fcHJlZ2VsX3B1bGwKBwoFbW9kZWxKWgoqbGFuZ3NtaXRoLm1ldGFkYXRhLmxh
+      bmdncmFwaF9jaGVja3BvaW50X25zEiwKKm1vZGVsOmVmODNhZTU5LTM5MDgtZGJlYi0zZDQ0LTYw
+      NDdmNTgyYjhmMkpQCiBsYW5nc21pdGgubWV0YWRhdGEuY2hlY2twb2ludF9ucxIsCiptb2RlbDpl
+      ZjgzYWU1OS0zOTA4LWRiZWItM2Q0NC02MDQ3ZjU4MmI4ZjJKKgoebGFuZ3NtaXRoLm1ldGFkYXRh
+      LmxzX3Byb3ZpZGVyEggKBm9wZW5haUowCiBsYW5nc21pdGgubWV0YWRhdGEubHNfbW9kZWxfbmFt
+      ZRIMCgpncHQtNS1uYW5vSioKIGxhbmdzbWl0aC5tZXRhZGF0YS5sc19tb2RlbF90eXBlEgYKBGNo
+      YXRKLgokbGFuZ3NtaXRoLm1ldGFkYXRhLkxBTkdTTUlUSF9UUkFDSU5HEgYKBHRydWVKMwopbGFu
+      Z3NtaXRoLm1ldGFkYXRhLkxBTkdTTUlUSF9PVEVMX0VOQUJMRUQSBgoEdHJ1ZUoxCh5sYW5nc21p
+      dGgubWV0YWRhdGEucmV2aXNpb25faWQSDwoNYzUxZjVmOS1kaXJ0eUojChNsYW5nc21pdGguc3Bh
+      bi50YWdzEgwKCnNlcTpzdGVwOjFKiQMKDWdlbl9haS5wcm9tcHQS9wIK9AJ7Im1lc3NhZ2VzIjpb
+      W3sibGMiOjEsInR5cGUiOiJjb25zdHJ1Y3RvciIsImlkIjpbImxhbmdjaGFpbiIsInNjaGVtYSIs
+      Im1lc3NhZ2VzIiwiU3lzdGVtTWVzc2FnZSJdLCJrd2FyZ3MiOnsiY29udGVudCI6IllvdSBhcmUg
+      YSBoZWxwZnVsIGFzc2lzdGFudCIsInR5cGUiOiJzeXN0ZW0ifX0seyJsYyI6MSwidHlwZSI6ImNv
+      bnN0cnVjdG9yIiwiaWQiOlsibGFuZ2NoYWluIiwic2NoZW1hIiwibWVzc2FnZXMiLCJIdW1hbk1l
+      c3NhZ2UiXSwia3dhcmdzIjp7ImNvbnRlbnQiOiJXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBG
+      cmFuY2lzY28/IiwidHlwZSI6Imh1bWFuIiwiaWQiOiI4ZDEyNGNjNS02ZGFhLTQ5ODAtYjQxZC1j
+      MDFhODY1NjY4MTYifX1dXX1KIAoZZ2VuX2FpLnVzYWdlLmlucHV0X3Rva2VucxIDGI4BSiEKGmdl
+      bl9haS51c2FnZS5vdXRwdXRfdG9rZW5zEgMY2AFKIAoZZ2VuX2FpLnVzYWdlLnRvdGFsX3Rva2Vu
+      cxIDGOYCSoINChFnZW5fYWkuY29tcGxldGlvbhLsDArpDHsiZ2VuZXJhdGlvbnMiOltbeyJ0ZXh0
+      IjoiIiwiZ2VuZXJhdGlvbl9pbmZvIjp7ImZpbmlzaF9yZWFzb24iOiJ0b29sX2NhbGxzIiwibG9n
+      cHJvYnMiOm51bGx9LCJ0eXBlIjoiQ2hhdEdlbmVyYXRpb24iLCJtZXNzYWdlIjp7ImxjIjoxLCJ0
+      eXBlIjoiY29uc3RydWN0b3IiLCJpZCI6WyJsYW5nY2hhaW4iLCJzY2hlbWEiLCJtZXNzYWdlcyIs
+      IkFJTWVzc2FnZSJdLCJrd2FyZ3MiOnsiY29udGVudCI6IiIsImFkZGl0aW9uYWxfa3dhcmdzIjp7
+      InJlZnVzYWwiOm51bGx9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJ0b2tlbl91c2FnZSI6eyJjb21w
+      bGV0aW9uX3Rva2VucyI6MjE2LCJwcm9tcHRfdG9rZW5zIjoxNDIsInRvdGFsX3Rva2VucyI6MzU4
+      LCJjb21wbGV0aW9uX3Rva2Vuc19kZXRhaWxzIjp7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5z
+      IjowLCJhdWRpb190b2tlbnMiOjAsInJlYXNvbmluZ190b2tlbnMiOjE5MiwicmVqZWN0ZWRfcHJl
+      ZGljdGlvbl90b2tlbnMiOjB9LCJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOnsiYXVkaW9fdG9rZW5z
+      IjowLCJjYWNoZWRfdG9rZW5zIjowfX0sIm1vZGVsX3Byb3ZpZGVyIjoib3BlbmFpIiwibW9kZWxf
+      bmFtZSI6ImdwdC01LW5hbm8tMjAyNS0wOC0wNyIsInN5c3RlbV9maW5nZXJwcmludCI6bnVsbCwi
+      aWQiOiJjaGF0Y21wbC1ESjNrWFdkQU5FdmZpbkljVlBnT3NpaGhiaThqZyIsInNlcnZpY2VfdGll
+      ciI6ImRlZmF1bHQiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyIsImxvZ3Byb2JzIjpudWxs
+      fSwidHlwZSI6ImFpIiwiaWQiOiJsY19ydW4tLTAxOWNlOGY2LWQ4MTUtN2RjMC04ZTdlLTkwOGZm
+      ODkyZGYzOC0wIiwidG9vbF9jYWxscyI6W3sibmFtZSI6ImdldF93ZWF0aGVyIiwiYXJncyI6eyJj
+      aXR5IjoiU2FuIEZyYW5jaXNjbyJ9LCJpZCI6ImNhbGxfRU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0
+      IiwidHlwZSI6InRvb2xfY2FsbCJ9XSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjox
+      NDIsIm91dHB1dF90b2tlbnMiOjIxNiwidG90YWxfdG9rZW5zIjozNTgsImlucHV0X3Rva2VuX2Rl
+      dGFpbHMiOnsiYXVkaW8iOjAsImNhY2hlX3JlYWQiOjB9LCJvdXRwdXRfdG9rZW5fZGV0YWlscyI6
+      eyJhdWRpbyI6MCwicmVhc29uaW5nIjoxOTJ9fSwiaW52YWxpZF90b29sX2NhbGxzIjpbXX19fV1d
+      LCJsbG1fb3V0cHV0Ijp7InRva2VuX3VzYWdlIjp7ImNvbXBsZXRpb25fdG9rZW5zIjoyMTYsInBy
+      b21wdF90b2tlbnMiOjE0MiwidG90YWxfdG9rZW5zIjozNTgsImNvbXBsZXRpb25fdG9rZW5zX2Rl
+      dGFpbHMiOnsiYWNjZXB0ZWRfcHJlZGljdGlvbl90b2tlbnMiOjAsImF1ZGlvX3Rva2VucyI6MCwi
+      cmVhc29uaW5nX3Rva2VucyI6MTkyLCJyZWplY3RlZF9wcmVkaWN0aW9uX3Rva2VucyI6MH0sInBy
+      b21wdF90b2tlbnNfZGV0YWlscyI6eyJhdWRpb190b2tlbnMiOjAsImNhY2hlZF90b2tlbnMiOjB9
+      fSwibW9kZWxfcHJvdmlkZXIiOiJvcGVuYWkiLCJtb2RlbF9uYW1lIjoiZ3B0LTUtbmFuby0yMDI1
+      LTA4LTA3Iiwic3lzdGVtX2ZpbmdlcnByaW50IjpudWxsLCJpZCI6ImNoYXRjbXBsLURKM2tYV2RB
+      TkV2ZmluSWNWUGdPc2loaGJpOGpnIiwic2VydmljZV90aWVyIjoiZGVmYXVsdCJ9LCJydW4iOm51
+      bGwsInR5cGUiOiJMTE1SZXN1bHQifXoCGAGFAQABAAAS5RgKEMk97kNtVQE031Rd/K9qeeoSCD/R
+      0Ltq8F4uIgiBEHJVCKYwvyoFbW9kZWwwATkASRnxwIGcGEEAEYypwYGcGEogChVnZW5fYWkub3Bl
+      cmF0aW9uLm5hbWUSBwoFY2hhaW5KHgoTbGFuZ3NtaXRoLnNwYW4ua2luZBIHCgVjaGFpbkofChRs
+      YW5nc21pdGgudHJhY2UubmFtZRIHCgVtb2RlbEopChxsYW5nc21pdGgudHJhY2Uuc2Vzc2lvbl9u
+      YW1lEgkKB2RlZmF1bHRKHAoNZ2VuX2FpLnN5c3RlbRILCglsYW5nY2hhaW5KJwohbGFuZ3NtaXRo
+      Lm1ldGFkYXRhLmxhbmdncmFwaF9zdGVwEgIYA0osCiFsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dy
+      YXBoX25vZGUSBwoFbW9kZWxKPgolbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF90cmlnZ2Vy
+      cxIVKhMKEQoPYnJhbmNoOnRvOm1vZGVsSkEKIWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhf
+      cGF0aBIcKhoKDwoNX19wcmVnZWxfcHVsbAoHCgVtb2RlbEpaCipsYW5nc21pdGgubWV0YWRhdGEu
+      bGFuZ2dyYXBoX2NoZWNrcG9pbnRfbnMSLAoqbW9kZWw6ZDY3ZTgxOTYtYmI0ZC0zNzcwLTQ4ZjUt
+      ZTdmZDJmZjkzYzc4Si4KJGxhbmdzbWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfVFJBQ0lORxIGCgR0
+      cnVlSjMKKWxhbmdzbWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfT1RFTF9FTkFCTEVEEgYKBHRydWVK
+      MQoebGFuZ3NtaXRoLm1ldGFkYXRhLnJldmlzaW9uX2lkEg8KDWM1MWY1ZjktZGlydHlKJQoTbGFu
+      Z3NtaXRoLnNwYW4udGFncxIOCgxncmFwaDpzdGVwOjNK4QoKDWdlbl9haS5wcm9tcHQSzwoKzAp7
+      Im1lc3NhZ2VzIjpbeyJjb250ZW50IjoiV2hhdCBpcyB0aGUgd2VhdGhlciBpbiBTYW4gRnJhbmNp
+      c2NvPyIsImFkZGl0aW9uYWxfa3dhcmdzIjp7fSwicmVzcG9uc2VfbWV0YWRhdGEiOnt9LCJ0eXBl
+      IjoiaHVtYW4iLCJpZCI6IjhkMTI0Y2M1LTZkYWEtNDk4MC1iNDFkLWMwMWE4NjU2NjgxNiJ9LHsi
+      Y29udGVudCI6IiIsImFkZGl0aW9uYWxfa3dhcmdzIjp7InJlZnVzYWwiOm51bGx9LCJyZXNwb25z
+      ZV9tZXRhZGF0YSI6eyJ0b2tlbl91c2FnZSI6eyJjb21wbGV0aW9uX3Rva2VucyI6MjE2LCJwcm9t
+      cHRfdG9rZW5zIjoxNDIsInRvdGFsX3Rva2VucyI6MzU4LCJjb21wbGV0aW9uX3Rva2Vuc19kZXRh
+      aWxzIjp7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjowLCJhdWRpb190b2tlbnMiOjAsInJl
+      YXNvbmluZ190b2tlbnMiOjE5MiwicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOjB9LCJwcm9t
+      cHRfdG9rZW5zX2RldGFpbHMiOnsiYXVkaW9fdG9rZW5zIjowLCJjYWNoZWRfdG9rZW5zIjowfX0s
+      Im1vZGVsX3Byb3ZpZGVyIjoib3BlbmFpIiwibW9kZWxfbmFtZSI6ImdwdC01LW5hbm8tMjAyNS0w
+      OC0wNyIsInN5c3RlbV9maW5nZXJwcmludCI6bnVsbCwiaWQiOiJjaGF0Y21wbC1ESjNrWFdkQU5F
+      dmZpbkljVlBnT3NpaGhiaThqZyIsInNlcnZpY2VfdGllciI6ImRlZmF1bHQiLCJmaW5pc2hfcmVh
+      c29uIjoidG9vbF9jYWxscyIsImxvZ3Byb2JzIjpudWxsfSwidHlwZSI6ImFpIiwiaWQiOiJsY19y
+      dW4tLTAxOWNlOGY2LWQ4MTUtN2RjMC04ZTdlLTkwOGZmODkyZGYzOC0wIiwidG9vbF9jYWxscyI6
+      W3sibmFtZSI6ImdldF93ZWF0aGVyIiwiYXJncyI6eyJjaXR5IjoiU2FuIEZyYW5jaXNjbyJ9LCJp
+      ZCI6ImNhbGxfRU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0IiwidHlwZSI6InRvb2xfY2FsbCJ9XSwi
+      aW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjox
+      NDIsIm91dHB1dF90b2tlbnMiOjIxNiwidG90YWxfdG9rZW5zIjozNTgsImlucHV0X3Rva2VuX2Rl
+      dGFpbHMiOnsiYXVkaW8iOjAsImNhY2hlX3JlYWQiOjB9LCJvdXRwdXRfdG9rZW5fZGV0YWlscyI6
+      eyJhdWRpbyI6MCwicmVhc29uaW5nIjoxOTJ9fX0seyJjb250ZW50IjoiSXQncyBhbHdheXMgc3Vu
+      bnkgaW4gU2FuIEZyYW5jaXNjbyEiLCJhZGRpdGlvbmFsX2t3YXJncyI6e30sInJlc3BvbnNlX21l
+      dGFkYXRhIjp7fSwidHlwZSI6InRvb2wiLCJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJpZCI6ImRkNWRj
+      NTNkLWRkNDYtNGVhMC1iZTkxLTIxMjJkYzU0NTljNyIsInRvb2xfY2FsbF9pZCI6ImNhbGxfRU9B
+      bmtXTzRyMU1Wb3BCVTF2V1B2cXF0Iiwic3RhdHVzIjoic3VjY2VzcyJ9XX1KkggKEWdlbl9haS5j
+      b21wbGV0aW9uEvwHCvkHeyJtZXNzYWdlcyI6W3siY29udGVudCI6IlRoZSBjdXJyZW50IHdlYXRo
+      ZXIgaW4gU2FuIEZyYW5jaXNjbzogXCJJdCdzIGFsd2F5cyBzdW5ueSBpbiBTYW4gRnJhbmNpc2Nv
+      IVwiIFxuXG5Xb3VsZCB5b3UgbGlrZSBtZSB0byBmZXRjaCB0aGUgYWN0dWFsIHRlbXBlcmF0dXJl
+      LCBodW1pZGl0eSwgd2luZCBzcGVlZCwgb3IgYSBzaG9ydCBmb3JlY2FzdD8iLCJhZGRpdGlvbmFs
+      X2t3YXJncyI6eyJyZWZ1c2FsIjpudWxsfSwicmVzcG9uc2VfbWV0YWRhdGEiOnsidG9rZW5fdXNh
+      Z2UiOnsiY29tcGxldGlvbl90b2tlbnMiOjM2NSwicHJvbXB0X3Rva2VucyI6MTc4LCJ0b3RhbF90
+      b2tlbnMiOjU0MywiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6eyJhY2NlcHRlZF9wcmVkaWN0
+      aW9uX3Rva2VucyI6MCwiYXVkaW9fdG9rZW5zIjowLCJyZWFzb25pbmdfdG9rZW5zIjozMjAsInJl
+      amVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjowfSwicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjp7ImF1
+      ZGlvX3Rva2VucyI6MCwiY2FjaGVkX3Rva2VucyI6MH19LCJtb2RlbF9wcm92aWRlciI6Im9wZW5h
+      aSIsIm1vZGVsX25hbWUiOiJncHQtNS1uYW5vLTIwMjUtMDgtMDciLCJzeXN0ZW1fZmluZ2VycHJp
+      bnQiOm51bGwsImlkIjoiY2hhdGNtcGwtREoza1pWcVZMZGEybmhaTzN5UVpPVGZRNHFKc28iLCJz
+      ZXJ2aWNlX3RpZXIiOiJkZWZhdWx0IiwiZmluaXNoX3JlYXNvbiI6InN0b3AiLCJsb2dwcm9icyI6
+      bnVsbH0sInR5cGUiOiJhaSIsImlkIjoibGNfcnVuLS0wMTljZThmNi1kZWNkLTdhNTEtOGFmMi1h
+      NzRkMDYwZGM3ZTEtMCIsInRvb2xfY2FsbHMiOltdLCJpbnZhbGlkX3Rvb2xfY2FsbHMiOltdLCJ1
+      c2FnZV9tZXRhZGF0YSI6eyJpbnB1dF90b2tlbnMiOjE3OCwib3V0cHV0X3Rva2VucyI6MzY1LCJ0
+      b3RhbF90b2tlbnMiOjU0MywiaW5wdXRfdG9rZW5fZGV0YWlscyI6eyJhdWRpbyI6MCwiY2FjaGVf
+      cmVhZCI6MH0sIm91dHB1dF90b2tlbl9kZXRhaWxzIjp7ImF1ZGlvIjowLCJyZWFzb25pbmciOjMy
+      MH19fV19egIYAYUBAAEAABKdJQoQyT3uQ21VATTfVF38r2p56hIIHk76C3fhsEIiCD/R0Ltq8F4u
+      KgpDaGF0T3BlbkFJMAE5AOgy8cCBnBhBABR+qcGBnBhKHwoVZ2VuX2FpLm9wZXJhdGlvbi5uYW1l
+      EgYKBGNoYXRKJgoWZ2VuX2FpLnNlcmlhbGl6ZWQubmFtZRIMCgpDaGF0T3BlbkFJShwKE2xhbmdz
+      bWl0aC5zcGFuLmtpbmQSBQoDbGxtSiQKFGxhbmdzbWl0aC50cmFjZS5uYW1lEgwKCkNoYXRPcGVu
+      QUlKKQocbGFuZ3NtaXRoLnRyYWNlLnNlc3Npb25fbmFtZRIJCgdkZWZhdWx0ShkKDWdlbl9haS5z
+      eXN0ZW0SCAoGb3BlbmFpSiQKFGdlbl9haS5yZXF1ZXN0Lm1vZGVsEgwKCmdwdC01LW5hbm9KJwoh
+      bGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF9zdGVwEgIYA0osCiFsYW5nc21pdGgubWV0YWRh
+      dGEubGFuZ2dyYXBoX25vZGUSBwoFbW9kZWxKPgolbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFw
+      aF90cmlnZ2VycxIVKhMKEQoPYnJhbmNoOnRvOm1vZGVsSkEKIWxhbmdzbWl0aC5tZXRhZGF0YS5s
+      YW5nZ3JhcGhfcGF0aBIcKhoKDwoNX19wcmVnZWxfcHVsbAoHCgVtb2RlbEpaCipsYW5nc21pdGgu
+      bWV0YWRhdGEubGFuZ2dyYXBoX2NoZWNrcG9pbnRfbnMSLAoqbW9kZWw6ZDY3ZTgxOTYtYmI0ZC0z
+      NzcwLTQ4ZjUtZTdmZDJmZjkzYzc4SlAKIGxhbmdzbWl0aC5tZXRhZGF0YS5jaGVja3BvaW50X25z
+      EiwKKm1vZGVsOmQ2N2U4MTk2LWJiNGQtMzc3MC00OGY1LWU3ZmQyZmY5M2M3OEoqCh5sYW5nc21p
+      dGgubWV0YWRhdGEubHNfcHJvdmlkZXISCAoGb3BlbmFpSjAKIGxhbmdzbWl0aC5tZXRhZGF0YS5s
+      c19tb2RlbF9uYW1lEgwKCmdwdC01LW5hbm9KKgogbGFuZ3NtaXRoLm1ldGFkYXRhLmxzX21vZGVs
+      X3R5cGUSBgoEY2hhdEouCiRsYW5nc21pdGgubWV0YWRhdGEuTEFOR1NNSVRIX1RSQUNJTkcSBgoE
+      dHJ1ZUozCilsYW5nc21pdGgubWV0YWRhdGEuTEFOR1NNSVRIX09URUxfRU5BQkxFRBIGCgR0cnVl
+      SjEKHmxhbmdzbWl0aC5tZXRhZGF0YS5yZXZpc2lvbl9pZBIPCg1jNTFmNWY5LWRpcnR5SiMKE2xh
+      bmdzbWl0aC5zcGFuLnRhZ3MSDAoKc2VxOnN0ZXA6MUqyDQoNZ2VuX2FpLnByb21wdBKgDQqdDXsi
+      bWVzc2FnZXMiOltbeyJsYyI6MSwidHlwZSI6ImNvbnN0cnVjdG9yIiwiaWQiOlsibGFuZ2NoYWlu
+      Iiwic2NoZW1hIiwibWVzc2FnZXMiLCJTeXN0ZW1NZXNzYWdlIl0sImt3YXJncyI6eyJjb250ZW50
+      IjoiWW91IGFyZSBhIGhlbHBmdWwgYXNzaXN0YW50IiwidHlwZSI6InN5c3RlbSJ9fSx7ImxjIjox
+      LCJ0eXBlIjoiY29uc3RydWN0b3IiLCJpZCI6WyJsYW5nY2hhaW4iLCJzY2hlbWEiLCJtZXNzYWdl
+      cyIsIkh1bWFuTWVzc2FnZSJdLCJrd2FyZ3MiOnsiY29udGVudCI6IldoYXQgaXMgdGhlIHdlYXRo
+      ZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCJ0eXBlIjoiaHVtYW4iLCJpZCI6IjhkMTI0Y2M1LTZkYWEt
+      NDk4MC1iNDFkLWMwMWE4NjU2NjgxNiJ9fSx7ImxjIjoxLCJ0eXBlIjoiY29uc3RydWN0b3IiLCJp
+      ZCI6WyJsYW5nY2hhaW4iLCJzY2hlbWEiLCJtZXNzYWdlcyIsIkFJTWVzc2FnZSJdLCJrd2FyZ3Mi
+      OnsiY29udGVudCI6IiIsImFkZGl0aW9uYWxfa3dhcmdzIjp7InJlZnVzYWwiOm51bGx9LCJyZXNw
+      b25zZV9tZXRhZGF0YSI6eyJ0b2tlbl91c2FnZSI6eyJjb21wbGV0aW9uX3Rva2VucyI6MjE2LCJw
+      cm9tcHRfdG9rZW5zIjoxNDIsInRvdGFsX3Rva2VucyI6MzU4LCJjb21wbGV0aW9uX3Rva2Vuc19k
+      ZXRhaWxzIjp7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjowLCJhdWRpb190b2tlbnMiOjAs
+      InJlYXNvbmluZ190b2tlbnMiOjE5MiwicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOjB9LCJw
+      cm9tcHRfdG9rZW5zX2RldGFpbHMiOnsiYXVkaW9fdG9rZW5zIjowLCJjYWNoZWRfdG9rZW5zIjow
+      fX0sIm1vZGVsX3Byb3ZpZGVyIjoib3BlbmFpIiwibW9kZWxfbmFtZSI6ImdwdC01LW5hbm8tMjAy
+      NS0wOC0wNyIsInN5c3RlbV9maW5nZXJwcmludCI6bnVsbCwiaWQiOiJjaGF0Y21wbC1ESjNrWFdk
+      QU5FdmZpbkljVlBnT3NpaGhiaThqZyIsInNlcnZpY2VfdGllciI6ImRlZmF1bHQiLCJmaW5pc2hf
+      cmVhc29uIjoidG9vbF9jYWxscyIsImxvZ3Byb2JzIjpudWxsfSwidHlwZSI6ImFpIiwiaWQiOiJs
+      Y19ydW4tLTAxOWNlOGY2LWQ4MTUtN2RjMC04ZTdlLTkwOGZmODkyZGYzOC0wIiwidG9vbF9jYWxs
+      cyI6W3sibmFtZSI6ImdldF93ZWF0aGVyIiwiYXJncyI6eyJjaXR5IjoiU2FuIEZyYW5jaXNjbyJ9
+      LCJpZCI6ImNhbGxfRU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0IiwidHlwZSI6InRvb2xfY2FsbCJ9
+      XSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxNDIsIm91dHB1dF90b2tlbnMiOjIx
+      NiwidG90YWxfdG9rZW5zIjozNTgsImlucHV0X3Rva2VuX2RldGFpbHMiOnsiYXVkaW8iOjAsImNh
+      Y2hlX3JlYWQiOjB9LCJvdXRwdXRfdG9rZW5fZGV0YWlscyI6eyJhdWRpbyI6MCwicmVhc29uaW5n
+      IjoxOTJ9fSwiaW52YWxpZF90b29sX2NhbGxzIjpbXX19LHsibGMiOjEsInR5cGUiOiJjb25zdHJ1
+      Y3RvciIsImlkIjpbImxhbmdjaGFpbiIsInNjaGVtYSIsIm1lc3NhZ2VzIiwiVG9vbE1lc3NhZ2Ui
+      XSwia3dhcmdzIjp7ImNvbnRlbnQiOiJJdCdzIGFsd2F5cyBzdW5ueSBpbiBTYW4gRnJhbmNpc2Nv
+      ISIsInR5cGUiOiJ0b29sIiwibmFtZSI6ImdldF93ZWF0aGVyIiwiaWQiOiJkZDVkYzUzZC1kZDQ2
+      LTRlYTAtYmU5MS0yMTIyZGM1NDU5YzciLCJ0b29sX2NhbGxfaWQiOiJjYWxsX0VPQW5rV080cjFN
+      Vm9wQlUxdldQdnFxdCIsInN0YXR1cyI6InN1Y2Nlc3MifX1dXX1KIAoZZ2VuX2FpLnVzYWdlLmlu
+      cHV0X3Rva2VucxIDGLIBSiEKGmdlbl9haS51c2FnZS5vdXRwdXRfdG9rZW5zEgMY7QJKIAoZZ2Vu
+      X2FpLnVzYWdlLnRvdGFsX3Rva2VucxIDGJ8ESuYOChFnZW5fYWkuY29tcGxldGlvbhLQDgrNDnsi
+      Z2VuZXJhdGlvbnMiOltbeyJ0ZXh0IjoiVGhlIGN1cnJlbnQgd2VhdGhlciBpbiBTYW4gRnJhbmNp
+      c2NvOiBcIkl0J3MgYWx3YXlzIHN1bm55IGluIFNhbiBGcmFuY2lzY28hXCIgXG5cbldvdWxkIHlv
+      dSBsaWtlIG1lIHRvIGZldGNoIHRoZSBhY3R1YWwgdGVtcGVyYXR1cmUsIGh1bWlkaXR5LCB3aW5k
+      IHNwZWVkLCBvciBhIHNob3J0IGZvcmVjYXN0PyIsImdlbmVyYXRpb25faW5mbyI6eyJmaW5pc2hf
+      cmVhc29uIjoic3RvcCIsImxvZ3Byb2JzIjpudWxsfSwidHlwZSI6IkNoYXRHZW5lcmF0aW9uIiwi
+      bWVzc2FnZSI6eyJsYyI6MSwidHlwZSI6ImNvbnN0cnVjdG9yIiwiaWQiOlsibGFuZ2NoYWluIiwi
+      c2NoZW1hIiwibWVzc2FnZXMiLCJBSU1lc3NhZ2UiXSwia3dhcmdzIjp7ImNvbnRlbnQiOiJUaGUg
+      Y3VycmVudCB3ZWF0aGVyIGluIFNhbiBGcmFuY2lzY286IFwiSXQncyBhbHdheXMgc3VubnkgaW4g
+      U2FuIEZyYW5jaXNjbyFcIiBcblxuV291bGQgeW91IGxpa2UgbWUgdG8gZmV0Y2ggdGhlIGFjdHVh
+      bCB0ZW1wZXJhdHVyZSwgaHVtaWRpdHksIHdpbmQgc3BlZWQsIG9yIGEgc2hvcnQgZm9yZWNhc3Q/
+      IiwiYWRkaXRpb25hbF9rd2FyZ3MiOnsicmVmdXNhbCI6bnVsbH0sInJlc3BvbnNlX21ldGFkYXRh
+      Ijp7InRva2VuX3VzYWdlIjp7ImNvbXBsZXRpb25fdG9rZW5zIjozNjUsInByb21wdF90b2tlbnMi
+      OjE3OCwidG90YWxfdG9rZW5zIjo1NDMsImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMiOnsiYWNj
+      ZXB0ZWRfcHJlZGljdGlvbl90b2tlbnMiOjAsImF1ZGlvX3Rva2VucyI6MCwicmVhc29uaW5nX3Rv
+      a2VucyI6MzIwLCJyZWplY3RlZF9wcmVkaWN0aW9uX3Rva2VucyI6MH0sInByb21wdF90b2tlbnNf
+      ZGV0YWlscyI6eyJhdWRpb190b2tlbnMiOjAsImNhY2hlZF90b2tlbnMiOjB9fSwibW9kZWxfcHJv
+      dmlkZXIiOiJvcGVuYWkiLCJtb2RlbF9uYW1lIjoiZ3B0LTUtbmFuby0yMDI1LTA4LTA3Iiwic3lz
+      dGVtX2ZpbmdlcnByaW50IjpudWxsLCJpZCI6ImNoYXRjbXBsLURKM2taVnFWTGRhMm5oWk8zeVFa
+      T1RmUTRxSnNvIiwic2VydmljZV90aWVyIjoiZGVmYXVsdCIsImZpbmlzaF9yZWFzb24iOiJzdG9w
+      IiwibG9ncHJvYnMiOm51bGx9LCJ0eXBlIjoiYWkiLCJpZCI6ImxjX3J1bi0tMDE5Y2U4ZjYtZGVj
+      ZC03YTUxLThhZjItYTc0ZDA2MGRjN2UxLTAiLCJ1c2FnZV9tZXRhZGF0YSI6eyJpbnB1dF90b2tl
+      bnMiOjE3OCwib3V0cHV0X3Rva2VucyI6MzY1LCJ0b3RhbF90b2tlbnMiOjU0MywiaW5wdXRfdG9r
+      ZW5fZGV0YWlscyI6eyJhdWRpbyI6MCwiY2FjaGVfcmVhZCI6MH0sIm91dHB1dF90b2tlbl9kZXRh
+      aWxzIjp7ImF1ZGlvIjowLCJyZWFzb25pbmciOjMyMH19LCJ0b29sX2NhbGxzIjpbXSwiaW52YWxp
+      ZF90b29sX2NhbGxzIjpbXX19fV1dLCJsbG1fb3V0cHV0Ijp7InRva2VuX3VzYWdlIjp7ImNvbXBs
+      ZXRpb25fdG9rZW5zIjozNjUsInByb21wdF90b2tlbnMiOjE3OCwidG90YWxfdG9rZW5zIjo1NDMs
+      ImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMiOnsiYWNjZXB0ZWRfcHJlZGljdGlvbl90b2tlbnMi
+      OjAsImF1ZGlvX3Rva2VucyI6MCwicmVhc29uaW5nX3Rva2VucyI6MzIwLCJyZWplY3RlZF9wcmVk
+      aWN0aW9uX3Rva2VucyI6MH0sInByb21wdF90b2tlbnNfZGV0YWlscyI6eyJhdWRpb190b2tlbnMi
+      OjAsImNhY2hlZF90b2tlbnMiOjB9fSwibW9kZWxfcHJvdmlkZXIiOiJvcGVuYWkiLCJtb2RlbF9u
+      YW1lIjoiZ3B0LTUtbmFuby0yMDI1LTA4LTA3Iiwic3lzdGVtX2ZpbmdlcnByaW50IjpudWxsLCJp
+      ZCI6ImNoYXRjbXBsLURKM2taVnFWTGRhMm5oWk8zeVFaT1RmUTRxSnNvIiwic2VydmljZV90aWVy
+      IjoiZGVmYXVsdCJ9LCJydW4iOm51bGwsInR5cGUiOiJMTE1SZXN1bHQifXoCGAGFAQABAAASxRYK
+      EMk97kNtVQE031Rd/K9qeeoSCIEQclUIpjC/KglMYW5nR3JhcGgwATkAKw6JwIGcGEEAgZapwYGc
+      GEogChVnZW5fYWkub3BlcmF0aW9uLm5hbWUSBwoFY2hhaW5KHgoTbGFuZ3NtaXRoLnNwYW4ua2lu
+      ZBIHCgVjaGFpbkojChRsYW5nc21pdGgudHJhY2UubmFtZRILCglMYW5nR3JhcGhKKQocbGFuZ3Nt
+      aXRoLnRyYWNlLnNlc3Npb25fbmFtZRIJCgdkZWZhdWx0ShwKDWdlbl9haS5zeXN0ZW0SCwoJbGFu
+      Z2NoYWluSi4KJGxhbmdzbWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfVFJBQ0lORxIGCgR0cnVlSjMK
+      KWxhbmdzbWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfT1RFTF9FTkFCTEVEEgYKBHRydWVKMQoebGFu
+      Z3NtaXRoLm1ldGFkYXRhLnJldmlzaW9uX2lkEg8KDWM1MWY1ZjktZGlydHlKYwoNZ2VuX2FpLnBy
+      b21wdBJSClB7Im1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJXaGF0IGlzIHRo
+      ZSB3ZWF0aGVyIGluIFNhbiBGcmFuY2lzY28/In1dfUrQEgoRZ2VuX2FpLmNvbXBsZXRpb24SuhIK
+      txJ7Im1lc3NhZ2VzIjpbeyJjb250ZW50IjoiV2hhdCBpcyB0aGUgd2VhdGhlciBpbiBTYW4gRnJh
+      bmNpc2NvPyIsImFkZGl0aW9uYWxfa3dhcmdzIjp7fSwicmVzcG9uc2VfbWV0YWRhdGEiOnt9LCJ0
+      eXBlIjoiaHVtYW4iLCJpZCI6IjhkMTI0Y2M1LTZkYWEtNDk4MC1iNDFkLWMwMWE4NjU2NjgxNiJ9
+      LHsiY29udGVudCI6IiIsImFkZGl0aW9uYWxfa3dhcmdzIjp7InJlZnVzYWwiOm51bGx9LCJyZXNw
+      b25zZV9tZXRhZGF0YSI6eyJ0b2tlbl91c2FnZSI6eyJjb21wbGV0aW9uX3Rva2VucyI6MjE2LCJw
+      cm9tcHRfdG9rZW5zIjoxNDIsInRvdGFsX3Rva2VucyI6MzU4LCJjb21wbGV0aW9uX3Rva2Vuc19k
+      ZXRhaWxzIjp7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjowLCJhdWRpb190b2tlbnMiOjAs
+      InJlYXNvbmluZ190b2tlbnMiOjE5MiwicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOjB9LCJw
+      cm9tcHRfdG9rZW5zX2RldGFpbHMiOnsiYXVkaW9fdG9rZW5zIjowLCJjYWNoZWRfdG9rZW5zIjow
+      fX0sIm1vZGVsX3Byb3ZpZGVyIjoib3BlbmFpIiwibW9kZWxfbmFtZSI6ImdwdC01LW5hbm8tMjAy
+      NS0wOC0wNyIsInN5c3RlbV9maW5nZXJwcmludCI6bnVsbCwiaWQiOiJjaGF0Y21wbC1ESjNrWFdk
+      QU5FdmZpbkljVlBnT3NpaGhiaThqZyIsInNlcnZpY2VfdGllciI6ImRlZmF1bHQiLCJmaW5pc2hf
+      cmVhc29uIjoidG9vbF9jYWxscyIsImxvZ3Byb2JzIjpudWxsfSwidHlwZSI6ImFpIiwiaWQiOiJs
+      Y19ydW4tLTAxOWNlOGY2LWQ4MTUtN2RjMC04ZTdlLTkwOGZmODkyZGYzOC0wIiwidG9vbF9jYWxs
+      cyI6W3sibmFtZSI6ImdldF93ZWF0aGVyIiwiYXJncyI6eyJjaXR5IjoiU2FuIEZyYW5jaXNjbyJ9
+      LCJpZCI6ImNhbGxfRU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0IiwidHlwZSI6InRvb2xfY2FsbCJ9
+      XSwiaW52YWxpZF90b29sX2NhbGxzIjpbXSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5z
+      IjoxNDIsIm91dHB1dF90b2tlbnMiOjIxNiwidG90YWxfdG9rZW5zIjozNTgsImlucHV0X3Rva2Vu
+      X2RldGFpbHMiOnsiYXVkaW8iOjAsImNhY2hlX3JlYWQiOjB9LCJvdXRwdXRfdG9rZW5fZGV0YWls
+      cyI6eyJhdWRpbyI6MCwicmVhc29uaW5nIjoxOTJ9fX0seyJjb250ZW50IjoiSXQncyBhbHdheXMg
+      c3VubnkgaW4gU2FuIEZyYW5jaXNjbyEiLCJhZGRpdGlvbmFsX2t3YXJncyI6e30sInJlc3BvbnNl
+      X21ldGFkYXRhIjp7fSwidHlwZSI6InRvb2wiLCJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJpZCI6ImRk
+      NWRjNTNkLWRkNDYtNGVhMC1iZTkxLTIxMjJkYzU0NTljNyIsInRvb2xfY2FsbF9pZCI6ImNhbGxf
+      RU9BbmtXTzRyMU1Wb3BCVTF2V1B2cXF0Iiwic3RhdHVzIjoic3VjY2VzcyJ9LHsiY29udGVudCI6
+      IlRoZSBjdXJyZW50IHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbzogXCJJdCdzIGFsd2F5cyBzdW5u
+      eSBpbiBTYW4gRnJhbmNpc2NvIVwiIFxuXG5Xb3VsZCB5b3UgbGlrZSBtZSB0byBmZXRjaCB0aGUg
+      YWN0dWFsIHRlbXBlcmF0dXJlLCBodW1pZGl0eSwgd2luZCBzcGVlZCwgb3IgYSBzaG9ydCBmb3Jl
+      Y2FzdD8iLCJhZGRpdGlvbmFsX2t3YXJncyI6eyJyZWZ1c2FsIjpudWxsfSwicmVzcG9uc2VfbWV0
+      YWRhdGEiOnsidG9rZW5fdXNhZ2UiOnsiY29tcGxldGlvbl90b2tlbnMiOjM2NSwicHJvbXB0X3Rv
+      a2VucyI6MTc4LCJ0b3RhbF90b2tlbnMiOjU0MywiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6
+      eyJhY2NlcHRlZF9wcmVkaWN0aW9uX3Rva2VucyI6MCwiYXVkaW9fdG9rZW5zIjowLCJyZWFzb25p
+      bmdfdG9rZW5zIjozMjAsInJlamVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjowfSwicHJvbXB0X3Rv
+      a2Vuc19kZXRhaWxzIjp7ImF1ZGlvX3Rva2VucyI6MCwiY2FjaGVkX3Rva2VucyI6MH19LCJtb2Rl
+      bF9wcm92aWRlciI6Im9wZW5haSIsIm1vZGVsX25hbWUiOiJncHQtNS1uYW5vLTIwMjUtMDgtMDci
+      LCJzeXN0ZW1fZmluZ2VycHJpbnQiOm51bGwsImlkIjoiY2hhdGNtcGwtREoza1pWcVZMZGEybmha
+      TzN5UVpPVGZRNHFKc28iLCJzZXJ2aWNlX3RpZXIiOiJkZWZhdWx0IiwiZmluaXNoX3JlYXNvbiI6
+      InN0b3AiLCJsb2dwcm9icyI6bnVsbH0sInR5cGUiOiJhaSIsImlkIjoibGNfcnVuLS0wMTljZThm
+      Ni1kZWNkLTdhNTEtOGFmMi1hNzRkMDYwZGM3ZTEtMCIsInRvb2xfY2FsbHMiOltdLCJpbnZhbGlk
+      X3Rvb2xfY2FsbHMiOltdLCJ1c2FnZV9tZXRhZGF0YSI6eyJpbnB1dF90b2tlbnMiOjE3OCwib3V0
+      cHV0X3Rva2VucyI6MzY1LCJ0b3RhbF90b2tlbnMiOjU0MywiaW5wdXRfdG9rZW5fZGV0YWlscyI6
+      eyJhdWRpbyI6MCwiY2FjaGVfcmVhZCI6MH0sIm91dHB1dF90b2tlbl9kZXRhaWxzIjp7ImF1ZGlv
+      IjowLCJyZWFzb25pbmciOjMyMH19fV19egIYAYUBAAEAAA==
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '19414'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      langsmith-project:
+      - default
+    method: POST
+    uri: https://api.smith.langchain.com/otel/v1/traces
+  response:
+    body:
+      string: ''
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '0'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Date:
+      - Fri, 13 Mar 2026 20:50:22 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 3479b8574e3d6ca99d4e94586b772944
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"content":"You are a helpful assistant","role":"system"},{"content":"What
+      is the weather in San Francisco?","role":"user"}],"model":"gpt-5-nano","stream":false,"tools":[{"type":"function","function":{"name":"get_weather","description":"Get
+      weather for a given city.","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '375'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.16.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.16.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.13
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/3VT226bQBB95yvQPpuKYCNf3ionqVqplapWrZQ6QpNlgI2XXby7pEGW/z3LEi5O
+        HB4QzJkzc+Z29HyfsJRsfEILMLSseHD9bb6n5bYqGv7j53bLD4/PWw17erP/mj2QWcuQD49ITc/6
+        RKXloWFSdDBVCAbbqFfL5Xwxj8MockApU+QtLa9MEAcChAyiMIqDcBWEy1dyIRlFbb3+2V/fP7p3
+        K1Ok+GzN4ay3lKg15GhtvZM1KslbCwGtmTYgDJmNIJXCoGiVi5rzCWCk5AkFzsfE3XOcfI+9so7J
+        n/XT5/VfkHe/v6xFE18f0vi7uVsdJvm60E3lBGW1oEOPJvhg37xJZjEBpePmaJL/tqkFqjd06wQq
+        r0tbVSudHHeEMtPsyGZHfoHwbxUIyjSVO3IiZ8yTd+n7ftIUhVmtgb/vFgghDbSiXbvuX5HTMJmM
+        CaaLxO6BdoVN++v1CV0qUp+NkFTKLpNJjNyjC361iLqoZNyyCRr3qLGC+AhE68XsQsAkRQPMDXnY
+        Kwq0wHSkjvsFdcrkBPAmRb6Xcyl21wAm8onkaPVhghGgFCt7QkmlMGX0vOjRTWF7hx+5DY12kolG
+        9WQvKzHMLpEdSYoZ1Lw7D6IbbbBM7NxyVJViw414J+8F3gMceiUEAAA=
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - 9dbde918fcbe1990-SJC
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:23 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-processing-ms:
+      - '1710'
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999982'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_9e32fc9b07f94341b663a95ed59b1e53
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition: form-data; name=\"post.019ce8f6-f24d-7fd2-9779-54c62054a3e9\"\r\nContent-Type:
+      application/json\r\nContent-Length: 476\r\n\r\n{\"id\":\"019ce8f6-f24d-7fd2-9779-54c62054a3e9\",\"start_time\":\"2026-03-13T20:50:23.950051+00:00\",\"parent_run_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"tags\":[\"graph:step:2\"],\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205023950051Z019ce8f6-f24d-7fd2-9779-54c62054a3e9\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"tools\",\"run_type\":\"chain\",\"end_time\":\"2026-03-13T20:50:23.951405+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24d-7fd2-9779-54c62054a3e9.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1282\r\n\r\n{\"__type\":\"tool_call_with_context\",\"tool_call\":{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"type\":\"tool_call\"},\"state\":{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8db04b68-ec87-4771-9b88-c27035718e00\"},{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":152,\"prompt_tokens\":142,\"total_tokens\":294,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":128,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kcmCphylNQCClqjxCsakcEkIfb\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-eb04-7241-86e6-613dfd93b8a2-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":152,\"total_tokens\":294,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":128}}}]}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24d-7fd2-9779-54c62054a3e9.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 255\r\n\r\n{\"messages\":[{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"a29a7730-7bb0-43d1-b0a5-ad1c72bdbf77\",\"tool_call_id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"status\":\"success\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24d-7fd2-9779-54c62054a3e9.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:23.950051+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:23.951405+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24d-7fd2-9779-54c62054a3e9.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 588\r\n\r\n{\"metadata\":{\"langgraph_step\":2,\"langgraph_node\":\"tools\",\"langgraph_triggers\":[\"__pregel_push\"],\"langgraph_path\":[\"__pregel_push\",0,false],\"langgraph_checkpoint_ns\":\"tools:48885135-8959-aa36-4d39-27a373279a5c\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24e-75c1-9627-6f9a4feecef7\"\r\nContent-Type:
+      application/json\r\nContent-Length: 538\r\n\r\n{\"id\":\"019ce8f6-f24e-75c1-9627-6f9a4feecef7\",\"start_time\":\"2026-03-13T20:50:23.950544+00:00\",\"parent_run_id\":\"019ce8f6-f24d-7fd2-9779-54c62054a3e9\",\"tags\":[\"seq:step:1\"],\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205023950051Z019ce8f6-f24d-7fd2-9779-54c62054a3e9.20260313T205023950544Z019ce8f6-f24e-75c1-9627-6f9a4feecef7\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"get_weather\",\"run_type\":\"tool\",\"end_time\":\"2026-03-13T20:50:23.950960+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24e-75c1-9627-6f9a4feecef7.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 37\r\n\r\n{\"input\":\"{'city': 'San Francisco'}\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24e-75c1-9627-6f9a4feecef7.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 207\r\n\r\n{\"output\":{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"tool_call_id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"status\":\"success\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24e-75c1-9627-6f9a4feecef7.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:23.950544+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:23.950960+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24e-75c1-9627-6f9a4feecef7.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 712\r\n\r\n{\"color\":\"green\",\"tool_call_id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"metadata\":{\"langgraph_step\":2,\"langgraph_node\":\"tools\",\"langgraph_triggers\":[\"__pregel_push\"],\"langgraph_path\":[\"__pregel_push\",0,false],\"langgraph_checkpoint_ns\":\"tools:48885135-8959-aa36-4d39-27a373279a5c\",\"checkpoint_ns\":\"tools:48885135-8959-aa36-4d39-27a373279a5c\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24f-75d0-a81d-973233be5193\"\r\nContent-Type:
+      application/json\r\nContent-Length: 430\r\n\r\n{\"id\":\"019ce8f6-f24f-75d0-a81d-973233be5193\",\"start_time\":\"2026-03-13T20:50:23.951744+00:00\",\"parent_run_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"tags\":[\"graph:step:3\"],\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205023951744Z019ce8f6-f24f-75d0-a81d-973233be5193\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"model\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24f-75d0-a81d-973233be5193.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1356\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8db04b68-ec87-4771-9b88-c27035718e00\"},{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":152,\"prompt_tokens\":142,\"total_tokens\":294,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":128,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kcmCphylNQCClqjxCsakcEkIfb\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-eb04-7241-86e6-613dfd93b8a2-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":152,\"total_tokens\":294,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":128}}},{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"a29a7730-7bb0-43d1-b0a5-ad1c72bdbf77\",\"tool_call_id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"status\":\"success\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24f-75d0-a81d-973233be5193.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24f-75d0-a81d-973233be5193.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:23.951744+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f24f-75d0-a81d-973233be5193.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 590\r\n\r\n{\"metadata\":{\"langgraph_step\":3,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:d492cbd0-3b44-beef-b2bc-32565d85e1e9\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f251-7a92-b110-f173d5008a04\"\r\nContent-Type:
+      application/json\r\nContent-Length: 490\r\n\r\n{\"id\":\"019ce8f6-f251-7a92-b110-f173d5008a04\",\"start_time\":\"2026-03-13T20:50:23.953189+00:00\",\"parent_run_id\":\"019ce8f6-f24f-75d0-a81d-973233be5193\",\"tags\":[\"seq:step:1\"],\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205023951744Z019ce8f6-f24f-75d0-a81d-973233be5193.20260313T205023953189Z019ce8f6-f251-7a92-b110-f173d5008a04\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"ChatOpenAI\",\"run_type\":\"llm\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f251-7a92-b110-f173d5008a04.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1693\r\n\r\n{\"messages\":[[{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"SystemMessage\"],\"kwargs\":{\"content\":\"You
+      are a helpful assistant\",\"type\":\"system\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"HumanMessage\"],\"kwargs\":{\"content\":\"What
+      is the weather in San Francisco?\",\"type\":\"human\",\"id\":\"8db04b68-ec87-4771-9b88-c27035718e00\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"AIMessage\"],\"kwargs\":{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":152,\"prompt_tokens\":142,\"total_tokens\":294,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":128,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kcmCphylNQCClqjxCsakcEkIfb\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-eb04-7241-86e6-613dfd93b8a2-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"type\":\"tool_call\"}],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":152,\"total_tokens\":294,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":128}},\"invalid_tool_calls\":[]}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"ToolMessage\"],\"kwargs\":{\"content\":\"It's
+      always sunny in San Francisco!\",\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"a29a7730-7bb0-43d1-b0a5-ad1c72bdbf77\",\"tool_call_id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"status\":\"success\"}}]]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f251-7a92-b110-f173d5008a04.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f251-7a92-b110-f173d5008a04.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:23.953189+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f251-7a92-b110-f173d5008a04.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1106\r\n\r\n{\"invocation_params\":{\"model\":\"gpt-5-nano\",\"model_name\":\"gpt-5-nano\",\"stream\":false,\"_type\":\"openai-chat\",\"stop\":null,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a given city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]},\"options\":{\"stop\":null},\"batch_size\":1,\"metadata\":{\"langgraph_step\":3,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:d492cbd0-3b44-beef-b2bc-32565d85e1e9\",\"checkpoint_ns\":\"model:d492cbd0-3b44-beef-b2bc-32565d85e1e9\",\"ls_provider\":\"openai\",\"ls_model_name\":\"gpt-5-nano\",\"ls_model_type\":\"chat\",\"ls_temperature\":null,\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-f251-7a92-b110-f173d5008a04.serialized\"\r\nContent-Type:
+      application/json\r\nContent-Length: 227\r\n\r\n{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"chat_models\",\"openai\",\"ChatOpenAI\"],\"kwargs\":{\"model_name\":\"gpt-5-nano\",\"openai_api_key\":{\"lc\":1,\"type\":\"secret\",\"id\":[\"OPENAI_API_KEY\"]},\"stream_usage\":true},\"name\":\"ChatOpenAI\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb03-72c0-bda1-ba9fd0750d31\"\r\nContent-Type:
+      application/json\r\nContent-Length: 480\r\n\r\n{\"id\":\"019ce8f6-eb03-72c0-bda1-ba9fd0750d31\",\"name\":\"model\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"parent_run_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205022083578Z019ce8f6-eb03-72c0-bda1-ba9fd0750d31\",\"tags\":[\"graph:step:1\"],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:22.083578+00:00\",\"end_time\":\"2026-03-13T20:50:23.949631+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 171\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8db04b68-ec87-4771-9b88-c27035718e00\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 958\r\n\r\n{\"messages\":[{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":152,\"prompt_tokens\":142,\"total_tokens\":294,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":128,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kcmCphylNQCClqjxCsakcEkIfb\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-eb04-7241-86e6-613dfd93b8a2-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":152,\"total_tokens\":294,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":128}}}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:22.083578+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:23.949631+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb03-72c0-bda1-ba9fd0750d31.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 590\r\n\r\n{\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:1b8a1f8e-23fd-e1bb-8ce6-d77a9adae137\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb04-7241-86e6-613dfd93b8a2\"\r\nContent-Type:
+      application/json\r\nContent-Length: 540\r\n\r\n{\"id\":\"019ce8f6-eb04-7241-86e6-613dfd93b8a2\",\"name\":\"ChatOpenAI\",\"run_type\":\"llm\",\"trace_id\":\"019ce8f6-eb02-72a0-945e-845f3516287b\",\"parent_run_id\":\"019ce8f6-eb03-72c0-bda1-ba9fd0750d31\",\"dotted_order\":\"20260313T205022083015Z019ce8f6-eb02-72a0-945e-845f3516287b.20260313T205022083578Z019ce8f6-eb03-72c0-bda1-ba9fd0750d31.20260313T205022085044Z019ce8f6-eb04-7241-86e6-613dfd93b8a2\",\"tags\":[\"seq:step:1\"],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:22.085044+00:00\",\"end_time\":\"2026-03-13T20:50:23.949180+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb04-7241-86e6-613dfd93b8a2.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 372\r\n\r\n{\"messages\":[[{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"SystemMessage\"],\"kwargs\":{\"content\":\"You
+      are a helpful assistant\",\"type\":\"system\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"HumanMessage\"],\"kwargs\":{\"content\":\"What
+      is the weather in San Francisco?\",\"type\":\"human\",\"id\":\"8db04b68-ec87-4771-9b88-c27035718e00\"}}]]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb04-7241-86e6-613dfd93b8a2.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1641\r\n\r\n{\"generations\":[[{\"text\":\"\",\"generation_info\":{\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ChatGeneration\",\"message\":{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"AIMessage\"],\"kwargs\":{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":152,\"prompt_tokens\":142,\"total_tokens\":294,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":128,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kcmCphylNQCClqjxCsakcEkIfb\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-eb04-7241-86e6-613dfd93b8a2-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_V9vA9WaoZTG9ny5Dqd5MtZ8q\",\"type\":\"tool_call\"}],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":152,\"total_tokens\":294,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":128}},\"invalid_tool_calls\":[]}}}]],\"llm_output\":{\"token_usage\":{\"completion_tokens\":152,\"prompt_tokens\":142,\"total_tokens\":294,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":128,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kcmCphylNQCClqjxCsakcEkIfb\",\"service_tier\":\"default\"},\"run\":null,\"type\":\"LLMResult\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb04-7241-86e6-613dfd93b8a2.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:22.085044+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:23.949180+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-eb04-7241-86e6-613dfd93b8a2.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1126\r\n\r\n{\"invocation_params\":{\"model\":\"gpt-5-nano\",\"model_name\":\"gpt-5-nano\",\"stream\":false,\"_type\":\"openai-chat\",\"stop\":null,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a given city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]},\"options\":{\"stop\":null},\"batch_size\":1,\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:1b8a1f8e-23fd-e1bb-8ce6-d77a9adae137\",\"checkpoint_ns\":\"model:1b8a1f8e-23fd-e1bb-8ce6-d77a9adae137\",\"ls_provider\":\"openai\",\"ls_model_name\":\"gpt-5-nano\",\"ls_model_type\":\"chat\",\"ls_temperature\":null,\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"},\"tool_call_count\":1}\r\n--415c59607d93413fbf28584e45dbd321--\r\n"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '22108'
+      Content-Type:
+      - multipart/form-data; boundary=415c59607d93413fbf28584e45dbd321
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: POST
+    uri: https://api.smith.langchain.com/runs/multipart
+  response:
+    body:
+      string: '{"success":true}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '17'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:24 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - ea9bea2ee7de2413285ec59038e3c8b8
+    status:
+      code: 202
+      message: Accepted
+- request:
+    body: !!binary |
+      CuhJCpEBCiIKFnRlbGVtZXRyeS5zZGsubGFuZ3VhZ2USCAoGcHl0aG9uCiUKEnRlbGVtZXRyeS5z
+      ZGsubmFtZRIPCg1vcGVudGVsZW1ldHJ5CiEKFXRlbGVtZXRyeS5zZGsudmVyc2lvbhIICgYxLjM5
+      LjEKIQoMc2VydmljZS5uYW1lEhEKD3Vua25vd25fc2VydmljZRLRSAoxCidvcGVuaW5mZXJlbmNl
+      Lmluc3RydW1lbnRhdGlvbi5sYW5nY2hhaW4SBjAuMS41OBKTIgoQKZ2ylCzqKiXoUIQG/Ry41BII
+      shCWBpE0YHkiCFgNJEBPDZOzKgpDaGF0T3BlbkFJMAE5ADubq8GBnBhBAKmxGsKBnBhKpQMKC2lu
+      cHV0LnZhbHVlEpUDCpIDeyJtZXNzYWdlcyI6IFtbeyJsYyI6IDEsICJ0eXBlIjogImNvbnN0cnVj
+      dG9yIiwgImlkIjogWyJsYW5nY2hhaW4iLCAic2NoZW1hIiwgIm1lc3NhZ2VzIiwgIlN5c3RlbU1l
+      c3NhZ2UiXSwgImt3YXJncyI6IHsiY29udGVudCI6ICJZb3UgYXJlIGEgaGVscGZ1bCBhc3Npc3Rh
+      bnQiLCAidHlwZSI6ICJzeXN0ZW0ifX0sIHsibGMiOiAxLCAidHlwZSI6ICJjb25zdHJ1Y3RvciIs
+      ICJpZCI6IFsibGFuZ2NoYWluIiwgInNjaGVtYSIsICJtZXNzYWdlcyIsICJIdW1hbk1lc3NhZ2Ui
+      XSwgImt3YXJncyI6IHsiY29udGVudCI6ICJXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBGcmFu
+      Y2lzY28/IiwgInR5cGUiOiAiaHVtYW4iLCAiaWQiOiAiOGRiMDRiNjgtZWM4Ny00NzcxLTliODgt
+      YzI3MDM1NzE4ZTAwIn19XV19SiUKD2lucHV0Lm1pbWVfdHlwZRISChBhcHBsaWNhdGlvbi9qc29u
+      Sv8NCgxvdXRwdXQudmFsdWUS7g0K6w17ImdlbmVyYXRpb25zIjogW1t7InRleHQiOiAiIiwgImdl
+      bmVyYXRpb25faW5mbyI6IHsiZmluaXNoX3JlYXNvbiI6ICJ0b29sX2NhbGxzIiwgImxvZ3Byb2Jz
+      IjogbnVsbH0sICJ0eXBlIjogIkNoYXRHZW5lcmF0aW9uIiwgIm1lc3NhZ2UiOiB7ImxjIjogMSwg
+      InR5cGUiOiAiY29uc3RydWN0b3IiLCAiaWQiOiBbImxhbmdjaGFpbiIsICJzY2hlbWEiLCAibWVz
+      c2FnZXMiLCAiQUlNZXNzYWdlIl0sICJrd2FyZ3MiOiB7ImNvbnRlbnQiOiAiIiwgImFkZGl0aW9u
+      YWxfa3dhcmdzIjogeyJyZWZ1c2FsIjogbnVsbH0sICJyZXNwb25zZV9tZXRhZGF0YSI6IHsidG9r
+      ZW5fdXNhZ2UiOiB7ImNvbXBsZXRpb25fdG9rZW5zIjogMTUyLCAicHJvbXB0X3Rva2VucyI6IDE0
+      MiwgInRvdGFsX3Rva2VucyI6IDI5NCwgImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMiOiB7ImFj
+      Y2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwgImF1ZGlvX3Rva2VucyI6IDAsICJyZWFzb25p
+      bmdfdG9rZW5zIjogMTI4LCAicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAwfSwgInByb21w
+      dF90b2tlbnNfZGV0YWlscyI6IHsiYXVkaW9fdG9rZW5zIjogMCwgImNhY2hlZF90b2tlbnMiOiAw
+      fX0sICJtb2RlbF9wcm92aWRlciI6ICJvcGVuYWkiLCAibW9kZWxfbmFtZSI6ICJncHQtNS1uYW5v
+      LTIwMjUtMDgtMDciLCAic3lzdGVtX2ZpbmdlcnByaW50IjogbnVsbCwgImlkIjogImNoYXRjbXBs
+      LURKM2tjbUNwaHlsTlFDQ2xxanhDc2FrY0VrSWZiIiwgInNlcnZpY2VfdGllciI6ICJkZWZhdWx0
+      IiwgImZpbmlzaF9yZWFzb24iOiAidG9vbF9jYWxscyIsICJsb2dwcm9icyI6IG51bGx9LCAidHlw
+      ZSI6ICJhaSIsICJpZCI6ICJsY19ydW4tLTAxOWNlOGY2LWViMDQtNzI0MS04NmU2LTYxM2RmZDkz
+      YjhhMi0wIiwgInRvb2xfY2FsbHMiOiBbeyJuYW1lIjogImdldF93ZWF0aGVyIiwgImFyZ3MiOiB7
+      ImNpdHkiOiAiU2FuIEZyYW5jaXNjbyJ9LCAiaWQiOiAiY2FsbF9WOXZBOVdhb1pURzlueTVEcWQ1
+      TXRaOHEiLCAidHlwZSI6ICJ0b29sX2NhbGwifV0sICJ1c2FnZV9tZXRhZGF0YSI6IHsiaW5wdXRf
+      dG9rZW5zIjogMTQyLCAib3V0cHV0X3Rva2VucyI6IDE1MiwgInRvdGFsX3Rva2VucyI6IDI5NCwg
+      ImlucHV0X3Rva2VuX2RldGFpbHMiOiB7ImF1ZGlvIjogMCwgImNhY2hlX3JlYWQiOiAwfSwgIm91
+      dHB1dF90b2tlbl9kZXRhaWxzIjogeyJhdWRpbyI6IDAsICJyZWFzb25pbmciOiAxMjh9fSwgImlu
+      dmFsaWRfdG9vbF9jYWxscyI6IFtdfX19XV0sICJsbG1fb3V0cHV0IjogeyJ0b2tlbl91c2FnZSI6
+      IHsiY29tcGxldGlvbl90b2tlbnMiOiAxNTIsICJwcm9tcHRfdG9rZW5zIjogMTQyLCAidG90YWxf
+      dG9rZW5zIjogMjk0LCAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsiYWNjZXB0ZWRfcHJl
+      ZGljdGlvbl90b2tlbnMiOiAwLCAiYXVkaW9fdG9rZW5zIjogMCwgInJlYXNvbmluZ190b2tlbnMi
+      OiAxMjgsICJyZWplY3RlZF9wcmVkaWN0aW9uX3Rva2VucyI6IDB9LCAicHJvbXB0X3Rva2Vuc19k
+      ZXRhaWxzIjogeyJhdWRpb190b2tlbnMiOiAwLCAiY2FjaGVkX3Rva2VucyI6IDB9fSwgIm1vZGVs
+      X3Byb3ZpZGVyIjogIm9wZW5haSIsICJtb2RlbF9uYW1lIjogImdwdC01LW5hbm8tMjAyNS0wOC0w
+      NyIsICJzeXN0ZW1fZmluZ2VycHJpbnQiOiBudWxsLCAiaWQiOiAiY2hhdGNtcGwtREoza2NtQ3Bo
+      eWxOUUNDbHFqeENzYWtjRWtJZmIiLCAic2VydmljZV90aWVyIjogImRlZmF1bHQifSwgInJ1biI6
+      IG51bGwsICJ0eXBlIjogIkxMTVJlc3VsdCJ9SiYKEG91dHB1dC5taW1lX3R5cGUSEgoQYXBwbGlj
+      YXRpb24vanNvbkotCiFsbG0uaW5wdXRfbWVzc2FnZXMuMC5tZXNzYWdlLnJvbGUSCAoGc3lzdGVt
+      SkUKJGxsbS5pbnB1dF9tZXNzYWdlcy4wLm1lc3NhZ2UuY29udGVudBIdChtZb3UgYXJlIGEgaGVs
+      cGZ1bCBhc3Npc3RhbnRKKwohbGxtLmlucHV0X21lc3NhZ2VzLjEubWVzc2FnZS5yb2xlEgYKBHVz
+      ZXJKTwokbGxtLmlucHV0X21lc3NhZ2VzLjEubWVzc2FnZS5jb250ZW50EicKJVdoYXQgaXMgdGhl
+      IHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz9KMQoibGxtLm91dHB1dF9tZXNzYWdlcy4wLm1lc3Nh
+      Z2Uucm9sZRILCglhc3Npc3RhbnRKWgo3bGxtLm91dHB1dF9tZXNzYWdlcy4wLm1lc3NhZ2UudG9v
+      bF9jYWxscy4wLnRvb2xfY2FsbC5pZBIfCh1jYWxsX1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cUpT
+      CkJsbG0ub3V0cHV0X21lc3NhZ2VzLjAubWVzc2FnZS50b29sX2NhbGxzLjAudG9vbF9jYWxsLmZ1
+      bmN0aW9uLm5hbWUSDQoLZ2V0X3dlYXRoZXJKZgpHbGxtLm91dHB1dF9tZXNzYWdlcy4wLm1lc3Nh
+      Z2UudG9vbF9jYWxscy4wLnRvb2xfY2FsbC5mdW5jdGlvbi5hcmd1bWVudHMSGwoZeyJjaXR5Ijog
+      IlNhbiBGcmFuY2lzY28ifUrlAgoZbGxtLmludm9jYXRpb25fcGFyYW1ldGVycxLHAgrEAnsibW9k
+      ZWwiOiAiZ3B0LTUtbmFubyIsICJtb2RlbF9uYW1lIjogImdwdC01LW5hbm8iLCAic3RyZWFtIjog
+      ZmFsc2UsICJfdHlwZSI6ICJvcGVuYWktY2hhdCIsICJzdG9wIjogbnVsbCwgInRvb2xzIjogW3si
+      dHlwZSI6ICJmdW5jdGlvbiIsICJmdW5jdGlvbiI6IHsibmFtZSI6ICJnZXRfd2VhdGhlciIsICJk
+      ZXNjcmlwdGlvbiI6ICJHZXQgd2VhdGhlciBmb3IgYSBnaXZlbiBjaXR5LiIsICJwYXJhbWV0ZXJz
+      IjogeyJwcm9wZXJ0aWVzIjogeyJjaXR5IjogeyJ0eXBlIjogInN0cmluZyJ9fSwgInJlcXVpcmVk
+      IjogWyJjaXR5Il0sICJ0eXBlIjogIm9iamVjdCJ9fX1dfUrxAQocbGxtLnRvb2xzLjAudG9vbC5q
+      c29uX3NjaGVtYRLQAQrNAXsidHlwZSI6ICJmdW5jdGlvbiIsICJmdW5jdGlvbiI6IHsibmFtZSI6
+      ICJnZXRfd2VhdGhlciIsICJkZXNjcmlwdGlvbiI6ICJHZXQgd2VhdGhlciBmb3IgYSBnaXZlbiBj
+      aXR5LiIsICJwYXJhbWV0ZXJzIjogeyJwcm9wZXJ0aWVzIjogeyJjaXR5IjogeyJ0eXBlIjogInN0
+      cmluZyJ9fSwgInJlcXVpcmVkIjogWyJjaXR5Il0sICJ0eXBlIjogIm9iamVjdCJ9fX1KGAoMbGxt
+      LnByb3ZpZGVyEggKBm9wZW5haUoWCgpsbG0uc3lzdGVtEggKBm9wZW5haUopCg5sbG0ubW9kZWxf
+      bmFtZRIXChVncHQtNS1uYW5vLTIwMjUtMDgtMDdKHQoWbGxtLnRva2VuX2NvdW50LnByb21wdBID
+      GI4BSiEKGmxsbS50b2tlbl9jb3VudC5jb21wbGV0aW9uEgMYmAFKHAoVbGxtLnRva2VuX2NvdW50
+      LnRvdGFsEgMYpgJKLgoobGxtLnRva2VuX2NvdW50LmNvbXBsZXRpb25fZGV0YWlscy5hdWRpbxIC
+      GABKMwosbGxtLnRva2VuX2NvdW50LmNvbXBsZXRpb25fZGV0YWlscy5yZWFzb25pbmcSAxiAAUoq
+      CiRsbG0udG9rZW5fY291bnQucHJvbXB0X2RldGFpbHMuYXVkaW8SAhgASi8KKWxsbS50b2tlbl9j
+      b3VudC5wcm9tcHRfZGV0YWlscy5jYWNoZV9yZWFkEgIYAEqKAwoIbWV0YWRhdGES/QIK+gJ7Imxh
+      bmdncmFwaF9zdGVwIjogMSwgImxhbmdncmFwaF9ub2RlIjogIm1vZGVsIiwgImxhbmdncmFwaF90
+      cmlnZ2VycyI6IFsiYnJhbmNoOnRvOm1vZGVsIl0sICJsYW5nZ3JhcGhfcGF0aCI6IFsiX19wcmVn
+      ZWxfcHVsbCIsICJtb2RlbCJdLCAibGFuZ2dyYXBoX2NoZWNrcG9pbnRfbnMiOiAibW9kZWw6MWI4
+      YTFmOGUtMjNmZC1lMWJiLThjZTYtZDc3YTlhZGFlMTM3IiwgImNoZWNrcG9pbnRfbnMiOiAibW9k
+      ZWw6MWI4YTFmOGUtMjNmZC1lMWJiLThjZTYtZDc3YTlhZGFlMTM3IiwgImxzX3Byb3ZpZGVyIjog
+      Im9wZW5haSIsICJsc19tb2RlbF9uYW1lIjogImdwdC01LW5hbm8iLCAibHNfbW9kZWxfdHlwZSI6
+      ICJjaGF0IiwgImxzX3RlbXBlcmF0dXJlIjogbnVsbH1KIAoXb3BlbmluZmVyZW5jZS5zcGFuLmtp
+      bmQSBQoDTExNegIYAYUBAAEAABKnDgoQKZ2ylCzqKiXoUIQG/Ry41BIIWA0kQE8Nk7MiCG5A/0gT
+      2kgoKgVtb2RlbDABOQBHhqvBgZwYQQDWvRrCgZwYStYBCgtpbnB1dC52YWx1ZRLGAQrDAXsibWVz
+      c2FnZXMiOiBbeyJjb250ZW50IjogIldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNj
+      bz8iLCAiYWRkaXRpb25hbF9rd2FyZ3MiOiB7fSwgInJlc3BvbnNlX21ldGFkYXRhIjoge30sICJ0
+      eXBlIjogImh1bWFuIiwgIm5hbWUiOiBudWxsLCAiaWQiOiAiOGRiMDRiNjgtZWM4Ny00NzcxLTli
+      ODgtYzI3MDM1NzE4ZTAwIn1dfUolCg9pbnB1dC5taW1lX3R5cGUSEgoQYXBwbGljYXRpb24vanNv
+      bkqqCAoMb3V0cHV0LnZhbHVlEpkICpYIeyJtZXNzYWdlcyI6IFt7ImNvbnRlbnQiOiAiIiwgImFk
+      ZGl0aW9uYWxfa3dhcmdzIjogeyJyZWZ1c2FsIjogbnVsbH0sICJyZXNwb25zZV9tZXRhZGF0YSI6
+      IHsidG9rZW5fdXNhZ2UiOiB7ImNvbXBsZXRpb25fdG9rZW5zIjogMTUyLCAicHJvbXB0X3Rva2Vu
+      cyI6IDE0MiwgInRvdGFsX3Rva2VucyI6IDI5NCwgImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMi
+      OiB7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwgImF1ZGlvX3Rva2VucyI6IDAsICJy
+      ZWFzb25pbmdfdG9rZW5zIjogMTI4LCAicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAwfSwg
+      InByb21wdF90b2tlbnNfZGV0YWlscyI6IHsiYXVkaW9fdG9rZW5zIjogMCwgImNhY2hlZF90b2tl
+      bnMiOiAwfX0sICJtb2RlbF9wcm92aWRlciI6ICJvcGVuYWkiLCAibW9kZWxfbmFtZSI6ICJncHQt
+      NS1uYW5vLTIwMjUtMDgtMDciLCAic3lzdGVtX2ZpbmdlcnByaW50IjogbnVsbCwgImlkIjogImNo
+      YXRjbXBsLURKM2tjbUNwaHlsTlFDQ2xxanhDc2FrY0VrSWZiIiwgInNlcnZpY2VfdGllciI6ICJk
+      ZWZhdWx0IiwgImZpbmlzaF9yZWFzb24iOiAidG9vbF9jYWxscyIsICJsb2dwcm9icyI6IG51bGx9
+      LCAidHlwZSI6ICJhaSIsICJuYW1lIjogbnVsbCwgImlkIjogImxjX3J1bi0tMDE5Y2U4ZjYtZWIw
+      NC03MjQxLTg2ZTYtNjEzZGZkOTNiOGEyLTAiLCAidG9vbF9jYWxscyI6IFt7Im5hbWUiOiAiZ2V0
+      X3dlYXRoZXIiLCAiYXJncyI6IHsiY2l0eSI6ICJTYW4gRnJhbmNpc2NvIn0sICJpZCI6ICJjYWxs
+      X1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cSIsICJ0eXBlIjogInRvb2xfY2FsbCJ9XSwgImludmFs
+      aWRfdG9vbF9jYWxscyI6IFtdLCAidXNhZ2VfbWV0YWRhdGEiOiB7ImlucHV0X3Rva2VucyI6IDE0
+      MiwgIm91dHB1dF90b2tlbnMiOiAxNTIsICJ0b3RhbF90b2tlbnMiOiAyOTQsICJpbnB1dF90b2tl
+      bl9kZXRhaWxzIjogeyJhdWRpbyI6IDAsICJjYWNoZV9yZWFkIjogMH0sICJvdXRwdXRfdG9rZW5f
+      ZGV0YWlscyI6IHsiYXVkaW8iOiAwLCAicmVhc29uaW5nIjogMTI4fX19XX1KJgoQb3V0cHV0Lm1p
+      bWVfdHlwZRISChBhcHBsaWNhdGlvbi9qc29uSisKIWxsbS5pbnB1dF9tZXNzYWdlcy4wLm1lc3Nh
+      Z2Uucm9sZRIGCgR1c2VySk8KJGxsbS5pbnB1dF9tZXNzYWdlcy4wLm1lc3NhZ2UuY29udGVudBIn
+      CiVXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBGcmFuY2lzY28/SuIBCghtZXRhZGF0YRLVAQrS
+      AXsibGFuZ2dyYXBoX3N0ZXAiOiAxLCAibGFuZ2dyYXBoX25vZGUiOiAibW9kZWwiLCAibGFuZ2dy
+      YXBoX3RyaWdnZXJzIjogWyJicmFuY2g6dG86bW9kZWwiXSwgImxhbmdncmFwaF9wYXRoIjogWyJf
+      X3ByZWdlbF9wdWxsIiwgIm1vZGVsIl0sICJsYW5nZ3JhcGhfY2hlY2twb2ludF9ucyI6ICJtb2Rl
+      bDoxYjhhMWY4ZS0yM2ZkLWUxYmItOGNlNi1kNzdhOWFkYWUxMzcifUoiChdvcGVuaW5mZXJlbmNl
+      LnNwYW4ua2luZBIHCgVDSEFJTnoCGAGFAQABAAAS6QYKECmdspQs6iol6FCEBv0cuNQSCAdGLnKR
+      I6bUIgi1f9m/ZcHbiyoLZ2V0X3dlYXRoZXIwATkA0M0awoGcGEEAFNMawoGcGEoqCgtpbnB1dC52
+      YWx1ZRIbChl7J2NpdHknOiAnU2FuIEZyYW5jaXNjbyd9SiUKD2lucHV0Lm1pbWVfdHlwZRISChBh
+      cHBsaWNhdGlvbi9qc29uSoMCCgxvdXRwdXQudmFsdWUS8gEK7wF7ImNvbnRlbnQiOiAiSXQncyBh
+      bHdheXMgc3VubnkgaW4gU2FuIEZyYW5jaXNjbyEiLCAiYWRkaXRpb25hbF9rd2FyZ3MiOiB7fSwg
+      InJlc3BvbnNlX21ldGFkYXRhIjoge30sICJ0eXBlIjogInRvb2wiLCAibmFtZSI6ICJnZXRfd2Vh
+      dGhlciIsICJpZCI6IG51bGwsICJ0b29sX2NhbGxfaWQiOiAiY2FsbF9WOXZBOVdhb1pURzlueTVE
+      cWQ1TXRaOHEiLCAiYXJ0aWZhY3QiOiBudWxsLCAic3RhdHVzIjogInN1Y2Nlc3MifUomChBvdXRw
+      dXQubWltZV90eXBlEhIKEGFwcGxpY2F0aW9uL2pzb25KGgoJdG9vbC5uYW1lEg0KC2dldF93ZWF0
+      aGVySjMKEHRvb2wuZGVzY3JpcHRpb24SHwodR2V0IHdlYXRoZXIgZm9yIGEgZ2l2ZW4gY2l0eS5K
+      oAIKCG1ldGFkYXRhEpMCCpACeyJsYW5nZ3JhcGhfc3RlcCI6IDIsICJsYW5nZ3JhcGhfbm9kZSI6
+      ICJ0b29scyIsICJsYW5nZ3JhcGhfdHJpZ2dlcnMiOiBbIl9fcHJlZ2VsX3B1c2giXSwgImxhbmdn
+      cmFwaF9wYXRoIjogWyJfX3ByZWdlbF9wdXNoIiwgMCwgZmFsc2VdLCAibGFuZ2dyYXBoX2NoZWNr
+      cG9pbnRfbnMiOiAidG9vbHM6NDg4ODUxMzUtODk1OS1hYTM2LTRkMzktMjdhMzczMjc5YTVjIiwg
+      ImNoZWNrcG9pbnRfbnMiOiAidG9vbHM6NDg4ODUxMzUtODk1OS1hYTM2LTRkMzktMjdhMzczMjc5
+      YTVjIn1KIQoXb3BlbmluZmVyZW5jZS5zcGFuLmtpbmQSBgoEVE9PTHoCGAGFAQABAAAS7xAKECmd
+      spQs6iol6FCEBv0cuNQSCLV/2b9lwduLIghuQP9IE9pIKCoFdG9vbHMwATkAg8UawoGcGEEA3Nga
+      woGcGEqSCwoLaW5wdXQudmFsdWUSggsK/wp7Il9fdHlwZSI6ICJ0b29sX2NhbGxfd2l0aF9jb250
+      ZXh0IiwgInRvb2xfY2FsbCI6IHsibmFtZSI6ICJnZXRfd2VhdGhlciIsICJhcmdzIjogeyJjaXR5
+      IjogIlNhbiBGcmFuY2lzY28ifSwgImlkIjogImNhbGxfVjl2QTlXYW9aVEc5bnk1RHFkNU10Wjhx
+      IiwgInR5cGUiOiAidG9vbF9jYWxsIn0sICJzdGF0ZSI6IHsibWVzc2FnZXMiOiBbeyJjb250ZW50
+      IjogIldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCAiYWRkaXRpb25hbF9r
+      d2FyZ3MiOiB7fSwgInJlc3BvbnNlX21ldGFkYXRhIjoge30sICJ0eXBlIjogImh1bWFuIiwgIm5h
+      bWUiOiBudWxsLCAiaWQiOiAiOGRiMDRiNjgtZWM4Ny00NzcxLTliODgtYzI3MDM1NzE4ZTAwIn0s
+      IHsiY29udGVudCI6ICIiLCAiYWRkaXRpb25hbF9rd2FyZ3MiOiB7InJlZnVzYWwiOiBudWxsfSwg
+      InJlc3BvbnNlX21ldGFkYXRhIjogeyJ0b2tlbl91c2FnZSI6IHsiY29tcGxldGlvbl90b2tlbnMi
+      OiAxNTIsICJwcm9tcHRfdG9rZW5zIjogMTQyLCAidG90YWxfdG9rZW5zIjogMjk0LCAiY29tcGxl
+      dGlvbl90b2tlbnNfZGV0YWlscyI6IHsiYWNjZXB0ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAwLCAi
+      YXVkaW9fdG9rZW5zIjogMCwgInJlYXNvbmluZ190b2tlbnMiOiAxMjgsICJyZWplY3RlZF9wcmVk
+      aWN0aW9uX3Rva2VucyI6IDB9LCAicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjogeyJhdWRpb190b2tl
+      bnMiOiAwLCAiY2FjaGVkX3Rva2VucyI6IDB9fSwgIm1vZGVsX3Byb3ZpZGVyIjogIm9wZW5haSIs
+      ICJtb2RlbF9uYW1lIjogImdwdC01LW5hbm8tMjAyNS0wOC0wNyIsICJzeXN0ZW1fZmluZ2VycHJp
+      bnQiOiBudWxsLCAiaWQiOiAiY2hhdGNtcGwtREoza2NtQ3BoeWxOUUNDbHFqeENzYWtjRWtJZmIi
+      LCAic2VydmljZV90aWVyIjogImRlZmF1bHQiLCAiZmluaXNoX3JlYXNvbiI6ICJ0b29sX2NhbGxz
+      IiwgImxvZ3Byb2JzIjogbnVsbH0sICJ0eXBlIjogImFpIiwgIm5hbWUiOiBudWxsLCAiaWQiOiAi
+      bGNfcnVuLS0wMTljZThmNi1lYjA0LTcyNDEtODZlNi02MTNkZmQ5M2I4YTItMCIsICJ0b29sX2Nh
+      bGxzIjogW3sibmFtZSI6ICJnZXRfd2VhdGhlciIsICJhcmdzIjogeyJjaXR5IjogIlNhbiBGcmFu
+      Y2lzY28ifSwgImlkIjogImNhbGxfVjl2QTlXYW9aVEc5bnk1RHFkNU10WjhxIiwgInR5cGUiOiAi
+      dG9vbF9jYWxsIn1dLCAiaW52YWxpZF90b29sX2NhbGxzIjogW10sICJ1c2FnZV9tZXRhZGF0YSI6
+      IHsiaW5wdXRfdG9rZW5zIjogMTQyLCAib3V0cHV0X3Rva2VucyI6IDE1MiwgInRvdGFsX3Rva2Vu
+      cyI6IDI5NCwgImlucHV0X3Rva2VuX2RldGFpbHMiOiB7ImF1ZGlvIjogMCwgImNhY2hlX3JlYWQi
+      OiAwfSwgIm91dHB1dF90b2tlbl9kZXRhaWxzIjogeyJhdWRpbyI6IDAsICJyZWFzb25pbmciOiAx
+      Mjh9fX1dfX1KJQoPaW5wdXQubWltZV90eXBlEhIKEGFwcGxpY2F0aW9uL2pzb25KtQIKDG91dHB1
+      dC52YWx1ZRKkAgqhAnsibWVzc2FnZXMiOiBbeyJjb250ZW50IjogIkl0J3MgYWx3YXlzIHN1bm55
+      IGluIFNhbiBGcmFuY2lzY28hIiwgImFkZGl0aW9uYWxfa3dhcmdzIjoge30sICJyZXNwb25zZV9t
+      ZXRhZGF0YSI6IHt9LCAidHlwZSI6ICJ0b29sIiwgIm5hbWUiOiAiZ2V0X3dlYXRoZXIiLCAiaWQi
+      OiAiYTI5YTc3MzAtN2JiMC00M2QxLWIwYTUtYWQxYzcyYmRiZjc3IiwgInRvb2xfY2FsbF9pZCI6
+      ICJjYWxsX1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cSIsICJhcnRpZmFjdCI6IG51bGwsICJzdGF0
+      dXMiOiAic3VjY2VzcyJ9XX1KJgoQb3V0cHV0Lm1pbWVfdHlwZRISChBhcHBsaWNhdGlvbi9qc29u
+      SuEBCghtZXRhZGF0YRLUAQrRAXsibGFuZ2dyYXBoX3N0ZXAiOiAyLCAibGFuZ2dyYXBoX25vZGUi
+      OiAidG9vbHMiLCAibGFuZ2dyYXBoX3RyaWdnZXJzIjogWyJfX3ByZWdlbF9wdXNoIl0sICJsYW5n
+      Z3JhcGhfcGF0aCI6IFsiX19wcmVnZWxfcHVzaCIsIDAsIGZhbHNlXSwgImxhbmdncmFwaF9jaGVj
+      a3BvaW50X25zIjogInRvb2xzOjQ4ODg1MTM1LTg5NTktYWEzNi00ZDM5LTI3YTM3MzI3OWE1YyJ9
+      SiIKF29wZW5pbmZlcmVuY2Uuc3Bhbi5raW5kEgcKBUNIQUlOegIYAYUBAAEAAA==
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '9451'
+      Content-Type:
+      - application/x-protobuf
+      Langsmith-Project:
+      - ''
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+    method: POST
+    uri: https://api.smith.langchain.com/otel/v1/traces
+  response:
+    body:
+      string: ''
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '0'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Date:
+      - Fri, 13 Mar 2026 20:50:27 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - b5bf822b7eb27a6c04f7bd8aaae37cba
+    status:
+      code: 200
+      message: OK
+- request:
+    body: !!binary |
+      CoFDCkAKGwoMc2VydmljZS5uYW1lEgsKCWxhbmdzbWl0aAohChtsYW5nc21pdGguaW50ZXJuYWxf
+      cHJvdmlkZXISAhABErxCCgsKCWxhbmdzbWl0aBLcEQoQrwZMloge9E1XVeNWR/FsXhIIz9dlW4HE
+      6Z0iCFWG85bT21HRKgV0b29sczABOQB3xxrCgZwYQQAg3BrCgZwYSh4KE2xhbmdzbWl0aC5zcGFu
+      LmtpbmQSBwoFY2hhaW5KHwoUbGFuZ3NtaXRoLnRyYWNlLm5hbWUSBwoFdG9vbHNKKQocbGFuZ3Nt
+      aXRoLnRyYWNlLnNlc3Npb25fbmFtZRIJCgdkZWZhdWx0SiAKFWdlbl9haS5vcGVyYXRpb24ubmFt
+      ZRIHCgVjaGFpbkocCg1nZW5fYWkuc3lzdGVtEgsKCWxhbmdjaGFpbkonCiFsYW5nc21pdGgubWV0
+      YWRhdGEubGFuZ2dyYXBoX3N0ZXASAhgCSiwKIWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhf
+      bm9kZRIHCgV0b29sc0o8CiVsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX3RyaWdnZXJzEhMq
+      EQoPCg1fX3ByZWdlbF9wdXNoSloKKmxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhfY2hlY2tw
+      b2ludF9ucxIsCip0b29sczo0ODg4NTEzNS04OTU5LWFhMzYtNGQzOS0yN2EzNzMyNzlhNWNKLgok
+      bGFuZ3NtaXRoLm1ldGFkYXRhLkxBTkdTTUlUSF9UUkFDSU5HEgYKBHRydWVKMwopbGFuZ3NtaXRo
+      Lm1ldGFkYXRhLkxBTkdTTUlUSF9PVEVMX0VOQUJMRUQSBgoEdHJ1ZUoxCh5sYW5nc21pdGgubWV0
+      YWRhdGEucmV2aXNpb25faWQSDwoNYzUxZjVmOS1kaXJ0eUolChNsYW5nc21pdGguc3Bhbi50YWdz
+      Eg4KDGdyYXBoOnN0ZXA6MkqXCgoNZ2VuX2FpLnByb21wdBKFCgqCCnsiX190eXBlIjoidG9vbF9j
+      YWxsX3dpdGhfY29udGV4dCIsInRvb2xfY2FsbCI6eyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJhcmdz
+      Ijp7ImNpdHkiOiJTYW4gRnJhbmNpc2NvIn0sImlkIjoiY2FsbF9WOXZBOVdhb1pURzlueTVEcWQ1
+      TXRaOHEiLCJ0eXBlIjoidG9vbF9jYWxsIn0sInN0YXRlIjp7Im1lc3NhZ2VzIjpbeyJjb250ZW50
+      IjoiV2hhdCBpcyB0aGUgd2VhdGhlciBpbiBTYW4gRnJhbmNpc2NvPyIsImFkZGl0aW9uYWxfa3dh
+      cmdzIjp7fSwicmVzcG9uc2VfbWV0YWRhdGEiOnt9LCJ0eXBlIjoiaHVtYW4iLCJpZCI6IjhkYjA0
+      YjY4LWVjODctNDc3MS05Yjg4LWMyNzAzNTcxOGUwMCJ9LHsiY29udGVudCI6IiIsImFkZGl0aW9u
+      YWxfa3dhcmdzIjp7InJlZnVzYWwiOm51bGx9LCJyZXNwb25zZV9tZXRhZGF0YSI6eyJ0b2tlbl91
+      c2FnZSI6eyJjb21wbGV0aW9uX3Rva2VucyI6MTUyLCJwcm9tcHRfdG9rZW5zIjoxNDIsInRvdGFs
+      X3Rva2VucyI6Mjk0LCJjb21wbGV0aW9uX3Rva2Vuc19kZXRhaWxzIjp7ImFjY2VwdGVkX3ByZWRp
+      Y3Rpb25fdG9rZW5zIjowLCJhdWRpb190b2tlbnMiOjAsInJlYXNvbmluZ190b2tlbnMiOjEyOCwi
+      cmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOjB9LCJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOnsi
+      YXVkaW9fdG9rZW5zIjowLCJjYWNoZWRfdG9rZW5zIjowfX0sIm1vZGVsX3Byb3ZpZGVyIjoib3Bl
+      bmFpIiwibW9kZWxfbmFtZSI6ImdwdC01LW5hbm8tMjAyNS0wOC0wNyIsInN5c3RlbV9maW5nZXJw
+      cmludCI6bnVsbCwiaWQiOiJjaGF0Y21wbC1ESjNrY21DcGh5bE5RQ0NscWp4Q3Nha2NFa0lmYiIs
+      InNlcnZpY2VfdGllciI6ImRlZmF1bHQiLCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyIsImxv
+      Z3Byb2JzIjpudWxsfSwidHlwZSI6ImFpIiwiaWQiOiJsY19ydW4tLTAxOWNlOGY2LWViMDQtNzI0
+      MS04NmU2LTYxM2RmZDkzYjhhMi0wIiwidG9vbF9jYWxscyI6W3sibmFtZSI6ImdldF93ZWF0aGVy
+      IiwiYXJncyI6eyJjaXR5IjoiU2FuIEZyYW5jaXNjbyJ9LCJpZCI6ImNhbGxfVjl2QTlXYW9aVEc5
+      bnk1RHFkNU10WjhxIiwidHlwZSI6InRvb2xfY2FsbCJ9XSwiaW52YWxpZF90b29sX2NhbGxzIjpb
+      XSwidXNhZ2VfbWV0YWRhdGEiOnsiaW5wdXRfdG9rZW5zIjoxNDIsIm91dHB1dF90b2tlbnMiOjE1
+      MiwidG90YWxfdG9rZW5zIjoyOTQsImlucHV0X3Rva2VuX2RldGFpbHMiOnsiYXVkaW8iOjAsImNh
+      Y2hlX3JlYWQiOjB9LCJvdXRwdXRfdG9rZW5fZGV0YWlscyI6eyJhdWRpbyI6MCwicmVhc29uaW5n
+      IjoxMjh9fX1dfX1KmAIKEWdlbl9haS5jb21wbGV0aW9uEoICCv8BeyJtZXNzYWdlcyI6W3siY29u
+      dGVudCI6Ikl0J3MgYWx3YXlzIHN1bm55IGluIFNhbiBGcmFuY2lzY28hIiwiYWRkaXRpb25hbF9r
+      d2FyZ3MiOnt9LCJyZXNwb25zZV9tZXRhZGF0YSI6e30sInR5cGUiOiJ0b29sIiwibmFtZSI6Imdl
+      dF93ZWF0aGVyIiwiaWQiOiJhMjlhNzczMC03YmIwLTQzZDEtYjBhNS1hZDFjNzJiZGJmNzciLCJ0
+      b29sX2NhbGxfaWQiOiJjYWxsX1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cSIsInN0YXR1cyI6InN1
+      Y2Nlc3MifV19egIYAYUBAAEAABKuCAoQrwZMloge9E1XVeNWR/FsXhIIHgg0XfHAJyIiCM/XZVuB
+      xOmdKgtnZXRfd2VhdGhlcjABOQD9zhrCgZwYQQBV1RrCgZwYSh0KE2xhbmdzbWl0aC5zcGFuLmtp
+      bmQSBgoEdG9vbEolChRsYW5nc21pdGgudHJhY2UubmFtZRINCgtnZXRfd2VhdGhlckopChxsYW5n
+      c21pdGgudHJhY2Uuc2Vzc2lvbl9uYW1lEgkKB2RlZmF1bHRKJwoVZ2VuX2FpLm9wZXJhdGlvbi5u
+      YW1lEg4KDGV4ZWN1dGVfdG9vbEocCg1nZW5fYWkuc3lzdGVtEgsKCWxhbmdjaGFpbkonCiFsYW5n
+      c21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX3N0ZXASAhgCSiwKIWxhbmdzbWl0aC5tZXRhZGF0YS5s
+      YW5nZ3JhcGhfbm9kZRIHCgV0b29sc0o8CiVsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX3Ry
+      aWdnZXJzEhMqEQoPCg1fX3ByZWdlbF9wdXNoSloKKmxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3Jh
+      cGhfY2hlY2twb2ludF9ucxIsCip0b29sczo0ODg4NTEzNS04OTU5LWFhMzYtNGQzOS0yN2EzNzMy
+      NzlhNWNKUAogbGFuZ3NtaXRoLm1ldGFkYXRhLmNoZWNrcG9pbnRfbnMSLAoqdG9vbHM6NDg4ODUx
+      MzUtODk1OS1hYTM2LTRkMzktMjdhMzczMjc5YTVjSi4KJGxhbmdzbWl0aC5tZXRhZGF0YS5MQU5H
+      U01JVEhfVFJBQ0lORxIGCgR0cnVlSjMKKWxhbmdzbWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfT1RF
+      TF9FTkFCTEVEEgYKBHRydWVKMQoebGFuZ3NtaXRoLm1ldGFkYXRhLnJldmlzaW9uX2lkEg8KDWM1
+      MWY1ZjktZGlydHlKIwoTbGFuZ3NtaXRoLnNwYW4udGFncxIMCgpzZXE6c3RlcDoxSjgKDWdlbl9h
+      aS5wcm9tcHQSJwoleyJpbnB1dCI6InsnY2l0eSc6ICdTYW4gRnJhbmNpc2NvJ30ifUroAQoRZ2Vu
+      X2FpLmNvbXBsZXRpb24S0gEKzwF7Im91dHB1dCI6eyJjb250ZW50IjoiSXQncyBhbHdheXMgc3Vu
+      bnkgaW4gU2FuIEZyYW5jaXNjbyEiLCJhZGRpdGlvbmFsX2t3YXJncyI6e30sInJlc3BvbnNlX21l
+      dGFkYXRhIjp7fSwidHlwZSI6InRvb2wiLCJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJ0b29sX2NhbGxf
+      aWQiOiJjYWxsX1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cSIsInN0YXR1cyI6InN1Y2Nlc3MifX16
+      AhgBhQEAAQAAEokPChCvBkyWiB70TVdV41ZH8WxeEgh6WiiEG2UyqSIIVYbzltPbUdEqBW1vZGVs
+      MAE5AFmHq8GBnBhBAA7BGsKBnBhKIAoVZ2VuX2FpLm9wZXJhdGlvbi5uYW1lEgcKBWNoYWluSh4K
+      E2xhbmdzbWl0aC5zcGFuLmtpbmQSBwoFY2hhaW5KHwoUbGFuZ3NtaXRoLnRyYWNlLm5hbWUSBwoF
+      bW9kZWxKKQocbGFuZ3NtaXRoLnRyYWNlLnNlc3Npb25fbmFtZRIJCgdkZWZhdWx0ShwKDWdlbl9h
+      aS5zeXN0ZW0SCwoJbGFuZ2NoYWluSicKIWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhfc3Rl
+      cBICGAFKLAohbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF9ub2RlEgcKBW1vZGVsSj4KJWxh
+      bmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhfdHJpZ2dlcnMSFSoTChEKD2JyYW5jaDp0bzptb2Rl
+      bEpBCiFsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX3BhdGgSHCoaCg8KDV9fcHJlZ2VsX3B1
+      bGwKBwoFbW9kZWxKWgoqbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF9jaGVja3BvaW50X25z
+      EiwKKm1vZGVsOjFiOGExZjhlLTIzZmQtZTFiYi04Y2U2LWQ3N2E5YWRhZTEzN0ouCiRsYW5nc21p
+      dGgubWV0YWRhdGEuTEFOR1NNSVRIX1RSQUNJTkcSBgoEdHJ1ZUozCilsYW5nc21pdGgubWV0YWRh
+      dGEuTEFOR1NNSVRIX09URUxfRU5BQkxFRBIGCgR0cnVlSjEKHmxhbmdzbWl0aC5tZXRhZGF0YS5y
+      ZXZpc2lvbl9pZBIPCg1jNTFmNWY5LWRpcnR5SiUKE2xhbmdzbWl0aC5zcGFuLnRhZ3MSDgoMZ3Jh
+      cGg6c3RlcDoxSsABCg1nZW5fYWkucHJvbXB0Eq4BCqsBeyJtZXNzYWdlcyI6W3siY29udGVudCI6
+      IldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCJhZGRpdGlvbmFsX2t3YXJn
+      cyI6e30sInJlc3BvbnNlX21ldGFkYXRhIjp7fSwidHlwZSI6Imh1bWFuIiwiaWQiOiI4ZGIwNGI2
+      OC1lYzg3LTQ3NzEtOWI4OC1jMjcwMzU3MThlMDAifV19StcHChFnZW5fYWkuY29tcGxldGlvbhLB
+      Bwq+B3sibWVzc2FnZXMiOlt7ImNvbnRlbnQiOiIiLCJhZGRpdGlvbmFsX2t3YXJncyI6eyJyZWZ1
+      c2FsIjpudWxsfSwicmVzcG9uc2VfbWV0YWRhdGEiOnsidG9rZW5fdXNhZ2UiOnsiY29tcGxldGlv
+      bl90b2tlbnMiOjE1MiwicHJvbXB0X3Rva2VucyI6MTQyLCJ0b3RhbF90b2tlbnMiOjI5NCwiY29t
+      cGxldGlvbl90b2tlbnNfZGV0YWlscyI6eyJhY2NlcHRlZF9wcmVkaWN0aW9uX3Rva2VucyI6MCwi
+      YXVkaW9fdG9rZW5zIjowLCJyZWFzb25pbmdfdG9rZW5zIjoxMjgsInJlamVjdGVkX3ByZWRpY3Rp
+      b25fdG9rZW5zIjowfSwicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjp7ImF1ZGlvX3Rva2VucyI6MCwi
+      Y2FjaGVkX3Rva2VucyI6MH19LCJtb2RlbF9wcm92aWRlciI6Im9wZW5haSIsIm1vZGVsX25hbWUi
+      OiJncHQtNS1uYW5vLTIwMjUtMDgtMDciLCJzeXN0ZW1fZmluZ2VycHJpbnQiOm51bGwsImlkIjoi
+      Y2hhdGNtcGwtREoza2NtQ3BoeWxOUUNDbHFqeENzYWtjRWtJZmIiLCJzZXJ2aWNlX3RpZXIiOiJk
+      ZWZhdWx0IiwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMiLCJsb2dwcm9icyI6bnVsbH0sInR5
+      cGUiOiJhaSIsImlkIjoibGNfcnVuLS0wMTljZThmNi1lYjA0LTcyNDEtODZlNi02MTNkZmQ5M2I4
+      YTItMCIsInRvb2xfY2FsbHMiOlt7Im5hbWUiOiJnZXRfd2VhdGhlciIsImFyZ3MiOnsiY2l0eSI6
+      IlNhbiBGcmFuY2lzY28ifSwiaWQiOiJjYWxsX1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cSIsInR5
+      cGUiOiJ0b29sX2NhbGwifV0sImludmFsaWRfdG9vbF9jYWxscyI6W10sInVzYWdlX21ldGFkYXRh
+      Ijp7ImlucHV0X3Rva2VucyI6MTQyLCJvdXRwdXRfdG9rZW5zIjoxNTIsInRvdGFsX3Rva2VucyI6
+      Mjk0LCJpbnB1dF90b2tlbl9kZXRhaWxzIjp7ImF1ZGlvIjowLCJjYWNoZV9yZWFkIjowfSwib3V0
+      cHV0X3Rva2VuX2RldGFpbHMiOnsiYXVkaW8iOjAsInJlYXNvbmluZyI6MTI4fX19XX16AhgBhQEA
+      AQAAEpAZChCvBkyWiB70TVdV41ZH8WxeEggH24r2WP9qQCIIeloohBtlMqkqCkNoYXRPcGVuQUkw
+      ATkAt52rwYGcGEEALLoawoGcGEofChVnZW5fYWkub3BlcmF0aW9uLm5hbWUSBgoEY2hhdEomChZn
+      ZW5fYWkuc2VyaWFsaXplZC5uYW1lEgwKCkNoYXRPcGVuQUlKHAoTbGFuZ3NtaXRoLnNwYW4ua2lu
+      ZBIFCgNsbG1KJAoUbGFuZ3NtaXRoLnRyYWNlLm5hbWUSDAoKQ2hhdE9wZW5BSUopChxsYW5nc21p
+      dGgudHJhY2Uuc2Vzc2lvbl9uYW1lEgkKB2RlZmF1bHRKGQoNZ2VuX2FpLnN5c3RlbRIICgZvcGVu
+      YWlKJAoUZ2VuX2FpLnJlcXVlc3QubW9kZWwSDAoKZ3B0LTUtbmFub0onCiFsYW5nc21pdGgubWV0
+      YWRhdGEubGFuZ2dyYXBoX3N0ZXASAhgBSiwKIWxhbmdzbWl0aC5tZXRhZGF0YS5sYW5nZ3JhcGhf
+      bm9kZRIHCgVtb2RlbEo+CiVsYW5nc21pdGgubWV0YWRhdGEubGFuZ2dyYXBoX3RyaWdnZXJzEhUq
+      EwoRCg9icmFuY2g6dG86bW9kZWxKQQohbGFuZ3NtaXRoLm1ldGFkYXRhLmxhbmdncmFwaF9wYXRo
+      EhwqGgoPCg1fX3ByZWdlbF9wdWxsCgcKBW1vZGVsSloKKmxhbmdzbWl0aC5tZXRhZGF0YS5sYW5n
+      Z3JhcGhfY2hlY2twb2ludF9ucxIsCiptb2RlbDoxYjhhMWY4ZS0yM2ZkLWUxYmItOGNlNi1kNzdh
+      OWFkYWUxMzdKUAogbGFuZ3NtaXRoLm1ldGFkYXRhLmNoZWNrcG9pbnRfbnMSLAoqbW9kZWw6MWI4
+      YTFmOGUtMjNmZC1lMWJiLThjZTYtZDc3YTlhZGFlMTM3SioKHmxhbmdzbWl0aC5tZXRhZGF0YS5s
+      c19wcm92aWRlchIICgZvcGVuYWlKMAogbGFuZ3NtaXRoLm1ldGFkYXRhLmxzX21vZGVsX25hbWUS
+      DAoKZ3B0LTUtbmFub0oqCiBsYW5nc21pdGgubWV0YWRhdGEubHNfbW9kZWxfdHlwZRIGCgRjaGF0
+      Si4KJGxhbmdzbWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfVFJBQ0lORxIGCgR0cnVlSjMKKWxhbmdz
+      bWl0aC5tZXRhZGF0YS5MQU5HU01JVEhfT1RFTF9FTkFCTEVEEgYKBHRydWVKMQoebGFuZ3NtaXRo
+      Lm1ldGFkYXRhLnJldmlzaW9uX2lkEg8KDWM1MWY1ZjktZGlydHlKIwoTbGFuZ3NtaXRoLnNwYW4u
+      dGFncxIMCgpzZXE6c3RlcDoxSokDCg1nZW5fYWkucHJvbXB0EvcCCvQCeyJtZXNzYWdlcyI6W1t7
+      ImxjIjoxLCJ0eXBlIjoiY29uc3RydWN0b3IiLCJpZCI6WyJsYW5nY2hhaW4iLCJzY2hlbWEiLCJt
+      ZXNzYWdlcyIsIlN5c3RlbU1lc3NhZ2UiXSwia3dhcmdzIjp7ImNvbnRlbnQiOiJZb3UgYXJlIGEg
+      aGVscGZ1bCBhc3Npc3RhbnQiLCJ0eXBlIjoic3lzdGVtIn19LHsibGMiOjEsInR5cGUiOiJjb25z
+      dHJ1Y3RvciIsImlkIjpbImxhbmdjaGFpbiIsInNjaGVtYSIsIm1lc3NhZ2VzIiwiSHVtYW5NZXNz
+      YWdlIl0sImt3YXJncyI6eyJjb250ZW50IjoiV2hhdCBpcyB0aGUgd2VhdGhlciBpbiBTYW4gRnJh
+      bmNpc2NvPyIsInR5cGUiOiJodW1hbiIsImlkIjoiOGRiMDRiNjgtZWM4Ny00NzcxLTliODgtYzI3
+      MDM1NzE4ZTAwIn19XV19SiAKGWdlbl9haS51c2FnZS5pbnB1dF90b2tlbnMSAxiOAUohChpnZW5f
+      YWkudXNhZ2Uub3V0cHV0X3Rva2VucxIDGJgBSiAKGWdlbl9haS51c2FnZS50b3RhbF90b2tlbnMS
+      AximAkqCDQoRZ2VuX2FpLmNvbXBsZXRpb24S7AwK6Qx7ImdlbmVyYXRpb25zIjpbW3sidGV4dCI6
+      IiIsImdlbmVyYXRpb25faW5mbyI6eyJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyIsImxvZ3By
+      b2JzIjpudWxsfSwidHlwZSI6IkNoYXRHZW5lcmF0aW9uIiwibWVzc2FnZSI6eyJsYyI6MSwidHlw
+      ZSI6ImNvbnN0cnVjdG9yIiwiaWQiOlsibGFuZ2NoYWluIiwic2NoZW1hIiwibWVzc2FnZXMiLCJB
+      SU1lc3NhZ2UiXSwia3dhcmdzIjp7ImNvbnRlbnQiOiIiLCJhZGRpdGlvbmFsX2t3YXJncyI6eyJy
+      ZWZ1c2FsIjpudWxsfSwicmVzcG9uc2VfbWV0YWRhdGEiOnsidG9rZW5fdXNhZ2UiOnsiY29tcGxl
+      dGlvbl90b2tlbnMiOjE1MiwicHJvbXB0X3Rva2VucyI6MTQyLCJ0b3RhbF90b2tlbnMiOjI5NCwi
+      Y29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6eyJhY2NlcHRlZF9wcmVkaWN0aW9uX3Rva2VucyI6
+      MCwiYXVkaW9fdG9rZW5zIjowLCJyZWFzb25pbmdfdG9rZW5zIjoxMjgsInJlamVjdGVkX3ByZWRp
+      Y3Rpb25fdG9rZW5zIjowfSwicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjp7ImF1ZGlvX3Rva2VucyI6
+      MCwiY2FjaGVkX3Rva2VucyI6MH19LCJtb2RlbF9wcm92aWRlciI6Im9wZW5haSIsIm1vZGVsX25h
+      bWUiOiJncHQtNS1uYW5vLTIwMjUtMDgtMDciLCJzeXN0ZW1fZmluZ2VycHJpbnQiOm51bGwsImlk
+      IjoiY2hhdGNtcGwtREoza2NtQ3BoeWxOUUNDbHFqeENzYWtjRWtJZmIiLCJzZXJ2aWNlX3RpZXIi
+      OiJkZWZhdWx0IiwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMiLCJsb2dwcm9icyI6bnVsbH0s
+      InR5cGUiOiJhaSIsImlkIjoibGNfcnVuLS0wMTljZThmNi1lYjA0LTcyNDEtODZlNi02MTNkZmQ5
+      M2I4YTItMCIsInRvb2xfY2FsbHMiOlt7Im5hbWUiOiJnZXRfd2VhdGhlciIsImFyZ3MiOnsiY2l0
+      eSI6IlNhbiBGcmFuY2lzY28ifSwiaWQiOiJjYWxsX1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cSIs
+      InR5cGUiOiJ0b29sX2NhbGwifV0sInVzYWdlX21ldGFkYXRhIjp7ImlucHV0X3Rva2VucyI6MTQy
+      LCJvdXRwdXRfdG9rZW5zIjoxNTIsInRvdGFsX3Rva2VucyI6Mjk0LCJpbnB1dF90b2tlbl9kZXRh
+      aWxzIjp7ImF1ZGlvIjowLCJjYWNoZV9yZWFkIjowfSwib3V0cHV0X3Rva2VuX2RldGFpbHMiOnsi
+      YXVkaW8iOjAsInJlYXNvbmluZyI6MTI4fX0sImludmFsaWRfdG9vbF9jYWxscyI6W119fX1dXSwi
+      bGxtX291dHB1dCI6eyJ0b2tlbl91c2FnZSI6eyJjb21wbGV0aW9uX3Rva2VucyI6MTUyLCJwcm9t
+      cHRfdG9rZW5zIjoxNDIsInRvdGFsX3Rva2VucyI6Mjk0LCJjb21wbGV0aW9uX3Rva2Vuc19kZXRh
+      aWxzIjp7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjowLCJhdWRpb190b2tlbnMiOjAsInJl
+      YXNvbmluZ190b2tlbnMiOjEyOCwicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMiOjB9LCJwcm9t
+      cHRfdG9rZW5zX2RldGFpbHMiOnsiYXVkaW9fdG9rZW5zIjowLCJjYWNoZWRfdG9rZW5zIjowfX0s
+      Im1vZGVsX3Byb3ZpZGVyIjoib3BlbmFpIiwibW9kZWxfbmFtZSI6ImdwdC01LW5hbm8tMjAyNS0w
+      OC0wNyIsInN5c3RlbV9maW5nZXJwcmludCI6bnVsbCwiaWQiOiJjaGF0Y21wbC1ESjNrY21DcGh5
+      bE5RQ0NscWp4Q3Nha2NFa0lmYiIsInNlcnZpY2VfdGllciI6ImRlZmF1bHQifSwicnVuIjpudWxs
+      LCJ0eXBlIjoiTExNUmVzdWx0In16AhgBhQEAAQAA
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '8580'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      langsmith-project:
+      - default
+    method: POST
+    uri: https://api.smith.langchain.com/otel/v1/traces
+  response:
+    body:
+      string: ''
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '0'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Date:
+      - Fri, 13 Mar 2026 20:50:27 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 6bbfaedd7040f97f794a3a31acb1a065
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"content":"You are a helpful assistant","role":"system"},{"content":"What
+      is the weather in San Francisco?","role":"user"},{"content":null,"role":"assistant","tool_calls":[{"type":"function","id":"call_V9vA9WaoZTG9ny5Dqd5MtZ8q","function":{"name":"get_weather","arguments":"{\"city\":
+      \"San Francisco\"}"}}]},{"content":"It''s always sunny in San Francisco!","role":"tool","tool_call_id":"call_V9vA9WaoZTG9ny5Dqd5MtZ8q"}],"model":"gpt-5-nano","stream":false,"tools":[{"type":"function","function":{"name":"get_weather","description":"Get
+      weather for a given city.","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '672'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.16.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.16.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.13
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/3VTyW7UQBC9z1cUvnCxI89MJs7kwgUSBsQikEAKiaymu2w30+62ekmwopHyEVz4
+        vXwJZc9iRyQXS65X79Xyqu8mAJEU0RlEvGKe141KXr+br3H2/s23i5vLjx/Ky2J1cl5+Li7W6Rfx
+        KYo7hvn5C7nfs464IR56afQW5haZx051mmXz4/kinR33QG0Eqo5WNj5ZJJppk8zS2SJJT5M025Er
+        Izk6yvpBvwB3/bdrUwv8TeE03kdqdI6VSLF9EgWtUV0kYs5J55n2UTyA3GiPuu/8LVp86YBBo1hb
+        BAWerfEMVv7h/i+F1S1rHbigdQtSw1em4dwyzaXj5sWVvtKrAloTKFmAkmsEmlklXtYIVETIbhsu
+        hhVwYjZBKeDBWqoNHusGLfPBYgxVqCUltzHc0nwxMC2oJVcZ66EwFjlz/gi+05bh1gQluprQWCzQ
+        Ptz/2UsOFcFY4meJYO2B/2q8AaIGxzoTNDU1ApjWxrNepNv99Q7ZHLZdSC1dldOcjoymDTpvmqhH
+        N/S97t0LjwyJGkun4XNv1tjLTrPTrV403MwITafLHeypFzVCpsssfkIyF+iZVG50AhFnvEIxcId7
+        YUFIMwImowH/b+gp7e3wUpeDyvLk+QIDwDk29CRysk5I/njsIc1i966eSzusum85cmhv6KXkXqLt
+        7BBYsKC25x651tGd5eRZibaxsr/5zvHJZvIPxjp2BPUDAAA=
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - 9dbde9249ef9a0f2-SJC
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:30 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-processing-ms:
+      - '6037'
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999970'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_5d453c3f186e4e999d8d0e1a0dcb3a47
+    status:
+      code: 200
+      message: OK
+- request:
+    body: !!binary |
+      CopnCpEBCiIKFnRlbGVtZXRyeS5zZGsubGFuZ3VhZ2USCAoGcHl0aG9uCiUKEnRlbGVtZXRyeS5z
+      ZGsubmFtZRIPCg1vcGVudGVsZW1ldHJ5CiEKFXRlbGVtZXRyeS5zZGsudmVyc2lvbhIICgYxLjM5
+      LjEKIQoMc2VydmljZS5uYW1lEhEKD3Vua25vd25fc2VydmljZRLzZQoxCidvcGVuaW5mZXJlbmNl
+      Lmluc3RydW1lbnRhdGlvbi5sYW5nY2hhaW4SBjAuMS41OBLGNAoQKZ2ylCzqKiXoUIQG/Ry41BII
+      UnTpSL74KaciCK95tELInvKFKgpDaGF0T3BlbkFJMAE5AKH0GsKBnBhBABsolMOBnBhKuA4KC2lu
+      cHV0LnZhbHVlEqgOCqUOeyJtZXNzYWdlcyI6IFtbeyJsYyI6IDEsICJ0eXBlIjogImNvbnN0cnVj
+      dG9yIiwgImlkIjogWyJsYW5nY2hhaW4iLCAic2NoZW1hIiwgIm1lc3NhZ2VzIiwgIlN5c3RlbU1l
+      c3NhZ2UiXSwgImt3YXJncyI6IHsiY29udGVudCI6ICJZb3UgYXJlIGEgaGVscGZ1bCBhc3Npc3Rh
+      bnQiLCAidHlwZSI6ICJzeXN0ZW0ifX0sIHsibGMiOiAxLCAidHlwZSI6ICJjb25zdHJ1Y3RvciIs
+      ICJpZCI6IFsibGFuZ2NoYWluIiwgInNjaGVtYSIsICJtZXNzYWdlcyIsICJIdW1hbk1lc3NhZ2Ui
+      XSwgImt3YXJncyI6IHsiY29udGVudCI6ICJXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBGcmFu
+      Y2lzY28/IiwgInR5cGUiOiAiaHVtYW4iLCAiaWQiOiAiOGRiMDRiNjgtZWM4Ny00NzcxLTliODgt
+      YzI3MDM1NzE4ZTAwIn19LCB7ImxjIjogMSwgInR5cGUiOiAiY29uc3RydWN0b3IiLCAiaWQiOiBb
+      ImxhbmdjaGFpbiIsICJzY2hlbWEiLCAibWVzc2FnZXMiLCAiQUlNZXNzYWdlIl0sICJrd2FyZ3Mi
+      OiB7ImNvbnRlbnQiOiAiIiwgImFkZGl0aW9uYWxfa3dhcmdzIjogeyJyZWZ1c2FsIjogbnVsbH0s
+      ICJyZXNwb25zZV9tZXRhZGF0YSI6IHsidG9rZW5fdXNhZ2UiOiB7ImNvbXBsZXRpb25fdG9rZW5z
+      IjogMTUyLCAicHJvbXB0X3Rva2VucyI6IDE0MiwgInRvdGFsX3Rva2VucyI6IDI5NCwgImNvbXBs
+      ZXRpb25fdG9rZW5zX2RldGFpbHMiOiB7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwg
+      ImF1ZGlvX3Rva2VucyI6IDAsICJyZWFzb25pbmdfdG9rZW5zIjogMTI4LCAicmVqZWN0ZWRfcHJl
+      ZGljdGlvbl90b2tlbnMiOiAwfSwgInByb21wdF90b2tlbnNfZGV0YWlscyI6IHsiYXVkaW9fdG9r
+      ZW5zIjogMCwgImNhY2hlZF90b2tlbnMiOiAwfX0sICJtb2RlbF9wcm92aWRlciI6ICJvcGVuYWki
+      LCAibW9kZWxfbmFtZSI6ICJncHQtNS1uYW5vLTIwMjUtMDgtMDciLCAic3lzdGVtX2ZpbmdlcnBy
+      aW50IjogbnVsbCwgImlkIjogImNoYXRjbXBsLURKM2tjbUNwaHlsTlFDQ2xxanhDc2FrY0VrSWZi
+      IiwgInNlcnZpY2VfdGllciI6ICJkZWZhdWx0IiwgImZpbmlzaF9yZWFzb24iOiAidG9vbF9jYWxs
+      cyIsICJsb2dwcm9icyI6IG51bGx9LCAidHlwZSI6ICJhaSIsICJpZCI6ICJsY19ydW4tLTAxOWNl
+      OGY2LWViMDQtNzI0MS04NmU2LTYxM2RmZDkzYjhhMi0wIiwgInRvb2xfY2FsbHMiOiBbeyJuYW1l
+      IjogImdldF93ZWF0aGVyIiwgImFyZ3MiOiB7ImNpdHkiOiAiU2FuIEZyYW5jaXNjbyJ9LCAiaWQi
+      OiAiY2FsbF9WOXZBOVdhb1pURzlueTVEcWQ1TXRaOHEiLCAidHlwZSI6ICJ0b29sX2NhbGwifV0s
+      ICJ1c2FnZV9tZXRhZGF0YSI6IHsiaW5wdXRfdG9rZW5zIjogMTQyLCAib3V0cHV0X3Rva2VucyI6
+      IDE1MiwgInRvdGFsX3Rva2VucyI6IDI5NCwgImlucHV0X3Rva2VuX2RldGFpbHMiOiB7ImF1ZGlv
+      IjogMCwgImNhY2hlX3JlYWQiOiAwfSwgIm91dHB1dF90b2tlbl9kZXRhaWxzIjogeyJhdWRpbyI6
+      IDAsICJyZWFzb25pbmciOiAxMjh9fSwgImludmFsaWRfdG9vbF9jYWxscyI6IFtdfX0sIHsibGMi
+      OiAxLCAidHlwZSI6ICJjb25zdHJ1Y3RvciIsICJpZCI6IFsibGFuZ2NoYWluIiwgInNjaGVtYSIs
+      ICJtZXNzYWdlcyIsICJUb29sTWVzc2FnZSJdLCAia3dhcmdzIjogeyJjb250ZW50IjogIkl0J3Mg
+      YWx3YXlzIHN1bm55IGluIFNhbiBGcmFuY2lzY28hIiwgInR5cGUiOiAidG9vbCIsICJuYW1lIjog
+      ImdldF93ZWF0aGVyIiwgImlkIjogImEyOWE3NzMwLTdiYjAtNDNkMS1iMGE1LWFkMWM3MmJkYmY3
+      NyIsICJ0b29sX2NhbGxfaWQiOiAiY2FsbF9WOXZBOVdhb1pURzlueTVEcWQ1TXRaOHEiLCAic3Rh
+      dHVzIjogInN1Y2Nlc3MifX1dXX1KJQoPaW5wdXQubWltZV90eXBlEhIKEGFwcGxpY2F0aW9uL2pz
+      b25K2RAKDG91dHB1dC52YWx1ZRLIEArFEHsiZ2VuZXJhdGlvbnMiOiBbW3sidGV4dCI6ICJIZXJl
+      J3MgYSBwbGF5ZnVsIHRha2U6IEl04oCZcyBhbHdheXMgc3VubnkgaW4gU2FuIEZyYW5jaXNjbyFc
+      blxuSWYgeW914oCZZCBsaWtlIHJlYWwtdGltZSBjb25kaXRpb25zLCBJIGNhbiBwdWxsIGN1cnJl
+      bnQgdGVtcGVyYXR1cmUsIGh1bWlkaXR5LCB3aW5kLCBhbmQgYSBzaG9ydCBmb3JlY2FzdC4gV2hh
+      dCB3b3VsZCB5b3UgcHJlZmVy4oCUY3VycmVudCBjb25kaXRpb25zIG9yIGEgNy1kYXkgZm9yZWNh
+      c3Q/IiwgImdlbmVyYXRpb25faW5mbyI6IHsiZmluaXNoX3JlYXNvbiI6ICJzdG9wIiwgImxvZ3By
+      b2JzIjogbnVsbH0sICJ0eXBlIjogIkNoYXRHZW5lcmF0aW9uIiwgIm1lc3NhZ2UiOiB7ImxjIjog
+      MSwgInR5cGUiOiAiY29uc3RydWN0b3IiLCAiaWQiOiBbImxhbmdjaGFpbiIsICJzY2hlbWEiLCAi
+      bWVzc2FnZXMiLCAiQUlNZXNzYWdlIl0sICJrd2FyZ3MiOiB7ImNvbnRlbnQiOiAiSGVyZSdzIGEg
+      cGxheWZ1bCB0YWtlOiBJdOKAmXMgYWx3YXlzIHN1bm55IGluIFNhbiBGcmFuY2lzY28hXG5cbklm
+      IHlvdeKAmWQgbGlrZSByZWFsLXRpbWUgY29uZGl0aW9ucywgSSBjYW4gcHVsbCBjdXJyZW50IHRl
+      bXBlcmF0dXJlLCBodW1pZGl0eSwgd2luZCwgYW5kIGEgc2hvcnQgZm9yZWNhc3QuIFdoYXQgd291
+      bGQgeW91IHByZWZlcuKAlGN1cnJlbnQgY29uZGl0aW9ucyBvciBhIDctZGF5IGZvcmVjYXN0PyIs
+      ICJhZGRpdGlvbmFsX2t3YXJncyI6IHsicmVmdXNhbCI6IG51bGx9LCAicmVzcG9uc2VfbWV0YWRh
+      dGEiOiB7InRva2VuX3VzYWdlIjogeyJjb21wbGV0aW9uX3Rva2VucyI6IDEwMTksICJwcm9tcHRf
+      dG9rZW5zIjogMTc4LCAidG90YWxfdG9rZW5zIjogMTE5NywgImNvbXBsZXRpb25fdG9rZW5zX2Rl
+      dGFpbHMiOiB7ImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwgImF1ZGlvX3Rva2VucyI6
+      IDAsICJyZWFzb25pbmdfdG9rZW5zIjogOTYwLCAicmVqZWN0ZWRfcHJlZGljdGlvbl90b2tlbnMi
+      OiAwfSwgInByb21wdF90b2tlbnNfZGV0YWlscyI6IHsiYXVkaW9fdG9rZW5zIjogMCwgImNhY2hl
+      ZF90b2tlbnMiOiAwfX0sICJtb2RlbF9wcm92aWRlciI6ICJvcGVuYWkiLCAibW9kZWxfbmFtZSI6
+      ICJncHQtNS1uYW5vLTIwMjUtMDgtMDciLCAic3lzdGVtX2ZpbmdlcnByaW50IjogbnVsbCwgImlk
+      IjogImNoYXRjbXBsLURKM2tlMktFVkd2Wk5NZ1pmSTZGZ1BmR2swUmRPIiwgInNlcnZpY2VfdGll
+      ciI6ICJkZWZhdWx0IiwgImZpbmlzaF9yZWFzb24iOiAic3RvcCIsICJsb2dwcm9icyI6IG51bGx9
+      LCAidHlwZSI6ICJhaSIsICJpZCI6ICJsY19ydW4tLTAxOWNlOGY2LWYyNTEtN2E5Mi1iMTEwLWYx
+      NzNkNTAwOGEwNC0wIiwgInVzYWdlX21ldGFkYXRhIjogeyJpbnB1dF90b2tlbnMiOiAxNzgsICJv
+      dXRwdXRfdG9rZW5zIjogMTAxOSwgInRvdGFsX3Rva2VucyI6IDExOTcsICJpbnB1dF90b2tlbl9k
+      ZXRhaWxzIjogeyJhdWRpbyI6IDAsICJjYWNoZV9yZWFkIjogMH0sICJvdXRwdXRfdG9rZW5fZGV0
+      YWlscyI6IHsiYXVkaW8iOiAwLCAicmVhc29uaW5nIjogOTYwfX0sICJ0b29sX2NhbGxzIjogW10s
+      ICJpbnZhbGlkX3Rvb2xfY2FsbHMiOiBbXX19fV1dLCAibGxtX291dHB1dCI6IHsidG9rZW5fdXNh
+      Z2UiOiB7ImNvbXBsZXRpb25fdG9rZW5zIjogMTAxOSwgInByb21wdF90b2tlbnMiOiAxNzgsICJ0
+      b3RhbF90b2tlbnMiOiAxMTk3LCAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsiYWNjZXB0
+      ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAwLCAiYXVkaW9fdG9rZW5zIjogMCwgInJlYXNvbmluZ190
+      b2tlbnMiOiA5NjAsICJyZWplY3RlZF9wcmVkaWN0aW9uX3Rva2VucyI6IDB9LCAicHJvbXB0X3Rv
+      a2Vuc19kZXRhaWxzIjogeyJhdWRpb190b2tlbnMiOiAwLCAiY2FjaGVkX3Rva2VucyI6IDB9fSwg
+      Im1vZGVsX3Byb3ZpZGVyIjogIm9wZW5haSIsICJtb2RlbF9uYW1lIjogImdwdC01LW5hbm8tMjAy
+      NS0wOC0wNyIsICJzeXN0ZW1fZmluZ2VycHJpbnQiOiBudWxsLCAiaWQiOiAiY2hhdGNtcGwtREoz
+      a2UyS0VWR3ZaTk1nWmZJNkZnUGZHazBSZE8iLCAic2VydmljZV90aWVyIjogImRlZmF1bHQifSwg
+      InJ1biI6IG51bGwsICJ0eXBlIjogIkxMTVJlc3VsdCJ9SiYKEG91dHB1dC5taW1lX3R5cGUSEgoQ
+      YXBwbGljYXRpb24vanNvbkotCiFsbG0uaW5wdXRfbWVzc2FnZXMuMC5tZXNzYWdlLnJvbGUSCAoG
+      c3lzdGVtSkUKJGxsbS5pbnB1dF9tZXNzYWdlcy4wLm1lc3NhZ2UuY29udGVudBIdChtZb3UgYXJl
+      IGEgaGVscGZ1bCBhc3Npc3RhbnRKKwohbGxtLmlucHV0X21lc3NhZ2VzLjEubWVzc2FnZS5yb2xl
+      EgYKBHVzZXJKTwokbGxtLmlucHV0X21lc3NhZ2VzLjEubWVzc2FnZS5jb250ZW50EicKJVdoYXQg
+      aXMgdGhlIHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz9KMAohbGxtLmlucHV0X21lc3NhZ2VzLjIu
+      bWVzc2FnZS5yb2xlEgsKCWFzc2lzdGFudEpZCjZsbG0uaW5wdXRfbWVzc2FnZXMuMi5tZXNzYWdl
+      LnRvb2xfY2FsbHMuMC50b29sX2NhbGwuaWQSHwodY2FsbF9WOXZBOVdhb1pURzlueTVEcWQ1TXRa
+      OHFKUgpBbGxtLmlucHV0X21lc3NhZ2VzLjIubWVzc2FnZS50b29sX2NhbGxzLjAudG9vbF9jYWxs
+      LmZ1bmN0aW9uLm5hbWUSDQoLZ2V0X3dlYXRoZXJKZQpGbGxtLmlucHV0X21lc3NhZ2VzLjIubWVz
+      c2FnZS50b29sX2NhbGxzLjAudG9vbF9jYWxsLmZ1bmN0aW9uLmFyZ3VtZW50cxIbChl7ImNpdHki
+      OiAiU2FuIEZyYW5jaXNjbyJ9SisKIWxsbS5pbnB1dF9tZXNzYWdlcy4zLm1lc3NhZ2Uucm9sZRIG
+      CgR0b29sSk0KJGxsbS5pbnB1dF9tZXNzYWdlcy4zLm1lc3NhZ2UuY29udGVudBIlCiNJdCdzIGFs
+      d2F5cyBzdW5ueSBpbiBTYW4gRnJhbmNpc2NvIUpMCilsbG0uaW5wdXRfbWVzc2FnZXMuMy5tZXNz
+      YWdlLnRvb2xfY2FsbF9pZBIfCh1jYWxsX1Y5dkE5V2FvWlRHOW55NURxZDVNdFo4cUoyCiFsbG0u
+      aW5wdXRfbWVzc2FnZXMuMy5tZXNzYWdlLm5hbWUSDQoLZ2V0X3dlYXRoZXJKMQoibGxtLm91dHB1
+      dF9tZXNzYWdlcy4wLm1lc3NhZ2Uucm9sZRILCglhc3Npc3RhbnRKlgIKJWxsbS5vdXRwdXRfbWVz
+      c2FnZXMuMC5tZXNzYWdlLmNvbnRlbnQS7AEK6QFIZXJlJ3MgYSBwbGF5ZnVsIHRha2U6IEl04oCZ
+      cyBhbHdheXMgc3VubnkgaW4gU2FuIEZyYW5jaXNjbyEKCklmIHlvdeKAmWQgbGlrZSByZWFsLXRp
+      bWUgY29uZGl0aW9ucywgSSBjYW4gcHVsbCBjdXJyZW50IHRlbXBlcmF0dXJlLCBodW1pZGl0eSwg
+      d2luZCwgYW5kIGEgc2hvcnQgZm9yZWNhc3QuIFdoYXQgd291bGQgeW91IHByZWZlcuKAlGN1cnJl
+      bnQgY29uZGl0aW9ucyBvciBhIDctZGF5IGZvcmVjYXN0P0rlAgoZbGxtLmludm9jYXRpb25fcGFy
+      YW1ldGVycxLHAgrEAnsibW9kZWwiOiAiZ3B0LTUtbmFubyIsICJtb2RlbF9uYW1lIjogImdwdC01
+      LW5hbm8iLCAic3RyZWFtIjogZmFsc2UsICJfdHlwZSI6ICJvcGVuYWktY2hhdCIsICJzdG9wIjog
+      bnVsbCwgInRvb2xzIjogW3sidHlwZSI6ICJmdW5jdGlvbiIsICJmdW5jdGlvbiI6IHsibmFtZSI6
+      ICJnZXRfd2VhdGhlciIsICJkZXNjcmlwdGlvbiI6ICJHZXQgd2VhdGhlciBmb3IgYSBnaXZlbiBj
+      aXR5LiIsICJwYXJhbWV0ZXJzIjogeyJwcm9wZXJ0aWVzIjogeyJjaXR5IjogeyJ0eXBlIjogInN0
+      cmluZyJ9fSwgInJlcXVpcmVkIjogWyJjaXR5Il0sICJ0eXBlIjogIm9iamVjdCJ9fX1dfUrxAQoc
+      bGxtLnRvb2xzLjAudG9vbC5qc29uX3NjaGVtYRLQAQrNAXsidHlwZSI6ICJmdW5jdGlvbiIsICJm
+      dW5jdGlvbiI6IHsibmFtZSI6ICJnZXRfd2VhdGhlciIsICJkZXNjcmlwdGlvbiI6ICJHZXQgd2Vh
+      dGhlciBmb3IgYSBnaXZlbiBjaXR5LiIsICJwYXJhbWV0ZXJzIjogeyJwcm9wZXJ0aWVzIjogeyJj
+      aXR5IjogeyJ0eXBlIjogInN0cmluZyJ9fSwgInJlcXVpcmVkIjogWyJjaXR5Il0sICJ0eXBlIjog
+      Im9iamVjdCJ9fX1KGAoMbGxtLnByb3ZpZGVyEggKBm9wZW5haUoWCgpsbG0uc3lzdGVtEggKBm9w
+      ZW5haUopCg5sbG0ubW9kZWxfbmFtZRIXChVncHQtNS1uYW5vLTIwMjUtMDgtMDdKHQoWbGxtLnRv
+      a2VuX2NvdW50LnByb21wdBIDGLIBSiEKGmxsbS50b2tlbl9jb3VudC5jb21wbGV0aW9uEgMY+wdK
+      HAoVbGxtLnRva2VuX2NvdW50LnRvdGFsEgMYrQlKLgoobGxtLnRva2VuX2NvdW50LmNvbXBsZXRp
+      b25fZGV0YWlscy5hdWRpbxICGABKMwosbGxtLnRva2VuX2NvdW50LmNvbXBsZXRpb25fZGV0YWls
+      cy5yZWFzb25pbmcSAxjAB0oqCiRsbG0udG9rZW5fY291bnQucHJvbXB0X2RldGFpbHMuYXVkaW8S
+      AhgASi8KKWxsbS50b2tlbl9jb3VudC5wcm9tcHRfZGV0YWlscy5jYWNoZV9yZWFkEgIYAEqKAwoI
+      bWV0YWRhdGES/QIK+gJ7ImxhbmdncmFwaF9zdGVwIjogMywgImxhbmdncmFwaF9ub2RlIjogIm1v
+      ZGVsIiwgImxhbmdncmFwaF90cmlnZ2VycyI6IFsiYnJhbmNoOnRvOm1vZGVsIl0sICJsYW5nZ3Jh
+      cGhfcGF0aCI6IFsiX19wcmVnZWxfcHVsbCIsICJtb2RlbCJdLCAibGFuZ2dyYXBoX2NoZWNrcG9p
+      bnRfbnMiOiAibW9kZWw6ZDQ5MmNiZDAtM2I0NC1iZWVmLWIyYmMtMzI1NjVkODVlMWU5IiwgImNo
+      ZWNrcG9pbnRfbnMiOiAibW9kZWw6ZDQ5MmNiZDAtM2I0NC1iZWVmLWIyYmMtMzI1NjVkODVlMWU5
+      IiwgImxzX3Byb3ZpZGVyIjogIm9wZW5haSIsICJsc19tb2RlbF9uYW1lIjogImdwdC01LW5hbm8i
+      LCAibHNfbW9kZWxfdHlwZSI6ICJjaGF0IiwgImxzX3RlbXBlcmF0dXJlIjogbnVsbH1KIAoXb3Bl
+      bmluZmVyZW5jZS5zcGFuLmtpbmQSBQoDTExNegIYAYUBAAEAABK1GQoQKZ2ylCzqKiXoUIQG/Ry4
+      1BIIr3m0Qsie8oUiCG5A/0gT2kgoKgVtb2RlbDABOQDh3xrCgZwYQQB2S5TDgZwYSvELCgtpbnB1
+      dC52YWx1ZRLhCwreC3sibWVzc2FnZXMiOiBbeyJjb250ZW50IjogIldoYXQgaXMgdGhlIHdlYXRo
+      ZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCAiYWRkaXRpb25hbF9rd2FyZ3MiOiB7fSwgInJlc3BvbnNl
+      X21ldGFkYXRhIjoge30sICJ0eXBlIjogImh1bWFuIiwgIm5hbWUiOiBudWxsLCAiaWQiOiAiOGRi
+      MDRiNjgtZWM4Ny00NzcxLTliODgtYzI3MDM1NzE4ZTAwIn0sIHsiY29udGVudCI6ICIiLCAiYWRk
+      aXRpb25hbF9rd2FyZ3MiOiB7InJlZnVzYWwiOiBudWxsfSwgInJlc3BvbnNlX21ldGFkYXRhIjog
+      eyJ0b2tlbl91c2FnZSI6IHsiY29tcGxldGlvbl90b2tlbnMiOiAxNTIsICJwcm9tcHRfdG9rZW5z
+      IjogMTQyLCAidG90YWxfdG9rZW5zIjogMjk0LCAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6
+      IHsiYWNjZXB0ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAwLCAiYXVkaW9fdG9rZW5zIjogMCwgInJl
+      YXNvbmluZ190b2tlbnMiOiAxMjgsICJyZWplY3RlZF9wcmVkaWN0aW9uX3Rva2VucyI6IDB9LCAi
+      cHJvbXB0X3Rva2Vuc19kZXRhaWxzIjogeyJhdWRpb190b2tlbnMiOiAwLCAiY2FjaGVkX3Rva2Vu
+      cyI6IDB9fSwgIm1vZGVsX3Byb3ZpZGVyIjogIm9wZW5haSIsICJtb2RlbF9uYW1lIjogImdwdC01
+      LW5hbm8tMjAyNS0wOC0wNyIsICJzeXN0ZW1fZmluZ2VycHJpbnQiOiBudWxsLCAiaWQiOiAiY2hh
+      dGNtcGwtREoza2NtQ3BoeWxOUUNDbHFqeENzYWtjRWtJZmIiLCAic2VydmljZV90aWVyIjogImRl
+      ZmF1bHQiLCAiZmluaXNoX3JlYXNvbiI6ICJ0b29sX2NhbGxzIiwgImxvZ3Byb2JzIjogbnVsbH0s
+      ICJ0eXBlIjogImFpIiwgIm5hbWUiOiBudWxsLCAiaWQiOiAibGNfcnVuLS0wMTljZThmNi1lYjA0
+      LTcyNDEtODZlNi02MTNkZmQ5M2I4YTItMCIsICJ0b29sX2NhbGxzIjogW3sibmFtZSI6ICJnZXRf
+      d2VhdGhlciIsICJhcmdzIjogeyJjaXR5IjogIlNhbiBGcmFuY2lzY28ifSwgImlkIjogImNhbGxf
+      Vjl2QTlXYW9aVEc5bnk1RHFkNU10WjhxIiwgInR5cGUiOiAidG9vbF9jYWxsIn1dLCAiaW52YWxp
+      ZF90b29sX2NhbGxzIjogW10sICJ1c2FnZV9tZXRhZGF0YSI6IHsiaW5wdXRfdG9rZW5zIjogMTQy
+      LCAib3V0cHV0X3Rva2VucyI6IDE1MiwgInRvdGFsX3Rva2VucyI6IDI5NCwgImlucHV0X3Rva2Vu
+      X2RldGFpbHMiOiB7ImF1ZGlvIjogMCwgImNhY2hlX3JlYWQiOiAwfSwgIm91dHB1dF90b2tlbl9k
+      ZXRhaWxzIjogeyJhdWRpbyI6IDAsICJyZWFzb25pbmciOiAxMjh9fX0sIHsiY29udGVudCI6ICJJ
+      dCdzIGFsd2F5cyBzdW5ueSBpbiBTYW4gRnJhbmNpc2NvISIsICJhZGRpdGlvbmFsX2t3YXJncyI6
+      IHt9LCAicmVzcG9uc2VfbWV0YWRhdGEiOiB7fSwgInR5cGUiOiAidG9vbCIsICJuYW1lIjogImdl
+      dF93ZWF0aGVyIiwgImlkIjogImEyOWE3NzMwLTdiYjAtNDNkMS1iMGE1LWFkMWM3MmJkYmY3NyIs
+      ICJ0b29sX2NhbGxfaWQiOiAiY2FsbF9WOXZBOVdhb1pURzlueTVEcWQ1TXRaOHEiLCAiYXJ0aWZh
+      Y3QiOiBudWxsLCAic3RhdHVzIjogInN1Y2Nlc3MifV19SiUKD2lucHV0Lm1pbWVfdHlwZRISChBh
+      cHBsaWNhdGlvbi9qc29uSp0JCgxvdXRwdXQudmFsdWUSjAkKiQl7Im1lc3NhZ2VzIjogW3siY29u
+      dGVudCI6ICJIZXJlJ3MgYSBwbGF5ZnVsIHRha2U6IEl04oCZcyBhbHdheXMgc3VubnkgaW4gU2Fu
+      IEZyYW5jaXNjbyFcblxuSWYgeW914oCZZCBsaWtlIHJlYWwtdGltZSBjb25kaXRpb25zLCBJIGNh
+      biBwdWxsIGN1cnJlbnQgdGVtcGVyYXR1cmUsIGh1bWlkaXR5LCB3aW5kLCBhbmQgYSBzaG9ydCBm
+      b3JlY2FzdC4gV2hhdCB3b3VsZCB5b3UgcHJlZmVy4oCUY3VycmVudCBjb25kaXRpb25zIG9yIGEg
+      Ny1kYXkgZm9yZWNhc3Q/IiwgImFkZGl0aW9uYWxfa3dhcmdzIjogeyJyZWZ1c2FsIjogbnVsbH0s
+      ICJyZXNwb25zZV9tZXRhZGF0YSI6IHsidG9rZW5fdXNhZ2UiOiB7ImNvbXBsZXRpb25fdG9rZW5z
+      IjogMTAxOSwgInByb21wdF90b2tlbnMiOiAxNzgsICJ0b3RhbF90b2tlbnMiOiAxMTk3LCAiY29t
+      cGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsiYWNjZXB0ZWRfcHJlZGljdGlvbl90b2tlbnMiOiAw
+      LCAiYXVkaW9fdG9rZW5zIjogMCwgInJlYXNvbmluZ190b2tlbnMiOiA5NjAsICJyZWplY3RlZF9w
+      cmVkaWN0aW9uX3Rva2VucyI6IDB9LCAicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjogeyJhdWRpb190
+      b2tlbnMiOiAwLCAiY2FjaGVkX3Rva2VucyI6IDB9fSwgIm1vZGVsX3Byb3ZpZGVyIjogIm9wZW5h
+      aSIsICJtb2RlbF9uYW1lIjogImdwdC01LW5hbm8tMjAyNS0wOC0wNyIsICJzeXN0ZW1fZmluZ2Vy
+      cHJpbnQiOiBudWxsLCAiaWQiOiAiY2hhdGNtcGwtREoza2UyS0VWR3ZaTk1nWmZJNkZnUGZHazBS
+      ZE8iLCAic2VydmljZV90aWVyIjogImRlZmF1bHQiLCAiZmluaXNoX3JlYXNvbiI6ICJzdG9wIiwg
+      ImxvZ3Byb2JzIjogbnVsbH0sICJ0eXBlIjogImFpIiwgIm5hbWUiOiBudWxsLCAiaWQiOiAibGNf
+      cnVuLS0wMTljZThmNi1mMjUxLTdhOTItYjExMC1mMTczZDUwMDhhMDQtMCIsICJ0b29sX2NhbGxz
+      IjogW10sICJpbnZhbGlkX3Rvb2xfY2FsbHMiOiBbXSwgInVzYWdlX21ldGFkYXRhIjogeyJpbnB1
+      dF90b2tlbnMiOiAxNzgsICJvdXRwdXRfdG9rZW5zIjogMTAxOSwgInRvdGFsX3Rva2VucyI6IDEx
+      OTcsICJpbnB1dF90b2tlbl9kZXRhaWxzIjogeyJhdWRpbyI6IDAsICJjYWNoZV9yZWFkIjogMH0s
+      ICJvdXRwdXRfdG9rZW5fZGV0YWlscyI6IHsiYXVkaW8iOiAwLCAicmVhc29uaW5nIjogOTYwfX19
+      XX1KJgoQb3V0cHV0Lm1pbWVfdHlwZRISChBhcHBsaWNhdGlvbi9qc29uSisKIWxsbS5pbnB1dF9t
+      ZXNzYWdlcy4wLm1lc3NhZ2Uucm9sZRIGCgR1c2VySk8KJGxsbS5pbnB1dF9tZXNzYWdlcy4wLm1l
+      c3NhZ2UuY29udGVudBInCiVXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBGcmFuY2lzY28/SuIB
+      CghtZXRhZGF0YRLVAQrSAXsibGFuZ2dyYXBoX3N0ZXAiOiAzLCAibGFuZ2dyYXBoX25vZGUiOiAi
+      bW9kZWwiLCAibGFuZ2dyYXBoX3RyaWdnZXJzIjogWyJicmFuY2g6dG86bW9kZWwiXSwgImxhbmdn
+      cmFwaF9wYXRoIjogWyJfX3ByZWdlbF9wdWxsIiwgIm1vZGVsIl0sICJsYW5nZ3JhcGhfY2hlY2tw
+      b2ludF9ucyI6ICJtb2RlbDpkNDkyY2JkMC0zYjQ0LWJlZWYtYjJiYy0zMjU2NWQ4NWUxZTkifUoi
+      ChdvcGVuaW5mZXJlbmNlLnNwYW4ua2luZBIHCgVDSEFJTnoCGAGFAQABAAASvBcKECmdspQs6iol
+      6FCEBv0cuNQSCG5A/0gT2kgoKglMYW5nR3JhcGgwATkAcHyrwYGcGEEAll2Uw4GcGEplCgtpbnB1
+      dC52YWx1ZRJWClR7Im1lc3NhZ2VzIjogW3sicm9sZSI6ICJ1c2VyIiwgImNvbnRlbnQiOiAiV2hh
+      dCBpcyB0aGUgd2VhdGhlciBpbiBTYW4gRnJhbmNpc2NvPyJ9XX1KJQoPaW5wdXQubWltZV90eXBl
+      EhIKEGFwcGxpY2F0aW9uL2pzb25K7RQKDG91dHB1dC52YWx1ZRLcFArZFHsibWVzc2FnZXMiOiBb
+      eyJjb250ZW50IjogIldoYXQgaXMgdGhlIHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCAiYWRk
+      aXRpb25hbF9rd2FyZ3MiOiB7fSwgInJlc3BvbnNlX21ldGFkYXRhIjoge30sICJ0eXBlIjogImh1
+      bWFuIiwgIm5hbWUiOiBudWxsLCAiaWQiOiAiOGRiMDRiNjgtZWM4Ny00NzcxLTliODgtYzI3MDM1
+      NzE4ZTAwIn0sIHsiY29udGVudCI6ICIiLCAiYWRkaXRpb25hbF9rd2FyZ3MiOiB7InJlZnVzYWwi
+      OiBudWxsfSwgInJlc3BvbnNlX21ldGFkYXRhIjogeyJ0b2tlbl91c2FnZSI6IHsiY29tcGxldGlv
+      bl90b2tlbnMiOiAxNTIsICJwcm9tcHRfdG9rZW5zIjogMTQyLCAidG90YWxfdG9rZW5zIjogMjk0
+      LCAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsiYWNjZXB0ZWRfcHJlZGljdGlvbl90b2tl
+      bnMiOiAwLCAiYXVkaW9fdG9rZW5zIjogMCwgInJlYXNvbmluZ190b2tlbnMiOiAxMjgsICJyZWpl
+      Y3RlZF9wcmVkaWN0aW9uX3Rva2VucyI6IDB9LCAicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjogeyJh
+      dWRpb190b2tlbnMiOiAwLCAiY2FjaGVkX3Rva2VucyI6IDB9fSwgIm1vZGVsX3Byb3ZpZGVyIjog
+      Im9wZW5haSIsICJtb2RlbF9uYW1lIjogImdwdC01LW5hbm8tMjAyNS0wOC0wNyIsICJzeXN0ZW1f
+      ZmluZ2VycHJpbnQiOiBudWxsLCAiaWQiOiAiY2hhdGNtcGwtREoza2NtQ3BoeWxOUUNDbHFqeENz
+      YWtjRWtJZmIiLCAic2VydmljZV90aWVyIjogImRlZmF1bHQiLCAiZmluaXNoX3JlYXNvbiI6ICJ0
+      b29sX2NhbGxzIiwgImxvZ3Byb2JzIjogbnVsbH0sICJ0eXBlIjogImFpIiwgIm5hbWUiOiBudWxs
+      LCAiaWQiOiAibGNfcnVuLS0wMTljZThmNi1lYjA0LTcyNDEtODZlNi02MTNkZmQ5M2I4YTItMCIs
+      ICJ0b29sX2NhbGxzIjogW3sibmFtZSI6ICJnZXRfd2VhdGhlciIsICJhcmdzIjogeyJjaXR5Ijog
+      IlNhbiBGcmFuY2lzY28ifSwgImlkIjogImNhbGxfVjl2QTlXYW9aVEc5bnk1RHFkNU10WjhxIiwg
+      InR5cGUiOiAidG9vbF9jYWxsIn1dLCAiaW52YWxpZF90b29sX2NhbGxzIjogW10sICJ1c2FnZV9t
+      ZXRhZGF0YSI6IHsiaW5wdXRfdG9rZW5zIjogMTQyLCAib3V0cHV0X3Rva2VucyI6IDE1MiwgInRv
+      dGFsX3Rva2VucyI6IDI5NCwgImlucHV0X3Rva2VuX2RldGFpbHMiOiB7ImF1ZGlvIjogMCwgImNh
+      Y2hlX3JlYWQiOiAwfSwgIm91dHB1dF90b2tlbl9kZXRhaWxzIjogeyJhdWRpbyI6IDAsICJyZWFz
+      b25pbmciOiAxMjh9fX0sIHsiY29udGVudCI6ICJJdCdzIGFsd2F5cyBzdW5ueSBpbiBTYW4gRnJh
+      bmNpc2NvISIsICJhZGRpdGlvbmFsX2t3YXJncyI6IHt9LCAicmVzcG9uc2VfbWV0YWRhdGEiOiB7
+      fSwgInR5cGUiOiAidG9vbCIsICJuYW1lIjogImdldF93ZWF0aGVyIiwgImlkIjogImEyOWE3NzMw
+      LTdiYjAtNDNkMS1iMGE1LWFkMWM3MmJkYmY3NyIsICJ0b29sX2NhbGxfaWQiOiAiY2FsbF9WOXZB
+      OVdhb1pURzlueTVEcWQ1TXRaOHEiLCAiYXJ0aWZhY3QiOiBudWxsLCAic3RhdHVzIjogInN1Y2Nl
+      c3MifSwgeyJjb250ZW50IjogIkhlcmUncyBhIHBsYXlmdWwgdGFrZTogSXTigJlzIGFsd2F5cyBz
+      dW5ueSBpbiBTYW4gRnJhbmNpc2NvIVxuXG5JZiB5b3XigJlkIGxpa2UgcmVhbC10aW1lIGNvbmRp
+      dGlvbnMsIEkgY2FuIHB1bGwgY3VycmVudCB0ZW1wZXJhdHVyZSwgaHVtaWRpdHksIHdpbmQsIGFu
+      ZCBhIHNob3J0IGZvcmVjYXN0LiBXaGF0IHdvdWxkIHlvdSBwcmVmZXLigJRjdXJyZW50IGNvbmRp
+      dGlvbnMgb3IgYSA3LWRheSBmb3JlY2FzdD8iLCAiYWRkaXRpb25hbF9rd2FyZ3MiOiB7InJlZnVz
+      YWwiOiBudWxsfSwgInJlc3BvbnNlX21ldGFkYXRhIjogeyJ0b2tlbl91c2FnZSI6IHsiY29tcGxl
+      dGlvbl90b2tlbnMiOiAxMDE5LCAicHJvbXB0X3Rva2VucyI6IDE3OCwgInRvdGFsX3Rva2VucyI6
+      IDExOTcsICJjb21wbGV0aW9uX3Rva2Vuc19kZXRhaWxzIjogeyJhY2NlcHRlZF9wcmVkaWN0aW9u
+      X3Rva2VucyI6IDAsICJhdWRpb190b2tlbnMiOiAwLCAicmVhc29uaW5nX3Rva2VucyI6IDk2MCwg
+      InJlamVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMH0sICJwcm9tcHRfdG9rZW5zX2RldGFpbHMi
+      OiB7ImF1ZGlvX3Rva2VucyI6IDAsICJjYWNoZWRfdG9rZW5zIjogMH19LCAibW9kZWxfcHJvdmlk
+      ZXIiOiAib3BlbmFpIiwgIm1vZGVsX25hbWUiOiAiZ3B0LTUtbmFuby0yMDI1LTA4LTA3IiwgInN5
+      c3RlbV9maW5nZXJwcmludCI6IG51bGwsICJpZCI6ICJjaGF0Y21wbC1ESjNrZTJLRVZHdlpOTWda
+      Zkk2RmdQZkdrMFJkTyIsICJzZXJ2aWNlX3RpZXIiOiAiZGVmYXVsdCIsICJmaW5pc2hfcmVhc29u
+      IjogInN0b3AiLCAibG9ncHJvYnMiOiBudWxsfSwgInR5cGUiOiAiYWkiLCAibmFtZSI6IG51bGws
+      ICJpZCI6ICJsY19ydW4tLTAxOWNlOGY2LWYyNTEtN2E5Mi1iMTEwLWYxNzNkNTAwOGEwNC0wIiwg
+      InRvb2xfY2FsbHMiOiBbXSwgImludmFsaWRfdG9vbF9jYWxscyI6IFtdLCAidXNhZ2VfbWV0YWRh
+      dGEiOiB7ImlucHV0X3Rva2VucyI6IDE3OCwgIm91dHB1dF90b2tlbnMiOiAxMDE5LCAidG90YWxf
+      dG9rZW5zIjogMTE5NywgImlucHV0X3Rva2VuX2RldGFpbHMiOiB7ImF1ZGlvIjogMCwgImNhY2hl
+      X3JlYWQiOiAwfSwgIm91dHB1dF90b2tlbl9kZXRhaWxzIjogeyJhdWRpbyI6IDAsICJyZWFzb25p
+      bmciOiA5NjB9fX1dfUomChBvdXRwdXQubWltZV90eXBlEhIKEGFwcGxpY2F0aW9uL2pzb25KKwoh
+      bGxtLmlucHV0X21lc3NhZ2VzLjAubWVzc2FnZS5yb2xlEgYKBHVzZXJKIgoXb3BlbmluZmVyZW5j
+      ZS5zcGFuLmtpbmQSBwoFQ0hBSU56AhgBhQEAAQAA
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '13197'
+      Content-Type:
+      - application/x-protobuf
+      Langsmith-Project:
+      - ''
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+    method: POST
+    uri: https://api.smith.langchain.com/otel/v1/traces
+  response:
+    body:
+      string: ''
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '0'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Date:
+      - Fri, 13 Mar 2026 20:50:30 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 8a713b77a1695a6dfe4ccf40ca89ffd8
+    status:
+      code: 200
+      message: OK
+version: 1

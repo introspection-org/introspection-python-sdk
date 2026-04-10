@@ -1,0 +1,236 @@
+interactions:
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"system","content":"You
+      are a helpful weather assistant."},{"role":"user","content":"What''s the weather
+      in Tokyo?"}],"model":"gpt-5-nano","stream":false,"tool_choice":"auto","tools":[{"name":"get_weather","parameters":{"additionalProperties":false,"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"},"type":"function","description":"Get
+      the current weather information for a specified city.","strict":true}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '493'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_00b8a328531887650069d47ed2338081979efabb3648754630\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533778,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533779,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_00b8a328531887650069d47ed2797081979a0b824e2493ff55\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7UIbXcZ_VyRTWr_gl9GXBKt4P-Ii-BKNyp-CHevrjpcOqAitejp-6SyvOiEGMLrFjM1eRjzLXy12Zu4ZRTqg-_7yHDMeSx1rykCqIVpHkoc0nynPUVbudHcFOIP66yBSr3RT1glyT-hy-DxqzOpFV4ldEHaiKDsm7YeZxIccS7zOKIkfoVuXvM0jqocV-dA7hDggUcy6pUQvV7GY5OCXZhK3rhmYhz5E1QPNevh7FFjiblOV2S93p9qwynEQ4k9sX-e_IkJcQnjdbN3f4a2FN23Zj1v1sbCWb5MMT5C_F_hd2dnFxCiGs9I8JCXWMbTeyBqzF_1FRHiVV6Ob-Gg6BpQnW4heh-HubqUkTbKNzFMOg3OOAa-eknV7oH-QkJQK2xtsXnSsP1eIcBBUShvexxtgajOG3iq0G9g-0sVuJq-eLTEgwX2EAsc7RFYlNIDlepSTb7ZFsfdYAGPkWwqkW38IjICiggwSgqUtQzIQJwJ6JJ_RPHT0wnbWpJo_H9GB8UNTRSQ74Xibv5BLwNTFo47ZAuxSPWUoKKE8T1QLHd5RIYFLIKbKY34v0hLUNOYUgcKvsqKxmLzoqcI6wQ9nUzN7vgGGT1cPnVd8mIy9hBouH2aHM7mojtESEowkdU2NM2jrTF_MB8odz9ZKrAlkudAQsd_Q44PNdRkuUBC6R0h2nd-dykyuf9yLqAAl-I6cNDc10MUXO-Udu4CrtiKxUfryuV5vj3s4KXop2_69q-agx9rGwy8QiOTseqYUygzctrWSbpC1hOm_zzC7Iwpvd9dyr0B8vxsS5OjTAqtsbflYBzD5xO6dWqBoZhT_yuYyHUNCnQSQcUsLGFgtCcF5LYJRIqHFTt0tCwJYMsPD7D_sz9rCV1qNHmGiyVZQf1T1dAZawqNopqAivWZrgCMLy2GbQtZEUYVFFui5zoWwLK-WzoBuac4JpgOGf0XbD2dPjt2FR55PXxHBSgANTObBlhg3991lkDtPYBBxvyKuYsSGyes2RRr4pwbe2HH-CaueQ0F0u1IiyeSna4kJx8GRqJw2n0xQ2iSeXi2I8jZg0Vl6WTlfAuh56abF64eZYO6STn35dyK3iL-Y6cNJMVFlNEbfCIIUv7UjmwUaIQ6Nl25ZojlgXoyTIbvFYLy5tbEAdT4ZOGgI_Xr_gBLgGkbycdmlGPNYhVI9OxF47UPmAsTikOYcHGDkt5ISYDckrGRY8Yzt3Xbh59jhKnclkqqObe2tOBt2SP3B90iyWCO6FMesls1qPu7056YEFe_2PWw5sYDSdSjmyQv9ZKkNkKP_XViv_9bYOWGH52cUr9ZBB6_nggisXOii1VkHETCsL8Lo1bzwcd4xxcDp-1-KeH8vhNgjwXNgEcdnspemfYSOefKPxAvsKy71jza6c3WzlsdlxK4whDm341tkEjjgLpUjXKTUJxXDe4sd76HrMTb_QBwxkdrzfZd80_I53azyCEL48c1-xXo25-2xMAUoxsfuBA8MQ-sKL0FmPySow76E2jml4abEnBmcYrOrShOsslAFStJ6cNNx4VhYDPB-UhEcBDtZg7DRoey71-8wPdTp6tgHAMb8srfk4ir5q35GgQ1yG1qGeW2KRXlvLXbxc7dRrn6d13beHbyQ6eyiLIqD_7gsijYFC4mwK-vvYR5ZQy8BIKYuDcYbs2-IHoi2Lg2Ut08F5pZl-7qBRWGhVIAgygAmZ-6ed71qHZ28gdZRrafmoDoH5-JzkSry18TlgDAB00b9wLpa2ugN5Rx90EuOWhAMY=\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"fc_00b8a328531887650069d47ed3c90c8197b3b4be6676a6aa1c\",\n
+        \     \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"city\\\":\\\"Tokyo\\\"}\",\n      \"call_id\": \"call_FcfcuqCq1tRgNqbUY43pnqDA\",\n
+        \     \"name\": \"get_weather\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n
+        \ \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Get the current weather information
+        for a specified city.\",\n      \"name\": \"get_weather\",\n      \"parameters\":
+        {\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"city\":
+        {\n            \"type\": \"string\"\n          }\n        },\n        \"required\":
+        [\n          \"city\"\n        ],\n        \"type\": \"object\"\n      },\n
+        \     \"strict\": true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\":
+        1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        63,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 165,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        128\n    },\n    \"total_tokens\": 228\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      CF-RAY:
+      - 9e86104169039033-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:40 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '3836'
+      openai-processing-ms:
+      - '1963'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_ac27c8c31bf94fde8ceccbfebd5b7b52
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"system","content":"You
+      are a helpful weather assistant."},{"role":"user","content":"What''s the weather
+      in Tokyo?"},{"id":"rs_00b8a328531887650069d47ed2797081979a0b824e2493ff55","summary":[],"encrypted_content":"gAAAAABp1H7UIbXcZ_VyRTWr_gl9GXBKt4P-Ii-BKNyp-CHevrjpcOqAitejp-6SyvOiEGMLrFjM1eRjzLXy12Zu4ZRTqg-_7yHDMeSx1rykCqIVpHkoc0nynPUVbudHcFOIP66yBSr3RT1glyT-hy-DxqzOpFV4ldEHaiKDsm7YeZxIccS7zOKIkfoVuXvM0jqocV-dA7hDggUcy6pUQvV7GY5OCXZhK3rhmYhz5E1QPNevh7FFjiblOV2S93p9qwynEQ4k9sX-e_IkJcQnjdbN3f4a2FN23Zj1v1sbCWb5MMT5C_F_hd2dnFxCiGs9I8JCXWMbTeyBqzF_1FRHiVV6Ob-Gg6BpQnW4heh-HubqUkTbKNzFMOg3OOAa-eknV7oH-QkJQK2xtsXnSsP1eIcBBUShvexxtgajOG3iq0G9g-0sVuJq-eLTEgwX2EAsc7RFYlNIDlepSTb7ZFsfdYAGPkWwqkW38IjICiggwSgqUtQzIQJwJ6JJ_RPHT0wnbWpJo_H9GB8UNTRSQ74Xibv5BLwNTFo47ZAuxSPWUoKKE8T1QLHd5RIYFLIKbKY34v0hLUNOYUgcKvsqKxmLzoqcI6wQ9nUzN7vgGGT1cPnVd8mIy9hBouH2aHM7mojtESEowkdU2NM2jrTF_MB8odz9ZKrAlkudAQsd_Q44PNdRkuUBC6R0h2nd-dykyuf9yLqAAl-I6cNDc10MUXO-Udu4CrtiKxUfryuV5vj3s4KXop2_69q-agx9rGwy8QiOTseqYUygzctrWSbpC1hOm_zzC7Iwpvd9dyr0B8vxsS5OjTAqtsbflYBzD5xO6dWqBoZhT_yuYyHUNCnQSQcUsLGFgtCcF5LYJRIqHFTt0tCwJYMsPD7D_sz9rCV1qNHmGiyVZQf1T1dAZawqNopqAivWZrgCMLy2GbQtZEUYVFFui5zoWwLK-WzoBuac4JpgOGf0XbD2dPjt2FR55PXxHBSgANTObBlhg3991lkDtPYBBxvyKuYsSGyes2RRr4pwbe2HH-CaueQ0F0u1IiyeSna4kJx8GRqJw2n0xQ2iSeXi2I8jZg0Vl6WTlfAuh56abF64eZYO6STn35dyK3iL-Y6cNJMVFlNEbfCIIUv7UjmwUaIQ6Nl25ZojlgXoyTIbvFYLy5tbEAdT4ZOGgI_Xr_gBLgGkbycdmlGPNYhVI9OxF47UPmAsTikOYcHGDkt5ISYDckrGRY8Yzt3Xbh59jhKnclkqqObe2tOBt2SP3B90iyWCO6FMesls1qPu7056YEFe_2PWw5sYDSdSjmyQv9ZKkNkKP_XViv_9bYOWGH52cUr9ZBB6_nggisXOii1VkHETCsL8Lo1bzwcd4xxcDp-1-KeH8vhNgjwXNgEcdnspemfYSOefKPxAvsKy71jza6c3WzlsdlxK4whDm341tkEjjgLpUjXKTUJxXDe4sd76HrMTb_QBwxkdrzfZd80_I53azyCEL48c1-xXo25-2xMAUoxsfuBA8MQ-sKL0FmPySow76E2jml4abEnBmcYrOrShOsslAFStJ6cNNx4VhYDPB-UhEcBDtZg7DRoey71-8wPdTp6tgHAMb8srfk4ir5q35GgQ1yG1qGeW2KRXlvLXbxc7dRrn6d13beHbyQ6eyiLIqD_7gsijYFC4mwK-vvYR5ZQy8BIKYuDcYbs2-IHoi2Lg2Ut08F5pZl-7qBRWGhVIAgygAmZ-6ed71qHZ28gdZRrafmoDoH5-JzkSry18TlgDAB00b9wLpa2ugN5Rx90EuOWhAMY=","type":"reasoning"},{"name":"get_weather","arguments":"{\"city\":\"Tokyo\"}","call_id":"call_FcfcuqCq1tRgNqbUY43pnqDA","type":"function_call","id":"fc_00b8a328531887650069d47ed3c90c8197b3b4be6676a6aa1c"},{"type":"function_call_output","call_id":"call_FcfcuqCq1tRgNqbUY43pnqDA","output":"{\"city\":\"Tokyo\",\"temperature_range\":\"14-20C\",\"conditions\":\"Sunny
+      with wind.\"}"}],"model":"gpt-5-nano","stream":false,"tool_choice":"auto","tools":[{"name":"get_weather","parameters":{"additionalProperties":false,"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"},"type":"function","description":"Get
+      the current weather information for a specified city.","strict":true}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2754'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_00b8a328531887650069d47ed45ebc8197ad7f89a53ce0100d\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533780,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533784,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_00b8a328531887650069d47ed4f4288197921c5a3218af9d1c\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7Ydcr5ar7Q0lqQds_tosKsextMyMHZOSmpPrDpRi3A_vSHGD7JBdLtLIDqalHONpUdvyysCBdjUjsvyNkk3RYkq1N3w7ew6jEdwzI-CRNtKwb9A75k5r3__RzlJSIEzcqZFk_K5CPmri9Ttz5Uk50_DdYaXYolco3ZYvvQyiouVzgq8vZ_G8ArrH6vtHCw18Ral32f_cmFQ4dW8nOxc_Ua54pW5ayO8NyvSYhLBa7laa_HP11GA6umE8Ff4qC3zbBM0fG-URWw87nB5jnR2IdsibSVZuo9z1AqgLT33ik_guBDISBy_rckPNhpEtmRgiH1fO52el7KdZFsbnRe6ltHmPkEI17GBR78hb8tKweT6ddJ6-NWOhc4_HN6G-3ragEgMsikc-76U3iiGFZlFy7YIEQHiLUoRleDpridzzvT2NwEBpWFOaWgHYwirlhVzWt-PNnisbxeStTTVHyr10N9VBx5OZnxzMsIYgoLfXglUvAell_EQtUFKqLNeGmaSOA_uIl2njAhItpAaZjv7tHbPvVxZ4YyePRJrSsMuxwx3aBQZqNx79U6OrohD2TGoheoXNhPH5_GDIu3tRjjzlAi2LX52aMQw-eqOOFt7D1ibrtXAEa5c1SxDIJ3LoK6k806q5lgQWNXklaa-3M_p3JZbQAXUws-O3UUSbBufMKmSnbubLOYCLxZsnzgg54nQU47CTc-h_I_uhBIv4_Wo8Za12UnOWwEeTkKaMoTeOL17jEWevArFzXPsD1DjCwrC1ul9hN8MquhCf7p9tr5mRxY-56BLDWvd68c9wFvxZItMtBzlIF_8J6OFNEObCSi8SSLItb2WESEo9GqW_DsuBKt5ikx4l9uL7q5Z7ChdqEMIVsmhG7n07slqtKc23w7zeaMH95lF5d3S0g1H4RvYbFERIFHDpaa2qSpzbpNiTReWFpGw0FQe6avfpHXmPVanmpBZRQQrBeY4a0ZlOj4zDiRbguy3ixIC8Man54qFltq6kGbvai7VDU8KQ0h0k4wUXSB_Wjz9J5ywJlc61auArL_5GBqMsaOSAVu1nyFugI9CE698Xaog7CGFocazNY9aPf3l0-D2iwAQwbG8DA2fQUWKsONRwjscsNsWya_FFmhsQy4D0dcfL3mnyQc-RcslVRv7ae05srNqE6jF030ofXS7zIToqH1NbFnNk_utgnjFQigdvvJOXnqXmTgjjH5-fF4OLcbF0HzkeRCxLexe1OcaFPmlVsevH4Kzh_d2htIsC1hMywO6BBXeGEesQ06sYrWIzV91FdCCI_OU0CF2iDu3bKHjA6Blq8w_osgbutAlPSZXPHubr0uwzzQIJQH-tvRrMJBJjCcHPbdr4kEp2Eyq9PWzVB-79b8yC2mmxge4k9mNRhw9plYUDOBjee100Udtc9RJioroYja_VENc4s-xNR8zfyuHn7vpHcE29vqZXH_i0oHSFtyWlufUNg-BeKx4UWX7ZlQL12OtvglrQedIuyXyHRfY8TLyJ419yxSJ_HYt2zjpm4LbQx6dWAPT2ZRcwJhEzYSToEl3SoptgLEsJI_eChBt-iOH7QQsQSbjoeFXsdvI3h2k0ckVJqzdjv1a8WsvLlz8h_SMPWEayBOSdimPXdFXmkDFZesBYd-9XkRHFF78xn93uMwywmbvEnPdiR9UUSd7dd_3TUHQz6RMLFQ1Sd0tXiN5keC51hK8tEOjupxY2Rh7boTQP9DgksLzAjIL90Nbh7FoDHwxW1QrDIUygkrNsrBgbNArfzUrFXaxDLU4jF3elxrcCtjGXkqZk-ktBR6S1C4Eq5Svx53QWK3moSMRnhhi2F7e5j0DgVdui2BxKYFrBhK9A0NWNJIxuzjDQPc8_DYugAV67MAQHgTS3rfuu71XGalx5CJeAZLBhSXEZ-4DZI2k3Jsi-_j_DBQrB3C7LjwWYCtIOwzFDtZ3eZ765aZBwiuLIS58Ku0wHmaI1z8mdphr2XlTTtLmdLtORV1Na5DBcasYZzu7gv_VHsKifEAhUDXs4WgIVwze9UQddUwDoYayvjvxpeuj2AWSDc4IB-jdlrHiy5H3DNdEtBDRA23XTY_Ki8Q8Mj9iOQ_KEaKjibjGgbno1fH94ioAfJ4BzZo7FWLGesqXCrGiLNF9yfQcqjMPTqYTExs-HQ2jRMlO8HhgsZV-rcCVBzBmMybpELvYMOjhIRmVZPlECQSy6bBLr8ebBCvQYzIXDpSyrTyhm2wenI0bmYhCKa8noUv9UUdNHe0R5nRMwt0q31X_kGVaNifVmSl77zmowWZTkaZ_FRm2ybHiBS3sDYe57jbra57YiPMb6OmB5_jDPgJRSiBXHbj77177vTB8LepHm_7EdiGNOQUw_HwLLJzKJNtAVGjyQsYK32ZN1COB7PgGkXPRnpYeNc5lIickWOY9lduaH846-kPsVDtDD_TBAKW-BG3ghYrCEyzYkg6aeHbWmom0aP8W-09k1E6ThAirPRV5gk5448aatzrCu9IvY56-PRZLJLWhlmNp8DZkedHvmQ3f41rVItDQWsDGz64WemTA00z13363wmtwkxf2fr7ecMxXElagVNcj8BOc4LZwjy_bbRbrLMjwj2mdMVKbwJ1KJYsia7OlX8tDlojD16lYkbQP8LnQYhnJoK1bwzdRZVBMGPnxGr4JwHKi1MZnZXV41DCV02Yhxen82eAOmpWyQbGsi_CYWkCLw==\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"msg_00b8a328531887650069d47ed810a081978ede2679051ebd9d\",\n
+        \     \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\":
+        [\n        {\n          \"type\": \"output_text\",\n          \"annotations\":
+        [],\n          \"logprobs\": [],\n          \"text\": \"Currently in Tokyo:
+        sunny with some wind, and temperatures range from 14\\u00b0C to 20\\u00b0C.\\n\\nWould
+        you like the hourly forecast or a 7-day outlook?\"\n        }\n      ],\n
+        \     \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n
+        \ \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Get the current weather information
+        for a specified city.\",\n      \"name\": \"get_weather\",\n      \"parameters\":
+        {\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"city\":
+        {\n            \"type\": \"string\"\n          }\n        },\n        \"required\":
+        [\n          \"city\"\n        ],\n        \"type\": \"object\"\n      },\n
+        \     \"strict\": true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\":
+        1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        259,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 349,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        256\n    },\n    \"total_tokens\": 608\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      CF-RAY:
+      - 9e86104f0f4dd83f-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:44 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '4985'
+      openai-processing-ms:
+      - '4147'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_0014e32f32e6475e9d49dd278dd73509
+    status:
+      code: 200
+      message: OK
+version: 1

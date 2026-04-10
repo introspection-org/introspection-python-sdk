@@ -1,0 +1,347 @@
+interactions:
+- request:
+    body: "--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition: form-data; name=\"post.019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\"\r\nContent-Type:
+      application/json\r\nContent-Length: 309\r\n\r\n{\"id\":\"019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\",\"start_time\":\"2026-03-13T20:50:38.986061+00:00\",\"tags\":[],\"dotted_order\":\"20260313T205038986061Z019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\",\"trace_id\":\"019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"run_pipeline\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7ea2-91bc-f9d7760588b1.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7ea2-91bc-f9d7760588b1.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7ea2-91bc-f9d7760588b1.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7ea2-91bc-f9d7760588b1.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 384\r\n\r\n{\"metadata\":{\"ls_method\":\"traceable\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7781-9a29-3e974bb068e2\"\r\nContent-Type:
+      application/json\r\nContent-Length: 470\r\n\r\n{\"id\":\"019ce8f7-2d0a-7781-9a29-3e974bb068e2\",\"start_time\":\"2026-03-13T20:50:38.986649+00:00\",\"parent_run_id\":\"019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\",\"tags\":[],\"dotted_order\":\"20260313T205038986061Z019ce8f7-2d0a-7ea2-91bc-f9d7760588b1.20260313T205038986649Z019ce8f7-2d0a-7781-9a29-3e974bb068e2\",\"trace_id\":\"019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"format_prompt\",\"run_type\":\"chain\",\"end_time\":\"2026-03-13T20:50:38.986967+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7781-9a29-3e974bb068e2.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7781-9a29-3e974bb068e2.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 63\r\n\r\n{\"output\":[{\"role\":\"user\",\"content\":\"Say
+      hello in one word.\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7781-9a29-3e974bb068e2.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0a-7781-9a29-3e974bb068e2.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 384\r\n\r\n{\"metadata\":{\"ls_method\":\"traceable\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0b-7222-8b43-815c8e3027f8\"\r\nContent-Type:
+      application/json\r\nContent-Length: 419\r\n\r\n{\"id\":\"019ce8f7-2d0b-7222-8b43-815c8e3027f8\",\"start_time\":\"2026-03-13T20:50:38.987146+00:00\",\"parent_run_id\":\"019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\",\"tags\":[],\"dotted_order\":\"20260313T205038986061Z019ce8f7-2d0a-7ea2-91bc-f9d7760588b1.20260313T205038987146Z019ce8f7-2d0b-7222-8b43-815c8e3027f8\",\"trace_id\":\"019ce8f7-2d0a-7ea2-91bc-f9d7760588b1\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"invoke_llm\",\"run_type\":\"llm\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0b-7222-8b43-815c8e3027f8.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 65\r\n\r\n{\"messages\":[{\"role\":\"user\",\"content\":\"Say
+      hello in one word.\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0b-7222-8b43-815c8e3027f8.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0b-7222-8b43-815c8e3027f8.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0b-7222-8b43-815c8e3027f8.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 384\r\n\r\n{\"metadata\":{\"ls_method\":\"traceable\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f7-2d0b-7222-8b43-815c8e3027f8.serialized\"\r\nContent-Type:
+      application/json\r\nContent-Length: 21\r\n\r\n{\"name\":\"invoke_llm\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-2324-76b0-8bdb-080179846535\"\r\nContent-Type:
+      application/json\r\nContent-Length: 540\r\n\r\n{\"id\":\"019ce8f7-2324-76b0-8bdb-080179846535\",\"name\":\"Weather
+      Agent Response\",\"run_type\":\"llm\",\"trace_id\":\"019ce8f7-1b53-7163-a999-d9d8c6720dce\",\"parent_run_id\":\"019ce8f7-1b54-75b1-bdb7-79988265eec1\",\"dotted_order\":\"20260313T205034451363Z019ce8f7-1b53-7163-a999-d9d8c6720dce.20260313T205034452274Z019ce8f7-1b54-75b1-bdb7-79988265eec1.20260313T205036452855Z019ce8f7-2324-76b0-8bdb-080179846535\",\"tags\":[],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:36.452855+00:00\",\"end_time\":\"2026-03-13T20:50:38.962964+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-2324-76b0-8bdb-080179846535.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 552\r\n\r\n{\"input\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"role\":\"user\"},{\"id\":\"rs_064683cd4664f4b00069b4789b42748190801ecf79b3c4ec1c\",\"summary\":[],\"type\":\"reasoning\"},{\"arguments\":\"{\\\"city\\\":\\\"San
+      Francisco\\\"}\",\"call_id\":\"call_0EUvqv2DFOAPpBHW1NuPylKL\",\"name\":\"get_weather\",\"type\":\"function_call\",\"id\":\"fc_064683cd4664f4b00069b4789bff3881909a0192dff89336bb\",\"status\":\"completed\"},{\"call_id\":\"call_0EUvqv2DFOAPpBHW1NuPylKL\",\"output\":\"It's
+      always sunny in San Francisco!\",\"type\":\"function_call_output\"}],\"instructions\":\"You
+      are a helpful assistant.\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-2324-76b0-8bdb-080179846535.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 404\r\n\r\n{\"output\":[{\"id\":\"rs_064683cd4664f4b00069b4789d014881908aa9b93a012831c8\",\"summary\":[],\"type\":\"reasoning\"},{\"id\":\"msg_064683cd4664f4b00069b4789eb1348190a67ffeae5ccc41dd\",\"content\":[{\"annotations\":[],\"text\":\"San
+      Francisco: It's always sunny! Would you like a more detailed forecast (temperature,
+      wind, etc.)?\",\"type\":\"output_text\",\"logprobs\":[]}],\"role\":\"assistant\",\"status\":\"completed\",\"type\":\"message\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-2324-76b0-8bdb-080179846535.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-2324-76b0-8bdb-080179846535.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1645\r\n\r\n{\"metadata\":{\"openai_parent_id\":\"span_34fd936508724f598413bdd1\",\"openai_trace_id\":\"trace_5770b97997ab4d13b066c62b17e0a16b\",\"openai_span_id\":\"span_75b57e97129e4333baca58b6\",\"id\":\"resp_064683cd4664f4b00069b4789ca3b88190a75d2fe7ed9a106a\",\"created_at\":1773435036.0,\"metadata\":{},\"object\":\"response\",\"background\":false,\"completed_at\":1773435038.0,\"service_tier\":\"default\",\"status\":\"completed\",\"top_logprobs\":0,\"billing\":{\"payer\":\"developer\"},\"frequency_penalty\":0.0,\"presence_penalty\":0.0,\"store\":true,\"ls_model_name\":\"gpt-5-nano-2025-08-07\",\"ls_max_tokens\":null,\"ls_temperature\":1.0,\"ls_model_type\":\"chat\",\"ls_provider\":\"openai\",\"usage_metadata\":{\"input_tokens\":242,\"output_tokens\":362,\"total_tokens\":604,\"input_token_details\":{\"cache_read\":0},\"output_token_details\":{\"reasoning\":320}},\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"invocation_params\":{\"model\":\"gpt-5-nano-2025-08-07\",\"parallel_tool_calls\":true,\"temperature\":1.0,\"tool_choice\":\"auto\",\"tools\":[{\"name\":\"get_weather\",\"parameters\":{\"properties\":{\"city\":{\"title\":\"City\",\"type\":\"string\"}},\"required\":[\"city\"],\"title\":\"get_weather_args\",\"type\":\"object\",\"additionalProperties\":false},\"strict\":true,\"type\":\"function\",\"description\":\"Get
+      weather for a given city.\"}],\"top_p\":1.0,\"reasoning\":{\"effort\":\"medium\"},\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"truncation\":\"disabled\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b53-7163-a999-d9d8c6720dce\"\r\nContent-Type:
+      application/json\r\nContent-Length: 382\r\n\r\n{\"id\":\"019ce8f7-1b53-7163-a999-d9d8c6720dce\",\"name\":\"Agent
+      workflow\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f7-1b53-7163-a999-d9d8c6720dce\",\"parent_run_id\":null,\"dotted_order\":\"20260313T205034451363Z019ce8f7-1b53-7163-a999-d9d8c6720dce\",\"tags\":[],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:34.451363+00:00\",\"end_time\":\"2026-03-13T20:50:38.964970+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b53-7163-a999-d9d8c6720dce.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 123\r\n\r\n{\"input\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"role\":\"user\"}],\"instructions\":\"You
+      are a helpful assistant.\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b53-7163-a999-d9d8c6720dce.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 404\r\n\r\n{\"output\":[{\"id\":\"rs_064683cd4664f4b00069b4789d014881908aa9b93a012831c8\",\"summary\":[],\"type\":\"reasoning\"},{\"id\":\"msg_064683cd4664f4b00069b4789eb1348190a67ffeae5ccc41dd\",\"content\":[{\"annotations\":[],\"text\":\"San
+      Francisco: It's always sunny! Would you like a more detailed forecast (temperature,
+      wind, etc.)?\",\"type\":\"output_text\",\"logprobs\":[]}],\"role\":\"assistant\",\"status\":\"completed\",\"type\":\"message\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b53-7163-a999-d9d8c6720dce.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b53-7163-a999-d9d8c6720dce.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 360\r\n\r\n{\"metadata\":{\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b54-75b1-bdb7-79988265eec1\"\r\nContent-Type:
+      application/json\r\nContent-Length: 474\r\n\r\n{\"id\":\"019ce8f7-1b54-75b1-bdb7-79988265eec1\",\"name\":\"Weather
+      Agent\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f7-1b53-7163-a999-d9d8c6720dce\",\"parent_run_id\":\"019ce8f7-1b53-7163-a999-d9d8c6720dce\",\"dotted_order\":\"20260313T205034451363Z019ce8f7-1b53-7163-a999-d9d8c6720dce.20260313T205034452274Z019ce8f7-1b54-75b1-bdb7-79988265eec1\",\"tags\":[],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:34.452274+00:00\",\"end_time\":\"2026-03-13T20:50:38.964774+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b54-75b1-bdb7-79988265eec1.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n[]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f7-1b54-75b1-bdb7-79988265eec1.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 572\r\n\r\n{\"invocation_params\":{\"tools\":[\"get_weather\"],\"handoffs\":[]},\"metadata\":{\"output_type\":\"str\",\"openai_parent_id\":null,\"openai_trace_id\":\"trace_5770b97997ab4d13b066c62b17e0a16b\",\"openai_span_id\":\"span_34fd936508724f598413bdd1\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langsmith\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321--\r\n"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '13243'
+      Content-Type:
+      - multipart/form-data; boundary=415c59607d93413fbf28584e45dbd321
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: POST
+    uri: https://api.smith.langchain.com/runs/multipart
+  response:
+    body:
+      string: '{"success":true}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '17'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:39 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 5008903b750ffe297ee80e7550540fd3
+    status:
+      code: 202
+      message: Accepted
+- request:
+    body: !!binary |
+      Cr0XCpEBCiIKFnRlbGVtZXRyeS5zZGsubGFuZ3VhZ2USCAoGcHl0aG9uCiUKEnRlbGVtZXRyeS5z
+      ZGsubmFtZRIPCg1vcGVudGVsZW1ldHJ5CiEKFXRlbGVtZXRyeS5zZGsudmVyc2lvbhIICgYxLjM5
+      LjEKIQoMc2VydmljZS5uYW1lEhEKD3Vua25vd25fc2VydmljZRKmFgpSCgxsYW5nZnVzZS1zZGsS
+      BjMuMTIuMRo6CgpwdWJsaWNfa2V5EiwKKnBrLWxmLTMxZGNkNzc1LTg2NmYtNDg0Mi1iYTVlLWFj
+      MzZkNTU2ZDIzMBLVCAoQpcYzQhqcMePR/fzh9nIGGRIIfhTOk/2nThIqEU9wZW5BSS1nZW5lcmF0
+      aW9uMAE5yA5BjcSBnBhB4AroA8WBnBhKZgoabGFuZ2Z1c2Uub2JzZXJ2YXRpb24uaW5wdXQSSApG
+      W3siY29udGVudCI6ICJXaGF0IGlzIHRoZSB3ZWF0aGVyIGluIFNhbiBGcmFuY2lzY28/IiwgInJv
+      bGUiOiAidXNlciJ9XUrCAQolbGFuZ2Z1c2Uub2JzZXJ2YXRpb24ubW9kZWwucGFyYW1ldGVycxKY
+      AQqVAXsidGVtcGVyYXR1cmUiOiB7Il9fbW9kdWxlX18iOiAib3BlbmFpIn0sICJtYXhfdG9rZW5z
+      IjogIkluZmluaXR5IiwgInRvcF9wIjogeyJfX21vZHVsZV9fIjogIm9wZW5haSJ9LCAiZnJlcXVl
+      bmN5X3BlbmFsdHkiOiAwLCAicHJlc2VuY2VfcGVuYWx0eSI6IDB9SikKGWxhbmdmdXNlLm9ic2Vy
+      dmF0aW9uLnR5cGUSDAoKZ2VuZXJhdGlvbkqlAwobbGFuZ2Z1c2Uub2JzZXJ2YXRpb24ub3V0cHV0
+      EoUDCoIDW3siaWQiOiAicnNfMDY0NjgzY2Q0NjY0ZjRiMDAwNjliNDc4OWI0Mjc0ODE5MDgwMWVj
+      Zjc5YjNjNGVjMWMiLCAic3VtbWFyeSI6IFtdLCAidHlwZSI6ICJyZWFzb25pbmciLCAiY29udGVu
+      dCI6IG51bGwsICJlbmNyeXB0ZWRfY29udGVudCI6IG51bGwsICJzdGF0dXMiOiBudWxsfSwgeyJh
+      cmd1bWVudHMiOiAie1wiY2l0eVwiOlwiU2FuIEZyYW5jaXNjb1wifSIsICJjYWxsX2lkIjogImNh
+      bGxfMEVVdnF2MkRGT0FQcEJIVzFOdVB5bEtMIiwgIm5hbWUiOiAiZ2V0X3dlYXRoZXIiLCAidHlw
+      ZSI6ICJmdW5jdGlvbl9jYWxsIiwgImlkIjogImZjXzA2NDY4M2NkNDY2NGY0YjAwMDY5YjQ3ODli
+      ZmYzODgxOTA5YTAxOTJkZmY4OTMzNmJiIiwgInN0YXR1cyI6ICJjb21wbGV0ZWQifV1KOgofbGFu
+      Z2Z1c2Uub2JzZXJ2YXRpb24ubW9kZWwubmFtZRIXChVncHQtNS1uYW5vLTIwMjUtMDgtMDdKywEK
+      ImxhbmdmdXNlLm9ic2VydmF0aW9uLnVzYWdlX2RldGFpbHMSpAEKoQF7ImlucHV0X3Rva2VucyI6
+      IDY5LCAiaW5wdXRfdG9rZW5zX2RldGFpbHMiOiB7ImNhY2hlZF90b2tlbnMiOiAwfSwgIm91dHB1
+      dF90b2tlbnMiOiAxNTUsICJvdXRwdXRfdG9rZW5zX2RldGFpbHMiOiB7InJlYXNvbmluZ190b2tl
+      bnMiOiAxMjh9LCAidG90YWxfdG9rZW5zIjogMjI0fXoAhQEAAQAAEvcMChC4S1o1flUn0mkxPqDZ
+      +w2BEghb1Ik5EZ10YCoRT3BlbkFJLWdlbmVyYXRpb24wATmYbgMExYGcGEHAGJaZxYGcGEqtBAoa
+      bGFuZ2Z1c2Uub2JzZXJ2YXRpb24uaW5wdXQSjgQKiwRbeyJjb250ZW50IjogIldoYXQgaXMgdGhl
+      IHdlYXRoZXIgaW4gU2FuIEZyYW5jaXNjbz8iLCAicm9sZSI6ICJ1c2VyIn0sIHsiaWQiOiAicnNf
+      MDY0NjgzY2Q0NjY0ZjRiMDAwNjliNDc4OWI0Mjc0ODE5MDgwMWVjZjc5YjNjNGVjMWMiLCAic3Vt
+      bWFyeSI6IFtdLCAidHlwZSI6ICJyZWFzb25pbmcifSwgeyJhcmd1bWVudHMiOiAie1wiY2l0eVwi
+      OlwiU2FuIEZyYW5jaXNjb1wifSIsICJjYWxsX2lkIjogImNhbGxfMEVVdnF2MkRGT0FQcEJIVzFO
+      dVB5bEtMIiwgIm5hbWUiOiAiZ2V0X3dlYXRoZXIiLCAidHlwZSI6ICJmdW5jdGlvbl9jYWxsIiwg
+      ImlkIjogImZjXzA2NDY4M2NkNDY2NGY0YjAwMDY5YjQ3ODliZmYzODgxOTA5YTAxOTJkZmY4OTMz
+      NmJiIiwgInN0YXR1cyI6ICJjb21wbGV0ZWQifSwgeyJjYWxsX2lkIjogImNhbGxfMEVVdnF2MkRG
+      T0FQcEJIVzFOdVB5bEtMIiwgIm91dHB1dCI6ICJJdCdzIGFsd2F5cyBzdW5ueSBpbiBTYW4gRnJh
+      bmNpc2NvISIsICJ0eXBlIjogImZ1bmN0aW9uX2NhbGxfb3V0cHV0In1dSsIBCiVsYW5nZnVzZS5v
+      YnNlcnZhdGlvbi5tb2RlbC5wYXJhbWV0ZXJzEpgBCpUBeyJ0ZW1wZXJhdHVyZSI6IHsiX19tb2R1
+      bGVfXyI6ICJvcGVuYWkifSwgIm1heF90b2tlbnMiOiAiSW5maW5pdHkiLCAidG9wX3AiOiB7Il9f
+      bW9kdWxlX18iOiAib3BlbmFpIn0sICJmcmVxdWVuY3lfcGVuYWx0eSI6IDAsICJwcmVzZW5jZV9w
+      ZW5hbHR5IjogMH1KKQoZbGFuZ2Z1c2Uub2JzZXJ2YXRpb24udHlwZRIMCgpnZW5lcmF0aW9uSv4D
+      ChtsYW5nZnVzZS5vYnNlcnZhdGlvbi5vdXRwdXQS3gMK2wNbeyJpZCI6ICJyc18wNjQ2ODNjZDQ2
+      NjRmNGIwMDA2OWI0Nzg5ZDAxNDg4MTkwOGFhOWI5M2EwMTI4MzFjOCIsICJzdW1tYXJ5IjogW10s
+      ICJ0eXBlIjogInJlYXNvbmluZyIsICJjb250ZW50IjogbnVsbCwgImVuY3J5cHRlZF9jb250ZW50
+      IjogbnVsbCwgInN0YXR1cyI6IG51bGx9LCB7ImlkIjogIm1zZ18wNjQ2ODNjZDQ2NjRmNGIwMDA2
+      OWI0Nzg5ZWIxMzQ4MTkwYTY3ZmZlYWU1Y2NjNDFkZCIsICJjb250ZW50IjogW3siYW5ub3RhdGlv
+      bnMiOiBbXSwgInRleHQiOiAiU2FuIEZyYW5jaXNjbzogSXQncyBhbHdheXMgc3VubnkhIFdvdWxk
+      IHlvdSBsaWtlIGEgbW9yZSBkZXRhaWxlZCBmb3JlY2FzdCAodGVtcGVyYXR1cmUsIHdpbmQsIGV0
+      Yy4pPyIsICJ0eXBlIjogIm91dHB1dF90ZXh0IiwgImxvZ3Byb2JzIjogW119XSwgInJvbGUiOiAi
+      YXNzaXN0YW50IiwgInN0YXR1cyI6ICJjb21wbGV0ZWQiLCAidHlwZSI6ICJtZXNzYWdlIn1dSjoK
+      H2xhbmdmdXNlLm9ic2VydmF0aW9uLm1vZGVsLm5hbWUSFwoVZ3B0LTUtbmFuby0yMDI1LTA4LTA3
+      SswBCiJsYW5nZnVzZS5vYnNlcnZhdGlvbi51c2FnZV9kZXRhaWxzEqUBCqIBeyJpbnB1dF90b2tl
+      bnMiOiAyNDIsICJpbnB1dF90b2tlbnNfZGV0YWlscyI6IHsiY2FjaGVkX3Rva2VucyI6IDB9LCAi
+      b3V0cHV0X3Rva2VucyI6IDM2MiwgIm91dHB1dF90b2tlbnNfZGV0YWlscyI6IHsicmVhc29uaW5n
+      X3Rva2VucyI6IDMyMH0sICJ0b3RhbF90b2tlbnMiOiA2MDR9egCFAQABAAA=
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '3008'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      x-langfuse-public-key:
+      - REDACTED_LANGFUSE_PUBLIC
+      x-langfuse-sdk-name:
+      - python
+      x-langfuse-sdk-version:
+      - 3.12.1
+    method: POST
+    uri: https://us.cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"name":"otel-ingestion-job","data":{"id":"09d36b5b-6270-4d88-a53e-6082ce831da9","timestamp":"2026-03-13T20:50:40.737Z","name":"otel-ingestion-job","payload":{"data":{"fileKey":"otel/cmmpczdf501owad08v6l1bueg/2026/03/13/20/50/f67fd414-0630-47cb-abc5-9fb37b5135ce.json","publicKey":"REDACTED_LANGFUSE_PUBLIC"},"authCheck":{"validKey":true,"scope":{"projectId":"cmmpczdf501owad08v6l1bueg","accessLevel":"project","orgId":"cmmpcz52h01rlad07884iuchl"}},"sdkName":"python","sdkVersion":"3.12.1"}},"opts":{"attempts":6,"removeOnComplete":true,"removeOnFail":100000,"backoff":{"type":"exponential","delay":5000},"traceparent":"00-53eeb24df6b8599e4fbbffd599638e40-9a1783a294734f5b-00","baggage":"langfuse.header.x-langfuse-sdk-name=python,langfuse.header.x-langfuse-sdk-version=3.12.1,langfuse.header.x-langfuse-public-key=REDACTED_LANGFUSE_PUBLIC,langfuse.project.id=cmmpczdf501owad08v6l1bueg"},"id":"1419076668","progress":0,"returnvalue":null,"stacktrace":null,"priority":0,"attemptsStarted":0,"attemptsMade":0,"timestamp":1773435040737,"queueQualifiedName":"{otel-ingestion-queue}:otel-ingestion-queue"}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 13 Mar 2026 20:50:40 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"8uxuycaqewvj"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"role":"user","content":"Say hello in one word."}],"model":"gpt-5-nano"}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '86'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - AsyncOpenAI/Python 2.16.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.16.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.13
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/3VSy07DMBC89ysinxOUpq1KuVIkhJDgggChKjL2JjF17GBvoFXVf8d2H0lFe7GU
+        nZ3NzOxuBlFEBCc3EWEVRVY3Mpk/jJZYPM/1+9PtVNYr+gJvr3di/v34m61J7Bn68wsYHlhXTDse
+        oNBqBzMDFMFPHU6no/Foko5mAag1B+lpZYPJJFFU6SRLs0mSXifpdE+utGBgXdeH+4yiTXi9TMVh
+        5cppfKjUYC0twdUOTa5otPQVQq0VFqlCEncg0wpBBeX3IKXuYwaK1lIvT7VS9gCqlEbq7QVViz2y
+        PeoohBK2yp1r6yJwsy3qhgR0695F8NWeSCWNcaFhjnoJYeww240jXZgd6DLao+iUyB4wHMdn5uUc
+        kAppe8kQRlkFvKN2MdKWC90DBj13/+Wcm71zLlTZ8zPLLv6gAxiDxl1K3hjggp2a7toM+HO71HbM
+        OUgmFsyPO6AcBRi/Cw4FbeXuCohdW4Q6dwsrwTRGhFPw6x5sB3/fSPEsDAMAAA==
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - 9dbde9828eeadf82-SJC
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:41 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-processing-ms:
+      - '2023'
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999991'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_700c99779c794e9199d41b920faee4cc
+    status:
+      code: 200
+      message: OK
+version: 1

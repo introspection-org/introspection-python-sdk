@@ -1,0 +1,552 @@
+interactions:
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"system","content":"You
+      are a math assistant. Use the calculator tools to perform calculations. Always
+      use the tools - never calculate in your head. Perform operations step by step,
+      using the result of each step in the next."},{"role":"user","content":"Calculate:
+      add 5 + 3, then divide the result by 4, then subtract 10 from that."}],"model":"gpt-5-nano","stream":false,"tool_choice":"auto","tools":[{"name":"add_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Add
+      two numbers together.","strict":true},{"name":"divide_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"Numerator","type":"number"},"b":{"description":"Denominator","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Divide
+      first number by second.","strict":true},{"name":"subtract_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Subtract
+      second number from first.","strict":true}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1364'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0134aca4b18b87770069d47ed9adc481908213172ee383e5a8\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533785,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533789,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_0134aca4b18b87770069d47eda04648190ad3b82353d10a526\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7dgCL-n-ho2vfxtmfWi1ncJNYAiklYCeWB61ZRg4X5_ldHyhBs5Kf_d4q70teS6H6OefShrdPMMumSwfzbHRmTmeSNAlttB_4Wls8lhMMVPrTDtrDWVeI0nj8ieobNXckGbfvCqP2u2T_18YNNSKSK60A7uB8CRDLjJemLmqSgy_n8MTsEZraixbVL0gfy90mVbShIYQjanKxmdR7JXWFcsM1OVP4cisEA22Z8Q7vSqAuztW_Aq-cAC-W-ENErFMAUr99J-xM-Ah5Z42awTDM2HN4eLoJSYjyNZi3S9p08frmY0dOxN3LlR-sePqjXv_mW5nW_owl9EYz1IkqY0AiIu9d3LDLXtFthVjpnuWpNsufFoY3I3rxPAdX9GWtuEQHg_8NCn9q5NCr7Vc_rTqkw4ufaNvc7Td95MUn58mLhJJWItYGyO8au6O-7RNBCPVXj__se6hYDUMAlgmoJM6IyOLt1XKSfNhX7I2Xi_9yaQKFNFdtU-bMSm69JRl7Qb2IxQKW1UbzV_okc3RUtHKHd7dZAQT6-gIRlOhIvjyeDKfoWuSiY2zFdfPA9AcLpHe1WQ3E6f1Gucz5lr72kGSP0jB4F57QuSnS3xxscSU7endJ2mMSiZDIaXDgg6TRq5QCI3BD6BdPYnJl41SZCElS7-4ElfSOq33_xTVyzfx_8caD6YbtECDiZ6TO-KJcmvrzJo6IWVdtB_HgZk0kDD7fi-zWYVOUcT5Lk7yVrOO4qmK9Ml0A_5FdYoH6Fk_Et9OHX7VGkKttd5niel3dHybhbUn0KqW1czPTGX41rWThRtQjXK-C9Yxy-LouUzjSWpUJVTx-BSTQX0SMWCOrkJ2EalWC0vXv41vzaj-W05EEnZg61qTRrSsqVq-oVZsnthUbVw-OG5feykV-FkepV4WJqWL8YJtTww2wtp6dROiEHiu7bZJNtABZ7gBk-2ubTiwYxRtNOA24Em0HBdEWkOk6EqH_rNDe-tkwdI6TPzBiXuv9Bvp8GII06wn2Ewwz2X3BUET3GXW8y4eHxx0tlUd4WVeKYgwGOHtrQUNotgCa61f_w1-oPYvqHkaPzwd1jcpbRoJsp9YWzzGByffx4Kly8eGJJKssIKcmkoLQpIamc1EntfDJyvIfrFE8uW_d93Ue6tB5kffYJZ2mMoH9RxKFQQqnkZzbB7nL0L8BCqwzS_6MF5O7OdEjFlqNpHkNA_RcCyEwbgL9YbQGujF4h0l0RRtrTUbDN3TMW7sygqsrd0hq1485yzQQXPrEVeZSZjevjd7Z7zb2gksZx7zFutuhs7mIWnjRmUa8Pkdh4h8aFuR_vBM1-n1AxTNKHG3zzmScCFQ7pmXSVvin5Phq0R70mlvRgYdChjy7-G3EnpnsS_N2Kn3FKO3FYqpSA4FUyb1LybfV928YU4LRxfaOuQ77Yt9tSW7aLq9RM7bu-zjJqzJYViZoIMkndfERmJLFjPNJAPHPufl1KkH-krtA-CGqOsS01sxa5jVcVEQjiIxOP76FZ6-g5aGxhXqQpGxQz4l3ZNk82tgHDNRNGVo6JtF9ZL310Gu55fXdWkL6UmO1leN8uh4wdB3otw_oSNoFYmWoIfE_oJoGDMrKWAxnfcP83STuli2sz50xSxGIjXVXv-3uaWBMINXzqcFpmC774zWpT7GAfwJl7JY8XfTJCOH5AuOMOGLGnu4qLXCJoY8kfW_bbJZY3Y-rmj_KFvs0XsJBUgqcQyU1KcW_eK-0cHtfyD4i8XMPZs3ki4PflnhphDmji-O7uESoW8-0Kl2d5lsM_c0k9l5K1a-wYr11LFRwDnlM4UgZNW5o1m-RCtU3Ix1YbOAKDWCQYk7Ow-IfY4UmCsPGms1Cq2A0XTAg8MDz58VHmM9qcKimtz7UJxZDjWi719-5NN_6e_ZKaAVYTcaRE46EVqpCsqTyKw61lThQHfvmdehF6iXT52tUfTgm4yYKGkgq7SxQNZOdSqopsAND-iv9mnH1UZH0oMClStI8fQ2Mlsh7tRQ0248GMetfQ-8HuMe8AH8Qzq82KdF1I9tsXDPPCMl0Hk9LseCuMlj3TrRj29cIj2nZPKeepROE9fdIGzPqb8fpQ4RKmI8A766u6OjEDzeWt95JqdmUxeMMrny6i4hriaeG5etB6-l_FKyFPEVIYv0JODmJ_JnbURpUBfxC49YNBVru0tycGiGl9AV2hSvm8UtfvdyKT6fDK7tW8Nbv5iLzsNHxWMnpiErwmQ0o4nrTheTsy4V7b7y4YUMWxERcvkWMN7WKfmjbEHReMrqtIPVNy5plEL9pu9_P1Bhrs7n6LA8OK3MF_iNYOcLzvy8p5VHUujlLexQcJKwh0-pcVFkqlDS4VSFXj_xWJ-t-qBpaDVLN-GDo1oAugF8IGl_pYqzqxrHh2f3RpzjCwHjCAyVhcJgmVjD0y7gYd2nLw8y7kabj_pZc6dJEx1VolhGSoaNYkoreyAmRWMI5TApbMmC8nhvYuPTef7Ivv5Ta7G9yh6IZEEpYPLJpnvCk3dZ9evzRrxjSAtWWoStVYhC54uNHxgEsFUJOuBVM5Ydzq8-kJguZ1XF6iBe5yIdkyxbmUdiyAOantstLxRhWO6lFZ6PfxWrqOIYzYbIHLuS9eT6ba19Icwend_mGTcg==\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"fc_0134aca4b18b87770069d47edd2f108190945de90a12efd676\",\n
+        \     \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"a\\\":5,\\\"b\\\":3}\",\n      \"call_id\": \"call_JFfdUMTzGq28C81sbLNHj57h\",\n
+        \     \"name\": \"add_logged\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n
+        \ \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Add two numbers together.\",\n      \"name\":
+        \"add_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    },\n    {\n      \"type\": \"function\",\n      \"description\":
+        \"Divide first number by second.\",\n      \"name\": \"divide_logged\",\n
+        \     \"parameters\": {\n        \"additionalProperties\": false,\n        \"properties\":
+        {\n          \"a\": {\n            \"description\": \"Numerator\",\n            \"type\":
+        \"number\"\n          },\n          \"b\": {\n            \"description\":
+        \"Denominator\",\n            \"type\": \"number\"\n          }\n        },\n
+        \       \"required\": [\n          \"a\",\n          \"b\"\n        ],\n        \"type\":
+        \"object\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Subtract second number from first.\",\n
+        \     \"name\": \"subtract_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 184,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 368,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 320\n    },\n    \"total_tokens\": 552\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e86107029359020-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:49 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '5916'
+      openai-processing-ms:
+      - '4035'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_436560b19cee4c6d861dcf44c665a88e
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"system","content":"You
+      are a math assistant. Use the calculator tools to perform calculations. Always
+      use the tools - never calculate in your head. Perform operations step by step,
+      using the result of each step in the next."},{"role":"user","content":"Calculate:
+      add 5 + 3, then divide the result by 4, then subtract 10 from that."},{"id":"rs_0134aca4b18b87770069d47eda04648190ad3b82353d10a526","summary":[],"encrypted_content":"gAAAAABp1H7dgCL-n-ho2vfxtmfWi1ncJNYAiklYCeWB61ZRg4X5_ldHyhBs5Kf_d4q70teS6H6OefShrdPMMumSwfzbHRmTmeSNAlttB_4Wls8lhMMVPrTDtrDWVeI0nj8ieobNXckGbfvCqP2u2T_18YNNSKSK60A7uB8CRDLjJemLmqSgy_n8MTsEZraixbVL0gfy90mVbShIYQjanKxmdR7JXWFcsM1OVP4cisEA22Z8Q7vSqAuztW_Aq-cAC-W-ENErFMAUr99J-xM-Ah5Z42awTDM2HN4eLoJSYjyNZi3S9p08frmY0dOxN3LlR-sePqjXv_mW5nW_owl9EYz1IkqY0AiIu9d3LDLXtFthVjpnuWpNsufFoY3I3rxPAdX9GWtuEQHg_8NCn9q5NCr7Vc_rTqkw4ufaNvc7Td95MUn58mLhJJWItYGyO8au6O-7RNBCPVXj__se6hYDUMAlgmoJM6IyOLt1XKSfNhX7I2Xi_9yaQKFNFdtU-bMSm69JRl7Qb2IxQKW1UbzV_okc3RUtHKHd7dZAQT6-gIRlOhIvjyeDKfoWuSiY2zFdfPA9AcLpHe1WQ3E6f1Gucz5lr72kGSP0jB4F57QuSnS3xxscSU7endJ2mMSiZDIaXDgg6TRq5QCI3BD6BdPYnJl41SZCElS7-4ElfSOq33_xTVyzfx_8caD6YbtECDiZ6TO-KJcmvrzJo6IWVdtB_HgZk0kDD7fi-zWYVOUcT5Lk7yVrOO4qmK9Ml0A_5FdYoH6Fk_Et9OHX7VGkKttd5niel3dHybhbUn0KqW1czPTGX41rWThRtQjXK-C9Yxy-LouUzjSWpUJVTx-BSTQX0SMWCOrkJ2EalWC0vXv41vzaj-W05EEnZg61qTRrSsqVq-oVZsnthUbVw-OG5feykV-FkepV4WJqWL8YJtTww2wtp6dROiEHiu7bZJNtABZ7gBk-2ubTiwYxRtNOA24Em0HBdEWkOk6EqH_rNDe-tkwdI6TPzBiXuv9Bvp8GII06wn2Ewwz2X3BUET3GXW8y4eHxx0tlUd4WVeKYgwGOHtrQUNotgCa61f_w1-oPYvqHkaPzwd1jcpbRoJsp9YWzzGByffx4Kly8eGJJKssIKcmkoLQpIamc1EntfDJyvIfrFE8uW_d93Ue6tB5kffYJZ2mMoH9RxKFQQqnkZzbB7nL0L8BCqwzS_6MF5O7OdEjFlqNpHkNA_RcCyEwbgL9YbQGujF4h0l0RRtrTUbDN3TMW7sygqsrd0hq1485yzQQXPrEVeZSZjevjd7Z7zb2gksZx7zFutuhs7mIWnjRmUa8Pkdh4h8aFuR_vBM1-n1AxTNKHG3zzmScCFQ7pmXSVvin5Phq0R70mlvRgYdChjy7-G3EnpnsS_N2Kn3FKO3FYqpSA4FUyb1LybfV928YU4LRxfaOuQ77Yt9tSW7aLq9RM7bu-zjJqzJYViZoIMkndfERmJLFjPNJAPHPufl1KkH-krtA-CGqOsS01sxa5jVcVEQjiIxOP76FZ6-g5aGxhXqQpGxQz4l3ZNk82tgHDNRNGVo6JtF9ZL310Gu55fXdWkL6UmO1leN8uh4wdB3otw_oSNoFYmWoIfE_oJoGDMrKWAxnfcP83STuli2sz50xSxGIjXVXv-3uaWBMINXzqcFpmC774zWpT7GAfwJl7JY8XfTJCOH5AuOMOGLGnu4qLXCJoY8kfW_bbJZY3Y-rmj_KFvs0XsJBUgqcQyU1KcW_eK-0cHtfyD4i8XMPZs3ki4PflnhphDmji-O7uESoW8-0Kl2d5lsM_c0k9l5K1a-wYr11LFRwDnlM4UgZNW5o1m-RCtU3Ix1YbOAKDWCQYk7Ow-IfY4UmCsPGms1Cq2A0XTAg8MDz58VHmM9qcKimtz7UJxZDjWi719-5NN_6e_ZKaAVYTcaRE46EVqpCsqTyKw61lThQHfvmdehF6iXT52tUfTgm4yYKGkgq7SxQNZOdSqopsAND-iv9mnH1UZH0oMClStI8fQ2Mlsh7tRQ0248GMetfQ-8HuMe8AH8Qzq82KdF1I9tsXDPPCMl0Hk9LseCuMlj3TrRj29cIj2nZPKeepROE9fdIGzPqb8fpQ4RKmI8A766u6OjEDzeWt95JqdmUxeMMrny6i4hriaeG5etB6-l_FKyFPEVIYv0JODmJ_JnbURpUBfxC49YNBVru0tycGiGl9AV2hSvm8UtfvdyKT6fDK7tW8Nbv5iLzsNHxWMnpiErwmQ0o4nrTheTsy4V7b7y4YUMWxERcvkWMN7WKfmjbEHReMrqtIPVNy5plEL9pu9_P1Bhrs7n6LA8OK3MF_iNYOcLzvy8p5VHUujlLexQcJKwh0-pcVFkqlDS4VSFXj_xWJ-t-qBpaDVLN-GDo1oAugF8IGl_pYqzqxrHh2f3RpzjCwHjCAyVhcJgmVjD0y7gYd2nLw8y7kabj_pZc6dJEx1VolhGSoaNYkoreyAmRWMI5TApbMmC8nhvYuPTef7Ivv5Ta7G9yh6IZEEpYPLJpnvCk3dZ9evzRrxjSAtWWoStVYhC54uNHxgEsFUJOuBVM5Ydzq8-kJguZ1XF6iBe5yIdkyxbmUdiyAOantstLxRhWO6lFZ6PfxWrqOIYzYbIHLuS9eT6ba19Icwend_mGTcg==","type":"reasoning"},{"name":"add_logged","arguments":"{\"a\":5,\"b\":3}","call_id":"call_JFfdUMTzGq28C81sbLNHj57h","type":"function_call","id":"fc_0134aca4b18b87770069d47edd2f108190945de90a12efd676"},{"type":"function_call_output","call_id":"call_JFfdUMTzGq28C81sbLNHj57h","output":"8.0"}],"model":"gpt-5-nano","stream":false,"tool_choice":"auto","tools":[{"name":"add_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Add
+      two numbers together.","strict":true},{"name":"divide_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"Numerator","type":"number"},"b":{"description":"Denominator","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Divide
+      first number by second.","strict":true},{"name":"subtract_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Subtract
+      second number from first.","strict":true}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '4411'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0134aca4b18b87770069d47eddfdc88190bc9a2c9980461809\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533790,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533791,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_0134aca4b18b87770069d47ede45c88190aff3fc242959e806\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7fiIX10cVqIfl_iFYzvaqClh3pQb29fNt_t9KZtjjXiTyqrtYC4aZAay84D5uTttsjUP7CRRWrG_C7d1u_UHMYGnz4Rm7lDgdcsO7JZIlINT1-6yaH2Vbr3yafkV1Svq0Bt77fccuOJ7CSP3nZDIr3Fw07jFIrB3DbcXpdx-6NalfJh1U0uSZyT6STwBOLzsSZEapivWA257dMFNd7QAYLCnzFInPghYu141ghEPr4y6iPM3SRJ9kiw5dBGphBqZI40KrCLYkRTOsUGQpTcisdEStJmZ-bhs35vTsr2Aojn11jG8BHvro_WdV6rg2-LDtpQ0Ik0GZSbwdlBZLwwd7mQ9J-eLSTIuk-U7TF2iMgotxE-kY6bOabAxJIIEZ4-g4I5X-5c0DKKs4bLHpos5uLHimTm9ac-MV8ylW8S41Lc8mQVEkBsknZ39o-8yQW72_wbZc6xhF3ZKPzlX9wTPNmkY4Bgkbib0VIPbUUIySLTVVHWUUggBrWJ_0JzcTglPRGmiEAsbevY1isG-8uDx02BWutfB17XeTusQ6CiX8gTRvT0BNL2BJx97ekuT742WhV9gZflr5v3HFrtvzL_bVe5i45VSQq86EL_b0fWh5qVCAsKaw511L67-ua4LKcB3jFtJIMZBiySrrilK32-1leW6_psXg4xujQlTYWrlvitwPYy4Ez3bvsLgbb5bqmh3xjhewkxciIj3-ecp2xDRWPa3COw-ogGS_ytOzYXQ8AE_mZt826AbjAMwH8aXv9h8NEbTS3Ye9Z__loPy68fjvTe1hQ07bQkrqlOR7RuWuR9x9Q3lueKxi2mtzj71mxhKZ8JfDCkAa0ryMPXwOzHl9a1spBX3df17QD9m0XfgJcuUs9iz1HhZezQZRkr8XsOkbEtBo_w_LoAGI22u-Ff-ol9Xsveyj3921wgl6fBFYn7LAAh2bE2s9jZuzlQdIwaqGzgs-TzVLq3mB-zpmom0afx4PJVhQ-fZJxtJvdussUufA=\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"fc_0134aca4b18b87770069d47edec4088190b5513962a3283034\",\n
+        \     \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"a\\\":8.0,\\\"b\\\":4}\",\n      \"call_id\": \"call_Ai2zOFJu9RK8HLLhyDk2ygRT\",\n
+        \     \"name\": \"divide_logged\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Add two numbers together.\",\n      \"name\":
+        \"add_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    },\n    {\n      \"type\": \"function\",\n      \"description\":
+        \"Divide first number by second.\",\n      \"name\": \"divide_logged\",\n
+        \     \"parameters\": {\n        \"additionalProperties\": false,\n        \"properties\":
+        {\n          \"a\": {\n            \"description\": \"Numerator\",\n            \"type\":
+        \"number\"\n          },\n          \"b\": {\n            \"description\":
+        \"Denominator\",\n            \"type\": \"number\"\n          }\n        },\n
+        \       \"required\": [\n          \"a\",\n          \"b\"\n        ],\n        \"type\":
+        \"object\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Subtract second number from first.\",\n
+        \     \"name\": \"subtract_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 566,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 83,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 649\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e86108b1bcb68b4-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:51 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '4274'
+      openai-processing-ms:
+      - '1189'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_b1cf80d4e01b46688126243c81b291b9
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"system","content":"You
+      are a math assistant. Use the calculator tools to perform calculations. Always
+      use the tools - never calculate in your head. Perform operations step by step,
+      using the result of each step in the next."},{"role":"user","content":"Calculate:
+      add 5 + 3, then divide the result by 4, then subtract 10 from that."},{"id":"rs_0134aca4b18b87770069d47eda04648190ad3b82353d10a526","summary":[],"encrypted_content":"gAAAAABp1H7dgCL-n-ho2vfxtmfWi1ncJNYAiklYCeWB61ZRg4X5_ldHyhBs5Kf_d4q70teS6H6OefShrdPMMumSwfzbHRmTmeSNAlttB_4Wls8lhMMVPrTDtrDWVeI0nj8ieobNXckGbfvCqP2u2T_18YNNSKSK60A7uB8CRDLjJemLmqSgy_n8MTsEZraixbVL0gfy90mVbShIYQjanKxmdR7JXWFcsM1OVP4cisEA22Z8Q7vSqAuztW_Aq-cAC-W-ENErFMAUr99J-xM-Ah5Z42awTDM2HN4eLoJSYjyNZi3S9p08frmY0dOxN3LlR-sePqjXv_mW5nW_owl9EYz1IkqY0AiIu9d3LDLXtFthVjpnuWpNsufFoY3I3rxPAdX9GWtuEQHg_8NCn9q5NCr7Vc_rTqkw4ufaNvc7Td95MUn58mLhJJWItYGyO8au6O-7RNBCPVXj__se6hYDUMAlgmoJM6IyOLt1XKSfNhX7I2Xi_9yaQKFNFdtU-bMSm69JRl7Qb2IxQKW1UbzV_okc3RUtHKHd7dZAQT6-gIRlOhIvjyeDKfoWuSiY2zFdfPA9AcLpHe1WQ3E6f1Gucz5lr72kGSP0jB4F57QuSnS3xxscSU7endJ2mMSiZDIaXDgg6TRq5QCI3BD6BdPYnJl41SZCElS7-4ElfSOq33_xTVyzfx_8caD6YbtECDiZ6TO-KJcmvrzJo6IWVdtB_HgZk0kDD7fi-zWYVOUcT5Lk7yVrOO4qmK9Ml0A_5FdYoH6Fk_Et9OHX7VGkKttd5niel3dHybhbUn0KqW1czPTGX41rWThRtQjXK-C9Yxy-LouUzjSWpUJVTx-BSTQX0SMWCOrkJ2EalWC0vXv41vzaj-W05EEnZg61qTRrSsqVq-oVZsnthUbVw-OG5feykV-FkepV4WJqWL8YJtTww2wtp6dROiEHiu7bZJNtABZ7gBk-2ubTiwYxRtNOA24Em0HBdEWkOk6EqH_rNDe-tkwdI6TPzBiXuv9Bvp8GII06wn2Ewwz2X3BUET3GXW8y4eHxx0tlUd4WVeKYgwGOHtrQUNotgCa61f_w1-oPYvqHkaPzwd1jcpbRoJsp9YWzzGByffx4Kly8eGJJKssIKcmkoLQpIamc1EntfDJyvIfrFE8uW_d93Ue6tB5kffYJZ2mMoH9RxKFQQqnkZzbB7nL0L8BCqwzS_6MF5O7OdEjFlqNpHkNA_RcCyEwbgL9YbQGujF4h0l0RRtrTUbDN3TMW7sygqsrd0hq1485yzQQXPrEVeZSZjevjd7Z7zb2gksZx7zFutuhs7mIWnjRmUa8Pkdh4h8aFuR_vBM1-n1AxTNKHG3zzmScCFQ7pmXSVvin5Phq0R70mlvRgYdChjy7-G3EnpnsS_N2Kn3FKO3FYqpSA4FUyb1LybfV928YU4LRxfaOuQ77Yt9tSW7aLq9RM7bu-zjJqzJYViZoIMkndfERmJLFjPNJAPHPufl1KkH-krtA-CGqOsS01sxa5jVcVEQjiIxOP76FZ6-g5aGxhXqQpGxQz4l3ZNk82tgHDNRNGVo6JtF9ZL310Gu55fXdWkL6UmO1leN8uh4wdB3otw_oSNoFYmWoIfE_oJoGDMrKWAxnfcP83STuli2sz50xSxGIjXVXv-3uaWBMINXzqcFpmC774zWpT7GAfwJl7JY8XfTJCOH5AuOMOGLGnu4qLXCJoY8kfW_bbJZY3Y-rmj_KFvs0XsJBUgqcQyU1KcW_eK-0cHtfyD4i8XMPZs3ki4PflnhphDmji-O7uESoW8-0Kl2d5lsM_c0k9l5K1a-wYr11LFRwDnlM4UgZNW5o1m-RCtU3Ix1YbOAKDWCQYk7Ow-IfY4UmCsPGms1Cq2A0XTAg8MDz58VHmM9qcKimtz7UJxZDjWi719-5NN_6e_ZKaAVYTcaRE46EVqpCsqTyKw61lThQHfvmdehF6iXT52tUfTgm4yYKGkgq7SxQNZOdSqopsAND-iv9mnH1UZH0oMClStI8fQ2Mlsh7tRQ0248GMetfQ-8HuMe8AH8Qzq82KdF1I9tsXDPPCMl0Hk9LseCuMlj3TrRj29cIj2nZPKeepROE9fdIGzPqb8fpQ4RKmI8A766u6OjEDzeWt95JqdmUxeMMrny6i4hriaeG5etB6-l_FKyFPEVIYv0JODmJ_JnbURpUBfxC49YNBVru0tycGiGl9AV2hSvm8UtfvdyKT6fDK7tW8Nbv5iLzsNHxWMnpiErwmQ0o4nrTheTsy4V7b7y4YUMWxERcvkWMN7WKfmjbEHReMrqtIPVNy5plEL9pu9_P1Bhrs7n6LA8OK3MF_iNYOcLzvy8p5VHUujlLexQcJKwh0-pcVFkqlDS4VSFXj_xWJ-t-qBpaDVLN-GDo1oAugF8IGl_pYqzqxrHh2f3RpzjCwHjCAyVhcJgmVjD0y7gYd2nLw8y7kabj_pZc6dJEx1VolhGSoaNYkoreyAmRWMI5TApbMmC8nhvYuPTef7Ivv5Ta7G9yh6IZEEpYPLJpnvCk3dZ9evzRrxjSAtWWoStVYhC54uNHxgEsFUJOuBVM5Ydzq8-kJguZ1XF6iBe5yIdkyxbmUdiyAOantstLxRhWO6lFZ6PfxWrqOIYzYbIHLuS9eT6ba19Icwend_mGTcg==","type":"reasoning"},{"name":"add_logged","arguments":"{\"a\":5,\"b\":3}","call_id":"call_JFfdUMTzGq28C81sbLNHj57h","type":"function_call","id":"fc_0134aca4b18b87770069d47edd2f108190945de90a12efd676"},{"type":"function_call_output","call_id":"call_JFfdUMTzGq28C81sbLNHj57h","output":"8.0"},{"id":"rs_0134aca4b18b87770069d47ede45c88190aff3fc242959e806","summary":[],"encrypted_content":"gAAAAABp1H7fiIX10cVqIfl_iFYzvaqClh3pQb29fNt_t9KZtjjXiTyqrtYC4aZAay84D5uTttsjUP7CRRWrG_C7d1u_UHMYGnz4Rm7lDgdcsO7JZIlINT1-6yaH2Vbr3yafkV1Svq0Bt77fccuOJ7CSP3nZDIr3Fw07jFIrB3DbcXpdx-6NalfJh1U0uSZyT6STwBOLzsSZEapivWA257dMFNd7QAYLCnzFInPghYu141ghEPr4y6iPM3SRJ9kiw5dBGphBqZI40KrCLYkRTOsUGQpTcisdEStJmZ-bhs35vTsr2Aojn11jG8BHvro_WdV6rg2-LDtpQ0Ik0GZSbwdlBZLwwd7mQ9J-eLSTIuk-U7TF2iMgotxE-kY6bOabAxJIIEZ4-g4I5X-5c0DKKs4bLHpos5uLHimTm9ac-MV8ylW8S41Lc8mQVEkBsknZ39o-8yQW72_wbZc6xhF3ZKPzlX9wTPNmkY4Bgkbib0VIPbUUIySLTVVHWUUggBrWJ_0JzcTglPRGmiEAsbevY1isG-8uDx02BWutfB17XeTusQ6CiX8gTRvT0BNL2BJx97ekuT742WhV9gZflr5v3HFrtvzL_bVe5i45VSQq86EL_b0fWh5qVCAsKaw511L67-ua4LKcB3jFtJIMZBiySrrilK32-1leW6_psXg4xujQlTYWrlvitwPYy4Ez3bvsLgbb5bqmh3xjhewkxciIj3-ecp2xDRWPa3COw-ogGS_ytOzYXQ8AE_mZt826AbjAMwH8aXv9h8NEbTS3Ye9Z__loPy68fjvTe1hQ07bQkrqlOR7RuWuR9x9Q3lueKxi2mtzj71mxhKZ8JfDCkAa0ryMPXwOzHl9a1spBX3df17QD9m0XfgJcuUs9iz1HhZezQZRkr8XsOkbEtBo_w_LoAGI22u-Ff-ol9Xsveyj3921wgl6fBFYn7LAAh2bE2s9jZuzlQdIwaqGzgs-TzVLq3mB-zpmom0afx4PJVhQ-fZJxtJvdussUufA=","type":"reasoning"},{"name":"divide_logged","arguments":"{\"a\":8.0,\"b\":4}","call_id":"call_Ai2zOFJu9RK8HLLhyDk2ygRT","type":"function_call","id":"fc_0134aca4b18b87770069d47edec4088190b5513962a3283034"},{"type":"function_call_output","call_id":"call_Ai2zOFJu9RK8HLLhyDk2ygRT","output":"2.0"}],"model":"gpt-5-nano","stream":false,"tool_choice":"auto","tools":[{"name":"add_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Add
+      two numbers together.","strict":true},{"name":"divide_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"Numerator","type":"number"},"b":{"description":"Denominator","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Divide
+      first number by second.","strict":true},{"name":"subtract_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Subtract
+      second number from first.","strict":true}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '5819'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0134aca4b18b87770069d47edf54448190992c7eb6c3c57e36\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533791,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533792,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_0134aca4b18b87770069d47edfa2bc81909c4f2dea13af74e0\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7g5HlQ2gAmXCJoA3g77zQmknInsGBZF203LVHYCnnb1hdpsKqv5S62BrGRU1wCRd-EpyLWsuVZgASLiqBZHEegZ0xFqZA6EgNk30-ZdX4KKS9iKjvkZvU_JcASoUEJDy_FVcI-dFYd10K6k-KozI2Q4LRD2Wz1ZEkPBrNpGw0ffnGsBwFHHIBQihK8iP_zwTxSqaPHtsxCwOsJMK-inn2PavAw_mLxrNAvp_Gh3sq4RoSRrCBV4YVFYp5wVJMYX0vZndO7_pJ--scg1xpnboRouInX2kDCxrwzCqG3NmTqgtVTRqYONABXwyn1uvguLDM_9EXvLZW1IAtCnpSIxUuE7sYoTznwyschReI5QMf3AVRlKjGGtgnX7Day02_0mKoq8cX-FUVeRuPEREAtoCn2MjJB4nO50MJQyIqtQ5lWb0--_qZs5nk9v9wQf3ru6o932Rk6BGqaO3NG5yHfxZ0XJGWmCnuLQPLtTHWw8-XOf63P_9D3YrFbZfxFq7SMRccloW_y-2HjXp675YuI2Kk50QUYEiU9XjGeoHgJWFjeOepf_HoRKr_7pf32nw2F3t6-HbdBas2UjHijlZGq8_jJFW7M3jFWcZFUSiP6n4AalN3HNS_Q0gzdjyMWo-8SOegCq7xr2CrNbKmPJvw-9T_l1_oWxMy0V-hJjtlgsjSdtPej31-HRBu9p1hYb3bcJ54ueRzVIGVt5iCzO6YYbbb98NcAZ-A0es8gfHW_oqZOXGMWoNq5ZHzmLe_Pt9LEWftTCEQEMlyeASLcazNNZ7LFqNO99IJQsmKQzW7jG1HRF6S8U55T0nM1pQ3eJHahQxwG3IGK9JX7aZn9W2cYQIRgNUxTRXfSzYZscP6dbF0C52cG9nt6eQ4fUAngRNXIUG1DIn86vasi6IGyYrY35Jgfl0xsfdATbIIcsNL7PDgvYm6QQGw4dzYNsq46HdXTxlfbt0DT4qIqxo2vFXn9-kSqTuz_BVswjtayqJQVYoGpzKjmkGxYU3VrVp7rLwhh0p7Bt8Z2_0OF8YzCVVACrKBpt8lVI-xZTOpGF7SJlJcN3mwWciogjnvVgwpmgW9Q3FYP2DMAwMNt8XioQK6zH-xGEDqbgtUkPu029Ak4qYoxThINGvOuc7qtT8_L76v6VXA32PMm92I-ng29FpPBfarNZA==\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"fc_0134aca4b18b87770069d47ee06b548190b768630158ff092e\",\n
+        \     \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"a\\\":2.0,\\\"b\\\":10}\",\n      \"call_id\": \"call_gTjIowMgoz2Jen0j2ipP5A05\",\n
+        \     \"name\": \"subtract_logged\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Add two numbers together.\",\n      \"name\":
+        \"add_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    },\n    {\n      \"type\": \"function\",\n      \"description\":
+        \"Divide first number by second.\",\n      \"name\": \"divide_logged\",\n
+        \     \"parameters\": {\n        \"additionalProperties\": false,\n        \"properties\":
+        {\n          \"a\": {\n            \"description\": \"Numerator\",\n            \"type\":
+        \"number\"\n          },\n          \"b\": {\n            \"description\":
+        \"Denominator\",\n            \"type\": \"number\"\n          }\n        },\n
+        \       \"required\": [\n          \"a\",\n          \"b\"\n        ],\n        \"type\":
+        \"object\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Subtract second number from first.\",\n
+        \     \"name\": \"subtract_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 663,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 110,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 64\n    },\n    \"total_tokens\": 773\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e86109378032958-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:52 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '4451'
+      openai-processing-ms:
+      - '1484'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_21f76dd42ddf4a459c511385422a7880
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"system","content":"You
+      are a math assistant. Use the calculator tools to perform calculations. Always
+      use the tools - never calculate in your head. Perform operations step by step,
+      using the result of each step in the next."},{"role":"user","content":"Calculate:
+      add 5 + 3, then divide the result by 4, then subtract 10 from that."},{"id":"rs_0134aca4b18b87770069d47eda04648190ad3b82353d10a526","summary":[],"encrypted_content":"gAAAAABp1H7dgCL-n-ho2vfxtmfWi1ncJNYAiklYCeWB61ZRg4X5_ldHyhBs5Kf_d4q70teS6H6OefShrdPMMumSwfzbHRmTmeSNAlttB_4Wls8lhMMVPrTDtrDWVeI0nj8ieobNXckGbfvCqP2u2T_18YNNSKSK60A7uB8CRDLjJemLmqSgy_n8MTsEZraixbVL0gfy90mVbShIYQjanKxmdR7JXWFcsM1OVP4cisEA22Z8Q7vSqAuztW_Aq-cAC-W-ENErFMAUr99J-xM-Ah5Z42awTDM2HN4eLoJSYjyNZi3S9p08frmY0dOxN3LlR-sePqjXv_mW5nW_owl9EYz1IkqY0AiIu9d3LDLXtFthVjpnuWpNsufFoY3I3rxPAdX9GWtuEQHg_8NCn9q5NCr7Vc_rTqkw4ufaNvc7Td95MUn58mLhJJWItYGyO8au6O-7RNBCPVXj__se6hYDUMAlgmoJM6IyOLt1XKSfNhX7I2Xi_9yaQKFNFdtU-bMSm69JRl7Qb2IxQKW1UbzV_okc3RUtHKHd7dZAQT6-gIRlOhIvjyeDKfoWuSiY2zFdfPA9AcLpHe1WQ3E6f1Gucz5lr72kGSP0jB4F57QuSnS3xxscSU7endJ2mMSiZDIaXDgg6TRq5QCI3BD6BdPYnJl41SZCElS7-4ElfSOq33_xTVyzfx_8caD6YbtECDiZ6TO-KJcmvrzJo6IWVdtB_HgZk0kDD7fi-zWYVOUcT5Lk7yVrOO4qmK9Ml0A_5FdYoH6Fk_Et9OHX7VGkKttd5niel3dHybhbUn0KqW1czPTGX41rWThRtQjXK-C9Yxy-LouUzjSWpUJVTx-BSTQX0SMWCOrkJ2EalWC0vXv41vzaj-W05EEnZg61qTRrSsqVq-oVZsnthUbVw-OG5feykV-FkepV4WJqWL8YJtTww2wtp6dROiEHiu7bZJNtABZ7gBk-2ubTiwYxRtNOA24Em0HBdEWkOk6EqH_rNDe-tkwdI6TPzBiXuv9Bvp8GII06wn2Ewwz2X3BUET3GXW8y4eHxx0tlUd4WVeKYgwGOHtrQUNotgCa61f_w1-oPYvqHkaPzwd1jcpbRoJsp9YWzzGByffx4Kly8eGJJKssIKcmkoLQpIamc1EntfDJyvIfrFE8uW_d93Ue6tB5kffYJZ2mMoH9RxKFQQqnkZzbB7nL0L8BCqwzS_6MF5O7OdEjFlqNpHkNA_RcCyEwbgL9YbQGujF4h0l0RRtrTUbDN3TMW7sygqsrd0hq1485yzQQXPrEVeZSZjevjd7Z7zb2gksZx7zFutuhs7mIWnjRmUa8Pkdh4h8aFuR_vBM1-n1AxTNKHG3zzmScCFQ7pmXSVvin5Phq0R70mlvRgYdChjy7-G3EnpnsS_N2Kn3FKO3FYqpSA4FUyb1LybfV928YU4LRxfaOuQ77Yt9tSW7aLq9RM7bu-zjJqzJYViZoIMkndfERmJLFjPNJAPHPufl1KkH-krtA-CGqOsS01sxa5jVcVEQjiIxOP76FZ6-g5aGxhXqQpGxQz4l3ZNk82tgHDNRNGVo6JtF9ZL310Gu55fXdWkL6UmO1leN8uh4wdB3otw_oSNoFYmWoIfE_oJoGDMrKWAxnfcP83STuli2sz50xSxGIjXVXv-3uaWBMINXzqcFpmC774zWpT7GAfwJl7JY8XfTJCOH5AuOMOGLGnu4qLXCJoY8kfW_bbJZY3Y-rmj_KFvs0XsJBUgqcQyU1KcW_eK-0cHtfyD4i8XMPZs3ki4PflnhphDmji-O7uESoW8-0Kl2d5lsM_c0k9l5K1a-wYr11LFRwDnlM4UgZNW5o1m-RCtU3Ix1YbOAKDWCQYk7Ow-IfY4UmCsPGms1Cq2A0XTAg8MDz58VHmM9qcKimtz7UJxZDjWi719-5NN_6e_ZKaAVYTcaRE46EVqpCsqTyKw61lThQHfvmdehF6iXT52tUfTgm4yYKGkgq7SxQNZOdSqopsAND-iv9mnH1UZH0oMClStI8fQ2Mlsh7tRQ0248GMetfQ-8HuMe8AH8Qzq82KdF1I9tsXDPPCMl0Hk9LseCuMlj3TrRj29cIj2nZPKeepROE9fdIGzPqb8fpQ4RKmI8A766u6OjEDzeWt95JqdmUxeMMrny6i4hriaeG5etB6-l_FKyFPEVIYv0JODmJ_JnbURpUBfxC49YNBVru0tycGiGl9AV2hSvm8UtfvdyKT6fDK7tW8Nbv5iLzsNHxWMnpiErwmQ0o4nrTheTsy4V7b7y4YUMWxERcvkWMN7WKfmjbEHReMrqtIPVNy5plEL9pu9_P1Bhrs7n6LA8OK3MF_iNYOcLzvy8p5VHUujlLexQcJKwh0-pcVFkqlDS4VSFXj_xWJ-t-qBpaDVLN-GDo1oAugF8IGl_pYqzqxrHh2f3RpzjCwHjCAyVhcJgmVjD0y7gYd2nLw8y7kabj_pZc6dJEx1VolhGSoaNYkoreyAmRWMI5TApbMmC8nhvYuPTef7Ivv5Ta7G9yh6IZEEpYPLJpnvCk3dZ9evzRrxjSAtWWoStVYhC54uNHxgEsFUJOuBVM5Ydzq8-kJguZ1XF6iBe5yIdkyxbmUdiyAOantstLxRhWO6lFZ6PfxWrqOIYzYbIHLuS9eT6ba19Icwend_mGTcg==","type":"reasoning"},{"name":"add_logged","arguments":"{\"a\":5,\"b\":3}","call_id":"call_JFfdUMTzGq28C81sbLNHj57h","type":"function_call","id":"fc_0134aca4b18b87770069d47edd2f108190945de90a12efd676"},{"type":"function_call_output","call_id":"call_JFfdUMTzGq28C81sbLNHj57h","output":"8.0"},{"id":"rs_0134aca4b18b87770069d47ede45c88190aff3fc242959e806","summary":[],"encrypted_content":"gAAAAABp1H7fiIX10cVqIfl_iFYzvaqClh3pQb29fNt_t9KZtjjXiTyqrtYC4aZAay84D5uTttsjUP7CRRWrG_C7d1u_UHMYGnz4Rm7lDgdcsO7JZIlINT1-6yaH2Vbr3yafkV1Svq0Bt77fccuOJ7CSP3nZDIr3Fw07jFIrB3DbcXpdx-6NalfJh1U0uSZyT6STwBOLzsSZEapivWA257dMFNd7QAYLCnzFInPghYu141ghEPr4y6iPM3SRJ9kiw5dBGphBqZI40KrCLYkRTOsUGQpTcisdEStJmZ-bhs35vTsr2Aojn11jG8BHvro_WdV6rg2-LDtpQ0Ik0GZSbwdlBZLwwd7mQ9J-eLSTIuk-U7TF2iMgotxE-kY6bOabAxJIIEZ4-g4I5X-5c0DKKs4bLHpos5uLHimTm9ac-MV8ylW8S41Lc8mQVEkBsknZ39o-8yQW72_wbZc6xhF3ZKPzlX9wTPNmkY4Bgkbib0VIPbUUIySLTVVHWUUggBrWJ_0JzcTglPRGmiEAsbevY1isG-8uDx02BWutfB17XeTusQ6CiX8gTRvT0BNL2BJx97ekuT742WhV9gZflr5v3HFrtvzL_bVe5i45VSQq86EL_b0fWh5qVCAsKaw511L67-ua4LKcB3jFtJIMZBiySrrilK32-1leW6_psXg4xujQlTYWrlvitwPYy4Ez3bvsLgbb5bqmh3xjhewkxciIj3-ecp2xDRWPa3COw-ogGS_ytOzYXQ8AE_mZt826AbjAMwH8aXv9h8NEbTS3Ye9Z__loPy68fjvTe1hQ07bQkrqlOR7RuWuR9x9Q3lueKxi2mtzj71mxhKZ8JfDCkAa0ryMPXwOzHl9a1spBX3df17QD9m0XfgJcuUs9iz1HhZezQZRkr8XsOkbEtBo_w_LoAGI22u-Ff-ol9Xsveyj3921wgl6fBFYn7LAAh2bE2s9jZuzlQdIwaqGzgs-TzVLq3mB-zpmom0afx4PJVhQ-fZJxtJvdussUufA=","type":"reasoning"},{"name":"divide_logged","arguments":"{\"a\":8.0,\"b\":4}","call_id":"call_Ai2zOFJu9RK8HLLhyDk2ygRT","type":"function_call","id":"fc_0134aca4b18b87770069d47edec4088190b5513962a3283034"},{"type":"function_call_output","call_id":"call_Ai2zOFJu9RK8HLLhyDk2ygRT","output":"2.0"},{"id":"rs_0134aca4b18b87770069d47edfa2bc81909c4f2dea13af74e0","summary":[],"encrypted_content":"gAAAAABp1H7g5HlQ2gAmXCJoA3g77zQmknInsGBZF203LVHYCnnb1hdpsKqv5S62BrGRU1wCRd-EpyLWsuVZgASLiqBZHEegZ0xFqZA6EgNk30-ZdX4KKS9iKjvkZvU_JcASoUEJDy_FVcI-dFYd10K6k-KozI2Q4LRD2Wz1ZEkPBrNpGw0ffnGsBwFHHIBQihK8iP_zwTxSqaPHtsxCwOsJMK-inn2PavAw_mLxrNAvp_Gh3sq4RoSRrCBV4YVFYp5wVJMYX0vZndO7_pJ--scg1xpnboRouInX2kDCxrwzCqG3NmTqgtVTRqYONABXwyn1uvguLDM_9EXvLZW1IAtCnpSIxUuE7sYoTznwyschReI5QMf3AVRlKjGGtgnX7Day02_0mKoq8cX-FUVeRuPEREAtoCn2MjJB4nO50MJQyIqtQ5lWb0--_qZs5nk9v9wQf3ru6o932Rk6BGqaO3NG5yHfxZ0XJGWmCnuLQPLtTHWw8-XOf63P_9D3YrFbZfxFq7SMRccloW_y-2HjXp675YuI2Kk50QUYEiU9XjGeoHgJWFjeOepf_HoRKr_7pf32nw2F3t6-HbdBas2UjHijlZGq8_jJFW7M3jFWcZFUSiP6n4AalN3HNS_Q0gzdjyMWo-8SOegCq7xr2CrNbKmPJvw-9T_l1_oWxMy0V-hJjtlgsjSdtPej31-HRBu9p1hYb3bcJ54ueRzVIGVt5iCzO6YYbbb98NcAZ-A0es8gfHW_oqZOXGMWoNq5ZHzmLe_Pt9LEWftTCEQEMlyeASLcazNNZ7LFqNO99IJQsmKQzW7jG1HRF6S8U55T0nM1pQ3eJHahQxwG3IGK9JX7aZn9W2cYQIRgNUxTRXfSzYZscP6dbF0C52cG9nt6eQ4fUAngRNXIUG1DIn86vasi6IGyYrY35Jgfl0xsfdATbIIcsNL7PDgvYm6QQGw4dzYNsq46HdXTxlfbt0DT4qIqxo2vFXn9-kSqTuz_BVswjtayqJQVYoGpzKjmkGxYU3VrVp7rLwhh0p7Bt8Z2_0OF8YzCVVACrKBpt8lVI-xZTOpGF7SJlJcN3mwWciogjnvVgwpmgW9Q3FYP2DMAwMNt8XioQK6zH-xGEDqbgtUkPu029Ak4qYoxThINGvOuc7qtT8_L76v6VXA32PMm92I-ng29FpPBfarNZA==","type":"reasoning"},{"name":"subtract_logged","arguments":"{\"a\":2.0,\"b\":10}","call_id":"call_gTjIowMgoz2Jen0j2ipP5A05","type":"function_call","id":"fc_0134aca4b18b87770069d47ee06b548190b768630158ff092e"},{"type":"function_call_output","call_id":"call_gTjIowMgoz2Jen0j2ipP5A05","output":"-8.0"}],"model":"gpt-5-nano","stream":false,"tool_choice":"auto","tools":[{"name":"add_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Add
+      two numbers together.","strict":true},{"name":"divide_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"Numerator","type":"number"},"b":{"description":"Denominator","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Divide
+      first number by second.","strict":true},{"name":"subtract_logged","parameters":{"additionalProperties":false,"properties":{"a":{"description":"First
+      number","type":"number"},"b":{"description":"Second number","type":"number"}},"required":["a","b"],"type":"object"},"type":"function","description":"Subtract
+      second number from first.","strict":true}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '7403'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0134aca4b18b87770069d47ee0f5e4819081678475e5d5e69a\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533792,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533794,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_0134aca4b18b87770069d47ee140888190b9f317a9543168f5\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7ieY4LmguYdtjw9yHbuWn8SUvJf--op8B_PH_X1vPAvOGlP41ekZSg2Ut3qC3f6ujyFvxF3PTmsk7NyO8Y0eskdkY7D2sJHMhR8cl1XDhmG0A9rvbtxX5LKvw5JEzHgjHDXx9iOuVczryxw8Lnl7fapvllqeNWMv9k2L9qZuX8kXNYaUcy0Z1R6Q20n5Q_PhHhM65B1bwb7qMPleyQtD4sTjNAFWHFsWkRZn8HGm_Fd_8-Z8Qe9yvvVYqPclOsXttHR0P7GEmKP-be8Ga7v0prdn9xVLgmlEC9eIw35ghGKMt_o0ymW_JsL3vcBEgfK5Q5zTVMgEjCSLVJG1GjijQuyXZCP7v9QpfYyIS3LE-arroZOrI27o_0VPsU7ll0TjbNkGkLE3UB9ZpsUeCIfsazn-1FD0TK0aVHmBtJQzYYSv_P_lSTmNCZx1f4NYYZDaia5t7eDND0RQbvg7ZhoCcJDi0DHC09ALoc1XM0jZLH9sTW7TEWlG-MvTR29HA1QK3PGIMvZm69QuC0oTE2id60vc7dWf343tiuj8jA9TnD_jY1bncmoP_kEJTXHLrMGHtyePMxCJcTz2xa0yFIUV6jXpcGjIrJDvU9td7l-SC-reTRxlkWtXQbDmGjMRFI5Iy4JqjXChoZcRhSZP_DMhEg2czpEbm94WP7Cw9pC7J-chN6OMvf4KBSOwyuvDyVXFl4hF2JifVU_Czb8vXt8_KBaPOsfy_mVn2CsHzGCJEMY-_Aaa-HN4AnHfhgdZ1Pof6vTPNz6j53HL14ok8ee8lS_L_JN1QIRyTkiEoN9unm9bfehY1MdA5ML__n3rGhBHTxVevxKt2P1xt5jrUMByUnu0QgTrIaPsjSjk9PI66UK-ajll8oKpYHKuSDTAmxI2JH7iNdLdQE2BLtvYlgE4q2_wOmlHREF-Yw6LviL2G_6Cb2I90lhPCG6wuqrieCkZbu10nhJu5vtjVaYU2PW0YGfr7y285gf9B3LnQ-U-YTZ77JV9gPG-d1ZmCaUKlryQNA5LM15yjdjN8IzpAfS926XJbUZZoWsj5kmMRIJ3Ey_wtiA49XEtroxmBDL-RVwvL1uEnIBZMCEZCQKPY0mEVBbyda4xZZk5Y_V8yBh5wPPIkLFMAifuacH9JF-pRftuFGE4HAbaq_GQjo8hxdJGSkjHhbvAt9fzWjMlox78W0DjCMQoR7Z2xSA8w58Kh8UkxOCkD_2hIvetTK7Doif0sKdA==\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"msg_0134aca4b18b87770069d47ee1dc948190ad22ae9b1eaeb581\",\n
+        \     \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\":
+        [\n        {\n          \"type\": \"output_text\",\n          \"annotations\":
+        [],\n          \"logprobs\": [],\n          \"text\": \"Step 1: 5 + 3 = 8\\nStep
+        2: 8 \\u00f7 4 = 2\\nStep 3: 2 \\u2212 10 = -8\\n\\nFinal result: -8\"\n        }\n
+        \     ],\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\": {\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Add two numbers together.\",\n      \"name\":
+        \"add_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    },\n    {\n      \"type\": \"function\",\n      \"description\":
+        \"Divide first number by second.\",\n      \"name\": \"divide_logged\",\n
+        \     \"parameters\": {\n        \"additionalProperties\": false,\n        \"properties\":
+        {\n          \"a\": {\n            \"description\": \"Numerator\",\n            \"type\":
+        \"number\"\n          },\n          \"b\": {\n            \"description\":
+        \"Denominator\",\n            \"type\": \"number\"\n          }\n        },\n
+        \       \"required\": [\n          \"a\",\n          \"b\"\n        ],\n        \"type\":
+        \"object\"\n      },\n      \"strict\": true\n    },\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Subtract second number from first.\",\n
+        \     \"name\": \"subtract_logged\",\n      \"parameters\": {\n        \"additionalProperties\":
+        false,\n        \"properties\": {\n          \"a\": {\n            \"description\":
+        \"First number\",\n            \"type\": \"number\"\n          },\n          \"b\":
+        {\n            \"description\": \"Second number\",\n            \"type\":
+        \"number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n
+        \         \"b\"\n        ],\n        \"type\": \"object\"\n      },\n      \"strict\":
+        true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 788,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 143,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 64\n    },\n    \"total_tokens\": 931\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e86109dac53d52d-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:54 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '4655'
+      openai-processing-ms:
+      - '1516'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_e60261bd408541d487609f4004bce9ac
+    status:
+      code: 200
+      message: OK
+version: 1

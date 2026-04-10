@@ -1,0 +1,221 @@
+interactions:
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"user","content":"your
+      name is Julian"}],"model":"gpt-5-nano","stream":false}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '137'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_06085a688f09723c0069d47ee2b6e48190859c0c16cd643730\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533794,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533798,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_06085a688f09723c0069d47ee30308819088d5c15713a542d5\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7mu81aDNQmDsguSC_YtBkp50PUbwXIlkV5naDWnIyMG4E0lazCvdmm2KUHyoFQQnzxta3WRR2yaW4jzEDvtyFYhm8WcIuUDTHqG2psrFFrg8B_lkMGM_2DzXkaLefa7gAPB6zvOmDSXNmGe1779uTC_p-IR_Tmsbhy8qdu-WBbUgasFBc2V_OpaWl0O9fI9NAjAqgUaKj2BDk53sEhPLs_7c3mRSG8AEerwW3yMn7BOUcJPmqr7wT91iUSOinunLmxnNc8wUfQBqm8bnNuxMqly44apZJI75Gk96t37Sr4uQmBspTXzq1EAcKrd971rGTkpE-UDmSsuAMZO2vRfE5m0LeTAuW-42FNvdBb2bfJOpaFgeJEUVBwBZHsjvYkEIVCGItFtf8VPtwj_n0TA0BBxFq1g5ZsdgAaLCE3r6lU2m21h3BenmMkn4NDv6tew4-6iMD50MFINkiqwjdeRGC25Fin3PxAsXUtPu6zICrCOD31wBqyVsuhijA3D4gENwATBtArIdetHYXdPzbShZsIXymDVvDXq6lesZG8qIYIP-_7YwJkqtn1O23av_2GLIpUTHtqd8bKkLjyIWDJAaeREH_pjchbi3RsYP0vqX59DY1xv1GsipAvrjHXqmXgX2IoXIw2Gd8M1ELAVfJ6pw55f2rU44U71tijICNm-n9rAyBYUMFgQABv09tX_IkkMUemUL-P5-tYd8kbEi00b6Qd96o3BC8OYJ0jeNLG7kcBPIA714EGExpZDgPL3rNLsZ6CqZN3t9uemHEomaJ2lxDENfJWjCwkwmxSM0DDuBxqUr9GsGXxTShvPQr-gbt7m9F_zy_XYEW5zcVAlHckSvfXbl06t321c8rvahi09iQp_4m1XJCIRIx1EBcF5jOo04Sipw7pALNXqksvSt6j6ZGJgNpzKrtzuIuM4Hr21I0FUSUyrkk0WMiNj_mU1RAnA9ELZ-yPXQc7t3yaPxo0BO3GX8lGQ1f1VvOYrMyNZfxuc4bhid6e7Own_YSQy9HIVq2YQqIbmXvOTogc9ZrktxhycFc-xmn9ffTaS3aJSyJcI_dgvfz0lqLjUOvXRzhT3eTxy2si5rq4WbAomxM69lOt5585aLw8kv0Afx17-0Lz7tOHvUqKTYygj7vKo_7LUiRZpg9uirU2LoOmIPeXsqFRu4LQ2PU7hDpmvwdkPJsdpY2ukRWL8_rim2HmHmperEYBaGUbZuFYmzkbWSE7PMV7ZkaPRfslcEbudnl-C-ZWEpVceO_Wb_mQIMovu4QCfdlXzcqjTks3kUCEvCg-Af0R3rC1Yxd6JSJAZmVYD9PAtFFp1t-Trxpj17TuPehvA_y9ORRviDujo8CO5Q9NWtQ_MWnNa2PADPF1OL-36BZxtwGqtajzPZNoroSiYwJoMNn-YBgGyGdbeiWwuAl7T8sP-cOmO3cXVKbu-2_BOl9XCBMyk7iyM98pmSX3pz11hOoauEM8IFWKuJ7_AMYiYyk6bpastM3VkMdjGriMfCCpMWYoxHqXsJsXdDY04ulo5yRCB6kXHBqO23EILcSoIfo_vKpe7pB_DUmI_JajiykBm9iwyH6P4P4ZMec9CyR0M0eYEpBViNn8iRGDuv3ZJqYaxrlJatr_z-Hc2Fxc2FVKg8vk2B8CtKo3kuwACEh7o1szxb2vqdVOx2zM9bS53opAo0IUJubvqQ7wLfqe4js3ImHlOj0O02rNRkprHtD35zDWP28_GTCSOjcj7DkCfNB5-hNJ4whWjwP-4vlzbYTi0kxLFbzi24vAw-oNHu91F8M1CxWRgYiamMsn_iLeIFQndrAFHjqrrEb-OITP6fl6xFYICM1dkfGQzZG6ItpYKDzghwRUP1BKasn_qq8aW5sWU-NsneKFPsxz1pEJV1EoVxaaTylbeAfCUWv7-7s-FAb8FgkBvj707Pxq6rcujxWnmPeJw0MbaPSTVEMg7V4f9VHdirNlBtdCRr75u-mYoUvvPHZ-vCv6apiIuu7gRjCduT7rZ-nan2E1rccFFPexzIM6yZUsNOwiE_1K8i_4WcrCiSp0GOrzN3Nw8-hy8ckdIihoB0bIXAwYfTnhMLsnYBOrWWTyd9K2afs9nMB35mq78CfR9bMCkPxJY8HPjRZEAt7GYQCBGxkzYs_PUaev2I23eKyZn1dIzvhOIJ7GRBtRHBkI83o4xR9tZpl4UrJVH8UcTXZ3iImDlTqal779tPuGqYelJkdo1iBrOP-P7qE2ePn8D3AsfjtrgbHZlpQtjLfcOymIU9rvzErydO2q90IeHCbNNWyfWbmgNEMMG1M95fgOnIrO-gBkQO6Z43GildMu_xLeIQ2J5SDEzrVww5GZPW1TsEfQssor25bdmNJazMziK1C6G6xm2nFXmWfjs8PI123PRgbP8UN1dU25slzbkOxWUSt4KBHNxrI8Xts-U2i8_HKtGVamUo8Sx3U12JqPAf2jWRon4z4ayfFjOxdQ8U7c3wmLvziZbwhBgwEzuhoLRRAUeHWwMdMbBh-uwCEWYjaeqLBGOAOxHi6BJCHs1NYLeOaLiPXe9_OEFWvv4sAtnE61ePjIOZUX6pAY8vE6bt3EvFyL_txDhepmhak2_UrGLTlY7Y2uXaVlj_u06JQK149khhVqn7QDUnRtRrI5ne8yD-gQK0Tc9girHBftYgm22bjtSZWAzH-fPgLmHTnZTTGh6Xg1zq9V6vt4SXqFDmPb9RFIi6up5MQf7SnMQfWKDVFvOHCbhplqvc3XIfiEswKVi4P4nNKjOVp2_g==\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"msg_06085a688f09723c0069d47ee59cac81909eac88668131776b\",\n
+        \     \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\":
+        [\n        {\n          \"type\": \"output_text\",\n          \"annotations\":
+        [],\n          \"logprobs\": [],\n          \"text\": \"Got it\\u2014I'll
+        respond as Julian for this chat. How can I assist you today? If you\\u2019d
+        like, I can adjust my tone or assist with writing, coding, planning, brainstorming,
+        and more.\"\n        }\n      ],\n      \"role\": \"assistant\"\n    }\n  ],\n
+        \ \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\":
+        null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": null,\n
+        \ \"reasoning\": {\n    \"effort\": \"medium\",\n    \"summary\": null\n  },\n
+        \ \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\":
+        true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\":
+        \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\":
+        \"auto\",\n  \"tools\": [],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 10,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 382,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 320\n    },\n    \"total_tokens\": 392\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e8610a8ab3b8f8b-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:58 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '4668'
+      openai-processing-ms:
+      - '3523'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999835'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_7f00096514c64da68ca3ccf425ac17a7
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"role":"user","content":"What
+      is your name?"}],"model":"gpt-5-nano","previous_response_id":"resp_06085a688f09723c0069d47ee2b6e48190859c0c16cd643730","stream":false}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '217'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - pydantic-ai/1.69.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_06085a688f09723c0069d47ee66c5c8190a5e3fab4fa5aa223\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533798,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533800,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"output\": [\n    {\n      \"id\": \"rs_06085a688f09723c0069d47ee6bea481908cb99acd6ddd5810\",\n
+        \     \"type\": \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7oTWmf0fZWKcfLf7Vjr6zULOOXcfpTNg4ZzAwmRuNnZ0obU4YrtIdRX2Bg5iUk3y-dfjfFfX2qoBbc7ehIhJYkLjclrHrbgn-oJvZDQcaNIzdk5FyigQX3515Sj6ySWMJ3arzUCuUO99RDxg-odq5GGq5SrWU88hKIEskPnLM_XHBaBJMJ58eARJFUT9F7usn8m6_2VWq8eXX87tvxgLRC2JUToPEGvXvdQaSbY8avTS3LvJkEWTHfMuaMGMF3AWbtQhAHHo8gttuXBvZLl3JdTwhpOZYySxE4vbMaFl5U-e7mWtTpPRjIRkqrsqtrIj-qYbB6ghRhpShMDRx5vnhRm4YkVzjgPqV-kOQXRyIVoDrQjSYzBsTbkoETUkzjiGl3ZnG_QPXSvjSrmFFQsFQFkXaIfPVCiQWupb41mUridS3dMZo40mdxloxQqmH8KGkjSlxFjxn-qJ8T4sOuYiwJvoaFCXn9TKLtq3OgZ8dBr1wDYj_2X_WOY3h7ZdpHs2fhDzBxp6cEjBmPc2uciriqKxc3GIeTQDciHaAFRpV3p6JD8u4A1elesQrA2a12r0VKuA2WqFPTxX7kEnmcDOrhzuKvzaQYgHGGNdWiI0bEgYC54fE1-NgF3UsjZkggPFtLx0EZBU8EbZhnayST9OjV2dXnl1ZA_YYmfwYovHFYpTqyRc8NXriWpnso_8TG-B3wCG9PGF-ZuYoplYXy_PEkShxgLpsK0DsGxtQg3vSf223xz9bgCWd-9rOOkMi_f6Nr0scBrh1znh1Rx3_SwnVoKzSJjJeT-dN0G3YF6IiUZTakPHGq74z3_QsRYRSIr1TWJ_MSibFbXDokYR82iW_bsTEC11gtl9fnvvcTXmAxQQDfu1YW25WTZ6dDpGBrQw2cM_xkLwrSrcJPDQTpVBS6pFLxjz0KzmTuJRC1wgkG8Kz1YXxLxOHyoaSUcgRE4HUn3XXU1rX4QTQ75u4ZiWEtLRp3Cf5dWuy4l2m-hTXPMWltjkDSmclVQ0KHbEbOjM_2BNfkTs94LDGqvvzu7WToMRzeH2TsckdC17s3Fxw0nLpymJmkZRqLoRsd7e8kxdNcysJcyg1gWJUKRBvtqJYzc_9OnPBhkC_Ma75DS3l5FljhIXGwdUKoxmsRcQcCXCk1KWP-_idfqv4wIM_Q9e3dKrRTQzZ42PsbniJCqyLr0XYSLaMcF1sgmMpAKxAwjhUDjx7u0zPBiDCWZdm4gETfmxsue5BfQ8XRnMM4EQMgZWlspun3b4TRDEuBWur8vYnwmIXj_-zqrqUziUxpGQLinMOM-ZUhPCD2mqtwGpuQNfntRY6Y4KuEA4MEW3nhumCApaJSLNDiRsW1hoaTZIT0Rqsdx8dVZaxByaJ2v4qZgFvHkojkx6gyUVcgxhHxokmDDIteBHxESPXtwOxk5sz9hANXlaAXQXk-H_DITTkHVpR7pBJdUIif8mT26Nf4RHa9UwkuEQGgh048K747xIMgQdG64ppZ3l0i-Zew9lvUkGrAxfeAQpJ_cZfUDHFYD6hs9dWL799XZjYzlcXCSq00SPIjnXRe7fbbvwDF7vEa0ie_T2uFv7UFfQm01CzNHmzyQdJWYpX-MGitaQ9Q2e3rSkGwqBoQWcc4b6aIuEnpggeBUo70e0oFe5uXWYZUAFvYKQJXGt9rlWhTbcTN02Z4QOsGpztzd4fyNgRiQSDgiJ9TvnQCQN4WqxX1o-tG8SyvvAJxFVWW1HotpADys__7cbRwyp2DbbC1efsroC8j_cchVoIG77yDWHylf9kx31YUHmsSSmpxZBLZOzQCulBDuQ==\",\n
+        \     \"summary\": []\n    },\n    {\n      \"id\": \"msg_06085a688f09723c0069d47ee8a7748190a648e04bf72f11a8\",\n
+        \     \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\":
+        [\n        {\n          \"type\": \"output_text\",\n          \"annotations\":
+        [],\n          \"logprobs\": [],\n          \"text\": \"My name is Julian.
+        How can I help you today?\"\n        }\n      ],\n      \"role\": \"assistant\"\n
+        \   }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n
+        \ \"previous_response_id\": \"resp_06085a688f09723c0069d47ee2b6e48190859c0c16cd643730\",\n
+        \ \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": null,\n  \"reasoning\":
+        {\n    \"effort\": \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\":
+        null,\n  \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\":
+        1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n
+        \   \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\":
+        [],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n
+        \ \"usage\": {\n    \"input_tokens\": 67,\n    \"input_tokens_details\": {\n
+        \     \"cached_tokens\": 0\n    },\n    \"output_tokens\": 183,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 128\n    },\n    \"total_tokens\": 250\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e8610bfd90420e0-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:50:00 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '3620'
+      openai-processing-ms:
+      - '2544'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_278c08b755c14324be43a7da2a5f5888
+    status:
+      code: 200
+      message: OK
+version: 1

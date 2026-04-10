@@ -1,0 +1,297 @@
+interactions:
+- request:
+    body: '{"messages":[{"role":"user","content":"What is the weather in San Francisco?"}],"model":"gpt-5-nano","tools":[{"type":"function","function":{"name":"get_weather","description":"Get
+      weather for a given city.","parameters":{"type":"object","properties":{"city":{"type":"string","description":"The
+      city name"}},"required":["city"]}}}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '332'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.30.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-DSDorEepDnzKy1JgqpqtDCIQ07EbV\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1775618677,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": null,\n        \"tool_calls\": [\n          {\n
+        \           \"id\": \"call_pXcbTIRkQKCGy1pWHEQZOWBt\",\n            \"type\":
+        \"function\",\n            \"function\": {\n              \"name\": \"get_weather\",\n
+        \             \"arguments\": \"{\\\"city\\\":\\\"San Francisco\\\"}\"\n            }\n
+        \         }\n        ],\n        \"refusal\": null,\n        \"annotations\":
+        []\n      },\n      \"finish_reason\": \"tool_calls\"\n    }\n  ],\n  \"usage\":
+        {\n    \"prompt_tokens\": 138,\n    \"completion_tokens\": 88,\n    \"total_tokens\":
+        226,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\": 0,\n      \"audio_tokens\":
+        0\n    },\n    \"completion_tokens_details\": {\n      \"reasoning_tokens\":
+        64,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\": 0,\n
+        \     \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": null\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - 9e8e28fbdae44d08-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 08 Apr 2026 03:24:39 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '1059'
+      openai-processing-ms:
+      - '1453'
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999988'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_857d41c5fada42b7b1de5a77f607c56b
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "\n\uFFFD\b\n\uFFFD\x01\n\"\n\x16telemetry.sdk.language\x12\b\n\x06python\n%\n\x12telemetry.sdk.name\x12\x0F\n\ropentelemetry\n!\n\x15telemetry.sdk.version\x12\b\n\x061.39.1\n!\n\fservice.name\x12\x11\n\x0Funknown_service\x12\uFFFD\a\nQ\n\flangfuse-sdk\x12\x054.0.0\x1A:\n\npublic_key\x12,\n*REDACTED_LANGFUSE_PUBLIC\x12\uFFFD\x06\n\x10\x01\uFFFDk\x1E\u03B2\uFFFD\uFFFD\x01X.*d\uFFFD\uFFFD\uFFFD\x12\bD\uFFFD\x1E\uFFFD\uFFFDHB\uFFFD\"\b\uFFFDi\x17@#\uFFFD\e@*\x11OpenAI-generation0\x019\x18\uFFFD}\uFFFD\uFFFDC\uFFFD\x18ApI\uFFFDr\uFFFDC\uFFFD\x18JW\n\x1Alangfuse.observation.input\x129\n7[{\"role\":
+      \"user\", \"content\": \"Say hello in one word.\"}]J\uFFFD\x01\n%langfuse.observation.model.parameters\x12i\ng{\"temperature\":
+      1, \"max_tokens\": \"Infinity\", \"top_p\": 1, \"frequency_penalty\": 0, \"presence_penalty\":
+      0}J)\n\x19langfuse.observation.type\x12\f\n\ngenerationJJ\n\elangfuse.observation.output\x12+\n){\"role\":
+      \"assistant\", \"content\": \"Hello\"}J:\n\x1Flangfuse.observation.model.name\x12\x17\n\x15gpt-5-nano-2025-08-07J\uFFFD\x02\n\"langfuse.observation.usage_details\x12\uFFFD\x02\n\uFFFD\x02{\"completion_tokens\":
+      202, \"prompt_tokens\": 12, \"total_tokens\": 214, \"completion_tokens_details\":
+      {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\":
+      192, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\":
+      0, \"cached_tokens\": 0}}z\0\uFFFD\x01\0\x01\0\0"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1062'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      x-langfuse-sdk-name:
+      - python
+      x-langfuse-sdk-version:
+      - 4.0.0
+    method: POST
+    uri: https://us.cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"name":"otel-ingestion-job","data":{"id":"400bf6d8-f396-46d9-b561-5496c4ccd045","timestamp":"2026-04-08T03:24:39.957Z","name":"otel-ingestion-job","payload":{"data":{"fileKey":"otel/cmmpczdf501owad08v6l1bueg/2026/04/08/03/24/dee8d966-d438-4842-8330-4c372c88d192.json","publicKey":"REDACTED_LANGFUSE_PUBLIC"},"authCheck":{"validKey":true,"scope":{"projectId":"cmmpczdf501owad08v6l1bueg","accessLevel":"project","orgId":"cmmpcz52h01rlad07884iuchl"}},"sdkName":"python","sdkVersion":"4.0.0"}},"opts":{"attempts":6,"removeOnComplete":true,"removeOnFail":100000,"backoff":{"type":"exponential","delay":5000},"traceparent":"00-e5309f139a53bd327f91da011b3c21fd-3231918eb7a67a33-00","baggage":"langfuse.header.x-langfuse-sdk-name=python,langfuse.header.x-langfuse-sdk-version=4.0.0,langfuse.header.x-langfuse-public-key=REDACTED_LANGFUSE_PUBLIC,langfuse.project.id=cmmpczdf501owad08v6l1bueg"},"id":"1851325125","progress":0,"returnvalue":null,"stacktrace":null,"priority":0,"attemptsStarted":0,"attemptsMade":0,"timestamp":1775618679957,"queueQualifiedName":"{otel-ingestion-queue}:otel-ingestion-queue"}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 08 Apr 2026 03:24:39 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"e6bedmbn1dvh"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      content-length:
+      - '1133'
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "\n\uFFFD\v\n\uFFFD\x01\n\"\n\x16telemetry.sdk.language\x12\b\n\x06python\n%\n\x12telemetry.sdk.name\x12\x0F\n\ropentelemetry\n!\n\x15telemetry.sdk.version\x12\b\n\x061.39.1\n!\n\fservice.name\x12\x11\n\x0Funknown_service\x12\uFFFD\n\nQ\n\flangfuse-sdk\x12\x054.0.0\x1A:\n\npublic_key\x12,\n*REDACTED_LANGFUSE_PUBLIC\x12\uFFFD\t\n\x10\uFFFD\uFFFD\a1a\uFFFD\uFFFD\u0617\uFFFD\x15\u01D739\uFFFD\x12\b\uFFFDJD!P\uFFFD7\x1E*\x11OpenAI-generation0\x019@\uFFFD\x1Et\uFFFDC\uFFFD\x18A\0\uFFFD\uFFFD\x02\uFFFDC\uFFFD\x18J\uFFFD\x02\n\x1Alangfuse.observation.input\x12\uFFFD\x02\n\uFFFD\x02{\"tools\":
+      [{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\":
+      \"Get weather for a given city.\", \"parameters\": {\"type\": \"object\", \"properties\":
+      {\"city\": {\"type\": \"string\", \"description\": \"The city name\"}}, \"required\":
+      [\"city\"]}}}], \"messages\": [{\"role\": \"user\", \"content\": \"What is the
+      weather in San Francisco?\"}]}J\uFFFD\x01\n%langfuse.observation.model.parameters\x12i\ng{\"temperature\":
+      1, \"max_tokens\": \"Infinity\", \"top_p\": 1, \"frequency_penalty\": 0, \"presence_penalty\":
+      0}J)\n\x19langfuse.observation.type\x12\f\n\ngenerationJ\uFFFD\x01\n\elangfuse.observation.output\x12\uFFFD\x01\n\uFFFD\x01{\"role\":
+      \"assistant\", \"tool_calls\": [{\"id\": \"call_pXcbTIRkQKCGy1pWHEQZOWBt\",
+      \"function\": {\"arguments\": \"{\\\"city\\\":\\\"San Francisco\\\"}\", \"name\":
+      \"get_weather\"}, \"type\": \"function\"}], \"content\": null}J:\n\x1Flangfuse.observation.model.name\x12\x17\n\x15gpt-5-nano-2025-08-07J\uFFFD\x02\n\"langfuse.observation.usage_details\x12\uFFFD\x02\n\uFFFD\x02{\"completion_tokens\":
+      88, \"prompt_tokens\": 138, \"total_tokens\": 226, \"completion_tokens_details\":
+      {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\":
+      64, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\":
+      0, \"cached_tokens\": 0}}z\0\uFFFD\x01\0\x01\0\0"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1492'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      x-langfuse-sdk-name:
+      - python
+      x-langfuse-sdk-version:
+      - 4.0.0
+    method: POST
+    uri: https://us.cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"name":"otel-ingestion-job","data":{"id":"3ceb7974-25d3-48bc-b603-1c23f05955a7","timestamp":"2026-04-08T03:24:40.347Z","name":"otel-ingestion-job","payload":{"data":{"fileKey":"otel/cmmpczdf501owad08v6l1bueg/2026/04/08/03/24/25824524-183a-43e7-9f95-8a1cb4d33644.json","publicKey":"REDACTED_LANGFUSE_PUBLIC"},"authCheck":{"validKey":true,"scope":{"projectId":"cmmpczdf501owad08v6l1bueg","accessLevel":"project","orgId":"cmmpcz52h01rlad07884iuchl"}},"sdkName":"python","sdkVersion":"4.0.0"}},"opts":{"attempts":6,"removeOnComplete":true,"removeOnFail":100000,"backoff":{"type":"exponential","delay":5000},"traceparent":"00-3656eb586b3891432f9fece51165b0ab-9ed58b36e1feeb57-00","baggage":"langfuse.header.x-langfuse-sdk-name=python,langfuse.header.x-langfuse-sdk-version=4.0.0,langfuse.header.x-langfuse-public-key=REDACTED_LANGFUSE_PUBLIC,langfuse.project.id=cmmpczdf501owad08v6l1bueg"},"id":"1851325177","progress":0,"returnvalue":null,"stacktrace":null,"priority":0,"attemptsStarted":0,"attemptsMade":0,"timestamp":1775618680347,"queueQualifiedName":"{otel-ingestion-queue}:otel-ingestion-queue"}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 08 Apr 2026 03:24:40 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"2ovua0mybrvh"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      content-length:
+      - '1133'
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "\n\uFFFD\x14\n\uFFFD\x01\n\"\n\x16telemetry.sdk.language\x12\b\n\x06python\n%\n\x12telemetry.sdk.name\x12\x0F\n\ropentelemetry\n!\n\x15telemetry.sdk.version\x12\b\n\x061.39.1\n!\n\fservice.name\x12\x11\n\x0Funknown_service\x12\uFFFD\x13\n.\n$openinference.instrumentation.openai\x12\x060.1.42\x12\uFFFD\x13\n\x10}\x04\uFFFDW\uFFFD8_d\uFFFD\f\uFFFD\x06\uFFFD\x12L\uFFFD\x12\bcpy\uFFFD\x15\uC9D6*\x0EChatCompletion0\x019x\uFFFD&t\uFFFDC\uFFFD\x18Ap\uFFFD\x02\uFFFDC\uFFFD\x18J\x18\n\fllm.provider\x12\b\n\x06openaiJ\x16\n\nllm.system\x12\b\n\x06openaiJ\uFFFD\x02\n\vinput.value\x12\uFFFD\x02\n\uFFFD\x02{\"messages\":
+      [{\"role\": \"user\", \"content\": \"What is the weather in San Francisco?\"}],
+      \"model\": \"gpt-5-nano\", \"tools\": [{\"type\": \"function\", \"function\":
+      {\"name\": \"get_weather\", \"description\": \"Get weather for a given city.\",
+      \"parameters\": {\"type\": \"object\", \"properties\": {\"city\": {\"type\":
+      \"string\", \"description\": \"The city name\"}}, \"required\": [\"city\"]}}}]}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x05\n\foutput.value\x12\uFFFD\x05\n\uFFFD\x05{\"id\":\"chatcmpl-DSDorEepDnzKy1JgqpqtDCIQ07EbV\",\"choices\":[{\"finish_reason\":\"tool_calls\",\"index\":0,\"message\":{\"content\":null,\"refusal\":null,\"role\":\"assistant\",\"annotations\":[],\"tool_calls\":[{\"id\":\"call_pXcbTIRkQKCGy1pWHEQZOWBt\",\"function\":{\"arguments\":\"{\\\"city\\\":\\\"San
+      Francisco\\\"}\",\"name\":\"get_weather\"},\"type\":\"function\"}]}}],\"created\":1775618677,\"model\":\"gpt-5-nano-2025-08-07\",\"object\":\"chat.completion\",\"service_tier\":\"default\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":88,\"prompt_tokens\":138,\"total_tokens\":226,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":64,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}}}J&\n\x10output.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x02\n\x1Cllm.tools.0.tool.json_schema\x12\uFFFD\x01\n\uFFFD\x01{\"type\":
+      \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get
+      weather for a given city.\", \"parameters\": {\"type\": \"object\", \"properties\":
+      {\"city\": {\"type\": \"string\", \"description\": \"The city name\"}}, \"required\":
+      [\"city\"]}}}J6\n\x19llm.invocation_parameters\x12\x19\n\x17{\"model\": \"gpt-5-nano\"}J+\n!llm.input_messages.0.message.role\x12\x06\n\x04userJO\n$llm.input_messages.0.message.content\x12'\n%What
+      is the weather in San Francisco?J)\n\x0Ellm.model_name\x12\x17\n\x15gpt-5-nano-2025-08-07J\x1C\n\x15llm.token_count.total\x12\x03\x18\uFFFD\x01J\x1D\n\x16llm.token_count.prompt\x12\x03\x18\uFFFD\x01J
+      \n\x1Allm.token_count.completion\x12\x02\x18XJ/\n)llm.token_count.prompt_details.cache_read\x12\x02\x18\0J*\n$llm.token_count.prompt_details.audio\x12\x02\x18\0J2\n,llm.token_count.completion_details.reasoning\x12\x02\x18@J.\n(llm.token_count.completion_details.audio\x12\x02\x18\0J1\n\"llm.output_messages.0.message.role\x12\v\n\tassistantJZ\n7llm.output_messages.0.message.tool_calls.0.tool_call.id\x12\x1F\n\x1Dcall_pXcbTIRkQKCGy1pWHEQZOWBtJS\nBllm.output_messages.0.message.tool_calls.0.tool_call.function.name\x12\r\n\vget_weatherJe\nGllm.output_messages.0.message.tool_calls.0.tool_call.function.arguments\x12\x1A\n\x18{\"city\":\"San
+      Francisco\"}J \n\x17openinference.span.kind\x12\x05\n\x03LLMz\x02\x18\x01\uFFFD\x01\0\x01\0\0"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2686'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+    method: POST
+    uri: https://us.cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"name":"otel-ingestion-job","data":{"id":"59851ef4-9d24-419e-bcf3-2e291039a3b4","timestamp":"2026-04-08T03:24:40.696Z","name":"otel-ingestion-job","payload":{"data":{"fileKey":"otel/cmmpczdf501owad08v6l1bueg/2026/04/08/03/24/5927e20f-81d0-49bc-8807-f782ee9ac4ec.json","publicKey":"REDACTED_LANGFUSE_PUBLIC"},"authCheck":{"validKey":true,"scope":{"projectId":"cmmpczdf501owad08v6l1bueg","accessLevel":"project","orgId":"cmmpcz52h01rlad07884iuchl"}}}},"opts":{"attempts":6,"removeOnComplete":true,"removeOnFail":100000,"backoff":{"type":"exponential","delay":5000},"traceparent":"00-f229494c781c406091cada378632ecdf-0f7d4251783f05c4-00","baggage":"langfuse.project.id=cmmpczdf501owad08v6l1bueg"},"id":"1851325213","progress":0,"returnvalue":null,"stacktrace":null,"priority":0,"attemptsStarted":0,"attemptsMade":0,"timestamp":1775618680696,"queueQualifiedName":"{otel-ingestion-queue}:otel-ingestion-queue"}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '924'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 08 Apr 2026 03:24:40 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"9sq7ygjx7vpo"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,127 @@
+interactions:
+- request:
+    body: '{"include":["reasoning.encrypted_content"],"input":[{"content":"If a train
+      travels at 120 km/h for 2.5 hours, then slows to 80 km/h for 1.75 hours, what
+      is the total distance and average speed?","role":"user"}],"instructions":"Think
+      carefully before answering.","model":"gpt-5.4","reasoning":{"effort":"high","summary":"detailed"},"tools":[]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '342'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0b17bfc6a0c840be0069d47ecc72dc8194bc636c3dcdc7e6c9\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1775533772,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1775533777,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"Think carefully before answering.\",\n  \"max_output_tokens\": null,\n  \"max_tool_calls\":
+        null,\n  \"model\": \"gpt-5.4-2026-03-05\",\n  \"output\": [\n    {\n      \"id\":
+        \"rs_0b17bfc6a0c840be0069d47ecd27908194b7c7c9eac7523d97\",\n      \"type\":
+        \"reasoning\",\n      \"encrypted_content\": \"gAAAAABp1H7RmfcWHYBCcKGiHjfIGh1DF9g7UqCtNSp6s5YeIrr9yp1-coVJBuf_sPfwybAi59yNjkScOauBDYoViJVsVIcad2G7rGVpCI1dcoKNJYhD7KyfL8VhANaqyZigiXLGk-5ZNkB8jotQhegb6iFdzOvaJkM7ngH0GKAuE7nDi3N1v2hXoKnQ4Fa0p_MhKw0ERTfAPe_mwlQtA8tDcuTmk2RVtPphDESntUZrde10w6Rr7umtgWQOBsjSXdUE2UrbZElzEiITOrQfKqImBEgzpnRD1ZcN9m1Js9OS2pddJGcBSWZIPOHO_4rqKMJdz6mOAt0uQvBQ3NRvVn6p9cRykj0ghZXGlVHS6e0wt__7gQX-qL8kw2SFut9zqR3gB2rlvkggn5SRwH3DnV8xzq_ul0b4R16Y6VcmLP3hwswGmUh_odG4lw856VdIu5rhQIdA8nc7omzufumKRzj7ikKkprsL5ldK_X13iaFpf1z5yrlgDQEal_Cgpr9y-o875vGASPqk4G7nDUpK06j_fRKmgu0FgLhV7yJH_DZ8IaokZ8QprQfCTSIJyUd2l5KrhvvEu2qcp9Yv18N1ntuKDd9MTWZCr79lWxwps_VEAZUNExY7HG-kuKE2J3gpVUzVBJ_nG01HhtddbCclw-AtQaiiIplki5U8mfDFVpSyPdnaBiy-8GsrQIwDuEgPF00YSP61qPXlhyXz5IWpNNiYIxLlltWXCej5lx2c_NGLXYndNY8s75vf-I2OhTN2pyyNawYyA1FT_OnDc0OajAMFU96OdtQIs_35bMWoxoT9CKXJnPOwAb-mkQ8BYlqxPP-gpCFwdKIJUIkw80EF7f27bIq8tHTfdF6it3hV7ooKpRQvyEml7R2s093-DYPCR-4RC-hb3Ty7N_8ho4Dsv8vjT4A6SOEuchOG_8McGPZYZQNHVbNJhvOr_hQqMgj67iLrPEuF4qqmFxyFRaLXxWC-pkSFCKqPMTyyT2LsT236EiZuuYjMfGZVH85btHXoOv_p2Y-v4l-KVVLveaB6uIjgO9PTfTKsniKMNBvCDu7SaB7VQZF-OdvNtc2NccE4dYgh_yO5xaHfTPutSj9quOe3qKP382JMhWDyNNi8ZoATlV0au6YlFcjExzkmk6drE6ECT7WT3moqZWTiexXtxO4ghvO5VYKTPA3hcs6WAIZZHdxiAsnRYswXl1wWsfKev2Ds79ttH8CvI4VNySapELrZumpmc_bH5w==\",\n
+        \     \"summary\": [\n        {\n          \"type\": \"summary_text\",\n          \"text\":
+        \"**Calculating average speed**\\n\\nI need to answer a simple math problem,
+        so let\\u2019s keep it concise and include calculations. First, I calculate
+        the distance: 120 multiplied by 2.5 equals 300 km. Then, for the second part,
+        80 multiplied by 1.75 gives 140 km. Adding those together results in a total
+        of 440 km. The total time is 4.25 hours. Now, to find the average speed, I
+        divide 440 by 4.25, which is approximately 103.5 km/h. I just want to make
+        sure there are no hidden pitfalls!\"\n        }\n      ]\n    },\n    {\n
+        \     \"id\": \"msg_0b17bfc6a0c840be0069d47ed1129081949992076385001f50\",\n
+        \     \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\":
+        [\n        {\n          \"type\": \"output_text\",\n          \"annotations\":
+        [],\n          \"logprobs\": [],\n          \"text\": \"- Distance in first
+        part: \\\\(120 \\\\times 2.5 = 300\\\\) km  \\n- Distance in second part:
+        \\\\(80 \\\\times 1.75 = 140\\\\) km  \\n\\nTotal distance:\\n\\\\[\\n300
+        + 140 = 440 \\\\text{ km}\\n\\\\]\\n\\nTotal time:\\n\\\\[\\n2.5 + 1.75 =
+        4.25 \\\\text{ hours}\\n\\\\]\\n\\nAverage speed:\\n\\\\[\\n\\\\frac{440}{4.25}
+        \\\\approx 103.5 \\\\text{ km/h}\\n\\\\]\\n\\n**Answer:**  \\n- **Total distance:**
+        440 km  \\n- **Average speed:** 103.5 km/h (approximately)\"\n        }\n
+        \     ],\n      \"phase\": \"final_answer\",\n      \"role\": \"assistant\"\n
+        \   }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n
+        \ \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\":
+        null,\n  \"reasoning\": {\n    \"effort\": \"high\",\n    \"summary\": \"detailed\"\n
+        \ },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\":
+        true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\":
+        \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\":
+        \"auto\",\n  \"tools\": [],\n  \"top_logprobs\": 0,\n  \"top_p\": 0.98,\n
+        \ \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 54,\n
+        \   \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\":
+        241,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 94\n    },\n
+        \   \"total_tokens\": 295\n  },\n  \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      CF-RAY:
+      - 9e86101d7b00318c-BOS
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 03:49:37 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '3989'
+      openai-processing-ms:
+      - '5183'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '15000'
+      x-ratelimit-limit-tokens:
+      - '40000000'
+      x-ratelimit-remaining-requests:
+      - '14999'
+      x-ratelimit-remaining-tokens:
+      - '39999922'
+      x-ratelimit-reset-requests:
+      - 4ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_597c0b9c7a8541b9b82843e9357625be
+    status:
+      code: 200
+      message: OK
+version: 1

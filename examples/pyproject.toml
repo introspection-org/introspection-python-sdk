@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "introspection-examples"
+version = "0.1.0"
+description = "Examples demonstrating Introspection SDK integrations"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+
+# Core dependencies only
+dependencies = [
+    "introspection-sdk",
+    "openai>=1.0.0",
+    "opentelemetry-sdk>=1.39.0,<1.40.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.39.0,<1.40.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+arize = [
+    "arize-phoenix>=8.0.0",
+    "openinference-instrumentation-openai>=0.1.0",
+    "openinference-instrumentation-anthropic>=0.1.0",
+]
+braintrust = [
+    "braintrust[otel,openai-agents]>=0.1.0",
+    "openinference-instrumentation-openai>=0.1.0",
+]
+langfuse = [
+    "langfuse>=3.0.0",
+    "openinference-instrumentation-openai>=0.1.0",
+]
+langchain = [
+    "langchain>=1.2.7",
+    "langchain-openai>=1.1.7",
+    "openinference-instrumentation-langchain>=0.1.58",
+]
+logfire = [
+    "logfire>=4.23.0",
+]
+openai-agents = [
+    "openai-agents>=0.12.2",
+    "langsmith[openai-agents]>=0.6.0",
+    "openinference-instrumentation-openai-agents>=0.1.0",
+]
+claude-agent-sdk = [
+    "claude-agent-sdk>=0.1.0,<=0.1.7",
+    "anthropic>=0.85.0",
+    "langsmith[claude-agent-sdk]>=0.6.0",
+]
+all = [
+    "introspection-examples[arize,braintrust,langfuse,langchain,logfire,openai-agents,claude-agent-sdk]",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["introspection_examples"]
+
+[tool.uv.sources]
+introspection-sdk = { path = "..", editable = true }
+
+[tool.ruff]
+extend = "../pyproject.toml"

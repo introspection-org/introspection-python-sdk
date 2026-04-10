@@ -1,0 +1,343 @@
+interactions:
+- request:
+    body: '{"max_tokens":8000,"messages":[{"role":"user","content":"What is the weather
+      in Tokyo?"}],"model":"claude-sonnet-4-5-20250929","thinking":{"type":"enabled","budget_tokens":5000},"tools":[{"name":"get_weather","description":"Get
+      weather for a city. Returns conditions and temperature in Celsius.","input_schema":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '391'
+      Content-Type:
+      - application/json
+      Host:
+      - api.anthropic.com
+      User-Agent:
+      - Anthropic/Python 0.85.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 0.85.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      anthropic-version:
+      - '2023-06-01'
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: '{"model":"claude-sonnet-4-5-20250929","id":"msg_01QDSBPGf6sKNwi6sd1exEFS","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"The
+        user is asking for the weather in Tokyo. I have access to a get_weather function
+        that takes a city name as a parameter. I have all the required information
+        to make this call - the city is \"Tokyo\".\n\nLet me call the get_weather
+        function with Tokyo as the parameter.","signature":"EtIDCmQIDBgCKkCWutSBPwrpSEpWZmrotvkHTgoO83lzLwMOhHVKg27INpuP8XgeafZpxXQcDmr1HnDkdlQHHig/Q8eHQGLgaNy6MhpjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOTgAEgzaetBHdqw2X6IXx9gaDIgxnZynxogj4EwpgyIwTFc4lj8MaTVgRJaisw2dBgt/ba7a+Yty2wBETSV+SoFl5Peih856S3jMRiYwf7HmKpsC0g2RV2L/FEYB9JyEqMGg5jxnvLvhRyV/dD9OElvEFSg36Byq3KLznFDeHNIdBocBqZJMiUiZK3uyFj22fjhrr1d+Cp6NHg9TA6/U7d68CnS4/luNz4YRE1gnlBT1IcSbfFvDUfGVPg3+uvuI36W/Lr9jg0K3DXjFeWpvEdywGfrCc5Ohieeq/NxsscF/4iLSMBWhqnDXdyUC/PcRWspfuyAq4hTMGmVTuzW+9jS3TTA6l7sd11hssI2YXjDK1DQm+3dsyNihH9GImarh5R+AHZBr6ZUO8ruGTy5iJ1xDHI1pA3fbv4hNnYJuPie6/CyYZ1kkrKyDtl0/HUk0/M+erAKu2dhIRf7WbT3aF0ALYq1OTFnX/o2+vJjkbBgB"},{"type":"tool_use","id":"toolu_01HyvFkrTzKjugZWhE89W19Q","name":"get_weather","input":{"city":"Tokyo"},"caller":{"type":"direct"}}],"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":601,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":121,"service_tier":"standard","inference_geo":"not_available"}}'
+    headers:
+      CF-RAY:
+      - 9e8add871a06e728-BOS
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 17:48:51 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 80dc5ece-225b-4374-9fda-b7dd782443a9
+      anthropic-ratelimit-input-tokens-limit:
+      - '2000000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '2000000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-04-07T17:48:49Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '400000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '400000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-04-07T17:48:51Z'
+      anthropic-ratelimit-requests-limit:
+      - '20000'
+      anthropic-ratelimit-requests-remaining:
+      - '19999'
+      anthropic-ratelimit-requests-reset:
+      - '2026-04-07T17:48:49Z'
+      anthropic-ratelimit-tokens-limit:
+      - '2400000'
+      anthropic-ratelimit-tokens-remaining:
+      - '2400000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-04-07T17:48:49Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1513'
+      request-id:
+      - req_011CZpqDHbYGGKkfTWwa6Sia
+      server-timing:
+      - x-originResponse;dur=2018
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      vary:
+      - Accept-Encoding
+      x-envoy-upstream-service-time:
+      - '2016'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "{\"max_tokens\":8000,\"messages\":[{\"role\":\"user\",\"content\":\"What
+      is the weather in Tokyo?\"},{\"role\":\"assistant\",\"content\":[{\"signature\":\"EtIDCmQIDBgCKkCWutSBPwrpSEpWZmrotvkHTgoO83lzLwMOhHVKg27INpuP8XgeafZpxXQcDmr1HnDkdlQHHig/Q8eHQGLgaNy6MhpjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOTgAEgzaetBHdqw2X6IXx9gaDIgxnZynxogj4EwpgyIwTFc4lj8MaTVgRJaisw2dBgt/ba7a+Yty2wBETSV+SoFl5Peih856S3jMRiYwf7HmKpsC0g2RV2L/FEYB9JyEqMGg5jxnvLvhRyV/dD9OElvEFSg36Byq3KLznFDeHNIdBocBqZJMiUiZK3uyFj22fjhrr1d+Cp6NHg9TA6/U7d68CnS4/luNz4YRE1gnlBT1IcSbfFvDUfGVPg3+uvuI36W/Lr9jg0K3DXjFeWpvEdywGfrCc5Ohieeq/NxsscF/4iLSMBWhqnDXdyUC/PcRWspfuyAq4hTMGmVTuzW+9jS3TTA6l7sd11hssI2YXjDK1DQm+3dsyNihH9GImarh5R+AHZBr6ZUO8ruGTy5iJ1xDHI1pA3fbv4hNnYJuPie6/CyYZ1kkrKyDtl0/HUk0/M+erAKu2dhIRf7WbT3aF0ALYq1OTFnX/o2+vJjkbBgB\",\"thinking\":\"The
+      user is asking for the weather in Tokyo. I have access to a get_weather function
+      that takes a city name as a parameter. I have all the required information to
+      make this call - the city is \\\"Tokyo\\\".\\n\\nLet me call the get_weather
+      function with Tokyo as the parameter.\",\"type\":\"thinking\"},{\"id\":\"toolu_01HyvFkrTzKjugZWhE89W19Q\",\"caller\":{\"type\":\"direct\"},\"input\":{\"city\":\"Tokyo\"},\"name\":\"get_weather\",\"type\":\"tool_use\"}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01HyvFkrTzKjugZWhE89W19Q\",\"content\":\"Clear,
+      25\xB0C\"}]}],\"model\":\"claude-sonnet-4-5-20250929\",\"thinking\":{\"type\":\"enabled\",\"budget_tokens\":5000},\"tools\":[{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a city. Returns conditions and temperature in Celsius.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}}]}"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1626'
+      Content-Type:
+      - application/json
+      Host:
+      - api.anthropic.com
+      User-Agent:
+      - Anthropic/Python 0.85.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 0.85.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      anthropic-version:
+      - '2023-06-01'
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_016qWGabxZZKP8DtvBTY7DCD\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The
+        weather in Tokyo is currently clear with a temperature of 25\xB0C (77\xB0F).\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":740,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":23,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}"
+    headers:
+      CF-RAY:
+      - 9e8add9588516cae-BOS
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 17:48:52 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 80dc5ece-225b-4374-9fda-b7dd782443a9
+      anthropic-ratelimit-input-tokens-limit:
+      - '2000000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '2000000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-04-07T17:48:52Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '400000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '400000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-04-07T17:48:52Z'
+      anthropic-ratelimit-requests-limit:
+      - '20000'
+      anthropic-ratelimit-requests-remaining:
+      - '19999'
+      anthropic-ratelimit-requests-reset:
+      - '2026-04-07T17:48:51Z'
+      anthropic-ratelimit-tokens-limit:
+      - '2400000'
+      anthropic-ratelimit-tokens-remaining:
+      - '2400000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-04-07T17:48:52Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '535'
+      request-id:
+      - req_011CZpqDTVrUC2j1mttoT8Lv
+      server-timing:
+      - x-originResponse;dur=1197
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      vary:
+      - Accept-Encoding
+      x-envoy-upstream-service-time:
+      - '1193'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "{\"max_tokens\":8000,\"messages\":[{\"role\":\"user\",\"content\":\"What
+      is the weather in Tokyo?\"},{\"role\":\"assistant\",\"content\":[{\"signature\":\"EtIDCmQIDBgCKkCWutSBPwrpSEpWZmrotvkHTgoO83lzLwMOhHVKg27INpuP8XgeafZpxXQcDmr1HnDkdlQHHig/Q8eHQGLgaNy6MhpjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOTgAEgzaetBHdqw2X6IXx9gaDIgxnZynxogj4EwpgyIwTFc4lj8MaTVgRJaisw2dBgt/ba7a+Yty2wBETSV+SoFl5Peih856S3jMRiYwf7HmKpsC0g2RV2L/FEYB9JyEqMGg5jxnvLvhRyV/dD9OElvEFSg36Byq3KLznFDeHNIdBocBqZJMiUiZK3uyFj22fjhrr1d+Cp6NHg9TA6/U7d68CnS4/luNz4YRE1gnlBT1IcSbfFvDUfGVPg3+uvuI36W/Lr9jg0K3DXjFeWpvEdywGfrCc5Ohieeq/NxsscF/4iLSMBWhqnDXdyUC/PcRWspfuyAq4hTMGmVTuzW+9jS3TTA6l7sd11hssI2YXjDK1DQm+3dsyNihH9GImarh5R+AHZBr6ZUO8ruGTy5iJ1xDHI1pA3fbv4hNnYJuPie6/CyYZ1kkrKyDtl0/HUk0/M+erAKu2dhIRf7WbT3aF0ALYq1OTFnX/o2+vJjkbBgB\",\"thinking\":\"The
+      user is asking for the weather in Tokyo. I have access to a get_weather function
+      that takes a city name as a parameter. I have all the required information to
+      make this call - the city is \\\"Tokyo\\\".\\n\\nLet me call the get_weather
+      function with Tokyo as the parameter.\",\"type\":\"thinking\"},{\"id\":\"toolu_01HyvFkrTzKjugZWhE89W19Q\",\"caller\":{\"type\":\"direct\"},\"input\":{\"city\":\"Tokyo\"},\"name\":\"get_weather\",\"type\":\"tool_use\"}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01HyvFkrTzKjugZWhE89W19Q\",\"content\":\"Clear,
+      25\xB0C\"}]},{\"role\":\"assistant\",\"content\":[{\"text\":\"The weather in
+      Tokyo is currently clear with a temperature of 25\xB0C (77\xB0F).\",\"type\":\"text\"}]},{\"role\":\"user\",\"content\":\"What
+      is that temperature in Fahrenheit?\"}],\"model\":\"claude-sonnet-4-5-20250929\",\"thinking\":{\"type\":\"enabled\",\"budget_tokens\":5000}}"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1616'
+      Content-Type:
+      - application/json
+      Host:
+      - api.anthropic.com
+      User-Agent:
+      - Anthropic/Python 0.85.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 0.85.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.6
+      anthropic-version:
+      - '2023-06-01'
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_01E3zYmp4DWQbYmkfUg1z6QU\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The
+        user is asking me to convert 25\xB0C to Fahrenheit. I actually already provided
+        this in my previous response (77\xB0F), but let me confirm the calculation:\\n\\n\xB0F
+        = (\xB0C \xD7 9/5) + 32\\n\xB0F = (25 \xD7 9/5) + 32\\n\xB0F = (25 \xD7 1.8)
+        + 32\\n\xB0F = 45 + 32\\n\xB0F = 77\xB0F\\n\\nYes, 25\xB0C is 77\xB0F, which
+        I already mentioned in my previous response.\",\"signature\":\"EowECmQIDBgCKkCromuFCExseTifZxRv9mwDScceZQX60XXHtsemVQ+5Rei0qB0uWJ0qX4qnJu2vjlh8MUrDxnn3e5QwWtP006uuMhpjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOTgAEgzRpGclkwyQHLzdZxYaDJHXt4JF/F5KOzQb1iIwJ/dO4ibVHup4tqDy3buwa3U+30ay0nFS9xGu9NJ7GZVFpWU3y799g4EJWdYUCNJZKtUCgZwF+hD1j/jpQpOj5fSDzzZ3AIF4wuI4LFdgvM9/XBVDQGrCngTGdc/v1MWe0v3vv0da4fteCODm2SCT9x/MchkjajvmFydQsW51JKbV7RKXEEjIU8kEYpUXCal7l/l3MxaSSGY/uaIxbHQpmIBNl/jgAOmHdN8mYkLvs/yd7AolaNC8MdU8Sy7o5t0YslvAXl3eqvWKh0zd5ayFm6+28fVUjFtaBkd/vf//qFxzTmacIBr8t/Xk6u8Syue6h6IYaHqPmUZ0kgNE935OYXnpYiEkRSD8XPbcTIAmRFEkiveBfeBElnyV31e8LGnvsEPEI0Wyl0IzELMZ07jLWdQxVQ5Kx7VbV63BhV3CB+cANdxquyLxgeXc6FEWOUCYXDI6KlTCegW/Y4MdL5Wiy2Vx5C5Rx+9SBgFJ9OhZEONj38N0FQULZGUJBCGy85+AO6I33CX1itUYAQ==\"},{\"type\":\"text\",\"text\":\"25\xB0C
+        is equal to 77\xB0F. \\n\\n(I actually included that conversion in my previous
+        response - 25\xB0C equals 77\xB0F)\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":150,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":170,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}"
+    headers:
+      CF-RAY:
+      - 9e8add9e5ade78bc-BOS
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 07 Apr 2026 17:48:56 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 80dc5ece-225b-4374-9fda-b7dd782443a9
+      anthropic-ratelimit-input-tokens-limit:
+      - '2000000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '2000000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-04-07T17:48:53Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '400000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '400000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-04-07T17:48:56Z'
+      anthropic-ratelimit-requests-limit:
+      - '20000'
+      anthropic-ratelimit-requests-remaining:
+      - '19999'
+      anthropic-ratelimit-requests-reset:
+      - '2026-04-07T17:48:52Z'
+      anthropic-ratelimit-tokens-limit:
+      - '2400000'
+      anthropic-ratelimit-tokens-remaining:
+      - '2400000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-04-07T17:48:53Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1661'
+      request-id:
+      - req_011CZpqDZUmXYHH31V35iPej
+      server-timing:
+      - x-originResponse;dur=3267
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      vary:
+      - Accept-Encoding
+      x-envoy-upstream-service-time:
+      - '3264'
+    status:
+      code: 200
+      message: OK
+version: 1

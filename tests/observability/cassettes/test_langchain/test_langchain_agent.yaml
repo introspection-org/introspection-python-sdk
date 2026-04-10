@@ -1,0 +1,418 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: GET
+    uri: https://api.smith.langchain.com/info
+  response:
+    body:
+      string: '{"version":"0.13.28","instance_flags":{"blob_storage_enabled":true,"blob_storage_engine":"S3","dataset_examples_multipart_enabled":true,"developer_upgrade_tier":"developer_01_2026","examples_multipart_enabled":true,"generate_ai_query_enabled":true,"gzip_body_enabled":true,"max_api_key_expiry_days":null,"max_pat_expiry_days":null,"max_service_key_expiry_days":null,"org_creation_disabled":false,"payment_enabled":true,"personal_orgs_disabled":false,"playground_auth_bypass_enabled":false,"plus_plan_transition_banner_days":7,"plus_upgrade_tier":"plus_01_2026","s3_storage_enabled":true,"search_enabled":true,"self_hosted_jit_provisioning_enabled":true,"show_agent_runs_pricing":true,"show_ttl_ui":true,"trace_tier_duration_days":{"longlived":400,"shortlived":14},"workspace_scope_org_invites":false,"zstd_compression_enabled":true},"batch_ingest_config":{"use_multipart_endpoint":true,"scale_up_qsize_trigger":1000,"scale_up_nthreads_limit":16,"scale_down_nempty_trigger":4,"size_limit":100,"size_limit_bytes":20971520}}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - public, max-age=60
+      Content-Length:
+      - '1022'
+      Content-Security-Policy:
+      - frame-ancestors 'self' https://smith.langchain.com; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:17 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - b93ec82ca63e70716c5c51c0b5ec07ef
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition: form-data; name=\"post.019ce8f6-d7fa-7f03-8d14-5485a2e126d9\"\r\nContent-Type:
+      application/json\r\nContent-Length: 306\r\n\r\n{\"id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"start_time\":\"2026-03-13T20:50:17.210244+00:00\",\"tags\":[],\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"LangGraph\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 80\r\n\r\n{\"messages\":[{\"role\":\"user\",\"content\":\"What
+      is the weather in San Francisco?\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:17.210244+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d7fa-7f03-8d14-5485a2e126d9.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 391\r\n\r\n{\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"},\"metadata\":{\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d813-73d3-995d-e539bc8b9d13\"\r\nContent-Type:
+      application/json\r\nContent-Length: 430\r\n\r\n{\"id\":\"019ce8f6-d813-73d3-995d-e539bc8b9d13\",\"start_time\":\"2026-03-13T20:50:17.235050+00:00\",\"parent_run_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"tags\":[\"graph:step:1\"],\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205017235050Z019ce8f6-d813-73d3-995d-e539bc8b9d13\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"model\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d813-73d3-995d-e539bc8b9d13.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 171\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d813-73d3-995d-e539bc8b9d13.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d813-73d3-995d-e539bc8b9d13.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:17.235050+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d813-73d3-995d-e539bc8b9d13.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 590\r\n\r\n{\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:ef83ae59-3908-dbeb-3d44-6047f582b8f2\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d815-7dc0-8e7e-908ff892df38\"\r\nContent-Type:
+      application/json\r\nContent-Length: 490\r\n\r\n{\"id\":\"019ce8f6-d815-7dc0-8e7e-908ff892df38\",\"start_time\":\"2026-03-13T20:50:17.237618+00:00\",\"parent_run_id\":\"019ce8f6-d813-73d3-995d-e539bc8b9d13\",\"tags\":[\"seq:step:1\"],\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205017235050Z019ce8f6-d813-73d3-995d-e539bc8b9d13.20260313T205017237618Z019ce8f6-d815-7dc0-8e7e-908ff892df38\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"ChatOpenAI\",\"run_type\":\"llm\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d815-7dc0-8e7e-908ff892df38.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 372\r\n\r\n{\"messages\":[[{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"SystemMessage\"],\"kwargs\":{\"content\":\"You
+      are a helpful assistant\",\"type\":\"system\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"HumanMessage\"],\"kwargs\":{\"content\":\"What
+      is the weather in San Francisco?\",\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"}}]]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d815-7dc0-8e7e-908ff892df38.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d815-7dc0-8e7e-908ff892df38.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:17.237618+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d815-7dc0-8e7e-908ff892df38.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1106\r\n\r\n{\"invocation_params\":{\"model\":\"gpt-5-nano\",\"model_name\":\"gpt-5-nano\",\"stream\":false,\"_type\":\"openai-chat\",\"stop\":null,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a given city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]},\"options\":{\"stop\":null},\"batch_size\":1,\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:ef83ae59-3908-dbeb-3d44-6047f582b8f2\",\"checkpoint_ns\":\"model:ef83ae59-3908-dbeb-3d44-6047f582b8f2\",\"ls_provider\":\"openai\",\"ls_model_name\":\"gpt-5-nano\",\"ls_model_type\":\"chat\",\"ls_temperature\":null,\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-d815-7dc0-8e7e-908ff892df38.serialized\"\r\nContent-Type:
+      application/json\r\nContent-Length: 227\r\n\r\n{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"chat_models\",\"openai\",\"ChatOpenAI\"],\"kwargs\":{\"model_name\":\"gpt-5-nano\",\"openai_api_key\":{\"lc\":1,\"type\":\"secret\",\"id\":[\"OPENAI_API_KEY\"]},\"stream_usage\":true},\"name\":\"ChatOpenAI\"}\r\n--415c59607d93413fbf28584e45dbd321--\r\n"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '7273'
+      Content-Type:
+      - multipart/form-data; boundary=415c59607d93413fbf28584e45dbd321
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: POST
+    uri: https://api.smith.langchain.com/runs/multipart
+  response:
+    body:
+      string: '{"success":true}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '17'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:17 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - c28f8e6395a6660845dbf5835651cf87
+    status:
+      code: 202
+      message: Accepted
+- request:
+    body: "--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition: form-data; name=\"post.019ce8f6-dec9-78b3-943d-af378951adfe\"\r\nContent-Type:
+      application/json\r\nContent-Length: 476\r\n\r\n{\"id\":\"019ce8f6-dec9-78b3-943d-af378951adfe\",\"start_time\":\"2026-03-13T20:50:18.953952+00:00\",\"parent_run_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"tags\":[\"graph:step:2\"],\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205018953952Z019ce8f6-dec9-78b3-943d-af378951adfe\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"tools\",\"run_type\":\"chain\",\"end_time\":\"2026-03-13T20:50:18.955450+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-dec9-78b3-943d-af378951adfe.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1282\r\n\r\n{\"__type\":\"tool_call_with_context\",\"tool_call\":{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"},\"state\":{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"},{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}}}]}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-dec9-78b3-943d-af378951adfe.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 255\r\n\r\n{\"messages\":[{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"dd5dc53d-dd46-4ea0-be91-2122dc5459c7\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"status\":\"success\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-dec9-78b3-943d-af378951adfe.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:18.953952+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:18.955450+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-dec9-78b3-943d-af378951adfe.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 588\r\n\r\n{\"metadata\":{\"langgraph_step\":2,\"langgraph_node\":\"tools\",\"langgraph_triggers\":[\"__pregel_push\"],\"langgraph_path\":[\"__pregel_push\",0,false],\"langgraph_checkpoint_ns\":\"tools:83e8b74e-b810-c2e4-2101-ac44745caa22\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-deca-70d0-af85-6e9c249c4b97\"\r\nContent-Type:
+      application/json\r\nContent-Length: 538\r\n\r\n{\"id\":\"019ce8f6-deca-70d0-af85-6e9c249c4b97\",\"start_time\":\"2026-03-13T20:50:18.954637+00:00\",\"parent_run_id\":\"019ce8f6-dec9-78b3-943d-af378951adfe\",\"tags\":[\"seq:step:1\"],\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205018953952Z019ce8f6-dec9-78b3-943d-af378951adfe.20260313T205018954637Z019ce8f6-deca-70d0-af85-6e9c249c4b97\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"get_weather\",\"run_type\":\"tool\",\"end_time\":\"2026-03-13T20:50:18.955033+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-deca-70d0-af85-6e9c249c4b97.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 37\r\n\r\n{\"input\":\"{'city': 'San Francisco'}\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-deca-70d0-af85-6e9c249c4b97.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 207\r\n\r\n{\"output\":{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"status\":\"success\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-deca-70d0-af85-6e9c249c4b97.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:18.954637+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:18.955033+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-deca-70d0-af85-6e9c249c4b97.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 712\r\n\r\n{\"color\":\"green\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"metadata\":{\"langgraph_step\":2,\"langgraph_node\":\"tools\",\"langgraph_triggers\":[\"__pregel_push\"],\"langgraph_path\":[\"__pregel_push\",0,false],\"langgraph_checkpoint_ns\":\"tools:83e8b74e-b810-c2e4-2101-ac44745caa22\",\"checkpoint_ns\":\"tools:83e8b74e-b810-c2e4-2101-ac44745caa22\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decb-7a61-8daa-83e868f25e4d\"\r\nContent-Type:
+      application/json\r\nContent-Length: 430\r\n\r\n{\"id\":\"019ce8f6-decb-7a61-8daa-83e868f25e4d\",\"start_time\":\"2026-03-13T20:50:18.955803+00:00\",\"parent_run_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"tags\":[\"graph:step:3\"],\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205018955803Z019ce8f6-decb-7a61-8daa-83e868f25e4d\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"model\",\"run_type\":\"chain\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decb-7a61-8daa-83e868f25e4d.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1356\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"},{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}}},{\"content\":\"It's
+      always sunny in San Francisco!\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"dd5dc53d-dd46-4ea0-be91-2122dc5459c7\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"status\":\"success\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decb-7a61-8daa-83e868f25e4d.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decb-7a61-8daa-83e868f25e4d.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:18.955803+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decb-7a61-8daa-83e868f25e4d.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 590\r\n\r\n{\"metadata\":{\"langgraph_step\":3,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:d67e8196-bb4d-3770-48f5-e7fd2ff93c78\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decd-7a51-8af2-a74d060dc7e1\"\r\nContent-Type:
+      application/json\r\nContent-Length: 490\r\n\r\n{\"id\":\"019ce8f6-decd-7a51-8af2-a74d060dc7e1\",\"start_time\":\"2026-03-13T20:50:18.957482+00:00\",\"parent_run_id\":\"019ce8f6-decb-7a61-8daa-83e868f25e4d\",\"tags\":[\"seq:step:1\"],\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205018955803Z019ce8f6-decb-7a61-8daa-83e868f25e4d.20260313T205018957482Z019ce8f6-decd-7a51-8af2-a74d060dc7e1\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"replicas\":[],\"session_name\":\"default\",\"name\":\"ChatOpenAI\",\"run_type\":\"llm\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decd-7a51-8af2-a74d060dc7e1.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1693\r\n\r\n{\"messages\":[[{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"SystemMessage\"],\"kwargs\":{\"content\":\"You
+      are a helpful assistant\",\"type\":\"system\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"HumanMessage\"],\"kwargs\":{\"content\":\"What
+      is the weather in San Francisco?\",\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"AIMessage\"],\"kwargs\":{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}},\"invalid_tool_calls\":[]}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"ToolMessage\"],\"kwargs\":{\"content\":\"It's
+      always sunny in San Francisco!\",\"type\":\"tool\",\"name\":\"get_weather\",\"id\":\"dd5dc53d-dd46-4ea0-be91-2122dc5459c7\",\"tool_call_id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"status\":\"success\"}}]]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decd-7a51-8af2-a74d060dc7e1.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 2\r\n\r\n{}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decd-7a51-8af2-a74d060dc7e1.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 60\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:18.957482+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decd-7a51-8af2-a74d060dc7e1.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1106\r\n\r\n{\"invocation_params\":{\"model\":\"gpt-5-nano\",\"model_name\":\"gpt-5-nano\",\"stream\":false,\"_type\":\"openai-chat\",\"stop\":null,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a given city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]},\"options\":{\"stop\":null},\"batch_size\":1,\"metadata\":{\"langgraph_step\":3,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:d67e8196-bb4d-3770-48f5-e7fd2ff93c78\",\"checkpoint_ns\":\"model:d67e8196-bb4d-3770-48f5-e7fd2ff93c78\",\"ls_provider\":\"openai\",\"ls_model_name\":\"gpt-5-nano\",\"ls_model_type\":\"chat\",\"ls_temperature\":null,\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"post.019ce8f6-decd-7a51-8af2-a74d060dc7e1.serialized\"\r\nContent-Type:
+      application/json\r\nContent-Length: 227\r\n\r\n{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"chat_models\",\"openai\",\"ChatOpenAI\"],\"kwargs\":{\"model_name\":\"gpt-5-nano\",\"openai_api_key\":{\"lc\":1,\"type\":\"secret\",\"id\":[\"OPENAI_API_KEY\"]},\"stream_usage\":true},\"name\":\"ChatOpenAI\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d813-73d3-995d-e539bc8b9d13\"\r\nContent-Type:
+      application/json\r\nContent-Length: 480\r\n\r\n{\"id\":\"019ce8f6-d813-73d3-995d-e539bc8b9d13\",\"name\":\"model\",\"run_type\":\"chain\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"parent_run_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205017235050Z019ce8f6-d813-73d3-995d-e539bc8b9d13\",\"tags\":[\"graph:step:1\"],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:17.235050+00:00\",\"end_time\":\"2026-03-13T20:50:18.953475+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d813-73d3-995d-e539bc8b9d13.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 171\r\n\r\n{\"messages\":[{\"content\":\"What
+      is the weather in San Francisco?\",\"additional_kwargs\":{},\"response_metadata\":{},\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d813-73d3-995d-e539bc8b9d13.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 958\r\n\r\n{\"messages\":[{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"invalid_tool_calls\":[],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}}}]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d813-73d3-995d-e539bc8b9d13.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:17.235050+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:18.953475+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d813-73d3-995d-e539bc8b9d13.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 590\r\n\r\n{\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:ef83ae59-3908-dbeb-3d44-6047f582b8f2\",\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"}}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d815-7dc0-8e7e-908ff892df38\"\r\nContent-Type:
+      application/json\r\nContent-Length: 540\r\n\r\n{\"id\":\"019ce8f6-d815-7dc0-8e7e-908ff892df38\",\"name\":\"ChatOpenAI\",\"run_type\":\"llm\",\"trace_id\":\"019ce8f6-d7fa-7f03-8d14-5485a2e126d9\",\"parent_run_id\":\"019ce8f6-d813-73d3-995d-e539bc8b9d13\",\"dotted_order\":\"20260313T205017210244Z019ce8f6-d7fa-7f03-8d14-5485a2e126d9.20260313T205017235050Z019ce8f6-d813-73d3-995d-e539bc8b9d13.20260313T205017237618Z019ce8f6-d815-7dc0-8e7e-908ff892df38\",\"tags\":[\"seq:step:1\"],\"session_id\":null,\"session_name\":\"default\",\"start_time\":\"2026-03-13T20:50:17.237618+00:00\",\"end_time\":\"2026-03-13T20:50:18.953010+00:00\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d815-7dc0-8e7e-908ff892df38.inputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 372\r\n\r\n{\"messages\":[[{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"SystemMessage\"],\"kwargs\":{\"content\":\"You
+      are a helpful assistant\",\"type\":\"system\"}},{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"HumanMessage\"],\"kwargs\":{\"content\":\"What
+      is the weather in San Francisco?\",\"type\":\"human\",\"id\":\"8d124cc5-6daa-4980-b41d-c01a86566816\"}}]]}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d815-7dc0-8e7e-908ff892df38.outputs\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1641\r\n\r\n{\"generations\":[[{\"text\":\"\",\"generation_info\":{\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ChatGeneration\",\"message\":{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain\",\"schema\",\"messages\",\"AIMessage\"],\"kwargs\":{\"content\":\"\",\"additional_kwargs\":{\"refusal\":null},\"response_metadata\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\",\"finish_reason\":\"tool_calls\",\"logprobs\":null},\"type\":\"ai\",\"id\":\"lc_run--019ce8f6-d815-7dc0-8e7e-908ff892df38-0\",\"tool_calls\":[{\"name\":\"get_weather\",\"args\":{\"city\":\"San
+      Francisco\"},\"id\":\"call_EOAnkWO4r1MVopBU1vWPvqqt\",\"type\":\"tool_call\"}],\"usage_metadata\":{\"input_tokens\":142,\"output_tokens\":216,\"total_tokens\":358,\"input_token_details\":{\"audio\":0,\"cache_read\":0},\"output_token_details\":{\"audio\":0,\"reasoning\":192}},\"invalid_tool_calls\":[]}}}]],\"llm_output\":{\"token_usage\":{\"completion_tokens\":216,\"prompt_tokens\":142,\"total_tokens\":358,\"completion_tokens_details\":{\"accepted_prediction_tokens\":0,\"audio_tokens\":0,\"reasoning_tokens\":192,\"rejected_prediction_tokens\":0},\"prompt_tokens_details\":{\"audio_tokens\":0,\"cached_tokens\":0}},\"model_provider\":\"openai\",\"model_name\":\"gpt-5-nano-2025-08-07\",\"system_fingerprint\":null,\"id\":\"chatcmpl-DJ3kXWdANEvfinIcVPgOsihhbi8jg\",\"service_tier\":\"default\"},\"run\":null,\"type\":\"LLMResult\"}\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d815-7dc0-8e7e-908ff892df38.events\"\r\nContent-Type:
+      application/json\r\nContent-Length: 117\r\n\r\n[{\"name\":\"start\",\"time\":\"2026-03-13T20:50:17.237618+00:00\"},{\"name\":\"end\",\"time\":\"2026-03-13T20:50:18.953010+00:00\"}]\r\n--415c59607d93413fbf28584e45dbd321\r\nContent-Disposition:
+      form-data; name=\"patch.019ce8f6-d815-7dc0-8e7e-908ff892df38.extra\"\r\nContent-Type:
+      application/json\r\nContent-Length: 1126\r\n\r\n{\"invocation_params\":{\"model\":\"gpt-5-nano\",\"model_name\":\"gpt-5-nano\",\"stream\":false,\"_type\":\"openai-chat\",\"stop\":null,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+      weather for a given city.\",\"parameters\":{\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"],\"type\":\"object\"}}}]},\"options\":{\"stop\":null},\"batch_size\":1,\"metadata\":{\"langgraph_step\":1,\"langgraph_node\":\"model\",\"langgraph_triggers\":[\"branch:to:model\"],\"langgraph_path\":[\"__pregel_pull\",\"model\"],\"langgraph_checkpoint_ns\":\"model:ef83ae59-3908-dbeb-3d44-6047f582b8f2\",\"checkpoint_ns\":\"model:ef83ae59-3908-dbeb-3d44-6047f582b8f2\",\"ls_provider\":\"openai\",\"ls_model_name\":\"gpt-5-nano\",\"ls_model_type\":\"chat\",\"ls_temperature\":null,\"LANGSMITH_TRACING\":\"true\",\"LANGSMITH_OTEL_ENABLED\":\"true\",\"revision_id\":\"c51f5f9-dirty\"},\"runtime\":{\"sdk\":\"langsmith-py\",\"sdk_version\":\"0.6.8\",\"library\":\"langchain-core\",\"platform\":\"macOS-15.7.3-arm64-arm-64bit\",\"runtime\":\"python\",\"py_implementation\":\"CPython\",\"runtime_version\":\"3.11.13\",\"langchain_version\":\"1.2.8\",\"langchain_core_version\":\"1.2.8\",\"library_version\":\"1.2.8\"},\"tool_call_count\":1}\r\n--415c59607d93413fbf28584e45dbd321--\r\n"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '22108'
+      Content-Type:
+      - multipart/form-data; boundary=415c59607d93413fbf28584e45dbd321
+      User-Agent:
+      - langsmith-py/0.6.8
+    method: POST
+    uri: https://api.smith.langchain.com/runs/multipart
+  response:
+    body:
+      string: '{"success":true}
+
+        '
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - '*'
+      Access-Control-Allow-Methods:
+      - '*'
+      Access-Control-Allow-Origin:
+      - ''
+      Access-Control-Expose-Headers:
+      - '*'
+      Access-Control-Max-Age:
+      - '600'
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Cache-Control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      Content-Length:
+      - '17'
+      Content-Security-Policy:
+      - frame-ancestors 'self'; object-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:19 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Timing-Allow-Origin:
+      - ''
+      Vary:
+      - Origin
+      Via:
+      - 1.1 google
+      X-Accel-Expires:
+      - '0'
+      X-Content-Type-Options:
+      - nosniff
+      X-Datadog-Trace-Id:
+      - 1cad550e82fd7ce99cdec3fb3529e99d
+    status:
+      code: 202
+      message: Accepted
+- request:
+    body: '{"messages":[{"content":"You are a helpful assistant","role":"system"},{"content":"What
+      is the weather in San Francisco?","role":"user"},{"content":null,"role":"assistant","tool_calls":[{"type":"function","id":"call_EOAnkWO4r1MVopBU1vWPvqqt","function":{"name":"get_weather","arguments":"{\"city\":
+      \"San Francisco\"}"}}]},{"content":"It''s always sunny in San Francisco!","role":"tool","tool_call_id":"call_EOAnkWO4r1MVopBU1vWPvqqt"}],"model":"gpt-5-nano","stream":false,"tools":[{"type":"function","function":{"name":"get_weather","description":"Get
+      weather for a given city.","parameters":{"properties":{"city":{"type":"string"}},"required":["city"],"type":"object"}}}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '672'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.16.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.16.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.13
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/3VTwW7bMAy95ys4XXaxhyROlq6XXYYBKwYUxYoOyFIYnETHWmTJlehlRpF/n+wk
+        tYu2FwHiI58e+ajHCYDQSlyCkCWyrGqTfrnKduu7h7vvCue2XF9n7c36+ra4WTxcBSeSrsL9/kOS
+        z1UfpIt1xNrZIyw9IVPHOlutskW2nM4+9UDlFJmubFtzukwtWpfOp/NlOr1Ip6tTcem0pBCzfsUr
+        wGN/djKton8xPE3OkYpCwC3F2DkpBr0zXURgCDowWhbJAEpnmWyv/LYkkI338Qr7qLckD9rCD7Tw
+        1aOVOkh3CRvxjd8HQLPHNkBorG1fZL3bCNjYjf3pGqOgdQ0YvSOoCNhBQSxLiOyAkhs0wFTV5JEb
+        TwmUTaWV5jaBfWwPQk2kEnAeEELpPEPhPEkM/HnchaeiCdgN0jbGjAC01jF2RvTzuz8hh6eJFdrq
+        UObRnxDNilMI7GrRo4d43vcONM+GKmof7eWc3Y562tnq4sgnBt8HNPu4PKEcpZgBWC6y5BXCXBGj
+        NmFkopAoS1JD6eA4Nkq7ETAZtfdSzmvcx9a13Y4kz99+YACkpDoudV57Ulo+b3pI89T9jLfSngbd
+        SxaB/N+46zlr8p0ZigpszHFhRWhDXJU8OrYlX3vdb23n9+Qw+Q+fCjSptwMAAA==
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - 9dbde904f882d8c2-SJC
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 13 Mar 2026 20:50:22 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-processing-ms:
+      - '2817'
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999970'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_ff6dab880a49494fa5b97eb1e0069b7d
+    status:
+      code: 200
+      message: OK
+version: 1

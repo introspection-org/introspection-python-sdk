@@ -1,0 +1,7 @@
+# ty type checker configuration
+
+[rules]
+# Ignore unresolved imports - these are optional dependencies
+unresolved-import = "ignore"
+# type: ignore comments may be needed in some envs but unused in others
+unused-ignore-comment = "ignore"
