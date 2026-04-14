@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Python SDK for Introspection — continuously improve your AI systems with production feedback and frontier practices"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "Apache-2.0"
 dependencies = [
     "opentelemetry-sdk >= 1.39.0, < 1.40.0",
     "opentelemetry-exporter-otlp-proto-http>=1.39.0,<1.40.0",
