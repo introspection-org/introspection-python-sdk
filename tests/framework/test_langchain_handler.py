@@ -263,7 +263,10 @@ class TestIntrospectionCallbackHandler:
             for span in spans
         }
 
-        assert traces_by_conversation["email-1"] != traces_by_conversation["email-2"]
+        assert (
+            traces_by_conversation["email-1"]
+            != traces_by_conversation["email-2"]
+        )
 
         handler.shutdown()
 

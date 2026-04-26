@@ -207,7 +207,9 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         )
         self._llm_inputs: dict[str, list[InputMessage]] = {}
 
-    def _root_run_id(self, run_id: Any, parent_run_id: Any | None = None) -> str:
+    def _root_run_id(
+        self, run_id: Any, parent_run_id: Any | None = None
+    ) -> str:
         run_key = str(run_id)
         if parent_run_id is None:
             return run_key
@@ -457,7 +459,9 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         if span is None:
             return
         span.record_exception(error)
-        span.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR, str(error)))
+        span.set_status(
+            otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
+        )
         span.set_attribute("exception.message", str(error))
         span.end()
         self._end_root_if_complete(run_id)
@@ -515,7 +519,9 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         if span is None:
             return
         span.record_exception(error)
-        span.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR, str(error)))
+        span.set_status(
+            otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
+        )
         span.set_attribute("exception.message", str(error))
         span.end()
         self._end_root_if_complete(run_id)
@@ -589,7 +595,9 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         if span is None:
             return
         span.record_exception(error)
-        span.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR, str(error)))
+        span.set_status(
+            otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
+        )
         span.set_attribute("exception.message", str(error))
         span.end()
         self._end_root_if_complete(run_id)
