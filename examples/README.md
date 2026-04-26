@@ -44,6 +44,19 @@ uv run -m introspection_examples.claude_agent.claude_langfuse       # + Langfuse
 uv run -m introspection_examples.langchain_langgraph.handler        # IntrospectionCallbackHandler
 ```
 
+For LangGraph, pass the app's session id in `configurable.thread_id`. The
+callback handler maps that internal LangGraph thread id to
+`gen_ai.conversation.id`, so each graph thread appears as a distinct
+Introspection conversation.
+
+```python
+thread_id = "user-session-123"
+await graph.ainvoke(
+    input,
+    config={"callbacks": [handler], "configurable": {"thread_id": thread_id}},
+)
+```
+
 ### Logfire
 
 ```bash
