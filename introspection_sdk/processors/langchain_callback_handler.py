@@ -187,7 +187,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         self._spans: dict[str, otel_trace.Span] = {}
         self._span_names: dict[str, str] = {}
         self._span_parents: dict[str, str] = {}  # runId -> parentRunId
-        self._root_span: otel_trace.Span | None = None
+        self._run_roots: dict[str, str] = {}  # runId -> rootRunId
         self._conversation_id = f"intro_conv_{uuid_mod.uuid4().hex}"
 
         # LangChain wrapper names to skip when resolving agent names
@@ -207,14 +207,30 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         )
         self._llm_inputs: dict[str, list[InputMessage]] = {}
 
-    def _ensure_root(self) -> otel_trace.Span:
-        """Get or create a root span so all callbacks share the same traceId."""
-        if self._root_span is None:
-            self._root_span = self._tracer.start_span("langchain-run")
-            self._root_span.set_attribute(
-                "gen_ai.conversation.id", self._conversation_id
-            )
-        return self._root_span
+    def _root_run_id(self, run_id: Any, parent_run_id: Any | None = None) -> str:
+        run_key = str(run_id)
+        if parent_run_id is None:
+            return run_key
+        parent_key = str(parent_run_id)
+        return self._run_roots.get(parent_key, parent_key)
+
+    def _set_root_conversation_id(
+        self,
+        conversation_id: str,
+        run_id: Any,
+        parent_run_id: Any | None = None,
+    ) -> None:
+        """Keep the top-level run span aligned with child conversation IDs."""
+        root_key = self._root_run_id(run_id, parent_run_id)
+        root = self._spans.get(root_key)
+        if root is not None:
+            root.set_attribute("gen_ai.conversation.id", conversation_id)
+
+    def _end_root_if_complete(self, run_id: Any) -> None:
+        run_key = str(run_id)
+        self._run_roots.pop(run_key, None)
+        self._span_names.pop(run_key, None)
+        self._span_parents.pop(run_key, None)
 
     def _create_child_span(
         self,
@@ -222,12 +238,12 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         run_id: Any,
         parent_run_id: Any | None = None,
     ) -> otel_trace.Span:
-        """Create a child span under the root (or under a parent if provided).
+        """Create a span under a LangChain parent when one exists.
         Sets gen_ai.agent.name to the parent span's name for hierarchy."""
-        parent = (
-            self._spans.get(str(parent_run_id)) if parent_run_id else None
-        ) or self._ensure_root()
-        ctx = otel_trace.set_span_in_context(parent)
+        parent = self._spans.get(str(parent_run_id)) if parent_run_id else None
+        root_key = self._root_run_id(run_id, parent_run_id)
+        self._run_roots[str(run_id)] = root_key
+        ctx = otel_trace.set_span_in_context(parent) if parent else None
         span = self._tracer.start_span(name, context=ctx)
         self._span_names[str(run_id)] = name
 
@@ -264,6 +280,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         self._spans[str(run_id)] = span
 
         conv_id = self._get_conversation_id(metadata)
+        self._set_root_conversation_id(conv_id, run_id, parent_run_id)
 
         span.set_attribute("gen_ai.operation.name", "chat")
         span.set_attribute("gen_ai.conversation.id", conv_id)
@@ -335,6 +352,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         self._spans[str(run_id)] = span
 
         conv_id = self._get_conversation_id(metadata)
+        self._set_root_conversation_id(conv_id, run_id, parent_run_id)
 
         span.set_attribute("gen_ai.operation.name", "chat")
         span.set_attribute("gen_ai.conversation.id", conv_id)
@@ -425,6 +443,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         span.set_attribute("gen_ai.response.id", response_id)
 
         span.end()
+        self._end_root_if_complete(run_id)
 
     def on_llm_error(
         self,
@@ -437,9 +456,11 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         self._llm_inputs.pop(str(run_id), None)
         if span is None:
             return
-        span.set_attribute("error", True)
-        span.set_attribute("error.message", str(error))
+        span.record_exception(error)
+        span.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR, str(error)))
+        span.set_attribute("exception.message", str(error))
         span.end()
+        self._end_root_if_complete(run_id)
 
     # -----------------------------------------------------------------
     # Chain callbacks
@@ -467,6 +488,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         self._spans[str(run_id)] = span
 
         conv_id = self._get_conversation_id(metadata)
+        self._set_root_conversation_id(conv_id, run_id, parent_run_id)
         span.set_attribute("gen_ai.conversation.id", conv_id)
 
     def on_chain_end(
@@ -480,6 +502,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         if span is None:
             return
         span.end()
+        self._end_root_if_complete(run_id)
 
     def on_chain_error(
         self,
@@ -491,9 +514,11 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         span = self._spans.pop(str(run_id), None)
         if span is None:
             return
-        span.set_attribute("error", True)
-        span.set_attribute("error.message", str(error))
+        span.record_exception(error)
+        span.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR, str(error)))
+        span.set_attribute("exception.message", str(error))
         span.end()
+        self._end_root_if_complete(run_id)
 
     # -----------------------------------------------------------------
     # Tool callbacks
@@ -520,10 +545,13 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         span = self._create_child_span(tool_name, run_id, parent_run_id)
         self._spans[str(run_id)] = span
 
+        conv_id = self._get_conversation_id(metadata)
+        self._set_root_conversation_id(conv_id, run_id, parent_run_id)
+
         span.set_attribute("gen_ai.tool.name", tool_name)
         span.set_attribute("openinference.span.kind", "TOOL")
         span.set_attribute("gen_ai.tool.input", input_str)
-        span.set_attribute("gen_ai.conversation.id", self._conversation_id)
+        span.set_attribute("gen_ai.conversation.id", conv_id)
 
     def on_tool_end(
         self,
@@ -548,6 +576,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
             )
 
         span.end()
+        self._end_root_if_complete(run_id)
 
     def on_tool_error(
         self,
@@ -559,9 +588,11 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         span = self._spans.pop(str(run_id), None)
         if span is None:
             return
-        span.set_attribute("error", True)
-        span.set_attribute("error.message", str(error))
+        span.record_exception(error)
+        span.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR, str(error)))
+        span.set_attribute("exception.message", str(error))
         span.end()
+        self._end_root_if_complete(run_id)
 
     # -----------------------------------------------------------------
     # Lifecycle
@@ -572,9 +603,9 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         for span in self._spans.values():
             span.end()
         self._spans.clear()
-        if self._root_span is not None:
-            self._root_span.end()
-            self._root_span = None
+        self._span_names.clear()
+        self._span_parents.clear()
+        self._run_roots.clear()
         self._provider.shutdown()
 
     def force_flush(self) -> None:
@@ -623,6 +654,8 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
     ) -> str:
         if metadata and "gen_ai.conversation.id" in metadata:
             return str(metadata["gen_ai.conversation.id"])
+        if metadata and "thread_id" in metadata:
+            return str(metadata["thread_id"])
         return self._conversation_id
 
     def _convert_messages(

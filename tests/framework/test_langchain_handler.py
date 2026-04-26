@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,23 +20,31 @@ from tests.test_utils import (
     spans_to_dict,
 )
 
-# LangChain is optional
-HAS_LANGCHAIN = True
+# LangChain integrations are optional.
+HAS_LANGCHAIN_HANDLER = True
+HAS_LANGCHAIN_OPENAI = True
+try:
+    from introspection_sdk import IntrospectionCallbackHandler
+    from introspection_sdk.processors.langchain_callback_handler import (
+        HAS_LANGCHAIN,
+    )
+except ImportError:
+    HAS_LANGCHAIN_HANDLER = False
+    if TYPE_CHECKING:
+        from introspection_sdk import IntrospectionCallbackHandler
+else:
+    HAS_LANGCHAIN_HANDLER = HAS_LANGCHAIN
 try:
     from langchain_openai import ChatOpenAI
-
-    from introspection_sdk import IntrospectionCallbackHandler
 except ImportError:
-    HAS_LANGCHAIN = False
+    HAS_LANGCHAIN_OPENAI = False
     if TYPE_CHECKING:
         from langchain_openai import ChatOpenAI
 
-        from introspection_sdk import IntrospectionCallbackHandler
-
 pytestmark = [
     pytest.mark.skipif(
-        not HAS_LANGCHAIN,
-        reason="langchain-openai not installed",
+        not HAS_LANGCHAIN_HANDLER,
+        reason="langchain-core not installed",
     ),
     pytest.mark.vcr(),
 ]
@@ -57,6 +66,10 @@ def _set_openai_key(monkeypatch):
 class TestIntrospectionCallbackHandler:
     """Test suite for IntrospectionCallbackHandler."""
 
+    @pytest.mark.skipif(
+        not HAS_LANGCHAIN_OPENAI,
+        reason="langchain-openai not installed",
+    )
     def test_chat_completion_with_gen_ai_attributes(self):
         """Test that LangChain chat completion produces correct gen_ai spans."""
         exporter = InMemorySpanExporter()
@@ -142,5 +155,155 @@ class TestIntrospectionCallbackHandler:
                 },
             ]
         )
+
+        handler.shutdown()
+
+    def test_thread_id_metadata_maps_to_conversation_id(self):
+        """LangGraph thread_id metadata is used as gen_ai.conversation.id."""
+        exporter = InMemorySpanExporter()
+        handler = IntrospectionCallbackHandler(
+            token="test-token",
+            advanced=AdvancedOptions(
+                span_exporter=exporter,
+                id_generator=IncrementalIdGenerator(),
+                ns_timestamp_generator=TimeGenerator(),
+            ),
+        )
+
+        run_id = uuid.uuid4()
+        handler.on_chain_start(
+            {"name": "LangGraph"},
+            {"input": "hello"},
+            run_id=run_id,
+            metadata={"thread_id": "thread-123"},
+        )
+        handler.on_chain_end({"output": "hello!"}, run_id=run_id)
+        handler.force_flush()
+
+        spans = spans_to_dict(
+            exporter.get_finished_spans(), parse_json_attributes=False
+        )
+        assert spans[0]["attributes"]["gen_ai.conversation.id"] == "thread-123"
+
+        handler.shutdown()
+
+    def test_explicit_conversation_id_takes_precedence_over_thread_id(self):
+        """Explicit GenAI conversation metadata wins over framework thread metadata."""
+        exporter = InMemorySpanExporter()
+        handler = IntrospectionCallbackHandler(
+            token="test-token",
+            advanced=AdvancedOptions(
+                span_exporter=exporter,
+                id_generator=IncrementalIdGenerator(),
+                ns_timestamp_generator=TimeGenerator(),
+            ),
+        )
+
+        run_id = uuid.uuid4()
+        handler.on_chain_start(
+            {"name": "LangGraph"},
+            {"input": "hello"},
+            run_id=run_id,
+            metadata={
+                "thread_id": "thread-123",
+                "gen_ai.conversation.id": "conversation-456",
+            },
+        )
+        handler.on_chain_end({"output": "hello!"}, run_id=run_id)
+        handler.force_flush()
+
+        spans = spans_to_dict(
+            exporter.get_finished_spans(), parse_json_attributes=False
+        )
+        assert (
+            spans[0]["attributes"]["gen_ai.conversation.id"]
+            == "conversation-456"
+        )
+
+        handler.shutdown()
+
+    def test_independent_top_level_runs_have_distinct_traces(self):
+        """A shared handler must not merge independent top-level runs."""
+        exporter = InMemorySpanExporter()
+        handler = IntrospectionCallbackHandler(
+            token="test-token",
+            advanced=AdvancedOptions(
+                span_exporter=exporter,
+                id_generator=IncrementalIdGenerator(),
+                ns_timestamp_generator=TimeGenerator(),
+            ),
+        )
+
+        first_run_id = uuid.uuid4()
+        second_run_id = uuid.uuid4()
+
+        handler.on_chain_start(
+            {"name": "LangGraph"},
+            {"input": "first"},
+            run_id=first_run_id,
+            metadata={"thread_id": "email-1"},
+        )
+        handler.on_chain_start(
+            {"name": "LangGraph"},
+            {"input": "second"},
+            run_id=second_run_id,
+            metadata={"thread_id": "email-2"},
+        )
+        handler.on_chain_end({"output": "first"}, run_id=first_run_id)
+        handler.on_chain_end({"output": "second"}, run_id=second_run_id)
+        handler.force_flush()
+
+        spans = spans_to_dict(
+            exporter.get_finished_spans(), parse_json_attributes=False
+        )
+        traces_by_conversation = {
+            span["attributes"]["gen_ai.conversation.id"]: span["context"][
+                "trace_id"
+            ]
+            for span in spans
+        }
+
+        assert traces_by_conversation["email-1"] != traces_by_conversation["email-2"]
+
+        handler.shutdown()
+
+    def test_child_run_uses_parent_trace(self):
+        """Nested callbacks stay under their top-level run's trace."""
+        exporter = InMemorySpanExporter()
+        handler = IntrospectionCallbackHandler(
+            token="test-token",
+            advanced=AdvancedOptions(
+                span_exporter=exporter,
+                id_generator=IncrementalIdGenerator(),
+                ns_timestamp_generator=TimeGenerator(),
+            ),
+        )
+
+        parent_run_id = uuid.uuid4()
+        child_run_id = uuid.uuid4()
+
+        handler.on_chain_start(
+            {"name": "LangGraph"},
+            {"input": "hello"},
+            run_id=parent_run_id,
+            metadata={"thread_id": "email-1"},
+        )
+        handler.on_tool_start(
+            {"name": "lookup"},
+            "input",
+            run_id=child_run_id,
+            parent_run_id=parent_run_id,
+            metadata={"thread_id": "email-1"},
+        )
+        handler.on_tool_end("output", run_id=child_run_id)
+        handler.on_chain_end({"output": "done"}, run_id=parent_run_id)
+        handler.force_flush()
+
+        spans = spans_to_dict(
+            exporter.get_finished_spans(), parse_json_attributes=False
+        )
+        trace_ids = {span["context"]["trace_id"] for span in spans}
+
+        assert len(trace_ids) == 1
 
         handler.shutdown()

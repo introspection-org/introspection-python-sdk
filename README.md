@@ -108,6 +108,17 @@ handler = IntrospectionCallbackHandler(service_name="my-app")
 response = model.invoke("Hello!", config={"callbacks": [handler]})
 ```
 
+For LangGraph, pass the app's session id as `thread_id`. The callback handler
+maps that internal LangGraph thread id to `gen_ai.conversation.id`.
+
+```python
+thread_id = "user-session-123"
+response = graph.invoke(
+    {"messages": [{"role": "user", "content": "Hello!"}]},
+    config={"callbacks": [handler], "configurable": {"thread_id": thread_id}},
+)
+```
+
 ### Anthropic SDK
 
 ```python
