@@ -390,6 +390,49 @@ class TestIntrospectionSpanProcessor:
 
         provider.shutdown()
 
+    def test_converted_openinference_span_preserves_parent(self):
+        """OpenInference conversion should not drop parent span context."""
+        exporter = InMemorySpanExporter()
+
+        processor = IntrospectionSpanProcessor(
+            token="test-token",
+            advanced=AdvancedOptions(
+                span_exporter=exporter,
+                id_generator=IncrementalIdGenerator(),
+                ns_timestamp_generator=TimeGenerator(),
+            ),
+        )
+
+        provider = TracerProvider(id_generator=IncrementalIdGenerator())
+        provider.add_span_processor(processor)
+        tracer = provider.get_tracer("openinference.instrumentation.test")
+
+        with tracer.start_as_current_span("agent") as parent:
+            parent.set_attribute("openinference.span.kind", "CHAIN")
+            with tracer.start_as_current_span("chat") as child:
+                child.set_attribute("openinference.span.kind", "LLM")
+                child.set_attribute("llm.model_name", "gpt-test")
+                child.set_attribute(
+                    "llm.input_messages.0.message.role", "user"
+                )
+                child.set_attribute(
+                    "llm.input_messages.0.message.content", "hi"
+                )
+
+        processor.force_flush(1000)
+
+        spans = spans_to_dict(
+            exporter.get_finished_spans(),
+            parse_json_attributes=False,
+            normalize_timestamps=True,
+        )
+        child_span = next(span for span in spans if span["name"] == "chat")
+        parent_span = next(span for span in spans if span["name"] == "agent")
+
+        assert child_span["parent"] == parent_span["context"]
+
+        provider.shutdown()
+
 
 class TestOTLPHttpCalls:
     """Test that OTLP HTTP calls are made correctly."""
