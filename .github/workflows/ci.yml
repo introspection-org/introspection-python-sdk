@@ -136,52 +136,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run pytest tests/ -v -m integration
 
-  examples:
-    name: Examples
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: integration
-    runs-on: ubuntu-latest
-    environment: build
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-examples-${{ hashFiles('examples/pyproject.toml', 'examples/uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-examples-
-
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Run examples
-        working-directory: examples
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
-          INTROSPECTION_BASE_URL: ${{ vars.INTROSPECTION_BASE_URL }}
-          ARIZE_API_KEY: ${{ secrets.ARIZE_API_KEY }}
-          ARIZE_SPACE_KEY: ${{ secrets.ARIZE_SPACE_KEY }}
-          BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
-          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
-          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
-          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: ./run_all.sh
+  # Examples live in their own workflow (./examples.yml) so they don't burn
+  # LLM tokens on every push. They run on `workflow_dispatch` + tag pushes.
 
   # ── Create release tag (only on VERSION change) ────────────────────
   create-tag:
