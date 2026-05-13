@@ -66,6 +66,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: build
+    permissions:
+      contents: write
     steps:
       - name: Generate GitHub App token
         id: app-token
