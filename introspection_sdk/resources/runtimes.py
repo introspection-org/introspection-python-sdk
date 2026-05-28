@@ -195,14 +195,16 @@ class RuntimeHandle:
         if self._resolved_id is not None:
             return self._resolved_id
         name = str(self._raw)
-        params: dict[str, Any] = {"name": name, "only_active": True, "limit": 2}
+        params: dict[str, Any] = {
+            "name": name,
+            "only_active": True,
+            "limit": 2,
+        }
         if self._project_id:
             params["project_id"] = self._project_id
         page = self._runtimes.list(**params)
         if not page.records:
-            raise LookupError(
-                f"No active runtime named {name!r}"
-            )
+            raise LookupError(f"No active runtime named {name!r}")
         if len(page.records) > 1:
             raise LookupError(
                 f"Ambiguous runtime name {name!r}: "
