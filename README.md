@@ -190,10 +190,3 @@ export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
 ## Documentation
 
 Full documentation is available at [docs.introspection.dev](https://docs.introspection.dev).
-
-## Contributing
-
-See [`AGENTS.md`](AGENTS.md) for contribution rules, including the
-recordings-over-mocks policy and the coverage ratchet enforced in CI.
-The phased plan for closing current test gaps lives in
-[`docs/test-quality-audit-plan.md`](docs/test-quality-audit-plan.md).
