@@ -1,0 +1,360 @@
+interactions:
+- request:
+    body: "{\"include\":[],\"input\":[{\"content\":\"My card was charged twice and
+      I want a refund.\",\"role\":\"user\"}],\"instructions\":\"You are a triage agent
+      and never answer questions yourself. Hand any billing- or payment-related question
+      off to the Billing Specialist immediately \u2014 always use the handoff.\",\"model\":\"gpt-5-nano\",\"tools\":[{\"name\":\"transfer_to_billing_specialist\",\"parameters\":{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{},\"required\":[]},\"strict\":true,\"type\":\"function\",\"description\":\"Handoff
+      to the Billing Specialist agent to handle the request. \"}]}"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '567'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0d007bb20e1fe396006a16483e84ac81959e76c9b81ddf9fde\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779845182,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779845184,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You are a triage agent and never answer questions yourself. Hand any billing-
+        or payment-related question off to the Billing Specialist immediately \\u2014
+        always use the handoff.\",\n  \"max_output_tokens\": null,\n  \"max_tool_calls\":
+        null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n  \"moderation\": null,\n
+        \ \"output\": [\n    {\n      \"id\": \"rs_0d007bb20e1fe396006a16483f23548195ae4e11342721e73b\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"fc_0d007bb20e1fe396006a164840a3ec819598f1cbf786eca431\",\n      \"type\":
+        \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{}\",\n      \"call_id\": \"call_cGGi2oBCAjTxIeUZUvYgdIzJ\",\n      \"name\":
+        \"transfer_to_billing_specialist\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n
+        \   \"context\": \"current_turn\",\n    \"effort\": \"medium\",\n    \"summary\":
+        null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n
+        \ \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\":
+        {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n
+        \ \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"function\",\n
+        \     \"description\": \"Handoff to the Billing Specialist agent to handle
+        the request. \",\n      \"name\": \"transfer_to_billing_specialist\",\n      \"parameters\":
+        {\n        \"additionalProperties\": false,\n        \"type\": \"object\",\n
+        \       \"properties\": {},\n        \"required\": []\n      },\n      \"strict\":
+        true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 94,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 238,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 192\n    },\n    \"total_tokens\": 332\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a0213b266be437c1-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 01:26:24 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '2187'
+      openai-processing-ms:
+      - '2401'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_23f6d64a042f4b0ea9339c14dd5ac028
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "{\"include\":[],\"input\":[{\"content\":\"My card was charged twice and
+      I want a refund.\",\"role\":\"user\"},{\"id\":\"rs_0d007bb20e1fe396006a16483f23548195ae4e11342721e73b\",\"summary\":[],\"type\":\"reasoning\"},{\"arguments\":\"{}\",\"call_id\":\"call_cGGi2oBCAjTxIeUZUvYgdIzJ\",\"name\":\"transfer_to_billing_specialist\",\"type\":\"function_call\",\"id\":\"fc_0d007bb20e1fe396006a164840a3ec819598f1cbf786eca431\",\"status\":\"completed\"},{\"call_id\":\"call_cGGi2oBCAjTxIeUZUvYgdIzJ\",\"output\":\"{\\\"assistant\\\":
+      \\\"Billing Specialist\\\"}\",\"type\":\"function_call_output\"}],\"instructions\":\"You
+      handle billing only. You must NOT process refunds yourself. Any request that
+      mentions a refund must be handed off to the Refund Specialist immediately \u2014
+      always use the handoff.\",\"model\":\"gpt-5-nano\",\"tools\":[{\"name\":\"transfer_to_refund_specialist\",\"parameters\":{\"additionalProperties\":false,\"type\":\"object\",\"properties\":{},\"required\":[]},\"strict\":true,\"type\":\"function\",\"description\":\"Handoff
+      to the Refund Specialist agent to handle the request. \"}]}"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '998'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0d007bb20e1fe396006a16484148748195a8afedc5f804a44b\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779845185,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779845188,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You handle billing only. You must NOT process refunds yourself. Any request
+        that mentions a refund must be handed off to the Refund Specialist immediately
+        \\u2014 always use the handoff.\",\n  \"max_output_tokens\": null,\n  \"max_tool_calls\":
+        null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n  \"moderation\": null,\n
+        \ \"output\": [\n    {\n      \"id\": \"rs_0d007bb20e1fe396006a164841959881958963ee5fc16745a1\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"fc_0d007bb20e1fe396006a164844aa2881958ae10d6a1cccc352\",\n      \"type\":
+        \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{}\",\n      \"call_id\": \"call_QQk6gqzm8r08akdFN4RIYLXG\",\n      \"name\":
+        \"transfer_to_refund_specialist\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n
+        \   \"context\": \"current_turn\",\n    \"effort\": \"medium\",\n    \"summary\":
+        null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n
+        \ \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\":
+        {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n
+        \ \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"function\",\n
+        \     \"description\": \"Handoff to the Refund Specialist agent to handle
+        the request. \",\n      \"name\": \"transfer_to_refund_specialist\",\n      \"parameters\":
+        {\n        \"additionalProperties\": false,\n        \"type\": \"object\",\n
+        \       \"properties\": {},\n        \"required\": []\n      },\n      \"strict\":
+        true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 355,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 452,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 384\n    },\n    \"total_tokens\": 807\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a0213b37ae5bcf1e-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 01:26:28 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '2192'
+      openai-processing-ms:
+      - '3652'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_936afaefcd954bf0a2287c317923a9e8
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":[],"input":[{"content":"My card was charged twice and I want
+      a refund.","role":"user"},{"id":"rs_0d007bb20e1fe396006a16483f23548195ae4e11342721e73b","summary":[],"type":"reasoning"},{"arguments":"{}","call_id":"call_cGGi2oBCAjTxIeUZUvYgdIzJ","name":"transfer_to_billing_specialist","type":"function_call","id":"fc_0d007bb20e1fe396006a164840a3ec819598f1cbf786eca431","status":"completed"},{"call_id":"call_cGGi2oBCAjTxIeUZUvYgdIzJ","output":"{\"assistant\":
+      \"Billing Specialist\"}","type":"function_call_output"},{"id":"rs_0d007bb20e1fe396006a164841959881958963ee5fc16745a1","summary":[],"type":"reasoning"},{"arguments":"{}","call_id":"call_QQk6gqzm8r08akdFN4RIYLXG","name":"transfer_to_refund_specialist","type":"function_call","id":"fc_0d007bb20e1fe396006a164844aa2881958ae10d6a1cccc352","status":"completed"},{"call_id":"call_QQk6gqzm8r08akdFN4RIYLXG","output":"{\"assistant\":
+      \"Refund Specialist\"}","type":"function_call_output"}],"instructions":"You
+      finalise refunds. Respond in one short sentence.","model":"gpt-5-nano","tools":[]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1051'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0d007bb20e1fe396006a1648451a7c8195b18e9a7f81a43f87\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779845189,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779845191,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You finalise refunds. Respond in one short sentence.\",\n  \"max_output_tokens\":
+        null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n
+        \ \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"rs_0d007bb20e1fe396006a16484573e081958ba34fc5481e7fce\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"msg_0d007bb20e1fe396006a1648474050819586f2a3d22ff7a112\",\n      \"type\":
+        \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n
+        \         \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\":
+        [],\n          \"text\": \"A Refund Specialist is handling this; please share
+        your order number and the last 4 digits of the card used for the duplicate
+        charge.\"\n        }\n      ],\n      \"role\": \"assistant\"\n    }\n  ],\n
+        \ \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\":
+        null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": \"in_memory\",\n
+        \ \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"medium\",\n
+        \   \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\":
+        \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n
+        \   \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n
+        \ },\n  \"tool_choice\": \"auto\",\n  \"tools\": [],\n  \"top_logprobs\":
+        0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        766,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 310,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        256\n    },\n    \"total_tokens\": 1076\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a0213b4f9ed39d09-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 01:26:31 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '1909'
+      openai-processing-ms:
+      - '2879'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999907'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_190897d860de43339b0c6b23f90be2c9
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,67 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is 5+5? Think step by step."}],
+      "role": "user"}], "generationConfig": {"thinkingConfig": {"include_thoughts":
+      true}}}'
+    headers:
+      Content-Type:
+      - application/json
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: post
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"**My Mental Walkthrough: Summing 5
+        and 5**\\n\\nOkay, the user wants the sum of 5 and 5, and they explicitly
+        want a step-by-step approach. That's straightforward enough. Let's break this
+        down systematically.\\n\\nFirst, I need to identify the core components of
+        the request. They've given me two numbers: 5 and 5. The operation is addition,
+        indicated by the implicit use of the word \\\"sum\\\".\\n\\nNow, I'll formulate
+        the step-by-step logic I will use to get the answer. Here's my plan:\\n\\n1.
+        \ I'll start by taking the first number, which is 5.\\n2.  Then, I add the
+        second number, another 5, to it. This can be conceptualized by incrementing
+        our current total (5) five times, such as: 6, 7, 8, 9, 10.\\n3.  Finally,
+        I\u2019ll state the result obtained in the second step.\\n\\nMy response will
+        need to convey this logic clearly and precisely. I'll need to keep it concise
+        and not over-explain. The goal is a clean, ordered, and easily understood
+        series of steps to arrive at the solution.\\n\\n\\n\",\n            \"thought\":
+        true\n          },\n          {\n            \"text\": \"Step 1: Start with
+        the first number, which is 5.\\n\\nStep 2: Add the second number, which is
+        also 5, to the first number. If we count up 5 numbers from 5, it goes: 6,
+        7, 8, 9, 10.\\n\\nStep 3: The final result is 10. \\n\\nTherefore, 5 + 5 =
+        10.\",\n            \"thoughtSignature\": \"Ev4GCvsGAQw51seXKxN/e7t4mxhG9HOzXKHP3HfMM6KjYEGy6++HxxcSeVNvKKRAVbYtP0WT30tG/9SUT8jBNG3HIw3OxWPoO5R4zTP1BPHMEy0yef2Q4xXUiVXpZcFpGYdDaKiTgFDbF8wOr7v1dUg0Yt+gDCtmp6z8J2CW05J2QsNe9BTueFtZDz13biwZMAkm0BUGTrnaqXMhiDXoF2WsyMcQ62xabZLhGsyQ2LXc/rbmu+4AG+DYq7lPYa8T+SCVi3gS8lTNO0xZJvq9ACLyZAiGEjIUI6B4L4yHZ0gwlSwUdJcT2HGo/gXdPYEn7C7dbPU96sFPXuZbGTBQkupe7+g7JRXdinV9FuMrV8F7mn/fuxCL6ltFMaLvcU/x3jqP+qua73qAmgdeEvrRtjvNGzg4lbf9Pb7C4vRuB1iN4Rl00YvfAX3rA27JVMSbmVLgoSFeO2aRXQhhfN4VdX/eXmoZ7HtFI6UJ1lId5r0tFEPmLmXIe5Acvj6N6p6NppKxVU3Yo5A/3IFtVuSCF9/f+YoM5vq6Zc+S7spi6gumzjOjz/8qJoVehRNpR49/8nQVknCQNRktPTtdA3Rc8anGmtc7UpH1KUEmBe1Eg70wkqI2wi/svqHrPbmiTunG0xd/y66xQutwItFw+Vl7cQ1lLZR8WQfmf50caMD/S2UbdCdbkp7V1wKFH5rdyi4+yS7vYVhFewemxGjMhDGzPODDqGL5jHiWs0PvAyOEMB0lboF7xbQEgghI1e3nFcluzA1Ta+EEngR1AvZ4FogH8oLfkyadGqRsVc9JUIGCLGz1w+YtPTYfwf8ouF7whLeXfUFKTvZC9zqSKIwA9ZlULe6VPHJLZcsrjwsr0JgJJGu23HmwYCd3BAsJ+OHoLwlhzLjkLqMxNgxOLuWEmEg7qM5XXvxzratNenfIOvtJlsfYGAk3ixh6FoYAibBzVIsE5PO4sV6VL/SddFJ1TY1LtZsXmTiwp7ij4FNcfyJLv1TnOgkSgxV5okIkBKze7Cx2eS4dN3yQdndeQ6CPJGROdgfRm6rDm1h+Ip0TjGBr+RLZY4ke3K32YDGsaM3HpFLc892n5DyeJU9tiQ1BjELQ5OI2CPOYKcKpJ/4YR70GwJx7OE/qnwxrL91hLxb3XSCbXEZJ9c5qITLEbA0feD+lfdH977VZsi4Y5XxJnlyY7vNr\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        13,\n    \"candidatesTokenCount\": 93,\n    \"totalTokenCount\": 388,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 13\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 282,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"kQ0VapL5BNi8jrEP7dOtiA8\"\n}\n"
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Tue, 26 May 2026 03:03:50 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Vary:
+      - Origin,X-Origin,Referer
+      content-length:
+      - '3111'
+      server-timing:
+      - gfet4t7; dur=5668
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-gemini-service-tier:
+      - standard
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

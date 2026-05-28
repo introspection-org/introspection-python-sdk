@@ -1,0 +1,65 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is the capital of France? Answer
+      in one word."}], "role": "user"}]}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '107'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"Paris\",\n            \"thoughtSignature\":
+        \"EtwCCtkCAQw51sfJ/6JdstWupsFwxCdd4+eDDRkn5H4RKPeulY15jpaCV2ihGxsEeY5cqouKqaby/21JeCrlZo++AZ6IXDliZdEfN1rsKCqVa48vR6P5DxS8Xt35Yve6Sdlr4o43idejNNVvZc+ipjBwegvaw/rZYtGkW84wMmh6PbBtIdJm/M1I8g6fVYV/vLB8iy+B6vqOY5hYBk/rIYf/v/fX5HFf5SH0FHuG50CT0Iw3HFjDnfGIx1SiX7NMVQfQsHTxRcKQTRDDHB3F9gPMTD8jBokRm/tm6kELs+D3dlUirsc33nuJ8mQxmOpN6EaD80FDeJQ0nkc4hwVheLZGj9t5NdncCz+jRnnuUWk0Rlu7IgO/4sPlBYFGXmtCEwX0Y0jHz1VPJHV/A58ESfnu47TwV5oR4dOADqa4vflaMBUIBE4N8Jv+yC20zOSMKyaXcsh7LApjxRabZjmr\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        13,\n    \"candidatesTokenCount\": 1,\n    \"totalTokenCount\": 92,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 13\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 78,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"Y0YXao-BM8XM-sAP08KC2As\"\n}\n"
+    headers:
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Wed, 27 May 2026 19:30:45 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Server-Timing:
+      - gfet4t7; dur=1804
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gemini-Service-Tier:
+      - standard
+      X-XSS-Protection:
+      - '0'
+      content-length:
+      - '1087'
+    status:
+      code: 200
+      message: OK
+version: 1

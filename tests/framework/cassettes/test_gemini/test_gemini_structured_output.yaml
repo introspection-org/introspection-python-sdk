@@ -1,0 +1,67 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is 2+2? Respond with JSON key ''answer''."}],
+      "role": "user"}], "generationConfig": {"responseMimeType": "application/json",
+      "responseSchema": {"properties": {"answer": {"type": "STRING"}}, "required":
+      ["answer"], "type": "OBJECT"}}}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '271'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"{\\\"answer\\\":\\\"4\\\"}\",\n            \"thoughtSignature\":
+        \"EoIICv8HAQw51seNFVaFoFEgarguI2qNKhKtrPg+nS43yvfNGyBRvvTxRCdqy8bIyUgetzPfeJjc2UQNEgCg8gDB39WqsJ/ibs0B64P4T4tzefDvhgssYPzH/bsFWDsdZgE6i3xaXUXuJfSXJhGnxinQCbJAZwHEqPhT0o4x1MXEbZZ2FX1br4H37u5okxfmK1m0YqePnJlI+PsDO0Lhfj55ccEA7NvC7rNNiz0CZhvANL1aPJ34xLNHYMJa6TGE9cV4CNgqgm5Kv8Eo2665kwsAZswiZtzGqQ2pNgNi/ctVgXy8qK2c/+onB5aFdnX2bVZhX8NVpAajZF/Ubyg8aEjbpVub8xfUh+TBYHb0BnVQiUF5Q1VWFN84uswtkULzUC8XKOVpC67zbjfX401ivAZFvFadDiSl6JeRgMvinCmqCDFHe2cheTMiCQEcms2N2xaWe8dE9+q+GQ1oryApbasEPPfppTtB2bxJFtovlyKdMbQE/gnIW7gcjYw/69tVAt+cpISfy2SuLCG5OHMpP0G7uQeluF4w8pHzuXoitSFErIL08MgJCE01jjU1Qdii/SMMYFYf6fmIy1fjDDko8wI2h8NuoyfG2kE9mhHLd3O96ala8YRo3YJqTlHqAQEDbxCKgu7YFvZlCiIWPiBzJt7AYCBZAxFgu6lp9cp19p+9PcLFS4wEvBkB7oS9Zy1NFS6LfnbcP5d3yjuaNF9L/aqL5SfwGCDD3Zjfcm5kYyof6re6DB8vtzzz49pp32/qnbdoJcoYMu2HX8J2lxwc6Mu9DfxE6sE/sEMYdFyKLm5THcfbSf9C/hzI18b2yXVDWpaA4bbB91N72a3T99PN7l7h4AUrmQX3gKQ00U0k4M0Q68uHm0ZPg7twDttemRzvnZHEL+rTGM5gaTqKw2PTKWXopFvlnxBfwnk6dRhFNHgqHPdf6Gz2zxjHDaq08VAFhc9kbg4hJtbS7lfTZa6aXt52soBkACcGponk96fWWLuXf08xh3V1Zz6ZC5YGP/Iim6OLggCw4ycJ0e+6x81PsVM/qrtfNjJN/MFxvNeTRRFDe8i3Eovd8hXNhq4/f4o4YFgxsz2XW1nJKxhQk3vVlhuvP7lOvih9njYmZVa1fvmT9SwDwL5OOyZ8QHIIARRvGGb60Dff/i7Ieiu+gmbObBlWk12+5MyKquuS/a195jeNpurN7e5A0p+pzsuobW7dTev9YYSAYGjo/dF5hJdTSgq72gMqL68WG5n1iqmn9Q2E8uKyYNOkU64VNpKNo5d77Lmea1xwN5mWO040ApDcBvHMWTnLl09pqt80O2emaiTUETA58Pxn2hYPZSvIL6x8LXBJXpIi6VDdirduF0IHAXm0MAAc\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        15,\n    \"candidatesTokenCount\": 5,\n    \"totalTokenCount\": 296,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 15\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 276,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"aEYXavOKCsLK_uMPsY-V-Q8\"\n}\n"
+    headers:
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Wed, 27 May 2026 19:30:51 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Server-Timing:
+      - gfet4t7; dur=3567
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gemini-Service-Tier:
+      - standard
+      X-XSS-Protection:
+      - '0'
+      content-length:
+      - '2006'
+    status:
+      code: 200
+      message: OK
+version: 1

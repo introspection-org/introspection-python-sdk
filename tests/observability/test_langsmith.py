@@ -44,7 +44,7 @@ async def test_langsmith_openai_agent_sdk(
     # Add instrumentation with LangSmith only
     # NOTE: logfire.instrument_openai_agents() disabled due to LogfireTraceWrapper
     # abstract class issues in the custom logfire branch
-    set_trace_processors([OpenAIAgentsTracingProcessor()])
+    set_trace_processors([OpenAIAgentsTracingProcessor()])  # type: ignore[list-item]
 
     with logfire.span("langsmith openai agent sdk"):
         await main()

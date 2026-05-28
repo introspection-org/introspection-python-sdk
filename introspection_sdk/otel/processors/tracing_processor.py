@@ -10,7 +10,6 @@ __all__ = ["IntrospectionTracingProcessor"]
 
 import json
 import os
-import uuid
 from typing import TYPE_CHECKING, cast
 from urllib.parse import urljoin
 
@@ -32,6 +31,7 @@ from introspection_sdk.converters.openai import (
     convert_responses_inputs_to_semconv,
     convert_responses_outputs_to_semconv,
 )
+from introspection_sdk.otel.conversation import resolve_conversation_id
 from introspection_sdk.schemas.genai import (
     SystemInstruction,
     ToolDefinition,
@@ -104,40 +104,53 @@ class IntrospectionTracingProcessor(TracingProcessor):
         token: str | None = None,
         service_name: str | None = None,
         advanced: AdvancedOptions | None = None,
+        tracer_provider: TracerProvider | None = None,
     ):
         if not HAS_OPENAI_AGENTS:
             raise RuntimeError(
                 "IntrospectionTracingProcessor requires the `openai-agents` package.\n"
                 "Install it with: pip install 'introspection-sdk[openai-agents]'"
             )
-        # Use defaults if not provided
         self._advanced = advanced or AdvancedOptions()
 
+        self._owns_provider = tracer_provider is None
+        if tracer_provider is not None:
+            self._tracer_provider = tracer_provider
+        else:
+            self._tracer_provider = self._build_standalone_provider(
+                token, service_name
+            )
+
+        self._tracer = self._tracer_provider.get_tracer(
+            "openai-agents", VERSION
+        )
+        self._spans: dict[str, otel_trace.Span] = {}
+        self._conversation_ids: dict[str, str] = {}
+
+    def _build_standalone_provider(
+        self, token: str | None, service_name: str | None
+    ) -> TracerProvider:
         if self._advanced.span_exporter:
-            # Use provided exporter (for testing)
             exporter = self._advanced.span_exporter
         else:
-            # Create default OTLP exporter
             base_url = self._advanced.base_url or os.getenv(
-                "INTROSPECTION_BASE_URL", "https://otel.introspection.dev"
+                "INTROSPECTION_BASE_OTEL_URL",
+                "https://otel.introspection.dev",
             )
             token = token or os.getenv("INTROSPECTION_TOKEN")
             if not token:
                 raise ValueError("INTROSPECTION_TOKEN is not set")
-
             headers = {
                 "User-Agent": f"introspection-sdk/{VERSION}",
                 "Authorization": f"Bearer {token}",
                 **(self._advanced.additional_headers or {}),
             }
-
             endpoint = (
                 base_url
                 if base_url.endswith("/v1/traces")
                 else urljoin(base_url, "/v1/traces")
             )
             logger.info(f"IntrospectionTracingProcessor endpoint: {endpoint}")
-
             exporter = OTLPHTTPSpanExporter(
                 endpoint=endpoint,
                 compression=Compression.NoCompression,
@@ -147,16 +160,12 @@ class IntrospectionTracingProcessor(TracingProcessor):
         _service_name = service_name or os.getenv(
             "INTROSPECTION_SERVICE_NAME", "openai-agents"
         )
-        resource = Resource.create({"service.name": _service_name})
-        self._tracer_provider = TracerProvider(
-            resource=resource,
+        provider = TracerProvider(
+            resource=Resource.create({"service.name": _service_name}),
             id_generator=self._advanced.id_generator,
         )
-        # Use SimpleSpanProcessor for sequential export when max_batch_size=1
-        # or on emscripten (no threading). This ensures each span is exported
-        # immediately on end(), which is required for multi-turn conversations
-        # where each turn must be ingested before the next arrives.
-        # Default to sequential export for dev/staging tokens.
+        # Sequential export (one span per end()) is required for multi-turn
+        # conversations and forced for emscripten and dev/staging tokens.
         max_batch = self._advanced.max_batch_size
         if (
             max_batch is None
@@ -167,25 +176,17 @@ class IntrospectionTracingProcessor(TracingProcessor):
             )
         ):
             max_batch = 1
-        use_simple = platform_is_emscripten() or max_batch == 1
-        if use_simple:
-            self._tracer_provider.add_span_processor(
-                SimpleSpanProcessor(exporter)
-            )
+        if platform_is_emscripten() or max_batch == 1:
+            provider.add_span_processor(SimpleSpanProcessor(exporter))
         else:
-            self._tracer_provider.add_span_processor(
+            provider.add_span_processor(
                 BatchSpanProcessor(
                     exporter,
                     schedule_delay_millis=self._advanced.flush_interval_ms,
                     max_export_batch_size=max_batch,
                 )
             )
-
-        self._tracer = self._tracer_provider.get_tracer(
-            "openai-agents", VERSION
-        )
-        self._spans: dict[str, otel_trace.Span] = {}
-        self._conversation_ids: dict[str, str] = {}
+        return provider
 
     def _apply_baggage_context(self, otel_span: otel_trace.Span) -> None:
         """Read gen_ai context from OTel baggage and set on span.
@@ -225,7 +226,9 @@ class IntrospectionTracingProcessor(TracingProcessor):
             # Determine conversation ID: use baggage if set, otherwise auto-generate
             conversation_id = baggage.get_baggage("gen_ai.conversation.id")
             if not conversation_id:
-                conversation_id = f"intro_conv_{uuid.uuid4().hex}"
+                conversation_id = resolve_conversation_id(
+                    trace_key=str(trace.trace_id)
+                )
                 otel_span.set_attribute(
                     "gen_ai.conversation.id", conversation_id
                 )
@@ -592,9 +595,11 @@ class IntrospectionTracingProcessor(TracingProcessor):
             )
 
     def shutdown(self) -> None:
-        """Shut down the underlying tracer provider and flush pending spans."""
-        self._tracer_provider.shutdown()
+        """Shut down the provider, unless a shared one was passed in (caller owns it)."""
+        if self._owns_provider:
+            self._tracer_provider.shutdown()
 
     def force_flush(self) -> None:
-        """Flush all pending spans to the exporter."""
-        self._tracer_provider.force_flush()
+        """Flush pending spans, unless a shared provider was passed in."""
+        if self._owns_provider:
+            self._tracer_provider.force_flush()

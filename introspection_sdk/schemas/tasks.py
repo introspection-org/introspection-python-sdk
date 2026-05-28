@@ -1,0 +1,115 @@
+"""Pydantic mirrors of DP `/v1/tasks` request/response models.
+
+Mirrors `apps/dataplane-api/introspection_dataplane/models/task.py`.
+Extra fields are tolerated so DP additions don't break the SDK.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from enum import StrEnum
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class _ApiModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+
+class TaskMode(StrEnum):
+    AGENT = "agent"
+    INTROSPECT = "introspect"
+    SYSTEM_REVIEW = "system_review"
+    SYSTEM_INSTRUMENTATION = "system_instrumentation"
+    OBSERVATION_REVIEW = "observation_review"
+    SECURITY_REVIEW = "security_review"
+    REPO_INDEX = "repo_index"
+    SYSTEM_DISCOVERY = "system_discovery"
+    ONBOARDING = "onboarding"
+    HEARTBEAT = "heartbeat"
+
+
+class TaskStatus(StrEnum):
+    PENDING = "pending"
+    QUEUED = "queued"
+    SCHEDULED = "scheduled"
+    RUNNING = "running"
+    IDLE = "idle"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLING = "cancelling"
+    CANCELLED = "cancelled"
+
+
+class AgentInfo(_ApiModel):
+    sandbox_status: str | None = None
+    session_id: str | None = None
+
+
+class Task(_ApiModel):
+    id: UUID
+    org_id: UUID
+    project_id: UUID
+    created_at: datetime
+    updated_at: datetime
+    title: str | None = None
+    display_index: int | None = None
+    mode: TaskMode = TaskMode.AGENT
+    status: TaskStatus = TaskStatus.PENDING
+    member_id: UUID | None = None
+    automation_id: UUID | None = None
+    runtime_id: UUID | None = None
+    is_archived: bool = False
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    last_user_message_at: datetime | None = None
+    metadata: dict[str, Any] | None = None
+    agent: AgentInfo | None = None
+
+
+class TaskCreateRequest(_ApiModel):
+    title: str | None = None
+    prompt: str | None = None
+    mode: TaskMode = TaskMode.AGENT
+    system_id: str | None = None
+    repository_id: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class TaskUpdateRequest(_ApiModel):
+    title: str | None = None
+    is_archived: bool | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class TaskPrompt(_ApiModel):
+    text: str = Field(min_length=1)
+    images: list[str] | None = None
+
+
+class TaskRunCreateRequest(_ApiModel):
+    prompt: TaskPrompt | None = None
+    message: str | None = None
+
+
+class TaskRun(_ApiModel):
+    id: str
+    task_id: UUID
+    status: TaskStatus
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class TaskCreateResponse(_ApiModel):
+    task: Task
+    run: TaskRun
+
+
+class TaskRunResponse(_ApiModel):
+    run: TaskRun
+
+
+class TaskCancelResponse(_ApiModel):
+    id: str

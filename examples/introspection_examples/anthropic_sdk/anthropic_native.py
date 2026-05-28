@@ -19,7 +19,7 @@ except ImportError as e:
     ) from e
 
 from introspection_sdk import IntrospectionSpanProcessor
-from introspection_sdk.anthropic import AnthropicInstrumentor
+from introspection_sdk.otel.anthropic import AnthropicInstrumentor
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 
@@ -79,18 +79,14 @@ def main() -> None:
 
     for block in response1.content:
         if block.type == "thinking":
-            print(f"  [Thinking] {getattr(block, 'thinking', '')[:80]}...")
+            print(f"  [Thinking] {block.thinking[:80]}...")  # ty: ignore[unresolved-attribute]
         elif block.type == "tool_use":
-            print(
-                f"  [Tool] {getattr(block, 'name', '')}({getattr(block, 'input', {})})"
-            )
+            print(f"  [Tool] {block.name}({block.input})")  # ty: ignore[unresolved-attribute]
 
     messages.append({"role": "assistant", "content": response1.content})
 
     tool_use_block = next(b for b in response1.content if b.type == "tool_use")
-    tool_result = get_weather(
-        getattr(tool_use_block, "input", {}).get("city", "")
-    )
+    tool_result = get_weather(tool_use_block.input.get("city", ""))  # ty: ignore[invalid-argument-type, unresolved-attribute]
     print(f"  [Result] {tool_result}")
     messages.append(
         {
@@ -98,7 +94,7 @@ def main() -> None:
             "content": [
                 {
                     "type": "tool_result",
-                    "tool_use_id": getattr(tool_use_block, "id", ""),
+                    "tool_use_id": tool_use_block.id,  # ty: ignore[unresolved-attribute]
                     "content": tool_result,
                 }
             ],
@@ -117,9 +113,9 @@ def main() -> None:
 
     for block in response2.content:
         if block.type == "thinking":
-            print(f"  [Thinking] {getattr(block, 'thinking', '')[:80]}...")
+            print(f"  [Thinking] {block.thinking[:80]}...")  # ty: ignore[unresolved-attribute]
         elif block.type == "text":
-            print(f"  [Response] {getattr(block, 'text', '')[:200]}")
+            print(f"  [Response] {block.text[:200]}")  # ty: ignore[unresolved-attribute]
 
     messages.append({"role": "assistant", "content": response2.content})
 
@@ -140,9 +136,9 @@ def main() -> None:
 
     for block in response3.content:
         if block.type == "thinking":
-            print(f"  [Thinking] {getattr(block, 'thinking', '')[:80]}...")
+            print(f"  [Thinking] {block.thinking[:80]}...")  # ty: ignore[unresolved-attribute]
         elif block.type == "text":
-            print(f"  [Response] {getattr(block, 'text', '')[:200]}")
+            print(f"  [Response] {block.text[:200]}")  # ty: ignore[unresolved-attribute]
 
     instrumentor.uninstrument()
     print("\n✓ All turns completed. Thinking blocks captured in traces.")

@@ -1,0 +1,441 @@
+interactions:
+- request:
+    body: '{"include":[],"input":[{"content":"What''s the weather in Tokyo?","role":"user"}],"instructions":"Use
+      the get_weather tool, then answer in one sentence.","model":"gpt-5-nano","tools":[{"name":"get_weather","parameters":{"properties":{"city":{"title":"City","type":"string"}},"required":["city"],"title":"get_weather_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Get
+      weather for a city."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '441'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_08c766f9ddc56899006a174cb8fba08199a30f3dbf6aa25984\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779911865,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779911866,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"Use the get_weather tool, then answer in one sentence.\",\n  \"max_output_tokens\":
+        null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n
+        \ \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"rs_08c766f9ddc56899006a174cb94a308199949f57b4b7f2fb39\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"fc_08c766f9ddc56899006a174cba18508199a924bd3d11559b36\",\n      \"type\":
+        \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"city\\\":\\\"Tokyo\\\"}\",\n      \"call_id\": \"call_ybwJ4KfsS1VkIBSVgQ1Is7sj\",\n
+        \     \"name\": \"get_weather\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n
+        \ \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n
+        \   \"context\": \"current_turn\",\n    \"effort\": \"medium\",\n    \"summary\":
+        null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n
+        \ \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\":
+        {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n
+        \ \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"function\",\n
+        \     \"description\": \"Get weather for a city.\",\n      \"name\": \"get_weather\",\n
+        \     \"parameters\": {\n        \"properties\": {\n          \"city\": {\n
+        \           \"title\": \"City\",\n            \"type\": \"string\"\n          }\n
+        \       },\n        \"required\": [\n          \"city\"\n        ],\n        \"title\":
+        \"get_weather_args\",\n        \"type\": \"object\",\n        \"additionalProperties\":
+        false\n      },\n      \"strict\": true\n    }\n  ],\n  \"top_logprobs\":
+        0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        72,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 177,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        128\n    },\n    \"total_tokens\": 249\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a02797231a0aebeb-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:57:46 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '2165'
+      openai-processing-ms:
+      - '1420'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_3bd9da3f2b3d4a56b29920d96ea5f991
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":[],"input":[{"content":"What''s the weather in Tokyo?","role":"user"},{"id":"rs_08c766f9ddc56899006a174cb94a308199949f57b4b7f2fb39","summary":[],"type":"reasoning"},{"arguments":"{\"city\":\"Tokyo\"}","call_id":"call_ybwJ4KfsS1VkIBSVgQ1Is7sj","name":"get_weather","type":"function_call","id":"fc_08c766f9ddc56899006a174cba18508199a924bd3d11559b36","status":"completed"},{"call_id":"call_ybwJ4KfsS1VkIBSVgQ1Is7sj","output":"It''s
+      sunny in Tokyo.","type":"function_call_output"}],"instructions":"Use the get_weather
+      tool, then answer in one sentence.","model":"gpt-5-nano","tools":[{"name":"get_weather","parameters":{"properties":{"city":{"title":"City","type":"string"}},"required":["city"],"title":"get_weather_args","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Get
+      weather for a city."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '847'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_08c766f9ddc56899006a174cba9508819997dbf2f6168f0fc6\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779911866,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779911868,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"Use the get_weather tool, then answer in one sentence.\",\n  \"max_output_tokens\":
+        null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n
+        \ \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"rs_08c766f9ddc56899006a174cbaf70c8199b9804640430c8cce\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"msg_08c766f9ddc56899006a174cbbf29881999c266d82fe84859f\",\n      \"type\":
+        \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n
+        \         \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\":
+        [],\n          \"text\": \"It's sunny in Tokyo.\"\n        }\n      ],\n      \"role\":
+        \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\":
+        0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\":
+        \"in_memory\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\":
+        \"function\",\n      \"description\": \"Get weather for a city.\",\n      \"name\":
+        \"get_weather\",\n      \"parameters\": {\n        \"properties\": {\n          \"city\":
+        {\n            \"title\": \"City\",\n            \"type\": \"string\"\n          }\n
+        \       },\n        \"required\": [\n          \"city\"\n        ],\n        \"title\":
+        \"get_weather_args\",\n        \"type\": \"object\",\n        \"additionalProperties\":
+        false\n      },\n      \"strict\": true\n    }\n  ],\n  \"top_logprobs\":
+        0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        265,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 161,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        128\n    },\n    \"total_tokens\": 426\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a027972dd8775e16-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:57:48 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '2243'
+      openai-processing-ms:
+      - '1610'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_bf92c99b6fbf404b8d5c8d4d988022c8
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "\n\uFFFDJ\n\uFFFD\x01\n\"\n\x16telemetry.sdk.language\x12\b\n\x06python\n%\n\x12telemetry.sdk.name\x12\x0F\n\ropentelemetry\n!\n\x15telemetry.sdk.version\x12\b\n\x061.39.1\n!\n\fservice.name\x12\x11\n\x0Funknown_service\x12\uFFFDI\n4\n+openinference.instrumentation.openai_agents\x12\x051.5.1\x12\uFFFD\x1F\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b\uFFFD)\uFFFD\v\uFFFD\uFFFD\uFFFDD\"\b\uFFFD2]M\x05\uFFFD7:*\bresponse0\x019\0?\uFFFD\x16i\uFFFD\uFFFD\x18A\0K}\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ&\n\x10output.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x0E\n\foutput.value\x12\uFFFD\r\n\uFFFD\r{\"id\":\"resp_08c766f9ddc56899006a174cb8fba08199a30f3dbf6aa25984\",\"created_at\":1779911865.0,\"error\":null,\"incomplete_details\":null,\"instructions\":\"Use
+      the get_weather tool, then answer in one sentence.\",\"metadata\":{},\"model\":\"gpt-5-nano-2025-08-07\",\"object\":\"response\",\"output\":[{\"id\":\"rs_08c766f9ddc56899006a174cb94a308199949f57b4b7f2fb39\",\"summary\":[],\"type\":\"reasoning\",\"content\":null,\"encrypted_content\":null,\"status\":null},{\"arguments\":\"{\\\"city\\\":\\\"Tokyo\\\"}\",\"call_id\":\"call_ybwJ4KfsS1VkIBSVgQ1Is7sj\",\"name\":\"get_weather\",\"type\":\"function_call\",\"id\":\"fc_08c766f9ddc56899006a174cba18508199a924bd3d11559b36\",\"namespace\":null,\"status\":\"completed\"}],\"parallel_tool_calls\":true,\"temperature\":1.0,\"tool_choice\":\"auto\",\"tools\":[{\"name\":\"get_weather\",\"parameters\":{\"properties\":{\"city\":{\"title\":\"City\",\"type\":\"string\"}},\"required\":[\"city\"],\"title\":\"get_weather_args\",\"type\":\"object\",\"additionalProperties\":false},\"strict\":true,\"type\":\"function\",\"defer_loading\":null,\"description\":\"Get
+      weather for a city.\"}],\"top_p\":1.0,\"background\":false,\"completed_at\":1779911866.0,\"conversation\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"previous_response_id\":null,\"prompt\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"effort\":\"medium\",\"generate_summary\":null,\"summary\":null,\"context\":\"current_turn\"},\"safety_identifier\":null,\"service_tier\":\"default\",\"status\":\"completed\",\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"top_logprobs\":0,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":72,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens\":177,\"output_tokens_details\":{\"reasoning_tokens\":128},\"total_tokens\":249},\"user\":null,\"billing\":{\"payer\":\"developer\"},\"frequency_penalty\":0.0,\"moderation\":null,\"presence_penalty\":0.0,\"store\":true}J\uFFFD\x02\n\x1Cllm.tools.0.tool.json_schema\x12\uFFFD\x02\n\uFFFD\x02{\"type\":
+      \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get
+      weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\":
+      \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"title\": \"get_weather_args\",
+      \"type\": \"object\", \"additionalProperties\": false}, \"strict\": true}}J!\n\x1Allm.token_count.completion\x12\x03\x18\uFFFD\x01J\x1C\n\x16llm.token_count.prompt\x12\x02\x18HJ\x1C\n\x15llm.token_count.total\x12\x03\x18\uFFFD\x01J/\n)llm.token_count.prompt_details.cache_read\x12\x02\x18\0J3\n,llm.token_count.completion_details.reasoning\x12\x03\x18\uFFFD\x01J1\n\"llm.output_messages.0.message.role\x12\v\n\tassistantJZ\n7llm.output_messages.0.message.tool_calls.0.tool_call.id\x12\x1F\n\x1Dcall_ybwJ4KfsS1VkIBSVgQ1Is7sjJS\nBllm.output_messages.0.message.tool_calls.0.tool_call.function.name\x12\r\n\vget_weatherJ]\nGllm.output_messages.0.message.tool_calls.0.tool_call.function.arguments\x12\x12\n\x10{\"city\":\"Tokyo\"}J-\n!llm.input_messages.0.message.role\x12\b\n\x06systemJ`\n$llm.input_messages.0.message.content\x128\n6Use
+      the get_weather tool, then answer in one sentence.J)\n\x0Ellm.model_name\x12\x17\n\x15gpt-5-nano-2025-08-07J\uFFFD\x05\n\x19llm.invocation_parameters\x12\uFFFD\x05\n\uFFFD\x05{\"id\":
+      \"resp_08c766f9ddc56899006a174cb8fba08199a30f3dbf6aa25984\", \"created_at\":
+      1779911865.0, \"instructions\": \"Use the get_weather tool, then answer in one
+      sentence.\", \"metadata\": {}, \"model\": \"gpt-5-nano-2025-08-07\", \"parallel_tool_calls\":
+      true, \"temperature\": 1.0, \"tool_choice\": \"auto\", \"top_p\": 1.0, \"background\":
+      false, \"completed_at\": 1779911866.0, \"prompt_cache_retention\": \"in_memory\",
+      \"reasoning\": {\"effort\": \"medium\", \"context\": \"current_turn\"}, \"service_tier\":
+      \"default\", \"text\": {\"format\": {\"type\": \"text\"}, \"verbosity\": \"medium\"},
+      \"top_logprobs\": 0, \"truncation\": \"disabled\", \"billing\": {\"payer\":
+      \"developer\"}, \"frequency_penalty\": 0.0, \"presence_penalty\": 0.0, \"store\":
+      true}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJN\n\vinput.value\x12?\n=[{\"content\":
+      \"What's the weather in Tokyo?\", \"role\": \"user\"}]J+\n!llm.input_messages.1.message.role\x12\x06\n\x04userJF\n$llm.input_messages.1.message.content\x12\x1E\n\x1CWhat's
+      the weather in Tokyo?J \n\x17openinference.span.kind\x12\x05\n\x03LLMz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12\uFFFD\x02\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\bP\uFFFD\uFFFD\uFFFDi\uFFFD\x1F\uFFFD\"\b\uFFFD2]M\x05\uFFFD7:*\vget_weather0\x019\0\u75C4i\uFFFD\uFFFD\x18A\0r\uFFFD\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ\x1A\n\ttool.name\x12\r\n\vget_weatherJ!\n\vinput.value\x12\x12\n\x10{\"city\":\"Tokyo\"}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJ&\n\foutput.value\x12\x16\n\x14It's
+      sunny in Tokyo.J!\n\x17openinference.span.kind\x12\x06\n\x04TOOLz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12\uFFFD%\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b)\x1C\x10\uFFFD\uFFFDe\uFFFD\uFFFD\"\b\uFFFD2]M\x05\uFFFD7:*\bresponse0\x019\0\uFFFD\uFFFD\uFFFDi\uFFFD\uFFFD\x18A\0(;\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ&\n\x10output.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x0E\n\foutput.value\x12\uFFFD\r\n\uFFFD\r{\"id\":\"resp_08c766f9ddc56899006a174cba9508819997dbf2f6168f0fc6\",\"created_at\":1779911866.0,\"error\":null,\"incomplete_details\":null,\"instructions\":\"Use
+      the get_weather tool, then answer in one sentence.\",\"metadata\":{},\"model\":\"gpt-5-nano-2025-08-07\",\"object\":\"response\",\"output\":[{\"id\":\"rs_08c766f9ddc56899006a174cbaf70c8199b9804640430c8cce\",\"summary\":[],\"type\":\"reasoning\",\"content\":null,\"encrypted_content\":null,\"status\":null},{\"id\":\"msg_08c766f9ddc56899006a174cbbf29881999c266d82fe84859f\",\"content\":[{\"annotations\":[],\"text\":\"It's
+      sunny in Tokyo.\",\"type\":\"output_text\",\"logprobs\":[]}],\"role\":\"assistant\",\"status\":\"completed\",\"type\":\"message\",\"phase\":null}],\"parallel_tool_calls\":true,\"temperature\":1.0,\"tool_choice\":\"auto\",\"tools\":[{\"name\":\"get_weather\",\"parameters\":{\"properties\":{\"city\":{\"title\":\"City\",\"type\":\"string\"}},\"required\":[\"city\"],\"title\":\"get_weather_args\",\"type\":\"object\",\"additionalProperties\":false},\"strict\":true,\"type\":\"function\",\"defer_loading\":null,\"description\":\"Get
+      weather for a city.\"}],\"top_p\":1.0,\"background\":false,\"completed_at\":1779911868.0,\"conversation\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"previous_response_id\":null,\"prompt\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"effort\":\"medium\",\"generate_summary\":null,\"summary\":null,\"context\":\"current_turn\"},\"safety_identifier\":null,\"service_tier\":\"default\",\"status\":\"completed\",\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"top_logprobs\":0,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":265,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens\":161,\"output_tokens_details\":{\"reasoning_tokens\":128},\"total_tokens\":426},\"user\":null,\"billing\":{\"payer\":\"developer\"},\"frequency_penalty\":0.0,\"moderation\":null,\"presence_penalty\":0.0,\"store\":true}J\uFFFD\x02\n\x1Cllm.tools.0.tool.json_schema\x12\uFFFD\x02\n\uFFFD\x02{\"type\":
+      \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get
+      weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\":
+      \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"title\": \"get_weather_args\",
+      \"type\": \"object\", \"additionalProperties\": false}, \"strict\": true}}J!\n\x1Allm.token_count.completion\x12\x03\x18\uFFFD\x01J\x1D\n\x16llm.token_count.prompt\x12\x03\x18\uFFFD\x02J\x1C\n\x15llm.token_count.total\x12\x03\x18\uFFFD\x03J/\n)llm.token_count.prompt_details.cache_read\x12\x02\x18\0J3\n,llm.token_count.completion_details.reasoning\x12\x03\x18\uFFFD\x01J1\n\"llm.output_messages.0.message.role\x12\v\n\tassistantJG\n=llm.output_messages.0.message.contents.0.message_content.type\x12\x06\n\x04textJW\n=llm.output_messages.0.message.contents.0.message_content.text\x12\x16\n\x14It's
+      sunny in Tokyo.J-\n!llm.input_messages.0.message.role\x12\b\n\x06systemJ`\n$llm.input_messages.0.message.content\x128\n6Use
+      the get_weather tool, then answer in one sentence.J)\n\x0Ellm.model_name\x12\x17\n\x15gpt-5-nano-2025-08-07J\uFFFD\x05\n\x19llm.invocation_parameters\x12\uFFFD\x05\n\uFFFD\x05{\"id\":
+      \"resp_08c766f9ddc56899006a174cba9508819997dbf2f6168f0fc6\", \"created_at\":
+      1779911866.0, \"instructions\": \"Use the get_weather tool, then answer in one
+      sentence.\", \"metadata\": {}, \"model\": \"gpt-5-nano-2025-08-07\", \"parallel_tool_calls\":
+      true, \"temperature\": 1.0, \"tool_choice\": \"auto\", \"top_p\": 1.0, \"background\":
+      false, \"completed_at\": 1779911868.0, \"prompt_cache_retention\": \"in_memory\",
+      \"reasoning\": {\"effort\": \"medium\", \"context\": \"current_turn\"}, \"service_tier\":
+      \"default\", \"text\": {\"format\": {\"type\": \"text\"}, \"verbosity\": \"medium\"},
+      \"top_logprobs\": 0, \"truncation\": \"disabled\", \"billing\": {\"payer\":
+      \"developer\"}, \"frequency_penalty\": 0.0, \"presence_penalty\": 0.0, \"store\":
+      true}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x03\n\vinput.value\x12\uFFFD\x03\n\uFFFD\x03[{\"content\":
+      \"What's the weather in Tokyo?\", \"role\": \"user\"}, {\"id\": \"rs_08c766f9ddc56899006a174cb94a308199949f57b4b7f2fb39\",
+      \"summary\": [], \"type\": \"reasoning\"}, {\"arguments\": \"{\\\"city\\\":\\\"Tokyo\\\"}\",
+      \"call_id\": \"call_ybwJ4KfsS1VkIBSVgQ1Is7sj\", \"name\": \"get_weather\", \"type\":
+      \"function_call\", \"id\": \"fc_08c766f9ddc56899006a174cba18508199a924bd3d11559b36\",
+      \"status\": \"completed\"}, {\"call_id\": \"call_ybwJ4KfsS1VkIBSVgQ1Is7sj\",
+      \"output\": \"It's sunny in Tokyo.\", \"type\": \"function_call_output\"}]J+\n!llm.input_messages.1.message.role\x12\x06\n\x04userJF\n$llm.input_messages.1.message.content\x12\x1E\n\x1CWhat's
+      the weather in Tokyo?J0\n!llm.input_messages.3.message.role\x12\v\n\tassistantJY\n6llm.input_messages.3.message.tool_calls.0.tool_call.id\x12\x1F\n\x1Dcall_ybwJ4KfsS1VkIBSVgQ1Is7sjJR\nAllm.input_messages.3.message.tool_calls.0.tool_call.function.name\x12\r\n\vget_weatherJ\\\nFllm.input_messages.3.message.tool_calls.0.tool_call.function.arguments\x12\x12\n\x10{\"city\":\"Tokyo\"}J+\n!llm.input_messages.4.message.role\x12\x06\n\x04toolJL\n)llm.input_messages.4.message.tool_call_id\x12\x1F\n\x1Dcall_ybwJ4KfsS1VkIBSVgQ1Is7sjJ>\n$llm.input_messages.4.message.content\x12\x16\n\x14It's
+      sunny in Tokyo.J \n\x17openinference.span.kind\x12\x05\n\x03LLMz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12\uFFFD\x01\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b\uFFFD2]M\x05\uFFFD7:\"\b0\uFFFDt\uFFFD\u0756.\uFFFD*\rWeather
+      Agent0\x019\0\x7F\uFFFD\x16i\uFFFD\uFFFD\x18A\0_S\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ
+      \n\rgraph.node.id\x12\x0F\n\rWeather AgentJ\"\n\x17openinference.span.kind\x12\a\n\x05AGENTz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12n\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b0\uFFFDt\uFFFD\u0756.\uFFFD*\x0EAgent
+      workflow0\x019Lh\uFFFD\x16i\uFFFD\uFFFD\x18A\uFFFD\x11V\uFFFDi\uFFFD\uFFFD\x18J\"\n\x17openinference.span.kind\x12\a\n\x05AGENTz\x02\x18\x01\uFFFD\x01\0\x01\0\0"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '9580'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+    method: POST
+    uri: https://cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"message":"Invalid credentials. Confirm that you''ve configured the
+        correct host."}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '83'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 27 May 2026 19:57:48 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"shlzp847bz2b"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 401
+      message: Unauthorized
+- request:
+    body: "\n\uFFFDJ\n\uFFFD\x01\n\"\n\x16telemetry.sdk.language\x12\b\n\x06python\n%\n\x12telemetry.sdk.name\x12\x0F\n\ropentelemetry\n!\n\x15telemetry.sdk.version\x12\b\n\x061.39.1\n!\n\fservice.name\x12\x11\n\x0Funknown_service\x12\uFFFDI\n4\n+openinference.instrumentation.openai_agents\x12\x051.5.1\x12\uFFFD\x1F\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b\uFFFD)\uFFFD\v\uFFFD\uFFFD\uFFFDD\"\b\uFFFD2]M\x05\uFFFD7:*\bresponse0\x019\0?\uFFFD\x16i\uFFFD\uFFFD\x18A\0K}\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ&\n\x10output.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x0E\n\foutput.value\x12\uFFFD\r\n\uFFFD\r{\"id\":\"resp_08c766f9ddc56899006a174cb8fba08199a30f3dbf6aa25984\",\"created_at\":1779911865.0,\"error\":null,\"incomplete_details\":null,\"instructions\":\"Use
+      the get_weather tool, then answer in one sentence.\",\"metadata\":{},\"model\":\"gpt-5-nano-2025-08-07\",\"object\":\"response\",\"output\":[{\"id\":\"rs_08c766f9ddc56899006a174cb94a308199949f57b4b7f2fb39\",\"summary\":[],\"type\":\"reasoning\",\"content\":null,\"encrypted_content\":null,\"status\":null},{\"arguments\":\"{\\\"city\\\":\\\"Tokyo\\\"}\",\"call_id\":\"call_ybwJ4KfsS1VkIBSVgQ1Is7sj\",\"name\":\"get_weather\",\"type\":\"function_call\",\"id\":\"fc_08c766f9ddc56899006a174cba18508199a924bd3d11559b36\",\"namespace\":null,\"status\":\"completed\"}],\"parallel_tool_calls\":true,\"temperature\":1.0,\"tool_choice\":\"auto\",\"tools\":[{\"name\":\"get_weather\",\"parameters\":{\"properties\":{\"city\":{\"title\":\"City\",\"type\":\"string\"}},\"required\":[\"city\"],\"title\":\"get_weather_args\",\"type\":\"object\",\"additionalProperties\":false},\"strict\":true,\"type\":\"function\",\"defer_loading\":null,\"description\":\"Get
+      weather for a city.\"}],\"top_p\":1.0,\"background\":false,\"completed_at\":1779911866.0,\"conversation\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"previous_response_id\":null,\"prompt\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"effort\":\"medium\",\"generate_summary\":null,\"summary\":null,\"context\":\"current_turn\"},\"safety_identifier\":null,\"service_tier\":\"default\",\"status\":\"completed\",\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"top_logprobs\":0,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":72,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens\":177,\"output_tokens_details\":{\"reasoning_tokens\":128},\"total_tokens\":249},\"user\":null,\"billing\":{\"payer\":\"developer\"},\"frequency_penalty\":0.0,\"moderation\":null,\"presence_penalty\":0.0,\"store\":true}J\uFFFD\x02\n\x1Cllm.tools.0.tool.json_schema\x12\uFFFD\x02\n\uFFFD\x02{\"type\":
+      \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get
+      weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\":
+      \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"title\": \"get_weather_args\",
+      \"type\": \"object\", \"additionalProperties\": false}, \"strict\": true}}J!\n\x1Allm.token_count.completion\x12\x03\x18\uFFFD\x01J\x1C\n\x16llm.token_count.prompt\x12\x02\x18HJ\x1C\n\x15llm.token_count.total\x12\x03\x18\uFFFD\x01J/\n)llm.token_count.prompt_details.cache_read\x12\x02\x18\0J3\n,llm.token_count.completion_details.reasoning\x12\x03\x18\uFFFD\x01J1\n\"llm.output_messages.0.message.role\x12\v\n\tassistantJZ\n7llm.output_messages.0.message.tool_calls.0.tool_call.id\x12\x1F\n\x1Dcall_ybwJ4KfsS1VkIBSVgQ1Is7sjJS\nBllm.output_messages.0.message.tool_calls.0.tool_call.function.name\x12\r\n\vget_weatherJ]\nGllm.output_messages.0.message.tool_calls.0.tool_call.function.arguments\x12\x12\n\x10{\"city\":\"Tokyo\"}J-\n!llm.input_messages.0.message.role\x12\b\n\x06systemJ`\n$llm.input_messages.0.message.content\x128\n6Use
+      the get_weather tool, then answer in one sentence.J)\n\x0Ellm.model_name\x12\x17\n\x15gpt-5-nano-2025-08-07J\uFFFD\x05\n\x19llm.invocation_parameters\x12\uFFFD\x05\n\uFFFD\x05{\"id\":
+      \"resp_08c766f9ddc56899006a174cb8fba08199a30f3dbf6aa25984\", \"created_at\":
+      1779911865.0, \"instructions\": \"Use the get_weather tool, then answer in one
+      sentence.\", \"metadata\": {}, \"model\": \"gpt-5-nano-2025-08-07\", \"parallel_tool_calls\":
+      true, \"temperature\": 1.0, \"tool_choice\": \"auto\", \"top_p\": 1.0, \"background\":
+      false, \"completed_at\": 1779911866.0, \"prompt_cache_retention\": \"in_memory\",
+      \"reasoning\": {\"effort\": \"medium\", \"context\": \"current_turn\"}, \"service_tier\":
+      \"default\", \"text\": {\"format\": {\"type\": \"text\"}, \"verbosity\": \"medium\"},
+      \"top_logprobs\": 0, \"truncation\": \"disabled\", \"billing\": {\"payer\":
+      \"developer\"}, \"frequency_penalty\": 0.0, \"presence_penalty\": 0.0, \"store\":
+      true}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJN\n\vinput.value\x12?\n=[{\"content\":
+      \"What's the weather in Tokyo?\", \"role\": \"user\"}]J+\n!llm.input_messages.1.message.role\x12\x06\n\x04userJF\n$llm.input_messages.1.message.content\x12\x1E\n\x1CWhat's
+      the weather in Tokyo?J \n\x17openinference.span.kind\x12\x05\n\x03LLMz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12\uFFFD\x02\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\bP\uFFFD\uFFFD\uFFFDi\uFFFD\x1F\uFFFD\"\b\uFFFD2]M\x05\uFFFD7:*\vget_weather0\x019\0\u75C4i\uFFFD\uFFFD\x18A\0r\uFFFD\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ\x1A\n\ttool.name\x12\r\n\vget_weatherJ!\n\vinput.value\x12\x12\n\x10{\"city\":\"Tokyo\"}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJ&\n\foutput.value\x12\x16\n\x14It's
+      sunny in Tokyo.J!\n\x17openinference.span.kind\x12\x06\n\x04TOOLz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12\uFFFD%\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b)\x1C\x10\uFFFD\uFFFDe\uFFFD\uFFFD\"\b\uFFFD2]M\x05\uFFFD7:*\bresponse0\x019\0\uFFFD\uFFFD\uFFFDi\uFFFD\uFFFD\x18A\0(;\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ&\n\x10output.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x0E\n\foutput.value\x12\uFFFD\r\n\uFFFD\r{\"id\":\"resp_08c766f9ddc56899006a174cba9508819997dbf2f6168f0fc6\",\"created_at\":1779911866.0,\"error\":null,\"incomplete_details\":null,\"instructions\":\"Use
+      the get_weather tool, then answer in one sentence.\",\"metadata\":{},\"model\":\"gpt-5-nano-2025-08-07\",\"object\":\"response\",\"output\":[{\"id\":\"rs_08c766f9ddc56899006a174cbaf70c8199b9804640430c8cce\",\"summary\":[],\"type\":\"reasoning\",\"content\":null,\"encrypted_content\":null,\"status\":null},{\"id\":\"msg_08c766f9ddc56899006a174cbbf29881999c266d82fe84859f\",\"content\":[{\"annotations\":[],\"text\":\"It's
+      sunny in Tokyo.\",\"type\":\"output_text\",\"logprobs\":[]}],\"role\":\"assistant\",\"status\":\"completed\",\"type\":\"message\",\"phase\":null}],\"parallel_tool_calls\":true,\"temperature\":1.0,\"tool_choice\":\"auto\",\"tools\":[{\"name\":\"get_weather\",\"parameters\":{\"properties\":{\"city\":{\"title\":\"City\",\"type\":\"string\"}},\"required\":[\"city\"],\"title\":\"get_weather_args\",\"type\":\"object\",\"additionalProperties\":false},\"strict\":true,\"type\":\"function\",\"defer_loading\":null,\"description\":\"Get
+      weather for a city.\"}],\"top_p\":1.0,\"background\":false,\"completed_at\":1779911868.0,\"conversation\":null,\"max_output_tokens\":null,\"max_tool_calls\":null,\"previous_response_id\":null,\"prompt\":null,\"prompt_cache_key\":null,\"prompt_cache_retention\":\"in_memory\",\"reasoning\":{\"effort\":\"medium\",\"generate_summary\":null,\"summary\":null,\"context\":\"current_turn\"},\"safety_identifier\":null,\"service_tier\":\"default\",\"status\":\"completed\",\"text\":{\"format\":{\"type\":\"text\"},\"verbosity\":\"medium\"},\"top_logprobs\":0,\"truncation\":\"disabled\",\"usage\":{\"input_tokens\":265,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens\":161,\"output_tokens_details\":{\"reasoning_tokens\":128},\"total_tokens\":426},\"user\":null,\"billing\":{\"payer\":\"developer\"},\"frequency_penalty\":0.0,\"moderation\":null,\"presence_penalty\":0.0,\"store\":true}J\uFFFD\x02\n\x1Cllm.tools.0.tool.json_schema\x12\uFFFD\x02\n\uFFFD\x02{\"type\":
+      \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get
+      weather for a city.\", \"parameters\": {\"properties\": {\"city\": {\"title\":
+      \"City\", \"type\": \"string\"}}, \"required\": [\"city\"], \"title\": \"get_weather_args\",
+      \"type\": \"object\", \"additionalProperties\": false}, \"strict\": true}}J!\n\x1Allm.token_count.completion\x12\x03\x18\uFFFD\x01J\x1D\n\x16llm.token_count.prompt\x12\x03\x18\uFFFD\x02J\x1C\n\x15llm.token_count.total\x12\x03\x18\uFFFD\x03J/\n)llm.token_count.prompt_details.cache_read\x12\x02\x18\0J3\n,llm.token_count.completion_details.reasoning\x12\x03\x18\uFFFD\x01J1\n\"llm.output_messages.0.message.role\x12\v\n\tassistantJG\n=llm.output_messages.0.message.contents.0.message_content.type\x12\x06\n\x04textJW\n=llm.output_messages.0.message.contents.0.message_content.text\x12\x16\n\x14It's
+      sunny in Tokyo.J-\n!llm.input_messages.0.message.role\x12\b\n\x06systemJ`\n$llm.input_messages.0.message.content\x128\n6Use
+      the get_weather tool, then answer in one sentence.J)\n\x0Ellm.model_name\x12\x17\n\x15gpt-5-nano-2025-08-07J\uFFFD\x05\n\x19llm.invocation_parameters\x12\uFFFD\x05\n\uFFFD\x05{\"id\":
+      \"resp_08c766f9ddc56899006a174cba9508819997dbf2f6168f0fc6\", \"created_at\":
+      1779911866.0, \"instructions\": \"Use the get_weather tool, then answer in one
+      sentence.\", \"metadata\": {}, \"model\": \"gpt-5-nano-2025-08-07\", \"parallel_tool_calls\":
+      true, \"temperature\": 1.0, \"tool_choice\": \"auto\", \"top_p\": 1.0, \"background\":
+      false, \"completed_at\": 1779911868.0, \"prompt_cache_retention\": \"in_memory\",
+      \"reasoning\": {\"effort\": \"medium\", \"context\": \"current_turn\"}, \"service_tier\":
+      \"default\", \"text\": {\"format\": {\"type\": \"text\"}, \"verbosity\": \"medium\"},
+      \"top_logprobs\": 0, \"truncation\": \"disabled\", \"billing\": {\"payer\":
+      \"developer\"}, \"frequency_penalty\": 0.0, \"presence_penalty\": 0.0, \"store\":
+      true}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJ\uFFFD\x03\n\vinput.value\x12\uFFFD\x03\n\uFFFD\x03[{\"content\":
+      \"What's the weather in Tokyo?\", \"role\": \"user\"}, {\"id\": \"rs_08c766f9ddc56899006a174cb94a308199949f57b4b7f2fb39\",
+      \"summary\": [], \"type\": \"reasoning\"}, {\"arguments\": \"{\\\"city\\\":\\\"Tokyo\\\"}\",
+      \"call_id\": \"call_ybwJ4KfsS1VkIBSVgQ1Is7sj\", \"name\": \"get_weather\", \"type\":
+      \"function_call\", \"id\": \"fc_08c766f9ddc56899006a174cba18508199a924bd3d11559b36\",
+      \"status\": \"completed\"}, {\"call_id\": \"call_ybwJ4KfsS1VkIBSVgQ1Is7sj\",
+      \"output\": \"It's sunny in Tokyo.\", \"type\": \"function_call_output\"}]J+\n!llm.input_messages.1.message.role\x12\x06\n\x04userJF\n$llm.input_messages.1.message.content\x12\x1E\n\x1CWhat's
+      the weather in Tokyo?J0\n!llm.input_messages.3.message.role\x12\v\n\tassistantJY\n6llm.input_messages.3.message.tool_calls.0.tool_call.id\x12\x1F\n\x1Dcall_ybwJ4KfsS1VkIBSVgQ1Is7sjJR\nAllm.input_messages.3.message.tool_calls.0.tool_call.function.name\x12\r\n\vget_weatherJ\\\nFllm.input_messages.3.message.tool_calls.0.tool_call.function.arguments\x12\x12\n\x10{\"city\":\"Tokyo\"}J+\n!llm.input_messages.4.message.role\x12\x06\n\x04toolJL\n)llm.input_messages.4.message.tool_call_id\x12\x1F\n\x1Dcall_ybwJ4KfsS1VkIBSVgQ1Is7sjJ>\n$llm.input_messages.4.message.content\x12\x16\n\x14It's
+      sunny in Tokyo.J \n\x17openinference.span.kind\x12\x05\n\x03LLMz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12\uFFFD\x01\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b\uFFFD2]M\x05\uFFFD7:\"\b0\uFFFDt\uFFFD\u0756.\uFFFD*\rWeather
+      Agent0\x019\0\x7F\uFFFD\x16i\uFFFD\uFFFD\x18A\0_S\uFFFDi\uFFFD\uFFFD\x18J\x16\n\nllm.system\x12\b\n\x06openaiJ
+      \n\rgraph.node.id\x12\x0F\n\rWeather AgentJ\"\n\x17openinference.span.kind\x12\a\n\x05AGENTz\x02\x18\x01\uFFFD\x01\0\x01\0\0\x12n\n\x10\\E\uFFFD\uFFFDYY\uFFFD\b\u037DO\uFFFD5\uFFFD{\x1F\x12\b0\uFFFDt\uFFFD\u0756.\uFFFD*\x0EAgent
+      workflow0\x019Lh\uFFFD\x16i\uFFFD\uFFFD\x18A\uFFFD\x11V\uFFFDi\uFFFD\uFFFD\x18J\"\n\x17openinference.span.kind\x12\a\n\x05AGENTz\x02\x18\x01\uFFFD\x01\0\x01\0\0"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '9580'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      x-langfuse-sdk-name:
+      - python
+      x-langfuse-sdk-version:
+      - 4.0.0
+    method: POST
+    uri: https://cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"message":"Invalid credentials. Confirm that you''ve configured the
+        correct host."}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '83'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 27 May 2026 19:57:49 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"shlzp847bz2b"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 401
+      message: Unauthorized
+version: 1

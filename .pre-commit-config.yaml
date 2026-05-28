@@ -39,3 +39,16 @@ repos:
         types: [python]
         pass_filenames: false
         require_serial: true
+
+      # Enforces the coverage ratchet defined in [tool.coverage.report].
+      # Runs on the manual stage by default (`prek run --hook-stage manual coverage`)
+      # so it doesn't block fast iteration; CI runs the same check on every PR.
+      # Run before pushing with: prek run --hook-stage manual coverage
+      - id: coverage
+        name: pytest coverage ratchet
+        entry: uv run pytest tests/ --cov=introspection_sdk --cov-report=term --cov-fail-under=60 -q
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+        stages: [manual, pre-push]

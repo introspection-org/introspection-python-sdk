@@ -1,0 +1,120 @@
+interactions:
+- request:
+    body: '{"messages":[{"role":"user","content":"Count to three."}],"model":"gpt-5-nano","stream":true}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '93'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - AsyncOpenAI/Python 2.30.0
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: 'data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{"role":"assistant","content":"","refusal":null},"finish_reason":null}],"obfuscation":"EV"}
+
+
+        data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":"One"},"finish_reason":null}],"obfuscation":"q"}
+
+
+        data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":"."},"finish_reason":null}],"obfuscation":"5zM"}
+
+
+        data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":"
+        Two"},"finish_reason":null}],"obfuscation":""}
+
+
+        data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":"."},"finish_reason":null}],"obfuscation":"Q6G"}
+
+
+        data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":"
+        Three"},"finish_reason":null}],"obfuscation":"0MM5DIS3j3rpVo"}
+
+
+        data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":"."},"finish_reason":null}],"obfuscation":"3vd"}
+
+
+        data: {"id":"chatcmpl-DkEHlyQNvHiaRgX2Jh726IdZZCNnJ","object":"chat.completion.chunk","created":1779910373,"model":"gpt-5-nano-2025-08-07","service_tier":"default","system_fingerprint":null,"choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"obfuscation":"9984qIioolo0Yy"}
+
+
+        data: [DONE]
+
+
+        '
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a02772b94ee97a73-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - text/event-stream; charset=utf-8
+      Date:
+      - Wed, 27 May 2026 19:32:55 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      - CF-Ray
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-processing-ms:
+      - '1788'
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999994'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_b24a82ddaba84b36b2427e263fdbe6c0
+    status:
+      code: 200
+      message: OK
+version: 1

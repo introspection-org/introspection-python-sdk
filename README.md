@@ -29,155 +29,171 @@ uv add introspection-sdk
 pip install introspection-sdk
 ```
 
-### Optional Extras
+The default install is REST-only — no OpenTelemetry pulled in. Add the `[otel]` extra to enable analytics events and trace export:
 
 ```shell
+pip install 'introspection-sdk[otel]'
+```
+
+### Optional extras
+
+Per-framework convenience installs (`init()` auto-detects frameworks however
+they were installed — these are just one-command setup):
+
+```shell
+pip install 'introspection-sdk[anthropic]'      # Anthropic SDK
+pip install 'introspection-sdk[gemini]'         # Google Gemini (google-genai)
 pip install 'introspection-sdk[openai-agents]'  # OpenAI Agents SDK
-pip install 'introspection-sdk[langfuse]'        # Langfuse
-pip install 'introspection-sdk[braintrust]'      # Braintrust
-pip install 'introspection-sdk[arize]'           # Arize Phoenix + OpenInference
+pip install 'introspection-sdk[claude-agent]'   # Claude Agent SDK
+pip install 'introspection-sdk[langchain]'      # LangChain / LangGraph
+pip install 'introspection-sdk[logfire]'        # Logfire
+pip install 'introspection-sdk[all]'            # Everything above
 ```
 
-## Environment Variables
+## Three independent surfaces
+
+The Python SDK exposes three surfaces you can adopt independently:
+
+1. **Introspection API (runtimes, tasks, files)** with `IntrospectionClient` — the main Introspection API. Zero OpenTelemetry imports. Always available.
+2. **Analytics events (track, feedback, identify)** with `IntrospectionLogs` — OTel logs exporter with baggage helpers. Owns its own `LoggerProvider`. Lives at `introspection_sdk.IntrospectionLogs`. Requires the `[otel]` extra.
+3. **Traces (span processors + instrumentors)** with `IntrospectionSpanProcessor` and friends — `IntrospectionTracingProcessor`, `ClaudeTracingProcessor`, the LangChain callback handler, `AnthropicInstrumentor`, `GeminiInstrumentor`. Plus the `introspection_sdk.init()` convenience that auto-wires every supported framework. All under `introspection_sdk.otel` (or the dedicated `introspection_sdk.integrations.langchain` subpath for the LangChain handler). Requires the `[otel]` extra.
+
+## 1. Introspection API (runtimes, tasks, files) with `IntrospectionClient`
+
+The main Introspection API surface. No OTel packages required — install just the SDK:
 
 ```shell
-export INTROSPECTION_TOKEN="intro_xxx"
-export INTROSPECTION_BASE_URL="https://otel.introspection.dev"  # optional
+pip install introspection-sdk
 ```
-
-## Quickstart
-
-### OpenTelemetry Span Processor
-
-```python
-from introspection_sdk import IntrospectionSpanProcessor
-import logfire
-
-logfire.configure(
-    additional_span_processors=[IntrospectionSpanProcessor()],
-)
-
-logfire.instrument_openai()
-```
-
-### OpenAI Agents SDK
-
-```python
-from agents import Agent, Runner, set_trace_processors, tool
-from introspection_sdk import IntrospectionTracingProcessor
-
-set_trace_processors([IntrospectionTracingProcessor()])
-
-@tool
-def get_weather(city: str) -> str:
-    """Get the current weather for a city."""
-    return f"Sunny, 72F in {city}"
-
-agent = Agent(name="Weather Bot", tools=[get_weather])
-result = await Runner.run(agent, "What's the weather in Tokyo?")
-```
-
-#### Reasoning Model Support
-
-Some models produce reasoning items that the OpenAI Conversations API rejects. `IntrospectionConversationsSession` strips those items transparently:
-
-```python
-from introspection_sdk import IntrospectionConversationsSession
-
-session = IntrospectionConversationsSession(conversation_id="conv_123")
-result = await Runner.run(agent, "Hello!", session=session)
-```
-
-### Claude Agent SDK
-
-```python
-from introspection_sdk import ClaudeTracingProcessor
-
-processor = ClaudeTracingProcessor()
-processor.configure()
-
-# All ClaudeSDKClient instances are now automatically traced
-```
-
-### LangChain / LangGraph
-
-```python
-from introspection_sdk import IntrospectionCallbackHandler
-
-handler = IntrospectionCallbackHandler(service_name="my-app")
-response = model.invoke("Hello!", config={"callbacks": [handler]})
-```
-
-For LangGraph, pass the app's session id as `thread_id`. The callback handler
-maps that internal LangGraph thread id to `gen_ai.conversation.id`.
-
-```python
-thread_id = "user-session-123"
-response = graph.invoke(
-    {"messages": [{"role": "user", "content": "Hello!"}]},
-    config={"callbacks": [handler], "configurable": {"thread_id": thread_id}},
-)
-```
-
-### Anthropic SDK
-
-```python
-from introspection_sdk.anthropic import AnthropicInstrumentor
-
-instrumentor = AnthropicInstrumentor()
-instrumentor.instrument(tracer_provider=provider)
-
-# All client.messages.create calls are traced, including thinking blocks
-```
-
-### OpenInference (Arize, Langfuse, Braintrust)
-
-```python
-from opentelemetry.sdk.trace import TracerProvider
-from openinference.instrumentation.openai import OpenAIInstrumentor
-from introspection_sdk import IntrospectionSpanProcessor
-
-provider = TracerProvider()
-provider.add_span_processor(IntrospectionSpanProcessor())
-OpenAIInstrumentor().instrument(tracer_provider=provider)
-```
-
-> See [examples/](./examples/) for complete integration patterns including dual-export with Arize, Langfuse, Braintrust, and LangSmith.
-
-## Client API
 
 ```python
 from introspection_sdk import IntrospectionClient
 
-client = IntrospectionClient()
+client = IntrospectionClient(
+    token="intro_xxx",        # or env: INTROSPECTION_TOKEN
+    project_id="proj_…",      # or env: INTROSPECTION_PROJECT_ID
+)
 
-with client.set_user_id("user_123"):
-    with client.set_conversation("conv_456", previous_response_id="msg_123"):
-        client.feedback("thumbs_up", comments="Great response!")
+runner = client.runtimes("customer-agent").run(
+    identity={"user_id": "u_42"},
+)
+run = runner.tasks.create(prompt="Summarize this repo")
+for event in run.stream():
+    print(event)
 
+runner.close()
 client.shutdown()
+```
+
+See [`examples/tasks_files.py`](examples/introspection_examples/tasks_files.py) for an end-to-end walkthrough.
+
+## 2. Analytics events (track, feedback, identify) with `IntrospectionLogs`
+
+Install the SDK with the `[otel]` extra:
+
+```shell
+pip install 'introspection-sdk[otel]'
+```
+
+```python
+from introspection_sdk import IntrospectionLogs
+
+logs = IntrospectionLogs(
+    token="intro_xxx",        # or env: INTROSPECTION_TOKEN
+    service_name="my-service",
+    base_url="https://otel.introspection.dev",  # or env: INTROSPECTION_BASE_OTEL_URL
+    project_id="proj_…",      # or env: INTROSPECTION_PROJECT_ID — optional
+)
+
+with logs.identify("user_123", traits={"plan": "pro"}):
+    with logs.conversation("conv_456", previous_response_id="msg_123"):
+        logs.feedback("thumbs_up", comments="Great response!")
+
+logs.track("checkout_completed", {"amount": 42})
+logs.shutdown()
 ```
 
 ### Methods
 
 | Method | Description |
 | ------ | ----------- |
+| `track(event, properties=)` | Track any user action |
 | `feedback(type, **kwargs)` | Track feedback on AI responses |
 | `identify(user_id, traits=)` | Associate a user with traits (context manager) |
-| `track(event, properties=)` | Track any user action |
 | `flush(timeout_ms=30000)` | Flush pending events |
 | `shutdown()` | Shutdown and flush |
 
-### Context Managers
+### Context managers
 
 | Method | Description |
 | ------ | ----------- |
-| `set_user_id(id)` | Set user context |
-| `set_conversation(id?, response_id?)` | Set conversation context |
-| `set_agent(name, id?)` | Set agent context |
-| `set_anonymous_id(id)` | Set anonymous ID |
-| `set_baggage(**values)` | Set arbitrary baggage values |
+| `conversation(id?, previous_response_id?)` | Set conversation context |
+| `with_user_id(id)` | Set user context |
+| `with_agent(name, id?)` | Set agent context |
+| `with_anonymous_id(id)` | Set anonymous ID |
+| `with_baggage(**values)` | Set arbitrary baggage values |
+
+## 3. Traces (span processors + instrumentors) with `IntrospectionSpanProcessor`
+
+Install the SDK with the `[otel]` extra plus your framework extras of choice (or `[all]`):
+
+```shell
+pip install 'introspection-sdk[otel,anthropic,gemini,openai-agents,claude-agent,langchain]'
+```
+
+### Auto-wired via `init()` — recommended
+
+`introspection.init()` detects every supported LLM framework you have installed and wires them all into a single trace pipeline:
+
+```python
+import introspection_sdk as introspection
+
+introspection.init()  # token from INTROSPECTION_TOKEN
+
+# ...use Anthropic, Gemini, OpenAI Agents, Claude Agent, Logfire as usual —
+# their calls are now traced automatically.
+```
+
+Auto-detected frameworks: Anthropic SDK, Google Gemini (`google-genai`), OpenAI Agents SDK, Claude Agent SDK, Logfire / OpenInference (configure Logfire before `init()`), and LangChain / LangGraph (attach `get_handler()` — see below).
+
+LangChain callbacks are per-invoke, so `init()` prepares the handler and you attach it:
+
+```python
+import introspection_sdk as introspection
+from introspection_sdk.integrations.langchain import get_handler
+
+introspection.init()
+response = model.invoke("Hello!", config={"callbacks": [get_handler()]})
+```
+
+After `init()`, the module-level `introspection.track()` / `introspection.feedback()` / `introspection.identify()` shortcuts proxy to the global `IntrospectionLogs`.
+
+### Manual / advanced setup
+
+`init()` is the recommended entry point, but the individual processors and instrumentors remain fully supported for custom wiring (sharing a `TracerProvider`, dual-export, testing). See [`docs/advanced.md`](docs/advanced.md) for opting out of auto-discovery, passing your own provider, standalone processor construction, and testing with an in-memory exporter.
+
+> See [examples/](./examples/) for complete integration patterns including dual-export with Arize, Langfuse, Braintrust, and LangSmith.
+
+## Environment variables
+
+```shell
+# Introspection API (IntrospectionClient)
+export INTROSPECTION_TOKEN="intro_xxx"
+export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
+export INTROSPECTION_PROJECT_ID="proj_…"                            # optional
+
+# OTel (IntrospectionLogs + span processors + instrumentors)
+export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional
+export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
+```
 
 ## Documentation
 
 Full documentation is available at [docs.introspection.dev](https://docs.introspection.dev).
+
+## Contributing
+
+See [`AGENTS.md`](AGENTS.md) for contribution rules, including the
+recordings-over-mocks policy and the coverage ratchet enforced in CI.
+The phased plan for closing current test gaps lives in
+[`docs/test-quality-audit-plan.md`](docs/test-quality-audit-plan.md).

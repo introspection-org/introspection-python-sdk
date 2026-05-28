@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"text": "Use the get_weather tool for Tokyo."}],
+      "role": "user"}], "tools": [{"functionDeclarations": [{"description": "Get weather
+      for a city.", "name": "get_weather", "parameters": {"properties": {"city": {"type":
+      "STRING"}}, "required": ["city"], "type": "OBJECT"}}]}], "generationConfig":
+      {}}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '322'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"functionCall\": {\n              \"name\": \"get_weather\",\n
+        \             \"args\": {\n                \"city\": \"Tokyo\"\n              },\n
+        \             \"id\": \"2epeg938\"\n            },\n            \"thoughtSignature\":
+        \"ErEDCq4DAQw51sc6cVf6warwV8x+mvK4SgzxIeFPA+138zKHbEO8qio0gJIhX7WlYBH0FHCRKLiB+/PSYA7QeJpDzpE5hKL7zfXJUHOa3twhQ8S6moSoBg+9tyM1zf1ifDa5EkrVZJl1v6tiOQkwTO4LM6dgjaA7tIVUoB0pANt1R280tipMxZ0GOrBD8eOezbo24oMcUktgMn66oV9kCDn0Gs42OhZCI9gBD5st1h06470XheR0W/M7v5jvQA+JZC+8fo1ksZFyJJTUzYqPJrGtMjZuNsy4NMFSuFsi5shpGTSyeEU807qiSoL3i26IgDxHBBxL6+TWen0PdUF4nAIat1D2Ucg1clKQtGqJ9vCEFMWzzzlljnmSTQEjWKnTqGSQpeJ9ykZdKnn5zQWIiirBX1u6PxG1OI7Br10TUL/1zhiX9Dy9FRjpHCXfUbxvyxOWhufMRwBnH8mAH8byYEtFph1zUhDP5jr2n3bNekxxCHnCIDJcCqY67N6sf6XovpKyWDGPuDFGzR0J5nFLVS2vQSN8KUnm1nVrHU5D/5kMM6mRxhajrP5eNuco64q4w6xmzw==\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0,\n      \"finishMessage\": \"Model generated
+        function call(s).\"\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        53,\n    \"candidatesTokenCount\": 16,\n    \"totalTokenCount\": 173,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 53\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 104,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"ZUYXap2eL8fVjMcPz5qSsQU\"\n}\n"
+    headers:
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Wed, 27 May 2026 19:30:47 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Server-Timing:
+      - gfet4t7; dur=2294
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gemini-Service-Tier:
+      - standard
+      X-XSS-Protection:
+      - '0'
+      content-length:
+      - '1423'
+    status:
+      code: 200
+      message: OK
+version: 1

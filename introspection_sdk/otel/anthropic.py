@@ -8,7 +8,7 @@ Supports both non-streaming (``messages.create``) and streaming
 
 Usage — auto-instrumentor::
 
-    from introspection_sdk.anthropic import AnthropicInstrumentor
+    from introspection_sdk.otel.anthropic import AnthropicInstrumentor
 
     instrumentor = AnthropicInstrumentor()
     instrumentor.instrument(tracer_provider=provider)
@@ -16,7 +16,7 @@ Usage — auto-instrumentor::
 
 Usage — manual wrapper::
 
-    from introspection_sdk.anthropic import traced_messages_create
+    from introspection_sdk.otel.anthropic import traced_messages_create
 
     response = traced_messages_create(tracer, client, model="claude-sonnet-4-5-20250929", ...)
 """

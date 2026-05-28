@@ -96,14 +96,12 @@ def main():
     tool_results = []
     for block in response.content:
         if block.type == "tool_use":
-            result = get_weather(getattr(block, "input", {})["location"])
-            print(
-                f"Tool call: {getattr(block, 'name', '')}({getattr(block, 'input', {})}) -> {result}"
-            )
+            result = get_weather(block.input["location"])  # ty: ignore[invalid-argument-type, unresolved-attribute]
+            print(f"Tool call: {block.name}({block.input}) -> {result}")  # ty: ignore[unresolved-attribute]
             tool_results.append(
                 {
                     "type": "tool_result",
-                    "tool_use_id": getattr(block, "id", ""),
+                    "tool_use_id": block.id,  # ty: ignore[unresolved-attribute]
                     "content": result,
                 }
             )
@@ -120,7 +118,7 @@ def main():
         )
         for block in response2.content:
             if block.type == "text":
-                print(f"Response: {getattr(block, 'text', '')}")
+                print(f"Response: {block.text}")  # ty: ignore[unresolved-attribute]
 
     braintrust_processor.force_flush()
     AnthropicInstrumentor().uninstrument()

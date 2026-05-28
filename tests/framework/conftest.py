@@ -30,6 +30,7 @@ except (ImportError, RuntimeError):
 
 DUMMY_OPENAI_KEY = "sk-test-dummy-key-for-vcr-replay"
 DUMMY_ANTHROPIC_KEY = "sk-ant-test-dummy-key-for-vcr-replay"
+DUMMY_GEMINI_KEY = "test-dummy-gemini-key-for-vcr-replay"
 
 
 @pytest.fixture(autouse=True)
@@ -41,6 +42,10 @@ def _configure_logfire(monkeypatch):
     monkeypatch.setenv(
         "ANTHROPIC_API_KEY",
         os.environ.get("ANTHROPIC_API_KEY", DUMMY_ANTHROPIC_KEY),
+    )
+    monkeypatch.setenv(
+        "GEMINI_API_KEY",
+        os.environ.get("GEMINI_API_KEY", DUMMY_GEMINI_KEY),
     )
     logfire.configure(
         send_to_logfire=False,

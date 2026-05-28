@@ -1,5 +1,7 @@
 """Tests for LLM provider outputs."""
 
+from typing import Any
+
 import logfire
 import pytest
 from conftest import CaptureSpanProcessor
@@ -61,4 +63,81 @@ async def test_openai_responses_simple(
                 }
             ),
         ]
+    )
+
+
+def _openai_span(cap: CaptureSpanProcessor) -> dict:
+    cap.processor.force_flush()
+    spans = cap.exporter.get_finished_spans()
+    chat = [
+        s
+        for s in spans
+        if s["attributes"].get("gen_ai.provider.name") == "openai"
+    ]
+    assert chat, "expected an openai span"
+    return chat[0]
+
+
+async def test_openai_responses_function_calling(
+    openai_async_client: AsyncOpenAI,
+    openai_model: str,
+    cap_span_processor: CaptureSpanProcessor,
+):
+    """Responses API plain function calling."""
+    tools: list[Any] = [
+        {
+            "type": "function",
+            "name": "get_weather",
+            "description": "Get weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {"city": {"type": "string"}},
+                "required": ["city"],
+                "additionalProperties": False,
+            },
+        }
+    ]
+    response = await openai_async_client.responses.create(
+        model=openai_model,
+        input="Use the get_weather tool for Tokyo.",
+        tools=tools,
+    )
+    assert any(
+        getattr(item, "type", None) == "function_call"
+        for item in response.output
+    )
+
+    span = _openai_span(cap_span_processor)
+    assert span["attributes"] == IsPartialDict(
+        {
+            "gen_ai.provider.name": "openai",
+            "gen_ai.operation.name": "chat",
+            "gen_ai.request.model": IsStr(),
+        }
+    )
+
+
+async def test_openai_responses_streaming(
+    openai_async_client: AsyncOpenAI,
+    openai_model: str,
+    cap_span_processor: CaptureSpanProcessor,
+):
+    """Streaming Responses API."""
+    deltas: list[str] = []
+    stream = await openai_async_client.responses.create(
+        model=openai_model,
+        input="Count to three.",
+        stream=True,
+    )
+    async for event in stream:
+        if getattr(event, "type", "") == "response.output_text.delta":
+            deltas.append(getattr(event, "delta", ""))
+    assert "".join(deltas)
+
+    span = _openai_span(cap_span_processor)
+    assert span["attributes"] == IsPartialDict(
+        {
+            "gen_ai.provider.name": "openai",
+            "gen_ai.request.model": IsStr(),
+        }
     )

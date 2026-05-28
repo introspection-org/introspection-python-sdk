@@ -17,7 +17,7 @@ from agents import (
 )
 from openai import AsyncOpenAI
 
-from introspection_sdk.sessions import IntrospectionConversationsSession
+from introspection_sdk.otel.sessions import IntrospectionConversationsSession
 
 _has_real_openai_key = os.environ.get("OPENAI_API_KEY", "").startswith(
     "sk-"

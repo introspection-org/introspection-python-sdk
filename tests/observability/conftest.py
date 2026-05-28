@@ -27,6 +27,24 @@ except ImportError:
     OpenAIInstrumentor: Any = None
 
 try:
+    from openinference.instrumentation.anthropic import AnthropicInstrumentor
+
+    HAS_OPENINFERENCE_ANTHROPIC = True
+except ImportError:
+    HAS_OPENINFERENCE_ANTHROPIC = False
+    AnthropicInstrumentor: Any = None
+
+try:
+    from openinference.instrumentation.openai_agents import (
+        OpenAIAgentsInstrumentor,
+    )
+
+    HAS_OPENINFERENCE_AGENTS = True
+except ImportError:
+    HAS_OPENINFERENCE_AGENTS = False
+    OpenAIAgentsInstrumentor: Any = None
+
+try:
     from phoenix.otel import register as phoenix_register
 
     HAS_ARIZE = True
@@ -68,6 +86,7 @@ class CaptureOpenInferenceSpans:
 
 
 DUMMY_OPENAI_KEY = "sk-test-dummy-key-for-vcr-replay"
+DUMMY_ANTHROPIC_KEY = "sk-ant-test-dummy-key-for-vcr-replay"
 DUMMY_INTROSPECTION_TOKEN = "test-introspection-token"
 DUMMY_BRAINTRUST_API_KEY = "bt-test-dummy-key"
 DUMMY_LANGSMITH_API_KEY = "lsv2-test-dummy-key"
@@ -88,6 +107,10 @@ def _reset_otel_state(monkeypatch):
     monkeypatch.setenv(
         "OPENAI_API_KEY",
         os.environ.get("OPENAI_API_KEY", DUMMY_OPENAI_KEY),
+    )
+    monkeypatch.setenv(
+        "ANTHROPIC_API_KEY",
+        os.environ.get("ANTHROPIC_API_KEY", DUMMY_ANTHROPIC_KEY),
     )
     monkeypatch.setenv(
         "INTROSPECTION_TOKEN",
@@ -362,6 +385,221 @@ def langfuse_provider(monkeypatch) -> Iterator[CaptureOpenInferenceSpans]:
     finally:
         langfuse.flush()
         OpenAIInstrumentor().uninstrument()
+        langfuse_processor.force_flush()
+        processor.force_flush()
+        langfuse_processor.shutdown()
+        processor.shutdown()
+
+
+@pytest.fixture
+def langfuse_anthropic_provider(
+    monkeypatch,
+) -> Iterator[CaptureOpenInferenceSpans]:
+    """Langfuse dual export for Anthropic via OpenInference.
+
+    Mirrors ``langfuse_provider`` but uses ``AnthropicInstrumentor``
+    so Anthropic SDK calls flow into both Langfuse and Introspection.
+    """
+    if not HAS_LANGFUSE:
+        pytest.fail("Install with: uv sync --group langfuse")
+    if not HAS_OPENINFERENCE_ANTHROPIC:
+        pytest.fail(
+            "openinference-instrumentation-anthropic not installed; "
+            "it's part of the test extras."
+        )
+    assert langfuse_get_client is not None
+    assert AnthropicInstrumentor is not None
+
+    langfuse_auth = base64.b64encode(
+        f"{os.environ.get('LANGFUSE_PUBLIC_KEY')}:{os.environ.get('LANGFUSE_SECRET_KEY')}".encode()
+    ).decode()
+    monkeypatch.setenv(
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        os.environ.get("LANGFUSE_BASE_URL", "https://cloud.langfuse.com")
+        + "/api/public/otel",
+    )
+    monkeypatch.setenv(
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        f"Authorization=Basic {langfuse_auth}",
+    )
+    monkeypatch.setattr(
+        trace,
+        "_TRACER_PROVIDER_SET_ONCE",
+        trace._TRACER_PROVIDER_SET_ONCE.__class__(),
+    )
+    monkeypatch.setattr(trace, "_TRACER_PROVIDER", None)
+
+    provider = TracerProvider()
+    langfuse_processor = BatchSpanProcessor(OTLPSpanExporter())
+    provider.add_span_processor(langfuse_processor)
+
+    exporter = TestSpanExporter()
+    processor = IntrospectionSpanProcessor(
+        token=os.environ.get("INTROSPECTION_TOKEN"),
+        advanced=AdvancedOptions(
+            base_url=os.environ.get("INTROSPECTION_BASE_URL"),
+            span_exporter=exporter,
+        ),
+    )
+    provider.add_span_processor(processor)
+    trace.set_tracer_provider(provider)
+
+    langfuse = langfuse_get_client()
+    AnthropicInstrumentor().instrument(tracer_provider=provider)
+    try:
+        yield CaptureOpenInferenceSpans(exporter=exporter, processor=processor)
+    finally:
+        langfuse.flush()
+        AnthropicInstrumentor().uninstrument()
+        langfuse_processor.force_flush()
+        processor.force_flush()
+        langfuse_processor.shutdown()
+        processor.shutdown()
+
+
+@pytest.fixture
+def arize_anthropic_provider() -> Iterator[CaptureOpenInferenceSpans]:
+    """Arize/Phoenix dual export for Anthropic via OpenInference.
+
+    Mirrors ``arize_provider`` but uses ``AnthropicInstrumentor``.
+    """
+    if not HAS_ARIZE:
+        pytest.fail("Install with: uv sync --group arize")
+    if not HAS_OPENINFERENCE_ANTHROPIC:
+        pytest.fail(
+            "openinference-instrumentation-anthropic not installed; "
+            "it's part of the test extras."
+        )
+    assert phoenix_register is not None
+    assert AnthropicInstrumentor is not None
+
+    tracer_provider = phoenix_register(
+        project_name="dual-export-test",
+        endpoint="https://otlp.arize.com/v1/traces",
+        headers={
+            "space_id": os.environ.get("ARIZE_SPACE_KEY", ""),
+            "api_key": os.environ.get("ARIZE_API_KEY", ""),
+        },
+        batch=False,
+    )
+
+    exporter = TestSpanExporter()
+    processor = IntrospectionSpanProcessor(
+        token=os.environ.get("INTROSPECTION_TOKEN"),
+        advanced=AdvancedOptions(
+            base_url=os.environ.get("INTROSPECTION_BASE_URL"),
+            span_exporter=exporter,
+        ),
+    )
+    tracer_provider.add_span_processor(processor)
+
+    AnthropicInstrumentor().instrument(tracer_provider=tracer_provider)
+    try:
+        yield CaptureOpenInferenceSpans(exporter=exporter, processor=processor)
+    finally:
+        AnthropicInstrumentor().uninstrument()
+        processor.force_flush()
+        processor.shutdown()
+
+
+@pytest.fixture
+def arize_agents_provider() -> Iterator[CaptureOpenInferenceSpans]:
+    """Arize/Phoenix dual export for OpenAI Agents via OpenInference."""
+    if not HAS_ARIZE:
+        pytest.fail("Install with: uv sync --group arize")
+    if not HAS_OPENINFERENCE_AGENTS:
+        pytest.fail(
+            "openinference-instrumentation-openai-agents not installed; "
+            "it's part of the test extras."
+        )
+    assert phoenix_register is not None
+    assert OpenAIAgentsInstrumentor is not None
+
+    tracer_provider = phoenix_register(
+        project_name="dual-export-test",
+        endpoint="https://otlp.arize.com/v1/traces",
+        headers={
+            "space_id": os.environ.get("ARIZE_SPACE_KEY", ""),
+            "api_key": os.environ.get("ARIZE_API_KEY", ""),
+        },
+        batch=False,
+    )
+
+    exporter = TestSpanExporter()
+    processor = IntrospectionSpanProcessor(
+        token=os.environ.get("INTROSPECTION_TOKEN"),
+        advanced=AdvancedOptions(
+            base_url=os.environ.get("INTROSPECTION_BASE_URL"),
+            span_exporter=exporter,
+        ),
+    )
+    tracer_provider.add_span_processor(processor)
+
+    OpenAIAgentsInstrumentor().instrument(tracer_provider=tracer_provider)
+    try:
+        yield CaptureOpenInferenceSpans(exporter=exporter, processor=processor)
+    finally:
+        OpenAIAgentsInstrumentor().uninstrument()
+        processor.force_flush()
+        processor.shutdown()
+
+
+@pytest.fixture
+def langfuse_agents_provider(
+    monkeypatch,
+) -> Iterator[CaptureOpenInferenceSpans]:
+    """Langfuse dual export for OpenAI Agents via OpenInference."""
+    if not HAS_LANGFUSE:
+        pytest.fail("Install with: uv sync --group langfuse")
+    if not HAS_OPENINFERENCE_AGENTS:
+        pytest.fail(
+            "openinference-instrumentation-openai-agents not installed; "
+            "it's part of the test extras."
+        )
+    assert langfuse_get_client is not None
+    assert OpenAIAgentsInstrumentor is not None
+
+    langfuse_auth = base64.b64encode(
+        f"{os.environ.get('LANGFUSE_PUBLIC_KEY')}:{os.environ.get('LANGFUSE_SECRET_KEY')}".encode()
+    ).decode()
+    monkeypatch.setenv(
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        os.environ.get("LANGFUSE_BASE_URL", "https://cloud.langfuse.com")
+        + "/api/public/otel",
+    )
+    monkeypatch.setenv(
+        "OTEL_EXPORTER_OTLP_HEADERS",
+        f"Authorization=Basic {langfuse_auth}",
+    )
+    monkeypatch.setattr(
+        trace,
+        "_TRACER_PROVIDER_SET_ONCE",
+        trace._TRACER_PROVIDER_SET_ONCE.__class__(),
+    )
+    monkeypatch.setattr(trace, "_TRACER_PROVIDER", None)
+
+    provider = TracerProvider()
+    langfuse_processor = BatchSpanProcessor(OTLPSpanExporter())
+    provider.add_span_processor(langfuse_processor)
+
+    exporter = TestSpanExporter()
+    processor = IntrospectionSpanProcessor(
+        token=os.environ.get("INTROSPECTION_TOKEN"),
+        advanced=AdvancedOptions(
+            base_url=os.environ.get("INTROSPECTION_BASE_URL"),
+            span_exporter=exporter,
+        ),
+    )
+    provider.add_span_processor(processor)
+    trace.set_tracer_provider(provider)
+
+    langfuse = langfuse_get_client()
+    OpenAIAgentsInstrumentor().instrument(tracer_provider=provider)
+    try:
+        yield CaptureOpenInferenceSpans(exporter=exporter, processor=processor)
+    finally:
+        langfuse.flush()
+        OpenAIAgentsInstrumentor().uninstrument()
         langfuse_processor.force_flush()
         processor.force_flush()
         langfuse_processor.shutdown()

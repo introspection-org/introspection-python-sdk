@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -11,6 +10,7 @@ from openai import AsyncOpenAI
 from testing import TestSpanExporter
 
 from introspection_sdk import IntrospectionSpanProcessor
+from introspection_sdk.testing.redaction import redact_secrets
 
 HAS_AGENTS = True
 try:
@@ -43,33 +43,15 @@ SENSITIVE_HEADERS = {
     "api_key",
     "x-api-key",
     "x-bt-api-key",
+    "x-goog-api-key",
     "x-langfuse-public-key",
     "space_id",
     "cookie",
     "set-cookie",
     "openai-organization",
     "openai-project",
+    "anthropic-organization-id",
 }
-
-# Patterns that match real API keys/tokens in response bodies.
-# Used to scrub secrets from VCR cassettes (e.g. Braintrust eval traces
-# that embed env vars in their trace payloads).
-_SECRET_PATTERNS = [
-    (re.compile(r"sk-proj-[A-Za-z0-9_-]{20,}"), "REDACTED_OPENAI_KEY"),
-    (
-        re.compile(r"sk-ant-api\d+-[A-Za-z0-9_-]{20,}"),
-        "REDACTED_ANTHROPIC_KEY",
-    ),
-    (re.compile(r"sk-D8K[A-Za-z0-9_-]{20,}"), "REDACTED_BRAINTRUST_KEY"),
-    (re.compile(r"lsv2_pt_[a-f0-9]{32}_[a-f0-9]+"), "REDACTED_LANGSMITH_KEY"),
-    (re.compile(r"sk-lf-[a-f0-9-]{36}"), "REDACTED_LANGFUSE_SECRET"),
-    (re.compile(r"pk-lf-[a-f0-9-]{36}"), "REDACTED_LANGFUSE_PUBLIC"),
-    (re.compile(r"ak-[a-f0-9-]{36}-[A-Za-z0-9_-]+"), "REDACTED_ARIZE_KEY"),
-    (
-        re.compile(r"intro_dev_[A-Za-z0-9_-]{20,}"),
-        "REDACTED_INTROSPECTION_TOKEN",
-    ),
-]
 
 
 def _scrub_response(response):
@@ -85,22 +67,23 @@ def _scrub_response(response):
         and "string" in body
         and isinstance(body["string"], str)
     ):
-        for pattern, replacement in _SECRET_PATTERNS:
-            body["string"] = pattern.sub(replacement, body["string"])
+        body["string"] = redact_secrets(body["string"])
     return response
 
 
 def _scrub_request(request):
-    """Scrub secrets from VCR request bodies."""
+    """Scrub secrets from VCR request bodies and URIs."""
     if hasattr(request, "body") and isinstance(request.body, (str, bytes)):
         body = (
             request.body
             if isinstance(request.body, str)
             else request.body.decode("utf-8", errors="replace")
         )
-        for pattern, replacement in _SECRET_PATTERNS:
-            body = pattern.sub(replacement, body)
-        request.body = body
+        request.body = redact_secrets(body)
+    # Some providers (e.g. Google) historically accepted an API key as a
+    # ``?key=...`` query parameter; scrub it from the URI too.
+    if hasattr(request, "uri") and isinstance(request.uri, str):
+        request.uri = redact_secrets(request.uri)
     return request
 
 

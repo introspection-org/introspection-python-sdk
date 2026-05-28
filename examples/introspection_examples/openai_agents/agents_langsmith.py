@@ -36,7 +36,7 @@ def main():
     introspection_processor = IntrospectionTracingProcessor()
 
     processors = [langsmith_processor, introspection_processor]
-    set_trace_processors(processors)
+    set_trace_processors(processors)  # type: ignore[arg-type]
 
     agent = Agent(
         name="Assistant",
@@ -47,9 +47,9 @@ def main():
     print(f"Agent Response: {result.final_output}")
 
     # Cleanup
-    langsmith_processor.force_flush()
+    langsmith_processor.force_flush()  # type: ignore[union-attr]
     for p in processors:
-        p.shutdown()
+        p.shutdown()  # type: ignore[union-attr]
 
 
 if __name__ == "__main__":
