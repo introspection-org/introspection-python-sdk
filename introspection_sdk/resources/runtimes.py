@@ -72,7 +72,7 @@ class Runtimes:
     def list(
         self,
         *,
-        project_id: str,
+        project_id: str | None = None,
         name: str | None = None,
         recipe_id: str | None = None,
         only_active: bool | None = None,
@@ -194,26 +194,19 @@ class RuntimeHandle:
     def _resolve(self) -> str:
         if self._resolved_id is not None:
             return self._resolved_id
-        if not self._project_id:
-            raise ValueError(
-                "RuntimeHandle: cannot resolve runtime name without "
-                "`project_id`. Pass project_id=... to "
-                "client.runtimes(name, project_id=...) or set a "
-                "default project on the client."
-            )
         name = str(self._raw)
-        page = self._runtimes.list(
-            project_id=self._project_id, name=name, limit=2
-        )
+        params: dict[str, Any] = {"name": name, "only_active": True, "limit": 2}
+        if self._project_id:
+            params["project_id"] = self._project_id
+        page = self._runtimes.list(**params)
         if not page.records:
             raise LookupError(
-                f"No runtime named {name!r} in project {self._project_id!r}"
+                f"No active runtime named {name!r}"
             )
         if len(page.records) > 1:
             raise LookupError(
                 f"Ambiguous runtime name {name!r}: "
-                f"{len(page.records)} matches in project "
-                f"{self._project_id!r}"
+                f"{len(page.records)} active matches"
             )
         self._resolved_id = str(page.records[0].id)
         return self._resolved_id
