@@ -154,14 +154,7 @@ introspection.init()  # token from INTROSPECTION_TOKEN
 # their calls are now traced automatically.
 ```
 
-| Framework | Auto-detected by `init()` |
-| --------- | ------------------------- |
-| Anthropic SDK | ✅ |
-| Google Gemini (`google-genai`) | ✅ |
-| OpenAI Agents SDK | ✅ |
-| Claude Agent SDK | ✅ |
-| Logfire / OpenInference | ✅ (configure Logfire before `init()`) |
-| LangChain / LangGraph | ✅ (attach `get_handler()` — see below) |
+Auto-detected frameworks: Anthropic SDK, Google Gemini (`google-genai`), OpenAI Agents SDK, Claude Agent SDK, Logfire / OpenInference (configure Logfire before `init()`), and LangChain / LangGraph (attach `get_handler()` — see below).
 
 LangChain callbacks are per-invoke, so `init()` prepares the handler and you attach it:
 
