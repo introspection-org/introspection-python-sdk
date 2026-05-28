@@ -9,4 +9,4 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-__all__ = ["openinference", "logfire", "thirdparty"]
+__all__ = ["api", "otel"]

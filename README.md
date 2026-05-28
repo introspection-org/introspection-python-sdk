@@ -67,23 +67,22 @@ pip install introspection-sdk
 ```
 
 ```python
-import os
-from uuid import UUID
 from introspection_sdk import IntrospectionClient
 
-client = IntrospectionClient(token="your-token")
+client = IntrospectionClient()  # token from INTROSPECTION_TOKEN
 
-runtime_id = UUID(os.environ["INTROSPECTION_RUNTIME_ID"])
-runner = client.runtimes(runtime_id).run()
-run = runner.tasks.start(prompt="Summarize this repo")
-text = run.text()
-print(text)
+runner = client.runtimes("customer-agent").run()
+
+run = runner.tasks.start(prompt="Say hello in one sentence.")
+
+for event in run.stream():
+    print(f"[{event.event}] {event.data}")
 
 runner.close()
 client.shutdown()
 ```
 
-See [`examples/tasks_files.py`](examples/introspection_examples/tasks_files.py) for an end-to-end walkthrough.
+See [`examples/api/runtimes.py`](examples/introspection_examples/api/runtimes.py) for an end-to-end walkthrough.
 
 ## 2. Analytics events (track, feedback, identify) with `IntrospectionLogs`
 
