@@ -103,7 +103,6 @@ class IntrospectionLogs:
         token: str | None = None,
         service_name: str | None = None,
         base_otel_url: str | None = None,
-        project_id: str | None = None,
         additional_headers: dict[str, str] | None = None,
         flush_interval_ms: int = 5000,
         max_batch_size: int = 100,
@@ -113,16 +112,15 @@ class IntrospectionLogs:
 
         Args:
             token: Authentication token
-                (env: ``INTROSPECTION_TOKEN``).
+                (env: ``INTROSPECTION_TOKEN``). The backend resolves
+                the project from the API key; there is no per-call
+                project override.
             service_name: Service name for telemetry
                 (env: ``INTROSPECTION_SERVICE_NAME``,
                 default ``"introspection-client"``).
             base_otel_url: OTLP collector base URL
                 (env: ``INTROSPECTION_BASE_OTEL_URL``,
                 default ``"https://otel.introspection.dev"``).
-            project_id: Optional default project id propagated as
-                baggage / resource attribute
-                (env: ``INTROSPECTION_PROJECT_ID``).
             additional_headers: Extra HTTP headers added to OTLP
                 requests.
             flush_interval_ms: OTLP batch flush interval. Default 5000.
@@ -138,7 +136,6 @@ class IntrospectionLogs:
             "INTROSPECTION_BASE_OTEL_URL",
             "https://otel.introspection.dev",
         )
-        self._project_id = project_id or os.getenv("INTROSPECTION_PROJECT_ID")
         self._additional_headers = additional_headers
         self._flush_interval_ms = flush_interval_ms
         self._max_batch_size = max_batch_size
