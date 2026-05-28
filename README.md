@@ -67,19 +67,17 @@ pip install introspection-sdk
 ```
 
 ```python
+import os
+from uuid import UUID
 from introspection_sdk import IntrospectionClient
 
-client = IntrospectionClient(
-    token="intro_xxx",        # or env: INTROSPECTION_TOKEN
-    project_id="proj_…",      # or env: INTROSPECTION_PROJECT_ID
-)
+client = IntrospectionClient(token="your-token")
 
-runner = client.runtimes("customer-agent").run(
-    identity={"user_id": "u_42"},
-)
-run = runner.tasks.create(prompt="Summarize this repo")
-for event in run.stream():
-    print(event)
+runtime_id = UUID(os.environ["INTROSPECTION_RUNTIME_ID"])
+runner = client.runtimes(runtime_id).run()
+run = runner.tasks.start(prompt="Summarize this repo")
+text = run.text()
+print(text)
 
 runner.close()
 client.shutdown()
@@ -190,10 +188,3 @@ export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
 ## Documentation
 
 Full documentation is available at [docs.introspection.dev](https://docs.introspection.dev).
-
-## Contributing
-
-See [`AGENTS.md`](AGENTS.md) for contribution rules, including the
-recordings-over-mocks policy and the coverage ratchet enforced in CI.
-The phased plan for closing current test gaps lives in
-[`docs/test-quality-audit-plan.md`](docs/test-quality-audit-plan.md).
