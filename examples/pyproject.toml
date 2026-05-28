@@ -51,8 +51,11 @@ claude-agent-sdk = [
     "anthropic>=0.85.0",
     "langsmith[claude-agent-sdk]>=0.6.0",
 ]
+gemini = [
+    "google-genai>=1.0.0",
+]
 all = [
-    "introspection-examples[arize,braintrust,langfuse,langchain,logfire,openai-agents,claude-agent-sdk]",
+    "introspection-examples[arize,braintrust,langfuse,langchain,logfire,openai-agents,claude-agent-sdk,gemini]",
 ]
 
 [tool.hatch.build.targets.wheel]

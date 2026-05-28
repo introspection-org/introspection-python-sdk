@@ -31,11 +31,17 @@ pip install introspection-sdk
 
 ### Optional Extras
 
+Per-framework convenience installs (`init()` auto-detects frameworks however
+they were installed — these are just one-command setup):
+
 ```shell
+pip install 'introspection-sdk[anthropic]'      # Anthropic SDK
+pip install 'introspection-sdk[gemini]'         # Google Gemini (google-genai)
 pip install 'introspection-sdk[openai-agents]'  # OpenAI Agents SDK
-pip install 'introspection-sdk[langfuse]'        # Langfuse
-pip install 'introspection-sdk[braintrust]'      # Braintrust
-pip install 'introspection-sdk[arize]'           # Arize Phoenix + OpenInference
+pip install 'introspection-sdk[claude-agent]'   # Claude Agent SDK
+pip install 'introspection-sdk[langchain]'      # LangChain / LangGraph
+pip install 'introspection-sdk[logfire]'        # Logfire
+pip install 'introspection-sdk[all]'            # Everything above
 ```
 
 ## Environment Variables
@@ -47,102 +53,68 @@ export INTROSPECTION_BASE_URL="https://otel.introspection.dev"  # optional
 
 ## Quickstart
 
-### OpenTelemetry Span Processor
+One line. `introspection.init()` detects every supported LLM framework you have
+installed and wires them all into a single trace pipeline:
 
 ```python
-from introspection_sdk import IntrospectionSpanProcessor
-import logfire
+import introspection_sdk as introspection
 
-logfire.configure(
-    additional_span_processors=[IntrospectionSpanProcessor()],
-)
+introspection.init()  # token from INTROSPECTION_TOKEN
 
-logfire.instrument_openai()
+# ...use Anthropic, Gemini, OpenAI Agents, Claude Agent, Logfire as usual —
+# their calls are now traced automatically.
 ```
 
-### OpenAI Agents SDK
+### Supported frameworks
+
+| Framework | Auto-detected by `init()` |
+| --------- | ------------------------- |
+| Anthropic SDK | ✅ |
+| Google Gemini (`google-genai`) | ✅ |
+| OpenAI Agents SDK | ✅ |
+| Claude Agent SDK | ✅ |
+| Logfire / OpenInference | ✅ (configure Logfire before `init()`) |
+| LangChain / LangGraph | ✅ (attach `get_handler()` — see below) |
+
+LangChain callbacks are per-invoke, so `init()` prepares the handler and you
+attach it:
 
 ```python
-from agents import Agent, Runner, set_trace_processors, tool
-from introspection_sdk import IntrospectionTracingProcessor
+import introspection_sdk as introspection
+from introspection_sdk.integrations.langchain import get_handler
 
-set_trace_processors([IntrospectionTracingProcessor()])
-
-@tool
-def get_weather(city: str) -> str:
-    """Get the current weather for a city."""
-    return f"Sunny, 72F in {city}"
-
-agent = Agent(name="Weather Bot", tools=[get_weather])
-result = await Runner.run(agent, "What's the weather in Tokyo?")
+introspection.init()
+response = model.invoke("Hello!", config={"callbacks": [get_handler()]})
 ```
 
-#### Reasoning Model Support
-
-Some models produce reasoning items that the OpenAI Conversations API rejects. `IntrospectionConversationsSession` strips those items transparently:
+### Identity, feedback, and conversations
 
 ```python
-from introspection_sdk import IntrospectionConversationsSession
+import introspection_sdk as introspection
 
-session = IntrospectionConversationsSession(conversation_id="conv_123")
-result = await Runner.run(agent, "Hello!", session=session)
+introspection.init()
+
+with introspection.identify("user_123", traits={"plan": "pro"}):
+    with introspection.conversation("conv_456"):
+        # LLM calls here share one conversation id automatically
+        introspection.feedback("thumbs_up", comments="Great response!")
+        introspection.track("checkout_completed", {"amount": 42})
 ```
 
-### Claude Agent SDK
+`introspection.conversation()` scopes a conversation id across every span and
+event produced inside it; omit the id to auto-generate one.
 
-```python
-from introspection_sdk import ClaudeTracingProcessor
+## Manual / advanced setup
 
-processor = ClaudeTracingProcessor()
-processor.configure()
+`init()` is the recommended entry point, but the individual processors and
+instrumentors remain fully supported for custom wiring (sharing a
+`TracerProvider`, dual-export, testing). See
+[`docs/advanced.md`](docs/advanced.md) for opting out of auto-discovery,
+passing your own provider, standalone processor construction, and testing with
+an in-memory exporter.
 
-# All ClaudeSDKClient instances are now automatically traced
-```
-
-### LangChain / LangGraph
-
-```python
-from introspection_sdk import IntrospectionCallbackHandler
-
-handler = IntrospectionCallbackHandler(service_name="my-app")
-response = model.invoke("Hello!", config={"callbacks": [handler]})
-```
-
-For LangGraph, pass the app's session id as `thread_id`. The callback handler
-maps that internal LangGraph thread id to `gen_ai.conversation.id`.
-
-```python
-thread_id = "user-session-123"
-response = graph.invoke(
-    {"messages": [{"role": "user", "content": "Hello!"}]},
-    config={"callbacks": [handler], "configurable": {"thread_id": thread_id}},
-)
-```
-
-### Anthropic SDK
-
-```python
-from introspection_sdk.anthropic import AnthropicInstrumentor
-
-instrumentor = AnthropicInstrumentor()
-instrumentor.instrument(tracer_provider=provider)
-
-# All client.messages.create calls are traced, including thinking blocks
-```
-
-### OpenInference (Arize, Langfuse, Braintrust)
-
-```python
-from opentelemetry.sdk.trace import TracerProvider
-from openinference.instrumentation.openai import OpenAIInstrumentor
-from introspection_sdk import IntrospectionSpanProcessor
-
-provider = TracerProvider()
-provider.add_span_processor(IntrospectionSpanProcessor())
-OpenAIInstrumentor().instrument(tracer_provider=provider)
-```
-
-> See [examples/](./examples/) for complete integration patterns including dual-export with Arize, Langfuse, Braintrust, and LangSmith.
+> See [examples/](./examples/) for complete integration patterns including
+> dual-export with Arize, Langfuse, Braintrust, and LangSmith.
 
 ## Client API
 
@@ -181,3 +153,10 @@ client.shutdown()
 ## Documentation
 
 Full documentation is available at [docs.introspection.dev](https://docs.introspection.dev).
+
+## Contributing
+
+See [`AGENTS.md`](AGENTS.md) for contribution rules, including the
+recordings-over-mocks policy and the coverage ratchet enforced in CI.
+The phased plan for closing current test gaps lives in
+[`docs/test-quality-audit-plan.md`](docs/test-quality-audit-plan.md).

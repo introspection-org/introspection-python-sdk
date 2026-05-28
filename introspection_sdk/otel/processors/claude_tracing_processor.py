@@ -306,6 +306,7 @@ class ClaudeTracingProcessor:
         advanced: AdvancedOptions | None = None,
         additional_span_processors: list[SpanProcessor] | None = None,
         resource_attributes: dict[str, str] | None = None,
+        tracer_provider: TracerProvider | None = None,
     ):
         """Initialize the Claude tracing processor.
 
@@ -315,38 +316,62 @@ class ClaudeTracingProcessor:
             advanced: Optional :class:`AdvancedOptions` for custom exporters,
                 headers, batch settings, etc.
             additional_span_processors: Extra OTel span processors for dual
-                export (e.g. Arize, Langfuse).
+                export (e.g. Arize, Langfuse). Attached in both standalone and
+                shared-provider modes.
             resource_attributes: Extra OTel resource attributes to attach to
                 every span.
+            tracer_provider: Shared provider to use instead of building one;
+                when given, the caller owns its lifecycle.
 
         Raises:
-            ValueError: If neither ``token`` nor ``INTROSPECTION_TOKEN`` is set.
+            ValueError: If neither ``token`` nor ``INTROSPECTION_TOKEN`` is set
+                (standalone mode only).
         """
         self._advanced = advanced or AdvancedOptions()
 
+        self._owns_provider = tracer_provider is None
+        if tracer_provider is not None:
+            self._tracer_provider = tracer_provider
+        else:
+            self._tracer_provider = self._build_standalone_provider(
+                token, service_name, resource_attributes
+            )
+
+        if additional_span_processors:
+            for proc in additional_span_processors:
+                self._tracer_provider.add_span_processor(proc)
+
+        self._tracer = self._tracer_provider.get_tracer(
+            "claude-agent-sdk", VERSION
+        )
+
+    def _build_standalone_provider(
+        self,
+        token: str | None,
+        service_name: str | None,
+        resource_attributes: dict[str, str] | None,
+    ) -> TracerProvider:
         if self._advanced.span_exporter:
             exporter = self._advanced.span_exporter
         else:
             base_url = self._advanced.base_url or os.getenv(
-                "INTROSPECTION_BASE_URL", "https://otel.introspection.dev"
+                "INTROSPECTION_BASE_OTEL_URL",
+                "https://otel.introspection.dev",
             )
             token = token or os.getenv("INTROSPECTION_TOKEN")
             if not token:
                 raise ValueError("INTROSPECTION_TOKEN is not set")
-
             headers = {
                 "User-Agent": f"introspection-sdk/{VERSION}",
                 "Authorization": f"Bearer {token}",
                 **(self._advanced.additional_headers or {}),
             }
-
             endpoint = (
                 base_url
                 if base_url.endswith("/v1/traces")
                 else urljoin(base_url, "/v1/traces")
             )
             logger.info(f"ClaudeTracingProcessor endpoint: {endpoint}")
-
             exporter = OTLPHTTPSpanExporter(
                 endpoint=endpoint,
                 compression=Compression.NoCompression,
@@ -359,12 +384,10 @@ class ClaudeTracingProcessor:
         attrs: dict[str, str] = {"service.name": _service_name}
         if resource_attributes:
             attrs.update(resource_attributes)
-        resource = Resource.create(attrs)
-        self._tracer_provider = TracerProvider(
+        provider = TracerProvider(
             id_generator=self._advanced.id_generator,
-            resource=resource,
+            resource=Resource.create(attrs),
         )
-        # Default to sequential export for dev/staging tokens.
         max_batch = self._advanced.max_batch_size
         if (
             max_batch is None
@@ -375,28 +398,17 @@ class ClaudeTracingProcessor:
             )
         ):
             max_batch = 1
-        use_simple = platform_is_emscripten() or max_batch == 1
-        if use_simple:
-            self._tracer_provider.add_span_processor(
-                SimpleSpanProcessor(exporter)
-            )
+        if platform_is_emscripten() or max_batch == 1:
+            provider.add_span_processor(SimpleSpanProcessor(exporter))
         else:
-            self._tracer_provider.add_span_processor(
+            provider.add_span_processor(
                 BatchSpanProcessor(
                     exporter,
                     schedule_delay_millis=self._advanced.flush_interval_ms,
                     max_export_batch_size=max_batch,
                 )
             )
-
-        # Add any additional processors (for dual export to Arize, Langfuse, etc.)
-        if additional_span_processors:
-            for proc in additional_span_processors:
-                self._tracer_provider.add_span_processor(proc)
-
-        self._tracer = self._tracer_provider.get_tracer(
-            "claude-agent-sdk", VERSION
-        )
+        return provider
 
     def configure(self) -> None:
         """Patch ClaudeSDKClient to trace conversations.
@@ -730,9 +742,11 @@ class ClaudeTracingProcessor:
                     pass
 
     def shutdown(self) -> None:
-        """Shut down the underlying tracer provider and flush pending spans."""
-        self._tracer_provider.shutdown()
+        """Shut down the provider, unless a shared one was passed in (caller owns it)."""
+        if self._owns_provider:
+            self._tracer_provider.shutdown()
 
     def force_flush(self) -> None:
-        """Flush all pending spans to the exporter."""
-        self._tracer_provider.force_flush()
+        """Flush pending spans, unless a shared provider was passed in."""
+        if self._owns_provider:
+            self._tracer_provider.force_flush()

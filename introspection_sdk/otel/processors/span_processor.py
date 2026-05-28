@@ -1,7 +1,6 @@
 """OpenTelemetry SpanProcessor for the Introspection backend."""
 
 import os
-import uuid
 from urllib.parse import urljoin
 
 from opentelemetry import baggage as otel_baggage
@@ -27,6 +26,7 @@ from introspection_sdk.converters.openinference import (
     convert_openinference_to_genai,
     is_openinference_span,
 )
+from introspection_sdk.otel.conversation import resolve_conversation_id
 from introspection_sdk.utils import logger, platform_is_emscripten
 from introspection_sdk.version import VERSION
 
@@ -177,7 +177,7 @@ class IntrospectionSpanProcessor(SpanProcessor):
 
     Raises:
         ValueError: If neither ``token`` nor ``INTROSPECTION_TOKEN`` is set.
-        ValueError: If ``INTROSPECTION_BASE_URL`` resolves to an empty string.
+        ValueError: If ``INTROSPECTION_BASE_OTEL_URL`` resolves to an empty string.
 
     Example::
 
@@ -204,10 +204,11 @@ class IntrospectionSpanProcessor(SpanProcessor):
         else:
             # Create default OTLP exporter
             base_url = self._advanced.base_url or os.getenv(
-                "INTROSPECTION_BASE_URL", "https://otel.introspection.dev"
+                "INTROSPECTION_BASE_OTEL_URL",
+                "https://otel.introspection.dev",
             )
             if not base_url:
-                raise ValueError("INTROSPECTION_BASE_URL is not set")
+                raise ValueError("INTROSPECTION_BASE_OTEL_URL is not set")
             token = token or os.getenv("INTROSPECTION_TOKEN")
             if not token:
                 raise ValueError("INTROSPECTION_TOKEN is not set")
@@ -232,7 +233,6 @@ class IntrospectionSpanProcessor(SpanProcessor):
             )
 
         self._service_name = service_name
-        self._conversation_ids: dict[int, str] = {}
         # span_id -> (name, parent_span_id) for agent name propagation
         self._span_names: dict[int, tuple[str, int | None]] = {}
 
@@ -344,12 +344,9 @@ class IntrospectionSpanProcessor(SpanProcessor):
         if baggage_conv_id:
             extra["gen_ai.conversation.id"] = str(baggage_conv_id)
         elif not existing_conv_id:
-            trace_id = span.context.trace_id
-            if trace_id not in self._conversation_ids:
-                self._conversation_ids[trace_id] = (
-                    f"intro_conv_{uuid.uuid4().hex}"
-                )
-            extra["gen_ai.conversation.id"] = self._conversation_ids[trace_id]
+            extra["gen_ai.conversation.id"] = resolve_conversation_id(
+                trace_key=str(span.context.trace_id)
+            )
 
         # Propagate agent name from baggage if not already on span
         baggage_agent_name = otel_baggage.get_baggage("gen_ai.agent.name")

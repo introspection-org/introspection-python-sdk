@@ -62,7 +62,7 @@ interactions:
       X-Robots-Tag:
       - none
       anthropic-organization-id:
-      - 80dc5ece-225b-4374-9fda-b7dd782443a9
+      - REDACTED_ANTHROPIC_ORG_ID
       anthropic-ratelimit-input-tokens-limit:
       - '4000000'
       anthropic-ratelimit-input-tokens-remaining:

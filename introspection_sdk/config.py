@@ -63,7 +63,7 @@ class AdvancedOptions:
     base_url: str | None = None
     """Base URL for the API.
 
-    If not provided, uses INTROSPECTION_BASE_URL env var or default.
+    If not provided, uses INTROSPECTION_BASE_OTEL_URL env var or default.
     """
 
     additional_headers: dict[str, str] | None = None
@@ -82,9 +82,10 @@ class AdvancedOptions:
     Lower values reduce latency but increase network requests.
     Default: 5000"""
 
-    max_batch_size: int = 100
+    max_batch_size: int | None = 100
     """Maximum batch size before auto-flush.
-    Default: 100"""
+    ``None`` uses the OTel default and opts dev/staging tokens into sequential
+    export. Default: 100"""
 
     id_generator: IdGenerator = field(default_factory=RandomIdGenerator)
     """Generator for trace and span IDs.

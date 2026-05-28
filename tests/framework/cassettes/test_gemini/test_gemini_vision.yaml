@@ -1,0 +1,68 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"inlineData": {"data": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC-aJAAAAeUlEQVR4nO3PQQkAMAzAwCqpf1ETMxF7HINABFzm7H7dcEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFj13PLIEAOXyUUwAAAABJRU5ErkJggg==",
+      "mimeType": "image/png"}}, {"text": "What colour is this image? One word."}],
+      "role": "user"}]}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '388'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"Red\",\n            \"thoughtSignature\":
+        \"EroECrcEAQw51scWLqK8MBHDQI/Jjxiq4t5eVvKiqhjOkDPvtnhL03p3Ipt1O/mh1LTiK9lxYOsp5yM3y2E+56E/p/z4cxwOMyJp2dw1c+mZT9McQSS3tUDpf6FZ9OO8n4/sHWQqbBBB4nsY25OJC6aTyGZRREGnkpxB5LBJT9sLMeH21wV9AUsRw0ARmhRpQ+m1Ad7MiQ+mJSePd7InBny8QUXNnYHTpQL+hkQPB+Ig1qKrjclT8nBxSV8PoOLfMOdamfu7+7GuXuttlad0TroiTxUmphcH1YcvJb0HSXUnsPHtgUgFzXNU1830T/gji7GIpVRbatuXTFvAl6/BtF1CZEtP/8bVkSlj12DKHwZP6M4bhHod6sXbV2LvjB+jH2CZkItoCoRcXi2Vy9cd8f+L4nRwGBVxONJaKx1jWs+q4c284mPkuEcTSkpViojgpNe1YIQHesBLIUwoLPiUFJQxph9lPcdlg+4utG7RizzAxU2K4780b0OnYJivEozytrJgRXkEEFoNC/BmHNmUU/mg90pKl/wJpS0/sMV3KGHcfb1pY/wmRjLcQvH584KJuwvPq2mZmoAiFHm4ZeX/T5tfiGv+zOQFY272Tlfubfjq779ezRuqQhAyLpPxXa/8CC2aNwAKb6/PTFDAjO4UzySJinyCcrW9rjDHY2WcEVvTEj2OPjQ+B0e3rVY3rE/OsxsF9n0bxZs7wNmv5sKkWTy45RCFtAj9k2GZ5OYdYxpbd4QNbzFu31m7tOo2\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        1099,\n    \"candidatesTokenCount\": 1,\n    \"totalTokenCount\": 1234,\n
+        \   \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n
+        \       \"tokenCount\": 10\n      },\n      {\n        \"modality\": \"IMAGE\",\n
+        \       \"tokenCount\": 1089\n      }\n    ],\n    \"thoughtsTokenCount\":
+        134,\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n
+        \ \"responseId\": \"p0oXaqfsNtal1MkP2LqskAw\"\n}\n"
+    headers:
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Wed, 27 May 2026 19:48:59 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Server-Timing:
+      - gfet4t7; dur=3919
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gemini-Service-Tier:
+      - standard
+      X-XSS-Protection:
+      - '0'
+      content-length:
+      - '1459'
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,223 @@
+interactions:
+- request:
+    body: '{"max_tokens":64,"messages":[{"role":"user","content":"Say hello in one
+      word."}],"model":"claude-haiku-4-5"}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '108'
+      Content-Type:
+      - application/json
+      Host:
+      - api.anthropic.com
+      User-Agent:
+      - Anthropic/Python 0.85.0
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 0.85.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      anthropic-version:
+      - '2023-06-01'
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: '{"model":"claude-haiku-4-5-20251001","id":"msg_01R5txmceum38sSHXm8otjad","type":"message","role":"assistant","content":[{"type":"text","text":"Hello."}],"stop_reason":"end_turn","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":13,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":5,"service_tier":"standard","inference_geo":"not_available"}}'
+    headers:
+      CF-RAY:
+      - a0213032ee8a7b82-SJC
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 01:18:54 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - REDACTED_ANTHROPIC_ORG_ID
+      anthropic-ratelimit-input-tokens-limit:
+      - '4000000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '4000000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-05-27T01:18:54Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '800000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '800000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-05-27T01:18:54Z'
+      anthropic-ratelimit-requests-limit:
+      - '20000'
+      anthropic-ratelimit-requests-remaining:
+      - '19999'
+      anthropic-ratelimit-requests-reset:
+      - '2026-05-27T01:18:54Z'
+      anthropic-ratelimit-tokens-limit:
+      - '4800000'
+      anthropic-ratelimit-tokens-remaining:
+      - '4800000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-05-27T01:18:54Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '462'
+      request-id:
+      - req_011CbSCAo2pKQxhexhhwkhDt
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      traceresponse:
+      - 00-8c5e55ff14e5ef767d8c19f9cd668fcd-605e2954be32cd9a-01
+      vary:
+      - Accept-Encoding
+      x-envoy-upstream-service-time:
+      - '606'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "\n\uFFFD\v\n\uFFFD\x01\n\"\n\x16telemetry.sdk.language\x12\b\n\x06python\n%\n\x12telemetry.sdk.name\x12\x0F\n\ropentelemetry\n!\n\x15telemetry.sdk.version\x12\b\n\x061.39.1\n!\n\fservice.name\x12\x11\n\x0Funknown_service\x12\uFFFD\n\n0\n'openinference.instrumentation.anthropic\x12\x051.0.5\x12\uFFFD\n\n\x10\u03AC\uFFFDZ\uFFFDC\u05C1H:\uFFFD
+      G\uFFFD\x0F]\x12\b\uFFFDa\uFFFDu\uFFFD\u06E2\uFFFD*\x0Fmessages.create0\x019z\uFFFD\uFFFD\uFFFDZG\uFFFD\x18A/\uFFFD\uFFFD*[G\uFFFD\x18J\e\n\fllm.provider\x12\v\n\tanthropicJ\x19\n\nllm.system\x12\v\n\tanthropicJ\uFFFD\x01\n\vinput.value\x12v\nt{\"model\":
+      \"claude-haiku-4-5\", \"max_tokens\": 64, \"messages\": [{\"role\": \"user\",
+      \"content\": \"Say hello in one word.\"}]}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJ+\n!llm.input_messages.0.message.role\x12\x06\n\x04userJ@\n$llm.input_messages.0.message.content\x12\x18\n\x16Say
+      hello in one word.J1\n\x19llm.invocation_parameters\x12\x14\n\x12{\"max_tokens\":
+      64}J-\n\x0Ellm.model_name\x12\e\n\x19claude-haiku-4-5-20251001J1\n\"llm.output_messages.0.message.role\x12\v\n\tassistantJ1\n%llm.output_messages.0.message.content\x12\b\n\x06Hello.J\x1C\n\x16llm.token_count.prompt\x12\x02\x18\rJ
+      \n\x1Allm.token_count.completion\x12\x02\x18\x05J\uFFFD\x04\n\foutput.value\x12\uFFFD\x04\n\uFFFD\x04{\"id\":\"msg_01R5txmceum38sSHXm8otjad\",\"container\":null,\"content\":[{\"citations\":null,\"text\":\"Hello.\",\"type\":\"text\"}],\"model\":\"claude-haiku-4-5-20251001\",\"role\":\"assistant\",\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"type\":\"message\",\"usage\":{\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"inference_geo\":\"not_available\",\"input_tokens\":13,\"output_tokens\":5,\"server_tool_use\":null,\"service_tier\":\"standard\"},\"stop_details\":null}J&\n\x10output.mime_type\x12\x12\n\x10application/jsonJ
+      \n\x17openinference.span.kind\x12\x05\n\x03LLMz\x02\x18\x01\uFFFD\x01\0\x01\0\0"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1504'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+    method: POST
+    uri: https://cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"message":"Invalid credentials. Confirm that you''ve configured the
+        correct host."}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '83'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 27 May 2026 01:18:55 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"shlzp847bz2b"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 401
+      message: Unauthorized
+- request:
+    body: "\n\uFFFD\v\n\uFFFD\x01\n\"\n\x16telemetry.sdk.language\x12\b\n\x06python\n%\n\x12telemetry.sdk.name\x12\x0F\n\ropentelemetry\n!\n\x15telemetry.sdk.version\x12\b\n\x061.39.1\n!\n\fservice.name\x12\x11\n\x0Funknown_service\x12\uFFFD\n\n0\n'openinference.instrumentation.anthropic\x12\x051.0.5\x12\uFFFD\n\n\x10\u03AC\uFFFDZ\uFFFDC\u05C1H:\uFFFD
+      G\uFFFD\x0F]\x12\b\uFFFDa\uFFFDu\uFFFD\u06E2\uFFFD*\x0Fmessages.create0\x019z\uFFFD\uFFFD\uFFFDZG\uFFFD\x18A/\uFFFD\uFFFD*[G\uFFFD\x18J\e\n\fllm.provider\x12\v\n\tanthropicJ\x19\n\nllm.system\x12\v\n\tanthropicJ\uFFFD\x01\n\vinput.value\x12v\nt{\"model\":
+      \"claude-haiku-4-5\", \"max_tokens\": 64, \"messages\": [{\"role\": \"user\",
+      \"content\": \"Say hello in one word.\"}]}J%\n\x0Finput.mime_type\x12\x12\n\x10application/jsonJ+\n!llm.input_messages.0.message.role\x12\x06\n\x04userJ@\n$llm.input_messages.0.message.content\x12\x18\n\x16Say
+      hello in one word.J1\n\x19llm.invocation_parameters\x12\x14\n\x12{\"max_tokens\":
+      64}J-\n\x0Ellm.model_name\x12\e\n\x19claude-haiku-4-5-20251001J1\n\"llm.output_messages.0.message.role\x12\v\n\tassistantJ1\n%llm.output_messages.0.message.content\x12\b\n\x06Hello.J\x1C\n\x16llm.token_count.prompt\x12\x02\x18\rJ
+      \n\x1Allm.token_count.completion\x12\x02\x18\x05J\uFFFD\x04\n\foutput.value\x12\uFFFD\x04\n\uFFFD\x04{\"id\":\"msg_01R5txmceum38sSHXm8otjad\",\"container\":null,\"content\":[{\"citations\":null,\"text\":\"Hello.\",\"type\":\"text\"}],\"model\":\"claude-haiku-4-5-20251001\",\"role\":\"assistant\",\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"type\":\"message\",\"usage\":{\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"inference_geo\":\"not_available\",\"input_tokens\":13,\"output_tokens\":5,\"server_tool_use\":null,\"service_tier\":\"standard\"},\"stop_details\":null}J&\n\x10output.mime_type\x12\x12\n\x10application/jsonJ
+      \n\x17openinference.span.kind\x12\x05\n\x03LLMz\x02\x18\x01\uFFFD\x01\0\x01\0\0"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1504'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OTLP-Exporter-Python/1.39.1
+      x-langfuse-sdk-name:
+      - python
+      x-langfuse-sdk-version:
+      - 4.0.0
+    method: POST
+    uri: https://cloud.langfuse.com/api/public/otel/v1/traces
+  response:
+    body:
+      string: '{"message":"Invalid credentials. Confirm that you''ve configured the
+        correct host."}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '83'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 27 May 2026 01:18:56 GMT
+      Document-Policy:
+      - js-profiling
+      ETag:
+      - '"shlzp847bz2b"'
+      Permissions-Policy:
+      - autoplay=*, fullscreen=*, microphone=*
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Robots-Tag:
+      - noindex
+      x-frame-options:
+      - SAMEORIGIN
+    status:
+      code: 401
+      message: Unauthorized
+version: 1

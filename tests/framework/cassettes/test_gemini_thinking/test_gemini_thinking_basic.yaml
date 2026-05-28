@@ -1,0 +1,80 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is 2+2? Think step by step."}],
+      "role": "user"}], "generationConfig": {"thinkingConfig": {"include_thoughts":
+      true}}}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '157'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"**My Analysis of \\\"2 + 2\\\" - A
+        Step-by-Step Approach**\\n\\nOkay, so the user wants me to calculate 2 + 2,
+        and they specifically asked me to think through this step by step. That means
+        I can't just blurt out the answer; I need to demonstrate the *process* of
+        getting there.\\n\\nFirst, I identify the core question: what's the answer
+        to the addition of two and two? That seems straightforward enough. Next, I
+        need to keep in mind the explicit instruction for a step-by-step approach.\\n\\nNow,
+        let's break it down:\\n\\n1.  I'll start with the first number, which is 2.\\n2.
+        \ I recognize the operation is addition (+), so I know I need to *add* something
+        to this initial quantity.\\n3.  The second number is also 2.\\n4.  I combine
+        these quantities. Starting with 2, I need to increase this value by another
+        2. One way to do this is to count up from 2 by two. 2...3, 4. So the result
+        of the addition is 4.\\n\\nTherefore, to respond to the user, I'll structure
+        it like this:\\n\\n*   We start with the value 2.\\n*   We need to add another
+        2 to it.\\n*   If we count up two more from 2, we arrive at 3, and then 4.\\n*
+        \  Therefore, 2 + 2 equals 4.\\n\\n\\n\",\n            \"thought\": true\n
+        \         },\n          {\n            \"text\": \"Here is the step-by-step
+        process:\\n\\n**Step 1:** Start with the first number, which is 2.\\n**Step
+        2:** The plus sign (+) means we need to add a second amount to our starting
+        number.\\n**Step 3:** The second number is also 2. \\n**Step 4:** If we have
+        2, and we count up 2 more (3... 4), we get the total amount.\\n\\n**Result:**
+        2 + 2 = 4.\",\n            \"thoughtSignature\": \"EqkICqYIAQw51seZNhJXaveNT0BxLB3ltOgTcFGplui2e3eOkPwwN9I1wVSnhuxnZJCKZnOz9YiSgwQ8e7v/MV8SQfGr6Przi/tInkVdd8uD6b5njWGvv5L4nq1IItUDOCa/YGyvSg02c3NeyAuRjUPzHsRWQoSxR6TrLP0xxjGxJhyI/wxFILCPX45OaaZs9WyWWZ+XYmnvWvEZ+iAwvFuRCM114V4so1fHahR6pIoJowda1TdVxJGyl08huzIEzgRwkWPqmpPrs14UPoyju6wLkXJ0Eb+36CZR3MyFOOGo13HEfDQLScx6DI7gFIcnSHebhR9wvzWCMfSiU81xRY7VDaw26ja7hSWamLA7m3xgzcrmLQ6F6UThdPQtSkOvXM+6qF5XhO2o76N/7vyMB92fV/920ubxn3pgHpQENnuyBF3tuVt62yNRz9WEAYrIGziI56NEBHIYwLiuxmVRQsQTMtE4kT8GT4lIFHJNx1OG/jPTvI1OsqoDsK9WTX9pP13vNyHVoUTYW0aj69oAL9LAEgRjVAEN7XSsWtNeINFNQgx7k2ToNAckcTQtHDiLrMKbUg1u+w+JWoug2gEis4Sz8eVvonfkGwZAHtm4src7PCFosVfVfwk7qrd3yClarvRxMcIOFiueW0jnp2GY0bwJVEKi5vhILoVsHTTiA+LJmGzTs4pBvRFtVBBRFDDt3ceW/AekNGI7e7aikXe6LV2rtuAAp40JryHH/WWrW210UfqfHgEnbVrjCWKhnMvsCLg1sKWJNrMgSyObq4cjpI6r1xqMQZl6q7WPJse2uhKambMC1UV7pTmDLmqcPtuWYG2zx9Fghzk4E/SxFCQd0O5qrAu0naTZN+a0m8AG/ANndqR3ZLYHc/zMkx7wRduJldOGcHT6WR9u1UJHU8zVtPVICUjo687Mr73dFgK/6y3KAdnvLMTqnKrMTDukS/YV8liQaaN5CTrr+NJRJwQJJRSu+89sLEDpzfiZC83hTSDJ36nRxHbwVzMMyzaohOwvPLRAIsDmDEO40J7yd68WKMqpyRqwu7D9yQyuwYwb1ktwYzDG7kxwWzpq0J7r1AFlcAai1BXwoPNs/40hltU3OndJvM06Y9XTnUopiPPQ0ZYigU1VxYTms0XHo+dJ9ixw12UeBuSmiuNPPpzNlRzhj12qcjSlPCzcF+MlIsTBucba/Q0e1aOPyXTl9peIsFxSad9sdfGxhXoRXJnt4RMlXqm1CdfLgkCxj7FLhRfVkI1jJ9e4unVIpy1tj0b7aO8MwFtpr2JYpSjUh+B/dfldjQzcfser5Q5neUCXYtkDsJboL4ILDKVeDCCYLJ4Ur4M1TUdOh7Xv85HYVSE/Ahv+U1eb067P5LAQmBEt+TpgBDsiwbYzoFzp85iNgnvh3yDuZE2HqawRPgVF37AH\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        13,\n    \"candidatesTokenCount\": 109,\n    \"totalTokenCount\": 423,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 13\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 301,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"MAgVave4JeWdjrEPnLKDkAQ\"\n}\n"
+    headers:
+      content-length:
+      - '3589'
+      content-type:
+      - application/json; charset=UTF-8
+      date:
+      - Tue, 26 May 2026 02:40:55 GMT
+      server:
+      - scaffolding on HTTPServer2
+      server-timing:
+      - gfet4t7; dur=7283
+      vary:
+      - Origin,X-Origin,Referer
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-gemini-service-tier:
+      - standard
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

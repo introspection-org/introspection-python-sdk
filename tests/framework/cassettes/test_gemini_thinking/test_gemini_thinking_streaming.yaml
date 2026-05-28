@@ -1,0 +1,95 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is 3+3? Think step by step."}],
+      "role": "user"}], "generationConfig": {"thinkingConfig": {"include_thoughts":
+      true}}}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '157'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:streamGenerateContent?alt=sse
+  response:
+    body:
+      string: "data: {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"**Analyzing
+        the Math Problem**\\n\\nI've zeroed in on the core request: the sum of 3 and
+        3 with a step-by-step breakdown. The operation is clearly addition, and the
+        operands are straightforward: 3 and 3. My next move involves formulating each
+        step of the solution process in a way that is easily understood.\\n\\n\\n\",\"thought\":
+        true}],\"role\": \"model\"},\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\":
+        13,\"totalTokenCount\": 13,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\":
+        13}],\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.1-pro-preview\",\"responseId\":
+        \"QwgVapPUBZGp-8YPvc7WsQw\"}\r\n\r\ndata: {\"candidates\": [{\"content\":
+        {\"parts\": [{\"text\": \"Here is the step-by-\"}],\"role\": \"model\"},\"index\":
+        0}],\"usageMetadata\": {\"promptTokenCount\": 13,\"candidatesTokenCount\":
+        7,\"totalTokenCount\": 315,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\":
+        13}],\"thoughtsTokenCount\": 295,\"serviceTier\": \"standard\"},\"modelVersion\":
+        \"gemini-3.1-pro-preview\",\"responseId\": \"QwgVapPUBZGp-8YPvc7WsQw\"}\r\n\r\ndata:
+        {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"step process:\\n\\n**Step
+        1:** Start with the first number, which is **3**.\\n**Step 2:** Add\"}],\"role\":
+        \"model\"},\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 13,\"candidatesTokenCount\":
+        34,\"totalTokenCount\": 342,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\":
+        13}],\"thoughtsTokenCount\": 295,\"serviceTier\": \"standard\"},\"modelVersion\":
+        \"gemini-3.1-pro-preview\",\"responseId\": \"QwgVapPUBZGp-8YPvc7WsQw\"}\r\n\r\ndata:
+        {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \" 1 to that number.
+        (3 + 1 = **4**)\\n**Step 3:** Add another \"}],\"role\": \"model\"},\"index\":
+        0}],\"usageMetadata\": {\"promptTokenCount\": 13,\"candidatesTokenCount\":
+        58,\"totalTokenCount\": 366,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\":
+        13}],\"thoughtsTokenCount\": 295,\"serviceTier\": \"standard\"},\"modelVersion\":
+        \"gemini-3.1-pro-preview\",\"responseId\": \"QwgVapPUBZGp-8YPvc7WsQw\"}\r\n\r\ndata:
+        {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"1. (4 + 1 = **5**)\\n**Step
+        4:** Add the third and final 1. (\"}],\"role\": \"model\"},\"index\": 0}],\"usageMetadata\":
+        {\"promptTokenCount\": 13,\"candidatesTokenCount\": 84,\"totalTokenCount\":
+        392,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 13}],\"thoughtsTokenCount\":
+        295,\"serviceTier\": \"standard\"},\"modelVersion\": \"gemini-3.1-pro-preview\",\"responseId\":
+        \"QwgVapPUBZGp-8YPvc7WsQw\"}\r\n\r\ndata: {\"candidates\": [{\"content\":
+        {\"parts\": [{\"text\": \"5 + 1 = **6**)\\n\\nTherefore, 3 + 3 = **6**.\"}],\"role\":
+        \"model\"},\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\": 13,\"candidatesTokenCount\":
+        104,\"totalTokenCount\": 412,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\":
+        13}],\"thoughtsTokenCount\": 295,\"serviceTier\": \"standard\"},\"modelVersion\":
+        \"gemini-3.1-pro-preview\",\"responseId\": \"QwgVapPUBZGp-8YPvc7WsQw\"}\r\n\r\ndata:
+        {\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"\",\"thoughtSignature\":
+        \"EqIJCp8JAQw51scLjqnaIfmsjA88dqDdgMzUO4VVgBRUlx8OuCv2r7Ga44Srx9aKukyOdAksQXGsSAvCZMQ4KRyHc1pBcLB6YME/EyuATxXxYQ18sPoWsnhyaCCLzT4WEe+/TRDxvHQFV/4c/GnRchzlr8pKk3Fwi1qUH0eTdDZL46k3ijrhxJE4CLQR4BCTOi+Yd+k6xI71P/li3Dk03kF28XyUSy/8KY4gScERdH1yW6rxr6T6PoBVl+lpLAagIUoe5ERIz1FF2gaFpGTPPXgKRL+CV7Wsau3zN3KWs1cU6z40Zl6mYB7oBlSRVoh3nIcZpBnvL6iMCkPDYcK0lTUBlzwQvgSpnR3FmUpQqENo7Jl0irIgO1+LK4oQiwXzY+Lxe9bj7CjL9Yi2N9nTA6onf1qaY2aBKTCSQ68VJz0KUa9hmz89kl6BJDLI8Jas+PQ3/bu9OzXOwQpx1nRlGCKKYJB1DL2+8HR0aRbIYbO2UahyEaqBYE6aJKhxHZidmvCk2d9YahzGY3K8PToUThNGycbHpjkaSjrackkqwHd3fs+29Qht5r/FfecarvaKyEeVmyYUfMD0gQdYGQHQ/pZCzaE/twrOdkhD+PkGbTdgBVn8Acpd+8w7jTlA1tVDpOy6wmnKtaswvEKWrhHf6If+wGmRqNrhZZp8c4LV2ZbYT9I6ntWryTcacz9LSRlmq6XbFWggU7EuubEIeSguaKKLHdfjCm6zzxnCLEm68jX2ob5AkflEVyDJzUrmYmdrlUCtPxejEJDgf/Z9rVs+jZUbTn6QHqTEoLky5vI0dO11/MJplh9548gzUakuHY3ecZR9uKT9nuWHZRTBLHheG8FQihJLowXPBr0hVK946mCArvu0u3EolZhn/KoR5quhBZFg/PiBSli1pNu1G/xKPAlYvAvgCH/5R6HKHfI/Vs5O72ylA62iRv0c3I8kY/wpOivKnB62O+n5Z8w/I76nnNf0StSEAnX16ueCukJJhKn6Eq6GXL0S9T993HcUIewvwsOYtjJdNexRVQM534UpCmgN+u22BiMJXDxj4KEevtmFwCgThewWZ7Kbc3nOAUsScmLvDQVz/fAOZz/Gb3Z+KI3LHdzDcYbXvKUfS6UE6dNBzff4zt4eztsGLsgJbCXFJed6xUfZb51XpS2gwtC8DV6DeJrxm2JAVkOFummMka9TUVPt2VfwXNjRmAbsz5l9O4xT3YtLsSxbTPtmzT+duVYDF/icLlyg3293CaDWKMQogDGga3h6SHDqYrD+EiTS+C1lcNX2A6rB6b5Rh0LnjsMha+eJImCJ++GK/YMH8IJfLBCsgNt9dXhWHf3YVizMWLSsFRIOOPJWh5DnIcwqHbh8C8mV6yjg27UdMc6nyo0/+MldMiFyBPGERD241Z1XgZo7683RvAH3hnpuy21AdniSX1QJuSJ/j8eyJV5b8S/znvMpz7km7KQIbaatuoSHhBnVap3paEGsOrSL0v4/uVrZc2TEhBM9q0KrpO5wLZLo5k0WpWOuYThfxNmwLNYFDGw24VNhzDKWR/vlPft9jSYI4B2EN+ng2iJYMXj7kmE/1UkOow==\"}],\"role\":
+        \"model\"},\"finishReason\": \"STOP\",\"index\": 0}],\"usageMetadata\": {\"promptTokenCount\":
+        13,\"candidatesTokenCount\": 104,\"totalTokenCount\": 412,\"promptTokensDetails\":
+        [{\"modality\": \"TEXT\",\"tokenCount\": 13}],\"thoughtsTokenCount\": 295,\"serviceTier\":
+        \"standard\"},\"modelVersion\": \"gemini-3.1-pro-preview\",\"responseId\":
+        \"QwgVapPUBZGp-8YPvc7WsQw\"}\r\n\r\n"
+    headers:
+      content-disposition:
+      - attachment
+      content-type:
+      - text/event-stream
+      date:
+      - Tue, 26 May 2026 02:41:09 GMT
+      server:
+      - scaffolding on HTTPServer2
+      server-timing:
+      - gfet4t7; dur=2480
+      transfer-encoding:
+      - chunked
+      vary:
+      - Origin,X-Origin,Referer
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

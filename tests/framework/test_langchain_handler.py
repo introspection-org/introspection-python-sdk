@@ -25,7 +25,7 @@ HAS_LANGCHAIN_HANDLER = True
 HAS_LANGCHAIN_OPENAI = True
 try:
     from introspection_sdk import IntrospectionCallbackHandler
-    from introspection_sdk.processors.langchain_callback_handler import (
+    from introspection_sdk.otel.processors.langchain_callback_handler import (
         HAS_LANGCHAIN,
     )
 except ImportError:

@@ -1,0 +1,361 @@
+interactions:
+- request:
+    body: '{"include":[],"input":[{"content":"Greet the user with ''hello friend''.","role":"user"}],"instructions":"You
+      write short bilingual greetings. Use the translate_to_french tool to get the
+      French version of any English phrase you produce.","model":"gpt-5-nano","tools":[{"name":"translate_to_french","parameters":{"description":"Default
+      input schema for agent-as-tool calls.","properties":{"input":{"title":"Input","type":"string"}},"required":["input"],"title":"AgentAsToolInput","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Translate
+      English text to French."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '607'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0f12c4e1e342508c006a1646cc4f5881969848ad34ff78440f\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779844812,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779844818,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You write short bilingual greetings. Use the translate_to_french tool to
+        get the French version of any English phrase you produce.\",\n  \"max_output_tokens\":
+        null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n
+        \ \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"rs_0f12c4e1e342508c006a1646ccbc8881969ade716feee06e53\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"fc_0f12c4e1e342508c006a1646d230e08196a1a3b1805efac5d9\",\n      \"type\":
+        \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\":
+        \"{\\\"input\\\":\\\"Hello, friend!\\\"}\",\n      \"call_id\": \"call_ikEfOab90U85tUwcaH2lJ1ih\",\n
+        \     \"name\": \"translate_to_french\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n
+        \   \"context\": \"current_turn\",\n    \"effort\": \"medium\",\n    \"summary\":
+        null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n
+        \ \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\":
+        {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n
+        \ \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"function\",\n
+        \     \"description\": \"Translate English text to French.\",\n      \"name\":
+        \"translate_to_french\",\n      \"parameters\": {\n        \"description\":
+        \"Default input schema for agent-as-tool calls.\",\n        \"properties\":
+        {\n          \"input\": {\n            \"title\": \"Input\",\n            \"type\":
+        \"string\"\n          }\n        },\n        \"required\": [\n          \"input\"\n
+        \       ],\n        \"title\": \"AgentAsToolInput\",\n        \"type\": \"object\",\n
+        \       \"additionalProperties\": false\n      },\n      \"strict\": true\n
+        \   }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 101,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 954,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 896\n    },\n    \"total_tokens\": 1055\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a02132184a570dac-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 01:20:18 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '2354'
+      openai-processing-ms:
+      - '6285'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999535'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_95a6bd4cfe9644bbadee33894c377d2e
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":[],"input":[{"content":"Hello, friend!","role":"user"}],"instructions":"Translate
+      the user input into French. Reply with only the translation.","model":"gpt-5-nano","tools":[]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '187'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0f7599469fa4e9d4006a1646d2c64481908d2cdfeff7762a4e\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779844818,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779844823,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"Translate the user input into French. Reply with only the translation.\",\n
+        \ \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\":
+        \"gpt-5-nano-2025-08-07\",\n  \"moderation\": null,\n  \"output\": [\n    {\n
+        \     \"id\": \"rs_0f7599469fa4e9d4006a1646d35fa08190b1dd4411e2d1d7ad\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"msg_0f7599469fa4e9d4006a1646d705688190b819edb6ed780d07\",\n      \"type\":
+        \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n
+        \         \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\":
+        [],\n          \"text\": \"Bonjour, ami !\"\n        }\n      ],\n      \"role\":
+        \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\":
+        0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\":
+        \"in_memory\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\":
+        \"medium\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n
+        \ \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n
+        \ \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\":
+        \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tools\": [],\n  \"top_logprobs\":
+        0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\":
+        27,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n
+        \   \"output_tokens\": 553,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\":
+        512\n    },\n    \"total_tokens\": 580\n  },\n  \"user\": null,\n  \"metadata\":
+        {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a0213244ed33cf1b-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 01:20:25 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '1806'
+      openai-processing-ms:
+      - '6396'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '179999661'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_76360a4903b24bbab20f95732aea391e
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"include":[],"input":[{"content":"Greet the user with ''hello friend''.","role":"user"},{"id":"rs_0f12c4e1e342508c006a1646ccbc8881969ade716feee06e53","summary":[],"type":"reasoning"},{"arguments":"{\"input\":\"Hello,
+      friend!\"}","call_id":"call_ikEfOab90U85tUwcaH2lJ1ih","name":"translate_to_french","type":"function_call","id":"fc_0f12c4e1e342508c006a1646d230e08196a1a3b1805efac5d9","status":"completed"},{"call_id":"call_ikEfOab90U85tUwcaH2lJ1ih","output":"Bonjour,
+      ami !","type":"function_call_output"}],"instructions":"You write short bilingual
+      greetings. Use the translate_to_french tool to get the French version of any
+      English phrase you produce.","model":"gpt-5-nano","tools":[{"name":"translate_to_french","parameters":{"description":"Default
+      input schema for agent-as-tool calls.","properties":{"input":{"title":"Input","type":"string"}},"required":["input"],"title":"AgentAsToolInput","type":"object","additionalProperties":false},"strict":true,"type":"function","description":"Translate
+      English text to French."}]}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1025'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - Agents/Python 0.12.4
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.30.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: "{\n  \"id\": \"resp_0f12c4e1e342508c006a1646d9593c8196ba51b5a052197a4f\",\n
+        \ \"object\": \"response\",\n  \"created_at\": 1779844825,\n  \"status\":
+        \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\":
+        \"developer\"\n  },\n  \"completed_at\": 1779844827,\n  \"error\": null,\n
+        \ \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\":
+        \"You write short bilingual greetings. Use the translate_to_french tool to
+        get the French version of any English phrase you produce.\",\n  \"max_output_tokens\":
+        null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5-nano-2025-08-07\",\n
+        \ \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"rs_0f12c4e1e342508c006a1646d9a5288196aed0c616f22b37e1\",\n
+        \     \"type\": \"reasoning\",\n      \"summary\": []\n    },\n    {\n      \"id\":
+        \"msg_0f12c4e1e342508c006a1646db7bc881968c043290332b063d\",\n      \"type\":
+        \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n
+        \         \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\":
+        [],\n          \"text\": \"Hello, friend! / Bonjour, ami !\"\n        }\n
+        \     ],\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\":
+        true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\":
+        null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n
+        \   \"context\": \"current_turn\",\n    \"effort\": \"medium\",\n    \"summary\":
+        null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n
+        \ \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\":
+        {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n
+        \ \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"function\",\n
+        \     \"description\": \"Translate English text to French.\",\n      \"name\":
+        \"translate_to_french\",\n      \"parameters\": {\n        \"description\":
+        \"Default input schema for agent-as-tool calls.\",\n        \"properties\":
+        {\n          \"input\": {\n            \"title\": \"Input\",\n            \"type\":
+        \"string\"\n          }\n        },\n        \"required\": [\n          \"input\"\n
+        \       ],\n        \"title\": \"AgentAsToolInput\",\n        \"type\": \"object\",\n
+        \       \"additionalProperties\": false\n      },\n      \"strict\": true\n
+        \   }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\":
+        \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 1072,\n    \"input_tokens_details\":
+        {\n      \"cached_tokens\": 1024\n    },\n    \"output_tokens\": 305,\n    \"output_tokens_details\":
+        {\n      \"reasoning_tokens\": 256\n    },\n    \"total_tokens\": 1377\n  },\n
+        \ \"user\": null,\n  \"metadata\": {}\n}"
+    headers:
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-Ray:
+      - a021326e1f13ed40-SJC
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 01:20:28 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '2428'
+      openai-processing-ms:
+      - '2694'
+      openai-version:
+      - '2020-10-01'
+      x-ratelimit-limit-requests:
+      - '30000'
+      x-ratelimit-limit-tokens:
+      - '180000000'
+      x-ratelimit-remaining-requests:
+      - '29999'
+      x-ratelimit-remaining-tokens:
+      - '180000000'
+      x-ratelimit-reset-requests:
+      - 2ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_587b695b118349eea9ebe639d6d5ad9d
+    status:
+      code: 200
+      message: OK
+version: 1

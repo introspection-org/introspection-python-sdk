@@ -24,8 +24,10 @@ from test_utils import IncrementalIdGenerator, TimeGenerator
 from testing import TestSpanExporter
 
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.processors import claude_tracing_processor as _proc_mod
-from introspection_sdk.processors.claude_tracing_processor import (
+from introspection_sdk.otel.processors import (
+    claude_tracing_processor as _proc_mod,
+)
+from introspection_sdk.otel.processors.claude_tracing_processor import (
     ClaudeTracingProcessor,
     _build_input_messages,
     _content_blocks_to_parts,

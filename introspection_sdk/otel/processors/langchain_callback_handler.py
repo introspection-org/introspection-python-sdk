@@ -70,7 +70,7 @@ try:
     from langchain_core.outputs import ChatGeneration, LLMResult
 except ImportError:
     HAS_LANGCHAIN = False
-    BaseCallbackHandler = object
+    BaseCallbackHandler = object  # type: ignore[assignment,misc]
 
 
 class _ToolCallDict(TypedDict, total=False):
@@ -105,7 +105,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
     Args:
         token: Introspection API token. Falls back to ``INTROSPECTION_TOKEN``.
         service_name: OTel service name. Falls back to ``INTROSPECTION_SERVICE_NAME``.
-        base_url: Introspection base URL. Falls back to ``INTROSPECTION_BASE_URL``.
+        base_url: Introspection base URL. Falls back to ``INTROSPECTION_BASE_OTEL_URL``.
         advanced: Testing/customization options.
     """
 
@@ -118,6 +118,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         service_name: str | None = None,
         base_url: str | None = None,
         advanced: AdvancedOptions | None = None,
+        tracer_provider: TracerProvider | None = None,
     ) -> None:
         if not HAS_LANGCHAIN:
             raise ImportError(
@@ -127,14 +128,52 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
 
         super().__init__()
 
-        advanced = advanced or AdvancedOptions()
+        self._advanced = advanced or AdvancedOptions()
+
+        self._owns_provider = tracer_provider is None
+        if tracer_provider is not None:
+            self._provider = tracer_provider
+        else:
+            self._provider = self._build_standalone_provider(
+                token, service_name, base_url
+            )
+
+        self._tracer = self._provider.get_tracer("langchain", VERSION)
+        self._spans: dict[str, otel_trace.Span] = {}
+        self._span_names: dict[str, str] = {}
+        self._span_parents: dict[str, str] = {}  # runId -> parentRunId
+        self._run_roots: dict[str, str] = {}  # runId -> rootRunId
+        self._conversation_id = f"intro_conv_{uuid_mod.uuid4().hex}"
+        # Wrapper names skipped when resolving the real agent/node name.
+        self._wrapper_names: frozenset[str] = frozenset(
+            {
+                "RunnableSequence",
+                "RunnableParallel",
+                "RunnableMap",
+                "RunnableLambda",
+                "RunnableRetry",
+                "_ConfigurableModel",
+                "ChatOpenAI",
+                "ChatAnthropic",
+                "ChatGoogleGenerativeAI",
+                "ChatGroq",
+            }
+        )
+        self._llm_inputs: dict[str, list[InputMessage]] = {}
+
+    def _build_standalone_provider(
+        self,
+        token: str | None,
+        service_name: str | None,
+        base_url: str | None,
+    ) -> TracerProvider:
         resolved_token = token or os.environ.get("INTROSPECTION_TOKEN", "")
         resolved_service = (
             service_name or os.environ.get("INTROSPECTION_SERVICE_NAME") or ""
         )
         resolved_base = (
             base_url
-            or os.environ.get("INTROSPECTION_BASE_URL")
+            or os.environ.get("INTROSPECTION_BASE_OTEL_URL")
             or "https://otel.introspection.dev"
         )
 
@@ -144,8 +183,8 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
             else Resource.create()
         )
 
-        if advanced.span_exporter is not None:
-            processor = SimpleSpanProcessor(advanced.span_exporter)
+        if self._advanced.span_exporter is not None:
+            processor = SimpleSpanProcessor(self._advanced.span_exporter)
             logger.info(
                 "IntrospectionCallbackHandler initialized in test mode"
             )
@@ -168,44 +207,18 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
                 headers={"Authorization": f"Bearer {resolved_token}"},
                 compression=Compression.NoCompression,
             )
-
-            use_simple = resolved_token.startswith(
-                "intro_dev"
-            ) or resolved_token.startswith("intro_staging")
             processor = (
                 SimpleSpanProcessor(exporter)
-                if use_simple
+                if resolved_token.startswith(("intro_dev", "intro_staging"))
                 else BatchSpanProcessor(exporter)
             )
 
-        self._provider = TracerProvider(
+        provider = TracerProvider(
             resource=resource,
-            id_generator=advanced.id_generator,
+            id_generator=self._advanced.id_generator,
         )
-        self._provider.add_span_processor(processor)
-        self._tracer = self._provider.get_tracer("langchain", VERSION)
-        self._spans: dict[str, otel_trace.Span] = {}
-        self._span_names: dict[str, str] = {}
-        self._span_parents: dict[str, str] = {}  # runId -> parentRunId
-        self._run_roots: dict[str, str] = {}  # runId -> rootRunId
-        self._conversation_id = f"intro_conv_{uuid_mod.uuid4().hex}"
-
-        # LangChain wrapper names to skip when resolving agent names
-        self._wrapper_names: frozenset[str] = frozenset(
-            {
-                "RunnableSequence",
-                "RunnableParallel",
-                "RunnableMap",
-                "RunnableLambda",
-                "RunnableRetry",
-                "_ConfigurableModel",
-                "ChatOpenAI",
-                "ChatAnthropic",
-                "ChatGoogleGenerativeAI",
-                "ChatGroq",
-            }
-        )
-        self._llm_inputs: dict[str, list[InputMessage]] = {}
+        provider.add_span_processor(processor)
+        return provider
 
     def _root_run_id(
         self, run_id: Any, parent_run_id: Any | None = None
@@ -614,11 +627,13 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         self._span_names.clear()
         self._span_parents.clear()
         self._run_roots.clear()
-        self._provider.shutdown()
+        if self._owns_provider:
+            self._provider.shutdown()
 
     def force_flush(self) -> None:
-        """Force-flush buffered spans."""
-        self._provider.force_flush()
+        """Force-flush buffered spans, unless a shared provider was passed in."""
+        if self._owns_provider:
+            self._provider.force_flush()
 
     # -----------------------------------------------------------------
     # Helpers

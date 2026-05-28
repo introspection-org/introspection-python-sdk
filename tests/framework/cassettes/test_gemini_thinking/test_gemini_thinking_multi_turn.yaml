@@ -1,0 +1,266 @@
+interactions:
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is the weather in Tokyo?"}], "role":
+      "user"}], "tools": [{"functionDeclarations": [{"description": "Get weather for
+      a city. Returns conditions and temperature in Celsius.", "name": "get_weather",
+      "parameters": {"properties": {"city": {"type": "STRING"}}, "required": ["city"],
+      "type": "OBJECT"}}]}], "generationConfig": {"thinkingConfig": {"include_thoughts":
+      true}}}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '407'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"**My Approach to the Tokyo Weather
+        Query**\\n\\nOkay, so the user wants the weather in Tokyo. Straightforward
+        enough. My first step is to quickly assess the situation. I have a `get_weather`
+        tool at my disposal, which appears to be exactly what I need. Let's see...
+        the `default_api:get_weather` tool is described as the solution. It gets the
+        weather for a given city and returns conditions and temperature in Celsius.
+        Perfect. I can use this.\\n\\nTherefore, I formulate a direct tool call. The
+        function I'll be invoking is `default_api:get_weather`. I need to provide
+        the city as an argument, and that's simple: I'll supply `{\\\"city\\\": \\\"Tokyo\\\"}`.\\n\\nNow,
+        all that's left is to execute that tool call. I'll send that request and get
+        back the required information on Tokyo's current weather.\\n\\n\\n\",\n            \"thought\":
+        true\n          },\n          {\n            \"functionCall\": {\n              \"name\":
+        \"get_weather\",\n              \"args\": {\n                \"city\": \"Tokyo\"\n
+        \             },\n              \"id\": \"mhn2v0mz\"\n            },\n            \"thoughtSignature\":
+        \"EscECsQEAQw51seiaU1s71q4/GOT4av52kfm8WlYmGrMJ/yHZxX68LOVnDtYEb/0xMArIUXTid1+j51b6jnzOXg98c4kWGYHrMauhi6UNrOxH6g4MtVuRCueZXO2YCrCxGA7YeYw2ZsdSDlPjTOSfWfy+JrNNwzf5QXLZSATlF+6GJFnpUy7aqYc5iqVWZqVhxOSwFSRcdw77khmWRdeWRzpE9joDbBkp/goWINT8dHSvC9jfdZiA2cuwzvtb7+jE2kWDJDm1dyi6IDQAZ/2CV0AM5ya8Xgmc7FhZbHja+gNFp5oZP4WiCMBOKmTg8wxPck9TXXTVDU316kc+DfLd9jFDMCrPffIOOJ3pRgWxlgJmwE3uZhCP3o2gp2YzjNnOKPjDjRTbdtRgV5YBG4lWqaTGwKLhFt22rDGQLk+X/To/PPRTJ/Fy3XyUJvUtLQLiGqT0dMzVF95/xzBAwTvl6ceWBij9Tj3PSMO8WxS6I3OCAbrI7+IQ5Yn4mkQyIB+4grWg0t+CQObnXSe/Te75xnoFSDEz32q2uqSe/54DuQkrpSwd/BSFlQIvbYCKcr6X81QNOaqWGl/2BiZyIcWMUDG5KNphrjbTJSYVFLBWbVTpK2Mdzo+IH7T5/4/f0dKU+2TQ1gVpkPXKsMGNrPYg3QR8o86aGOrdz9Mww430LOCPquIU0YXjMJ0pcrzDhoU+nUD//MGO6RUr4qBi2ioR6PVgpg9w+ylt0GbrG2dVGmglOUBDyrEfhd1EMWHL2c04EBcuyJTTOQezA==\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0,\n      \"finishMessage\": \"Model generated
+        function call(s).\"\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        58,\n    \"candidatesTokenCount\": 16,\n    \"totalTokenCount\": 221,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 58\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 147,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"OAgVavu5A_G4sOIP9v3M6AY\"\n}\n"
+    headers:
+      content-length:
+      - '2495'
+      content-type:
+      - application/json; charset=UTF-8
+      date:
+      - Tue, 26 May 2026 02:40:59 GMT
+      server:
+      - scaffolding on HTTPServer2
+      server-timing:
+      - gfet4t7; dur=3715
+      vary:
+      - Origin,X-Origin,Referer
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-gemini-service-tier:
+      - standard
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is the weather in Tokyo?"}], "role":
+      "user"}, {"parts": [{"text": "**My Approach to the Tokyo Weather Query**\n\nOkay,
+      so the user wants the weather in Tokyo. Straightforward enough. My first step
+      is to quickly assess the situation. I have a `get_weather` tool at my disposal,
+      which appears to be exactly what I need. Let''s see... the `default_api:get_weather`
+      tool is described as the solution. It gets the weather for a given city and
+      returns conditions and temperature in Celsius. Perfect. I can use this.\n\nTherefore,
+      I formulate a direct tool call. The function I''ll be invoking is `default_api:get_weather`.
+      I need to provide the city as an argument, and that''s simple: I''ll supply
+      `{\"city\": \"Tokyo\"}`.\n\nNow, all that''s left is to execute that tool call.
+      I''ll send that request and get back the required information on Tokyo''s current
+      weather.\n\n\n", "thought": true}, {"functionCall": {"id": "mhn2v0mz", "args":
+      {"city": "Tokyo"}, "name": "get_weather"}, "thoughtSignature": "EscECsQEAQw51seiaU1s71q4_GOT4av52kfm8WlYmGrMJ_yHZxX68LOVnDtYEb_0xMArIUXTid1-j51b6jnzOXg98c4kWGYHrMauhi6UNrOxH6g4MtVuRCueZXO2YCrCxGA7YeYw2ZsdSDlPjTOSfWfy-JrNNwzf5QXLZSATlF-6GJFnpUy7aqYc5iqVWZqVhxOSwFSRcdw77khmWRdeWRzpE9joDbBkp_goWINT8dHSvC9jfdZiA2cuwzvtb7-jE2kWDJDm1dyi6IDQAZ_2CV0AM5ya8Xgmc7FhZbHja-gNFp5oZP4WiCMBOKmTg8wxPck9TXXTVDU316kc-DfLd9jFDMCrPffIOOJ3pRgWxlgJmwE3uZhCP3o2gp2YzjNnOKPjDjRTbdtRgV5YBG4lWqaTGwKLhFt22rDGQLk-X_To_PPRTJ_Fy3XyUJvUtLQLiGqT0dMzVF95_xzBAwTvl6ceWBij9Tj3PSMO8WxS6I3OCAbrI7-IQ5Yn4mkQyIB-4grWg0t-CQObnXSe_Te75xnoFSDEz32q2uqSe_54DuQkrpSwd_BSFlQIvbYCKcr6X81QNOaqWGl_2BiZyIcWMUDG5KNphrjbTJSYVFLBWbVTpK2Mdzo-IH7T5_4_f0dKU-2TQ1gVpkPXKsMGNrPYg3QR8o86aGOrdz9Mww430LOCPquIU0YXjMJ0pcrzDhoU-nUD__MGO6RUr4qBi2ioR6PVgpg9w-ylt0GbrG2dVGmglOUBDyrEfhd1EMWHL2c04EBcuyJTTOQezA=="}],
+      "role": "model"}, {"parts": [{"functionResponse": {"name": "get_weather", "response":
+      {"temperature_c": 25, "conditions": "Clear"}}}], "role": "user"}], "tools":
+      [{"functionDeclarations": [{"description": "Get weather for a city. Returns
+      conditions and temperature in Celsius.", "name": "get_weather", "parameters":
+      {"properties": {"city": {"type": "STRING"}}, "required": ["city"], "type": "OBJECT"}}]}],
+      "generationConfig": {"thinkingConfig": {"include_thoughts": true}}}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2293'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"Okay, here's my summary of the thought
+        process, tailored for an expert audience like myself:\\n\\n**Weather Information
+        Retrieval and Presentation**\\n\\nAlright, let's break this down. First, I
+        analyzed the output from the `get_weather` tool. It provided key data points:
+        the conditions were \\\"Clear\\\" and the temperature was 25 degrees Celsius,
+        specifically for Tokyo. The tool did its job well; it delivered the raw information
+        efficiently.\\n\\nNext, I had to synthesize this data into a usable response.
+        My objective here was to formulate a natural language representation that
+        is easy for the end-user to understand. It is important to represent the information
+        clearly, concisely, and with correct units. Therefore, I formed the final
+        response as: \\\"The weather in Tokyo is currently clear with a temperature
+        of 25\xB0C.\\\" This directly translates the structured data from the weather
+        tool into a straightforward and easily digestible format. The important part
+        is making the process clear and easy for a non-technical end-user.\\n\\n\\n\",\n
+        \           \"thought\": true\n          },\n          {\n            \"text\":
+        \"The weather in Tokyo is currently clear with a temperature of 25\xB0C.\",\n
+        \           \"thoughtSignature\": \"Ev8CCvwCAQw51sd9ia30ex2H0ZF0kqvRxlbsM7VMs0kQs0OHe6rIN/cgGd3uF+HWvHHhW+eaHtVjxbmxYExwC8w/Pr/n1ooNuX9ne68kYY26dCKJIYFsExLeyvKRFAg+pmSQRrBzzySOMFuJ/gkzMMVdEARUVpeBPalMSJq+Y5ME/+LHPGoEh7TgrEf90WwtJv1ZHcHT2oYpSORzIiq8RKocHvBJHxJhiASzkoAnh87CC1F8Mq7RU3LiahaPi1bztsUhS937LVf/clS8IWbkZUOstchIqakwPaX4BlZ0QZF6F7RNSg/GksaWxEQK/gouA4FMccdI5Fd4wKBp0yWjdgCRZb0Us1aWkSUyer7WhuAn5hsLP0kOzHA3a/3sLeE2hXy6dE3GJpVYwyPPdpaVfmRmDUOcZWHFhXzbdUaBPa3YrcK7WaNvJfxvtMH3hCN0P4i+XmfWlqTzgEJkBCX6zvvXn6d9tSNMLLXJO6qgXAnDYsMezQGiCQiEABkyhT01ls0=\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        435,\n    \"candidatesTokenCount\": 17,\n    \"totalTokenCount\": 529,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 435\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 77,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"OwgVaq-XMIS4sOIPwsqBqQk\"\n}\n"
+    headers:
+      content-length:
+      - '2312'
+      content-type:
+      - application/json; charset=UTF-8
+      date:
+      - Tue, 26 May 2026 02:41:02 GMT
+      server:
+      - scaffolding on HTTPServer2
+      server-timing:
+      - gfet4t7; dur=3207
+      vary:
+      - Origin,X-Origin,Referer
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-gemini-service-tier:
+      - standard
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"contents": [{"parts": [{"text": "What is the weather in Tokyo?"}], "role":
+      "user"}, {"parts": [{"text": "**My Approach to the Tokyo Weather Query**\n\nOkay,
+      so the user wants the weather in Tokyo. Straightforward enough. My first step
+      is to quickly assess the situation. I have a `get_weather` tool at my disposal,
+      which appears to be exactly what I need. Let''s see... the `default_api:get_weather`
+      tool is described as the solution. It gets the weather for a given city and
+      returns conditions and temperature in Celsius. Perfect. I can use this.\n\nTherefore,
+      I formulate a direct tool call. The function I''ll be invoking is `default_api:get_weather`.
+      I need to provide the city as an argument, and that''s simple: I''ll supply
+      `{\"city\": \"Tokyo\"}`.\n\nNow, all that''s left is to execute that tool call.
+      I''ll send that request and get back the required information on Tokyo''s current
+      weather.\n\n\n", "thought": true}, {"functionCall": {"id": "mhn2v0mz", "args":
+      {"city": "Tokyo"}, "name": "get_weather"}, "thoughtSignature": "EscECsQEAQw51seiaU1s71q4_GOT4av52kfm8WlYmGrMJ_yHZxX68LOVnDtYEb_0xMArIUXTid1-j51b6jnzOXg98c4kWGYHrMauhi6UNrOxH6g4MtVuRCueZXO2YCrCxGA7YeYw2ZsdSDlPjTOSfWfy-JrNNwzf5QXLZSATlF-6GJFnpUy7aqYc5iqVWZqVhxOSwFSRcdw77khmWRdeWRzpE9joDbBkp_goWINT8dHSvC9jfdZiA2cuwzvtb7-jE2kWDJDm1dyi6IDQAZ_2CV0AM5ya8Xgmc7FhZbHja-gNFp5oZP4WiCMBOKmTg8wxPck9TXXTVDU316kc-DfLd9jFDMCrPffIOOJ3pRgWxlgJmwE3uZhCP3o2gp2YzjNnOKPjDjRTbdtRgV5YBG4lWqaTGwKLhFt22rDGQLk-X_To_PPRTJ_Fy3XyUJvUtLQLiGqT0dMzVF95_xzBAwTvl6ceWBij9Tj3PSMO8WxS6I3OCAbrI7-IQ5Yn4mkQyIB-4grWg0t-CQObnXSe_Te75xnoFSDEz32q2uqSe_54DuQkrpSwd_BSFlQIvbYCKcr6X81QNOaqWGl_2BiZyIcWMUDG5KNphrjbTJSYVFLBWbVTpK2Mdzo-IH7T5_4_f0dKU-2TQ1gVpkPXKsMGNrPYg3QR8o86aGOrdz9Mww430LOCPquIU0YXjMJ0pcrzDhoU-nUD__MGO6RUr4qBi2ioR6PVgpg9w-ylt0GbrG2dVGmglOUBDyrEfhd1EMWHL2c04EBcuyJTTOQezA=="}],
+      "role": "model"}, {"parts": [{"functionResponse": {"name": "get_weather", "response":
+      {"temperature_c": 25, "conditions": "Clear"}}}], "role": "user"}, {"parts":
+      [{"text": "Okay, here''s my summary of the thought process, tailored for an
+      expert audience like myself:\n\n**Weather Information Retrieval and Presentation**\n\nAlright,
+      let''s break this down. First, I analyzed the output from the `get_weather`
+      tool. It provided key data points: the conditions were \"Clear\" and the temperature
+      was 25 degrees Celsius, specifically for Tokyo. The tool did its job well; it
+      delivered the raw information efficiently.\n\nNext, I had to synthesize this
+      data into a usable response. My objective here was to formulate a natural language
+      representation that is easy for the end-user to understand. It is important
+      to represent the information clearly, concisely, and with correct units. Therefore,
+      I formed the final response as: \"The weather in Tokyo is currently clear with
+      a temperature of 25\u00b0C.\" This directly translates the structured data from
+      the weather tool into a straightforward and easily digestible format. The important
+      part is making the process clear and easy for a non-technical end-user.\n\n\n",
+      "thought": true}, {"text": "The weather in Tokyo is currently clear with a temperature
+      of 25\u00b0C.", "thoughtSignature": "Ev8CCvwCAQw51sd9ia30ex2H0ZF0kqvRxlbsM7VMs0kQs0OHe6rIN_cgGd3uF-HWvHHhW-eaHtVjxbmxYExwC8w_Pr_n1ooNuX9ne68kYY26dCKJIYFsExLeyvKRFAg-pmSQRrBzzySOMFuJ_gkzMMVdEARUVpeBPalMSJq-Y5ME_-LHPGoEh7TgrEf90WwtJv1ZHcHT2oYpSORzIiq8RKocHvBJHxJhiASzkoAnh87CC1F8Mq7RU3LiahaPi1bztsUhS937LVf_clS8IWbkZUOstchIqakwPaX4BlZ0QZF6F7RNSg_GksaWxEQK_gouA4FMccdI5Fd4wKBp0yWjdgCRZb0Us1aWkSUyer7WhuAn5hsLP0kOzHA3a_3sLeE2hXy6dE3GJpVYwyPPdpaVfmRmDUOcZWHFhXzbdUaBPa3YrcK7WaNvJfxvtMH3hCN0P4i-XmfWlqTzgEJkBCX6zvvXn6d9tSNMLLXJO6qgXAnDYsMezQGiCQiEABkyhT01ls0="}],
+      "role": "model"}, {"parts": [{"text": "What is that temperature in Fahrenheit?"}],
+      "role": "user"}], "generationConfig": {"thinkingConfig": {"include_thoughts":
+      true}}}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '3846'
+      Content-Type:
+      - application/json
+      Host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+      x-goog-api-client:
+      - google-genai-sdk/1.67.0 gl-python/3.11.15
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\":
+        [\n          {\n            \"text\": \"**Converting Celsius to Fahrenheit**\\n\\nOkay,
+        here's the deal. My primary objective is clear: the user needs the Tokyo temperature
+        of 25\xB0C converted to Fahrenheit. That's the target, and I need to execute
+        it flawlessly.\\n\\nFirst, I need to make sure I have the necessary information.
+        Let's see... my input is a temperature value in Celsius, specifically 25\xB0C.
+        Got it.\\n\\nNow, let's execute the core process. I know the conversion formula
+        \u2013 it's ingrained at this point:  Fahrenheit (F) equals Celsius (C) multiplied
+        by 9/5, plus 32. Mathematically, that's $F = (C \\\\times 9/5) + 32$. I'll
+        plug in the value for C, which is 25. That's $(25 \\\\times 9/5) + 32$. Simplifying,
+        that's $(5 \\\\times 9) + 32$, which is $45 + 32$. So, the calculation results
+        in 77.\\n\\nFinally, I need to present the answer clearly. The converted temperature
+        is 77\xB0F. Mission accomplished.\\n\\n\\n\",\n            \"thought\": true\n
+        \         },\n          {\n            \"text\": \"25\xB0C is equal to 77\xB0F.\",\n
+        \           \"thoughtSignature\": \"EvUDCvIDAQw51sdJtL3tY87iAH+TebLC+VZOtsUcULYC3I8mL7rI7lklxuMqJ2Hw/6OT6riNcSXrjXCOpxYH+DtBFBSeL7ezIpGXyMBdbVVTvHH+1o2lRVjbg2tHbfnEkvQej8Q66gv9PhTvUf7v25qqHWse8GxMDPbxYrv6ueDsBFdGdlKVOa1Yh7UxsTEvXoSQCzSVj6vyIVZo7CN9cTeVB3qxYs4CeHKhPZicMmAVgqnGrVx+Tvko8xbMjf5gtvJkzSlPN3j4Y1rzz6O56uB8GgEl9+0a9LnLaJzjsOgG9aspEO7fcQPT+CuD9FJQNpiTmxttUTQbBGkzWIyr92dACn/6+izpvKAkN2bJazP7i9KRbgvKg82A5ZfMeVDT/XmVIsYB2C/5OoTFN0VAOxvqyRMa+BpAxyghKpYiGEmoZdkAr7ZPxy7dzAY2RVyKfO9JI65rCdb7oEIFKhOKIEOOKnyad9x2MzD6TwvS+yhOl5g0th9/i7edQGqzWDHVcsdrcE1b5ZnycUM1zWvC6boNbTdfKRJAn+5UIDhT5XPxi04EH7HYG8bzq2FioR4kRiKXuOcV5shMySuaw2kmAZIF4fgmGtReBCT8A3FHblEcgH+C/taXYfbJVrkb+QmIk9XYw7ZZnUIr/CMDPIgKDlMpFM7L5I3h\"\n
+        \         }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\":
+        \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        473,\n    \"candidatesTokenCount\": 13,\n    \"totalTokenCount\": 634,\n    \"promptTokensDetails\":
+        [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 473\n
+        \     }\n    ],\n    \"thoughtsTokenCount\": 148,\n    \"serviceTier\": \"standard\"\n
+        \ },\n  \"modelVersion\": \"gemini-3.1-pro-preview\",\n  \"responseId\": \"PwgVasbGAbyBjrEP_Lvd6Q0\"\n}\n"
+    headers:
+      content-length:
+      - '2265'
+      content-type:
+      - application/json; charset=UTF-8
+      date:
+      - Tue, 26 May 2026 02:41:06 GMT
+      server:
+      - scaffolding on HTTPServer2
+      server-timing:
+      - gfet4t7; dur=3872
+      vary:
+      - Origin,X-Origin,Referer
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-gemini-service-tier:
+      - standard
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

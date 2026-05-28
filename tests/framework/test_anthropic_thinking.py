@@ -17,8 +17,8 @@ from conftest import CaptureSpanProcessor
 from dirty_equals import Contains, IsInt, IsJson, IsPartialDict, IsStr
 from testing import TestSpanExporter
 
-from introspection_sdk.anthropic import AnthropicInstrumentor
 from introspection_sdk.config import AdvancedOptions
+from introspection_sdk.otel.anthropic import AnthropicInstrumentor
 
 pytestmark = pytest.mark.vcr()
 

@@ -52,7 +52,7 @@ def dual_processors() -> Iterator[CaptureTracingProcessor]:
     langsmith_processor = OpenAIAgentsTracingProcessor()
 
     processors = [langsmith_processor, introspection_processor]
-    set_trace_processors(processors)
+    set_trace_processors(processors)  # type: ignore[arg-type]
 
     try:
         yield CaptureTracingProcessor(
@@ -60,8 +60,8 @@ def dual_processors() -> Iterator[CaptureTracingProcessor]:
         )
     finally:
         for p in processors:
-            p.force_flush()
-            p.shutdown()
+            p.force_flush()  # type: ignore[union-attr]
+            p.shutdown()  # type: ignore[union-attr]
 
 
 async def test_openai_agents_langsmith_dual_export(

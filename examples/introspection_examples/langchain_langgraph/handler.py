@@ -12,7 +12,12 @@ Run with:
 """
 
 from introspection_sdk import IntrospectionCallbackHandler
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
@@ -41,7 +46,7 @@ def main():
 
     city = random.choice(["Boston", "Tokyo", "Paris"])
 
-    messages = [
+    messages: list[BaseMessage] = [
         SystemMessage(
             content="You are a helpful weather assistant. "
             "Always use the get_weather tool to answer weather questions. "
@@ -59,7 +64,7 @@ def main():
     while response.tool_calls:
         for tc in response.tool_calls:
             print(f"Calling tool: {tc['name']}({tc['args']})")
-            result = get_weather.invoke(tc["args"], config=callbacks)
+            result = get_weather.invoke(tc["args"], config=callbacks)  # type: ignore[arg-type]
             messages.append(
                 ToolMessage(content=str(result), tool_call_id=tc["id"])
             )

@@ -1,0 +1,85 @@
+interactions:
+- request:
+    body: '{"max_tokens":10,"messages":[{"role":"user","content":"hi"}],"model":"claude-nonexistent-model"}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '96'
+      Content-Type:
+      - application/json
+      Host:
+      - api.anthropic.com
+      User-Agent:
+      - AsyncAnthropic/Python 0.85.0
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Async:
+      - async:asyncio
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Linux
+      X-Stainless-Package-Version:
+      - 0.85.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.11.15
+      anthropic-version:
+      - '2023-06-01'
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: '{"type":"error","error":{"type":"not_found_error","message":"model:
+        claude-nonexistent-model"},"request_id":"req_011CbTcgRuhac3wTvFfb7Yc5"}'
+    headers:
+      CF-RAY:
+      - a02761319cbacfa4-SJC
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:20:55 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - REDACTED_ANTHROPIC_ORG_ID
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '139'
+      request-id:
+      - req_011CbTcgRuhac3wTvFfb7Yc5
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      traceresponse:
+      - 00-0c53537c41ca8526e6d8785880078411-5d29452db687f2ff-01
+      vary:
+      - Accept-Encoding
+      x-envoy-upstream-service-time:
+      - '34'
+      x-should-retry:
+      - 'false'
+    status:
+      code: 404
+      message: Not Found
+version: 1

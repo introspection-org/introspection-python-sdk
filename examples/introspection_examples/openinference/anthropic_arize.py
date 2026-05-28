@@ -71,10 +71,10 @@ def main():
 
     for block in response.content:
         if block.type == "thinking":
-            print(f"  [Thinking] {getattr(block, 'thinking', '')[:100]}...")
-            print(f"  [Signature] {getattr(block, 'signature', '')[:40]}...")
+            print(f"  [Thinking] {block.thinking[:100]}...")  # ty: ignore[unresolved-attribute]
+            print(f"  [Signature] {block.signature[:40]}...")  # ty: ignore[unresolved-attribute]
         elif block.type == "text":
-            print(f"  [Response] {getattr(block, 'text', '')[:200]}")
+            print(f"  [Response] {block.text[:200]}")  # ty: ignore[unresolved-attribute]
     print()
 
     print("=== 2. Tool Calling with Thinking ===")
@@ -113,16 +113,14 @@ def main():
     tool_results = []
     for block in response.content:
         if block.type == "thinking":
-            print(f"  [Thinking] {getattr(block, 'thinking', '')[:100]}...")
+            print(f"  [Thinking] {block.thinking[:100]}...")  # ty: ignore[unresolved-attribute]
         elif block.type == "tool_use":
-            result = get_weather(getattr(block, "input", {})["location"])
-            print(
-                f"  [Tool call] {getattr(block, 'name', '')}({getattr(block, 'input', {})}) -> {result}"
-            )
+            result = get_weather(block.input["location"])  # ty: ignore[invalid-argument-type, unresolved-attribute]
+            print(f"  [Tool call] {block.name}({block.input}) -> {result}")  # ty: ignore[unresolved-attribute]
             tool_results.append(
                 {
                     "type": "tool_result",
-                    "tool_use_id": getattr(block, "id", ""),
+                    "tool_use_id": block.id,  # ty: ignore[unresolved-attribute]
                     "content": result,
                 }
             )
@@ -139,11 +137,9 @@ def main():
 
         for block in response2.content:
             if block.type == "thinking":
-                print(
-                    f"  [Thinking] {getattr(block, 'thinking', '')[:100]}..."
-                )
+                print(f"  [Thinking] {block.thinking[:100]}...")  # ty: ignore[unresolved-attribute]
             elif block.type == "text":
-                print(f"  [Response] {getattr(block, 'text', '')[:200]}")
+                print(f"  [Response] {block.text[:200]}")  # ty: ignore[unresolved-attribute]
 
     AnthropicInstrumentor().uninstrument()
     print("\n✓ All examples completed and traces exported.")

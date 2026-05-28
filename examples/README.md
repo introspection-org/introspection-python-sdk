@@ -8,6 +8,22 @@ uv sync --extra all
 export INTROSPECTION_TOKEN=your-token
 ```
 
+## One-liner: `introspection.init()`
+
+A single `introspection.init()` auto-detects the installed LLM frameworks and
+wires them in. The dual-export examples below also send traces to a third-party
+backend *and* Introspection at once — by putting the backend's exporter on the
+global `TracerProvider` before calling `init()`, which then attaches
+Introspection's pipeline to the same provider:
+
+```bash
+uv run -m introspection_examples.anthropic_sdk.anthropic_langfuse_init    # Anthropic + Langfuse
+uv run -m introspection_examples.anthropic_sdk.anthropic_langsmith_init   # Anthropic + LangSmith
+uv run -m introspection_examples.gemini_sdk.gemini_arize_init             # Gemini + Arize
+uv run -m introspection_examples.openai_agents.agents_braintrust_init     # OpenAI Agents + Braintrust
+uv run -m introspection_examples.gemini_sdk.gemini_init                   # Gemini only (no dual export)
+```
+
 ## First-Party Integrations
 
 ### OpenAI Agents SDK
@@ -27,6 +43,14 @@ Uses `AnthropicInstrumentor` to capture the full Anthropic response including ex
 
 ```bash
 uv run -m introspection_examples.anthropic_sdk.anthropic_native     # Thinking + tool calling
+```
+
+### Gemini SDK (native)
+
+Uses `GeminiInstrumentor` to capture the full Gemini response including thought signatures — encrypted reasoning-state tokens that Gemini 3.x attaches to text and function-call parts and must be replayed on subsequent turns:
+
+```bash
+uv run -m introspection_examples.gemini_sdk.gemini_native           # Thought signatures + tool calling
 ```
 
 ### Claude Agent SDK
@@ -94,6 +118,7 @@ uv run -m introspection_examples.openinference.anthropic_langfuse    # + Langfus
 examples/introspection_examples/
   openai_agents/       # OpenAI Agents SDK (first-party integration)
   anthropic_sdk/       # Anthropic SDK (native AnthropicInstrumentor)
+  gemini_sdk/          # Google Gemini SDK (native GeminiInstrumentor)
   claude_agent/        # Claude Agent SDK (first-party integration)
   langchain_langgraph/ # LangChain / LangGraph
   logfire_examples/    # Logfire (OpenAI / Anthropic clients)
