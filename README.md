@@ -67,19 +67,17 @@ pip install introspection-sdk
 ```
 
 ```python
+import os
+from uuid import UUID
 from introspection_sdk import IntrospectionClient
 
-client = IntrospectionClient(
-    token="intro_xxx",        # or env: INTROSPECTION_TOKEN
-    project_id="proj_…",      # or env: INTROSPECTION_PROJECT_ID
-)
+client = IntrospectionClient(token="your-token")
 
-runner = client.runtimes("customer-agent").run(
-    identity={"user_id": "u_42"},
-)
-run = runner.tasks.create(prompt="Summarize this repo")
-for event in run.stream():
-    print(event)
+runtime_id = UUID(os.environ["INTROSPECTION_RUNTIME_ID"])
+runner = client.runtimes(runtime_id).run()
+run = runner.tasks.start(prompt="Summarize this repo")
+text = run.text()
+print(text)
 
 runner.close()
 client.shutdown()
