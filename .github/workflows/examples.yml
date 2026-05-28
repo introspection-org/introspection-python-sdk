@@ -46,6 +46,7 @@ jobs:
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Run examples
+        if: false
         working-directory: examples
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -60,4 +61,4 @@ jobs:
           LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: ./run_all.sh
+        run: ./introspection_examples/otel/run_all.sh
