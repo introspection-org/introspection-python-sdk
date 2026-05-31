@@ -16,12 +16,33 @@ from __future__ import annotations
 import json as _json
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 import httpx
 import pytest
+from pydantic import BaseModel
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk.schemas.experiments import Experiment
+from introspection_sdk.schemas.files import File, FileType
+from introspection_sdk.schemas.pagination import Paginated
+from introspection_sdk.schemas.recipes import Recipe
+from introspection_sdk.schemas.runner import (
+    RunnerContext,
+    RunnerDeployment,
+    RunnerSpec,
+)
+from introspection_sdk.schemas.runtimes import Runtime
+from introspection_sdk.schemas.tasks import (
+    Task,
+    TaskCancelResponse,
+    TaskCreateResponse,
+    TaskRun,
+    TaskRunResponse,
+    TaskStatus,
+)
 
 # --- Fixed identifiers reused across payloads -----------------------
 
@@ -34,8 +55,6 @@ RECIPE_ID = "33333333-3333-3333-3333-333333333333"
 REPOSITORY_ID = "44444444-4444-4444-4444-444444444444"
 TASK_ID = "55555555-5555-5555-5555-555555555555"
 FILE_ID = "66666666-6666-6666-6666-666666666666"
-
-_NOW = "2025-01-01T00:00:00Z"
 
 
 # --- In-process transport -------------------------------------------
@@ -85,7 +104,7 @@ class FakeAPI:
         def _factory(_request: httpx.Request) -> httpx.Response:
             kwargs: dict[str, Any] = {}
             if json_body is not None:
-                kwargs["json"] = json_body
+                kwargs["json"] = to_jsonable(json_body)
             elif content is not None:
                 kwargs["content"] = content
             return httpx.Response(
@@ -140,10 +159,31 @@ def fake_api() -> FakeAPI:
 
 
 # --- Sample wire payloads -------------------------------------------
+#
+# Built from the SDK's own typed response models rather than raw dicts.
+# Constructing the model validates the fixture against the schema at
+# build time (missing/mistyped fields fail loudly here instead of
+# silently producing a dict that happens to parse), and ``to_jsonable``
+# serialises them to the JSON the fake API returns. The strongest,
+# non-circular assertions still live in the tests themselves: the
+# ``fake_api.last_request`` checks on method / path / params / body.
+
+_NOW_DT = datetime(2025, 1, 1, tzinfo=UTC)
 
 
-def runtime_payload(**over: Any) -> dict[str, Any]:
-    base = {
+def to_jsonable(obj: Any) -> Any:
+    """Recursively turn pydantic models into JSON-ready primitives."""
+    if isinstance(obj, BaseModel):
+        return obj.model_dump(mode="json")
+    if isinstance(obj, dict):
+        return {k: to_jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [to_jsonable(v) for v in obj]
+    return obj
+
+
+def runtime_payload(**over: Any) -> Runtime:
+    defaults: dict[str, Any] = {
         "id": RUNTIME_ID,
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
@@ -151,24 +191,24 @@ def runtime_payload(**over: Any) -> dict[str, Any]:
         "recipe_id": RECIPE_ID,
         "is_active": True,
     }
-    base.update(over)
-    return base
+    defaults.update(over)
+    return Runtime(**defaults)
 
 
-def experiment_payload(**over: Any) -> dict[str, Any]:
-    base = {
+def experiment_payload(**over: Any) -> Experiment:
+    defaults: dict[str, Any] = {
         "id": EXPERIMENT_ID,
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
         "name": "prompt-bake-off",
         "status": "running",
     }
-    base.update(over)
-    return base
+    defaults.update(over)
+    return Experiment(**defaults)
 
 
-def recipe_payload(**over: Any) -> dict[str, Any]:
-    base = {
+def recipe_payload(**over: Any) -> Recipe:
+    defaults: dict[str, Any] = {
         "id": RECIPE_ID,
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
@@ -178,82 +218,93 @@ def recipe_payload(**over: Any) -> dict[str, Any]:
         "git_ref": "main",
         "git_commit_sha": "abc123",
         "created_by_member_id": MEMBER_ID,
-        "created_at": _NOW,
-        "updated_at": _NOW,
+        "created_at": _NOW_DT,
+        "updated_at": _NOW_DT,
     }
-    base.update(over)
-    return base
+    defaults.update(over)
+    return Recipe(**defaults)
 
 
-def runner_spec_payload(**over: Any) -> dict[str, Any]:
-    base = {
+def runner_spec_payload(**over: Any) -> RunnerSpec:
+    defaults: dict[str, Any] = {
         "session_id": "sess-1",
-        "deployment": {
-            "endpoint": "https://dp.test",
-            "slug": "dp-us-east",
-            "region": "us-east",
-        },
+        "deployment": RunnerDeployment(
+            endpoint="https://dp.test",
+            slug="dp-us-east",
+            region="us-east",
+        ),
         "session_token": "runner-jwt",
-        "expires_at": _NOW,
-        "runtime_context": {
-            "runtime_id": RUNTIME_ID,
-            "arm_label": "control",
-        },
+        "expires_at": _NOW_DT,
+        "runtime_context": RunnerContext(
+            runtime_id=UUID(RUNTIME_ID), arm_label="control"
+        ),
     }
-    base.update(over)
-    return base
+    defaults.update(over)
+    return RunnerSpec(**defaults)
 
 
-def task_payload(**over: Any) -> dict[str, Any]:
-    base = {
+def task_payload(**over: Any) -> Task:
+    defaults: dict[str, Any] = {
         "id": TASK_ID,
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
-        "created_at": _NOW,
-        "updated_at": _NOW,
+        "created_at": _NOW_DT,
+        "updated_at": _NOW_DT,
         "title": "Summarize repo",
-        "status": "pending",
+        "status": TaskStatus.PENDING,
     }
-    base.update(over)
-    return base
+    defaults.update(over)
+    return Task(**defaults)
 
 
-def task_run_payload(**over: Any) -> dict[str, Any]:
-    base = {
+def task_run_payload(**over: Any) -> TaskRun:
+    defaults: dict[str, Any] = {
         "id": "run-1",
         "task_id": TASK_ID,
-        "status": "running",
+        "status": TaskStatus.RUNNING,
     }
-    base.update(over)
-    return base
+    defaults.update(over)
+    return TaskRun(**defaults)
 
 
-def file_payload(**over: Any) -> dict[str, Any]:
-    base = {
+def task_create_response() -> TaskCreateResponse:
+    return TaskCreateResponse(task=task_payload(), run=task_run_payload())
+
+
+def task_run_response() -> TaskRunResponse:
+    return TaskRunResponse(run=task_run_payload())
+
+
+def task_cancel_response(run_id: str = "run-1") -> TaskCancelResponse:
+    return TaskCancelResponse(id=run_id)
+
+
+def file_payload(**over: Any) -> File:
+    defaults: dict[str, Any] = {
         "id": FILE_ID,
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
-        "created_at": _NOW,
-        "updated_at": _NOW,
+        "created_at": _NOW_DT,
+        "updated_at": _NOW_DT,
         "name": "input.jsonl",
-        "file_type": "upload",
+        "file_type": FileType.UPLOAD,
         "storage_path": "files/input.jsonl",
         "mime_type": "application/json",
         "size_bytes": 123,
     }
-    base.update(over)
-    return base
+    defaults.update(over)
+    return File(**defaults)
 
 
 def paginated(
-    records: list[dict[str, Any]],
+    records: list[BaseModel],
     *,
     next: str | None = None,
     total_count: int | None = None,
-) -> dict[str, Any]:
-    out: dict[str, Any] = {"records": records, "count": len(records)}
-    if next is not None:
-        out["next"] = next
-    if total_count is not None:
-        out["total_count"] = total_count
-    return out
+) -> Paginated[Any]:
+    return Paginated[Any](
+        records=list(records),
+        count=len(records),
+        next=next,
+        total_count=total_count,
+    )

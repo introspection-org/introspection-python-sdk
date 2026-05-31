@@ -7,6 +7,8 @@ lifecycle and accessors without issuing requests (construction and
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from introspection_sdk._errors import IntrospectionAPIError
@@ -17,8 +19,8 @@ from introspection_sdk.schemas.runner import RunnerSpec
 from .conftest import RUNTIME_ID, runner_spec_payload
 
 
-def _spec(**over: object) -> RunnerSpec:
-    return RunnerSpec.model_validate(runner_spec_payload(**over))
+def _spec(**over: Any) -> RunnerSpec:
+    return runner_spec_payload(**over)
 
 
 def _runner() -> Runner:

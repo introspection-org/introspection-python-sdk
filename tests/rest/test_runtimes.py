@@ -27,6 +27,7 @@ from .conftest import (
     recipe_payload,
     runner_spec_payload,
     runtime_payload,
+    to_jsonable,
 )
 
 
@@ -64,7 +65,7 @@ def test_iter_follows_pagination(fake_api: FakeAPI):
     fake_api.add_handler(
         "GET",
         "/v1/runtimes",
-        lambda req: httpx.Response(200, json=next(pages)),
+        lambda req: httpx.Response(200, json=to_jsonable(next(pages))),
     )
     names = [r.name for r in _runtimes(fake_api).iter(project_id=PROJECT_ID)]
     assert names == ["a", "b"]

@@ -9,8 +9,11 @@ from .conftest import (
     TASK_ID,
     FakeAPI,
     paginated,
+    task_cancel_response,
+    task_create_response,
     task_payload,
     task_run_payload,
+    task_run_response,
 )
 
 
@@ -33,11 +36,7 @@ def test_iter(fake_api: FakeAPI):
 
 
 def test_create_serialises_mode_enum(fake_api: FakeAPI):
-    fake_api.add(
-        "POST",
-        "/v1/tasks",
-        json_body={"task": task_payload(), "run": task_run_payload()},
-    )
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
     res = _tasks(fake_api).create(
         prompt="hello", mode=TaskMode.INTROSPECT, metadata=None
     )
@@ -81,11 +80,7 @@ def test_delete_archive_unarchive(fake_api: FakeAPI):
 
 
 def test_start_returns_run_handle(fake_api: FakeAPI):
-    fake_api.add(
-        "POST",
-        "/v1/tasks",
-        json_body={"task": task_payload(), "run": task_run_payload()},
-    )
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
     handle = _tasks(fake_api).start(prompt="go")
     assert isinstance(handle, RunHandle)
     assert handle.run.id == "run-1"
@@ -96,7 +91,7 @@ def test_runs_create_with_prompt_model(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs",
-        json_body={"run": task_run_payload()},
+        json_body=task_run_response(),
     )
     handle = _tasks(fake_api).runs.create(
         TASK_ID, prompt=TaskPrompt(text="hi")
@@ -109,7 +104,7 @@ def test_runs_create_with_message(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs",
-        json_body={"run": task_run_payload()},
+        json_body=task_run_response(),
     )
     _tasks(fake_api).runs.create(TASK_ID, message="ping")
     assert fake_api.last_request.json() == {"message": "ping"}
@@ -129,12 +124,12 @@ def test_run_handle_cancel(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs/run-1/cancel",
-        json_body={"id": "run-1"},
+        json_body=task_cancel_response("run-1"),
     )
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs",
-        json_body={"run": task_run_payload()},
+        json_body=task_run_response(),
     )
     handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
     assert handle.cancel().id == "run-1"
@@ -145,7 +140,7 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs",
-        json_body={"run": task_run_payload()},
+        json_body=task_run_response(),
     )
     fake_api.add(
         "GET",
