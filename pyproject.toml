@@ -135,9 +135,10 @@ omit = [
 
 [tool.coverage.report]
 # Ratchet: this floor moves up as new tests land. Do not lower it.
-# Temporarily relaxed from 70 → 60 to land the REST + OTel split; ratchet
-# back up as coverage on the new REST surface lands.
-fail_under = 60
+# Relaxed to 60 to land the REST + OTel split; ratcheted back up to 80
+# once the REST/runner surface, the gen_ai→OpenInference converter, and
+# the IntrospectionLogs surface gained recording-/transport-backed tests.
+fail_under = 80
 exclude_also = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
