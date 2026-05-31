@@ -13,29 +13,32 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
-from opentelemetry.trace import StatusCode
-
-pytest.importorskip("langchain_core")
-
-from langchain_core.messages import (  # noqa: E402
+from langchain_core.messages import (
     AIMessage,
     HumanMessage,
     SystemMessage,
     ToolMessage,
 )
-from langchain_core.outputs import (  # noqa: E402
+from langchain_core.outputs import (
     ChatGeneration,
     Generation,
     LLMResult,
 )
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import StatusCode
 
-from introspection_sdk import AdvancedOptions  # noqa: E402
-from introspection_sdk.otel.processors.langchain_callback_handler import (  # noqa: E402
+from introspection_sdk import AdvancedOptions
+from introspection_sdk.otel.processors.langchain_callback_handler import (
     IntrospectionCallbackHandler,
 )
+
+# ``langchain-core`` is a pinned dependency of the ``test`` extra, so it
+# is imported unconditionally here rather than guarded with
+# ``importorskip``. A silent skip would hide this coverage in any env
+# that forgot the extra (and violates the AGENTS "no skip without a
+# linked issue" rule); a missing import should fail loudly instead.
 
 
 @pytest.fixture

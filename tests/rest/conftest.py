@@ -1,14 +1,24 @@
 """Shared fixtures for the REST / Runner surface tests.
 
-These tests drive the REST namespaces through a **real in-process httpx
-transport** (:class:`httpx.MockTransport`) backed by a small route table.
-Despite the upstream class name, this is not a ``unittest.mock`` object:
-the handler runs real Python and returns genuine :class:`httpx.Response`
-instances, and nothing in ``introspection_sdk`` is patched or stubbed.
-This keeps the suite aligned with ``AGENTS.md`` ("recordings, never
-mocks; MagicMock/patch/monkeypatch reserved for pure-unit helpers")
-while running fully offline — there is no live Introspection backend to
-record cassettes against in CI.
+These are **offline contract/unit tests** for the SDK's client side.
+They drive the REST namespaces through :class:`httpx.MockTransport`
+backed by a small route table: the handler runs real Python and returns
+genuine :class:`httpx.Response` instances, and nothing in
+``introspection_sdk`` is patched or stubbed (no ``MagicMock`` / ``patch``
+/ ``monkeypatch`` of SDK or HTTP internals). Response fixtures are built
+from the SDK's own typed schemas, so they are schema-valid by
+construction.
+
+Scope and honesty about what this does *not* do: ``MockTransport`` is
+not a ``pytest-recording`` cassette, so these tests do **not** verify
+the live Introspection wire contract — only that the SDK builds the
+right request (method / path / params / body / headers) and parses a
+well-formed response correctly. The canned bodies encode our assumption
+of the server contract; real-API drift is caught by the live
+``-m integration`` job in ``ci.yml``, not here. The longer-term plan in
+``AGENTS.md`` is to back the happy paths with recorded cassettes once a
+live backend/token is available in CI; until then these stay framed as
+contract tests rather than recordings.
 """
 
 from __future__ import annotations
