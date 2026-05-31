@@ -6,11 +6,13 @@ constructor hook exists precisely for this) — no mocks.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
 
 from introspection_sdk.otel.logs import IntrospectionLogs
-from introspection_sdk.otel.types import Attr, EventName
+from introspection_sdk.otel.types import Attr, Baggage, EventName
 
 
 @pytest.fixture
@@ -124,10 +126,14 @@ def test_set_user_and_anonymous_id_helpers(logs):
 
 
 def test_set_baggage_serialises_non_string_values(logs, exporter):
-    with logs.set_baggage(**{Attr.CONVERSATION_ID: "c"}):
+    # A non-string baggage value hits the json.dumps() branch in
+    # set_baggage and is stored as a string; the emitted event then
+    # carries that serialised value.
+    vals: dict[str, Any] = {Baggage.CONVERSATION_ID: 123}
+    with logs.set_baggage(**vals):
         logs.track("X")
-    # Just ensure no error and the event was emitted.
-    assert len(_records(logs, exporter)) == 1
+    (record,) = _records(logs, exporter)
+    assert record.attributes[Attr.CONVERSATION_ID] == "123"
 
 
 def test_reset_clears_traits(logs):
@@ -143,20 +149,16 @@ def test_shutdown_is_callable(logs):
 
 
 def test_missing_token_warns(caplog: pytest.LogCaptureFixture, exporter):
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("WARNING", logger="introspection-sdk"):
         IntrospectionLogs(token="", log_exporter=exporter)
     assert "No token provided" in caplog.text
 
 
-@pytest.mark.parametrize(
-    "base_url",
-    [
-        "https://otel.example.test",
-        "https://otel.example.test/v1/logs",
-    ],
-)
-def test_constructs_otlp_endpoint_without_exporter(base_url: str):
-    # No network at construction time; this exercises the endpoint
-    # derivation branches when no test exporter is injected.
-    logs = IntrospectionLogs(token="t", base_otel_url=base_url)
-    logs.shutdown()
+# NOTE: the OTLP endpoint-derivation branch (base_otel_url -> ".../v1/logs")
+# in IntrospectionLogs.__init__ is intentionally left uncovered here. The
+# only way to exercise it is to build a real OTLPLogExporter, which couples
+# the test to real network I/O (the provider flushes on atexit) just to
+# verify string concatenation. The right fix is a small source refactor to
+# extract a pure `_derive_otlp_endpoint()` helper that can be unit-tested
+# directly; that belongs in a change that touches introspection_sdk, not
+# this test-only PR.

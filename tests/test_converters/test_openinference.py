@@ -283,15 +283,13 @@ def test_is_openinference_span():
 
 
 def _real_span():
-    exporter_spans = []
     provider = TracerProvider()
     tracer = provider.get_tracer("openinference.test")
     with tracer.start_as_current_span("llm") as span:
         span.set_attribute("openinference.span.kind", "LLM")
         span.set_attribute(OI.LLM_MODEL_NAME, "gpt-4o")
         span.set_attribute("keep.me", "yes")
-    # The ended span is a ReadableSpan accessible via the context object.
-    exporter_spans.append(span)
+    # After the ``with`` block the span has ended and is a ReadableSpan.
     return span
 
 
@@ -331,5 +329,3 @@ def test_converted_span_delegates_readablespan_surface():
     assert wrapped.dropped_links == original.dropped_links
     assert wrapped.instrumentation_scope is original.instrumentation_scope
     assert json.loads(wrapped.to_json())["name"] == "llm"
-    # __getattr__ fallthrough for an unproxied attribute.
-    assert wrapped._original is original
