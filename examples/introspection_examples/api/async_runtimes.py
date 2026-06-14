@@ -43,9 +43,7 @@ async def main() -> None:
         print(f"runner -> dp={runner.dp_endpoint}, ctx={runner.context}")
 
         async with runner:
-            run = await runner.tasks.start(
-                prompt="Say hello in one sentence."
-            )
+            run = await runner.tasks.start(prompt="Say hello in one sentence.")
             task_id = run.task.id if run.task else None
             print(f"spawned task={task_id}, run={run.run.id}")
 
