@@ -82,6 +82,28 @@ runner.close()
 client.shutdown()
 ```
 
+### Async
+
+Prefer `asyncio`? `AsyncIntrospectionClient` is a drop-in async twin — everything that touches the network is awaitable, `list()` returns an `AsyncPager` you `await` (first page) or `async for` (stream all pages), and run streams are consumed with `async for`. Both clients are first-class; pick the one that fits your app:
+
+```python
+import asyncio
+
+from introspection_sdk import AsyncIntrospectionClient
+
+
+async def main() -> None:
+    async with AsyncIntrospectionClient() as client:  # token from INTROSPECTION_TOKEN
+        runner = await client.runtimes("customer-agent").run()
+        async with runner:
+            run = await runner.tasks.start(prompt="Say hello in one sentence.")
+            async for event in run.stream():
+                print(f"[{event.event}] {event.data}")
+
+
+asyncio.run(main())
+```
+
 A Runner exposes three DP-bound namespaces side by side: `runner.tasks`, `runner.files`, and the read-only `runner.conversations`. The conversations namespace lists conversation summaries (`runner.conversations.list()`), loads the latest LLM turn of a conversation as a Responses-API-style view (`runner.conversations.retrieve(conversation_id)`), and walks a conversation's per-turn items (`runner.conversations.items.list(...)`).
 
 Every `list()` returns a `Pager`: iterate it to stream every item across pages (fetched lazily), or call `.page()` for the first page with its envelope metadata (counts, cursors):
