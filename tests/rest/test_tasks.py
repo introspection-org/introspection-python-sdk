@@ -32,7 +32,7 @@ def test_list_with_filters(fake_api: FakeAPI):
 
 def test_iter(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/tasks", json_body=paginated([task_payload()]))
-    assert len(list(_tasks(fake_api).iter())) == 1
+    assert len(list(_tasks(fake_api).list())) == 1
 
 
 def test_create_serialises_mode_enum(fake_api: FakeAPI):

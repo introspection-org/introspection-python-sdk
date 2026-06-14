@@ -137,7 +137,7 @@ def test_iter_drives_cursor_next_until_exhausted(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    summaries = list(convos.iter())
+    summaries = list(convos.list())
 
     assert len(summaries) == 2
     assert summaries[1].trace_id == "trace-2"
@@ -182,7 +182,7 @@ def test_items_iter_drives_after_while_has_more(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    items = list(convos.items.iter("conv-1"))
+    items = list(convos.items.list("conv-1"))
 
     assert [i.id for i in items] == ["item-1", "item-2", "item-3"]
     assert len(fake_api.requests) == 2
@@ -196,7 +196,7 @@ def test_items_iter_terminates_on_empty_page(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    items = list(convos.items.iter("conv-1"))
+    items = list(convos.items.list("conv-1"))
 
     assert items == []
     assert len(fake_api.requests) == 1
@@ -215,7 +215,7 @@ def test_items_iter_walks_ascending_transcript(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    items = list(convos.items.iter("conv-1", order="asc"))
+    items = list(convos.items.list("conv-1", order="asc"))
 
     assert [i.id for i in items] == ["item-1", "item-2"]
     assert fake_api.requests[0].params.get("order") == "asc"

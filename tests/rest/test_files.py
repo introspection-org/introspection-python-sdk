@@ -66,7 +66,7 @@ def test_list_with_file_type_enum(fake_api: FakeAPI):
 
 def test_iter(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
-    assert len(list(_files(fake_api).iter())) == 1
+    assert len(list(_files(fake_api).list())) == 1
 
 
 def test_upload_sends_multipart(fake_api: FakeAPI):
@@ -139,7 +139,7 @@ def test_versions_iter(fake_api: FakeAPI):
         f"/v1/files/{FILE_ID}/versions",
         json_body=paginated([file_payload()]),
     )
-    assert len(list(_files(fake_api).versions.iter(FILE_ID))) == 1
+    assert len(list(_files(fake_api).versions.list(FILE_ID))) == 1
 
 
 def test_versions_get(fake_api: FakeAPI):

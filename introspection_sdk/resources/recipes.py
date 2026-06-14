@@ -8,11 +8,12 @@ section "Recipes — `client.recipes` (CP)".
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk.pagination import Pager, cursor_paginate
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.recipes import (
     Recipe,
@@ -46,30 +47,27 @@ class Recipes:
         limit: int | None = None,
         next: str | None = None,
         include_total: bool | None = None,
-    ) -> Paginated[Recipe]:
-        params: dict[str, Any] = {
-            "project_id": str(project_id),
-            "repository_id": (
-                str(repository_id) if repository_id is not None else None
-            ),
-            "name": name,
-            "git_ref": git_ref,
-            "git_commit_sha": git_commit_sha,
-            "limit": limit,
-            "next": next,
-            "include_total": include_total,
-        }
-        payload = self._http.request("GET", "/v1/recipes", params=params)
-        return Paginated[Recipe].model_validate(payload)
+    ) -> Pager[Recipe, Paginated[Recipe]]:
+        """List recipes. Iterate the returned :class:`Pager` to stream every
+        recipe across pages, or call ``.page()`` for the first page only."""
 
-    def iter(self, **filters: Any) -> Iterator[Recipe]:
-        next_token: str | None = filters.pop("next", None)
-        while True:
-            page = self.list(next=next_token, **filters)
-            yield from page.records
-            if not page.next:
-                return
-            next_token = page.next
+        def fetch(cursor: str | None) -> Paginated[Recipe]:
+            params: dict[str, Any] = {
+                "project_id": str(project_id),
+                "repository_id": (
+                    str(repository_id) if repository_id is not None else None
+                ),
+                "name": name,
+                "git_ref": git_ref,
+                "git_commit_sha": git_commit_sha,
+                "limit": limit,
+                "next": cursor,
+                "include_total": include_total,
+            }
+            payload = self._http.request("GET", "/v1/recipes", params=params)
+            return Paginated[Recipe].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
 
     def get(self, recipe_id: str | UUID) -> Recipe:
         payload = self._http.request("GET", f"/v1/recipes/{recipe_id}")

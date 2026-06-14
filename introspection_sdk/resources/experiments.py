@@ -8,11 +8,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk.pagination import Pager, cursor_paginate
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.experiments import (
     Experiment,
@@ -57,25 +58,25 @@ class Experiments:
         status: str | None = None,
         limit: int = 100,
         next: str | None = None,
-    ) -> Paginated[Experiment]:
-        params: dict[str, Any] = {
-            "project_id": project_id,
-            "name": name,
-            "status": status,
-            "limit": limit,
-            "next": next,
-        }
-        payload = self._http.request("GET", "/v1/experiments", params=params)
-        return Paginated[Experiment].model_validate(payload)
+    ) -> Pager[Experiment, Paginated[Experiment]]:
+        """List experiments. Iterate the returned :class:`Pager` to stream
+        every experiment across pages, or call ``.page()`` for the first
+        page only."""
 
-    def iter(self, **filters: Any) -> Iterator[Experiment]:
-        next_token: str | None = filters.pop("next", None)
-        while True:
-            page = self.list(next=next_token, **filters)
-            yield from page.records
-            if not page.next:
-                return
-            next_token = page.next
+        def fetch(cursor: str | None) -> Paginated[Experiment]:
+            params: dict[str, Any] = {
+                "project_id": project_id,
+                "name": name,
+                "status": status,
+                "limit": limit,
+                "next": cursor,
+            }
+            payload = self._http.request(
+                "GET", "/v1/experiments", params=params
+            )
+            return Paginated[Experiment].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
 
     def get(
         self, experiment_id: str | UUID, *, project_id: str | None = None

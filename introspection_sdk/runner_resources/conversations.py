@@ -16,10 +16,10 @@ Two distinct paging protocols live side by side here:
 from __future__ import annotations
 
 import builtins
-from collections.abc import Iterator
 from typing import Any
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk.pagination import Pager, after_paginate, cursor_paginate
 from introspection_sdk.schemas.conversations import (
     ConversationItem,
     ConversationItemInclude,
@@ -93,8 +93,8 @@ class ConversationItems:
     """Items of a conversation (``/v1/conversations/{id}/items``). Read-only.
 
     Paging is OpenAI-style underneath: the envelope has no ``next`` token —
-    :meth:`iter` drives ``after`` = the previous page's ``last_id`` while
-    ``has_more`` is true.
+    the returned :class:`~introspection_sdk.pagination.Pager` drives
+    ``after`` = the previous page's ``last_id`` while ``has_more`` is true.
     """
 
     def __init__(self, http: _HttpClient) -> None:
@@ -112,48 +112,51 @@ class ConversationItems:
         service_name: str | None = None,
         operation_name: str | None = None,
         has_attribute: str | None = None,
-    ) -> ConversationItemList:
-        """Fetch a single page of conversation items (OpenAI-style envelope).
+    ) -> Pager[ConversationItem, ConversationItemList]:
+        """List conversation items (OpenAI-style ``after`` / ``has_more``
+        envelope). Iterate the returned :class:`Pager` to stream every item
+        across pages, or call ``.page()`` for the first page only. Pass
+        ``order="asc"`` to walk the transcript from the start.
 
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
         """
-        params: dict[str, Any] = {
-            "limit": limit,
-            "after": after,
-            "order": order,
-            "include": include,
-            "agent_name": agent_name,
-            "service_name": service_name,
-            "operation_name": operation_name,
-            "has_attribute": has_attribute,
-        }
-        payload = self._http.request(
-            "GET",
-            f"/v1/conversations/{conversation_id}/items",
-            params=params,
-        )
-        if isinstance(payload, dict) and isinstance(payload.get("data"), list):
-            payload = {
-                **payload,
-                "data": [_normalize_item_payload(d) for d in payload["data"]],
-            }
-        return ConversationItemList.model_validate(payload)
 
-    def iter(
-        self, conversation_id: str, **filters: Any
-    ) -> Iterator[ConversationItem]:
-        """Stream every item across pages, driving ``after`` = ``last_id``
-        while ``has_more`` is true. Pass ``order="asc"`` to walk the
-        transcript from the start."""
-        after: str | None = filters.pop("after", None)
-        while True:
-            page = self.list(conversation_id, after=after, **filters)
-            yield from page.data
-            if not page.has_more or page.last_id is None:
-                return
-            after = page.last_id
+        def fetch(cursor: str | None) -> ConversationItemList:
+            params: dict[str, Any] = {
+                "limit": limit,
+                "after": cursor,
+                "order": order,
+                "include": include,
+                "agent_name": agent_name,
+                "service_name": service_name,
+                "operation_name": operation_name,
+                "has_attribute": has_attribute,
+            }
+            payload = self._http.request(
+                "GET",
+                f"/v1/conversations/{conversation_id}/items",
+                params=params,
+            )
+            if isinstance(payload, dict) and isinstance(
+                payload.get("data"), list
+            ):
+                payload = {
+                    **payload,
+                    "data": [
+                        _normalize_item_payload(d) for d in payload["data"]
+                    ],
+                }
+            return ConversationItemList.model_validate(payload)
+
+        return after_paginate(
+            fetch,
+            items=lambda page: page.data,
+            last_id=lambda page: page.last_id,
+            has_more=lambda page: page.has_more,
+            start=after,
+        )
 
     def get(
         self,
@@ -179,11 +182,12 @@ class ConversationItems:
 class Conversations:
     """Read-only Conversations API (``/v1/conversations``).
 
-    Both :meth:`iter` and :meth:`items.iter <ConversationItems.iter>`
-    auto-page, but they drive different wire protocols underneath:
-    :meth:`iter` walks the standard Introspection cursor envelope's opaque
-    ``next`` token, while ``items.iter`` walks an OpenAI-style envelope via
-    ``after`` = the previous page's ``last_id`` while ``has_more`` is true.
+    Both :meth:`list` and :meth:`items.list <ConversationItems.list>`
+    return an auto-paging :class:`~introspection_sdk.pagination.Pager`, but
+    they drive different wire protocols underneath: :meth:`list` walks the
+    standard Introspection cursor envelope's opaque ``next`` token, while
+    ``items.list`` walks an OpenAI-style envelope via ``after`` = the
+    previous page's ``last_id`` while ``has_more`` is true.
     """
 
     def __init__(self, http: _HttpClient) -> None:
@@ -203,33 +207,30 @@ class Conversations:
         service_names: builtins.list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
-    ) -> Paginated[ConversationSummary]:
-        """Fetch a single page of conversation summaries (cursor envelope)."""
-        params: dict[str, Any] = {
-            "limit": limit,
-            "next": next,
-            "include_total": include_total,
-            "model": model,
-            "agent_name": agent_name,
-            "status": status,
-            "service_name": service_name,
-            "service_names": service_names,
-            "start_date": start_date,
-            "end_date": end_date,
-        }
-        payload = self._http.request("GET", "/v1/conversations", params=params)
-        return Paginated[ConversationSummary].model_validate(payload)
+    ) -> Pager[ConversationSummary, Paginated[ConversationSummary]]:
+        """List conversation summaries (cursor envelope). Iterate the
+        returned :class:`Pager` to stream every summary across pages, or
+        call ``.page()`` for the first page only."""
 
-    def iter(self, **filters: Any) -> Iterator[ConversationSummary]:
-        """Stream every conversation summary across pages, driving the
-        opaque cursor ``next`` token until it is exhausted."""
-        next_token: str | None = filters.pop("next", None)
-        while True:
-            page = self.list(next=next_token, **filters)
-            yield from page.records
-            if not page.next:
-                return
-            next_token = page.next
+        def fetch(cursor: str | None) -> Paginated[ConversationSummary]:
+            params: dict[str, Any] = {
+                "limit": limit,
+                "next": cursor,
+                "include_total": include_total,
+                "model": model,
+                "agent_name": agent_name,
+                "status": status,
+                "service_name": service_name,
+                "service_names": service_names,
+                "start_date": start_date,
+                "end_date": end_date,
+            }
+            payload = self._http.request(
+                "GET", "/v1/conversations", params=params
+            )
+            return Paginated[ConversationSummary].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
 
     def retrieve(
         self, conversation_id: str, item_id: str | None = None
@@ -245,7 +246,7 @@ class Conversations:
         conversation has no items.
 
         For the full per-turn transcript instead, iterate
-        ``items.iter(conversation_id, order="asc")``.
+        ``items.list(conversation_id, order="asc")``.
         """
         target_id = item_id or self._find_latest_turn_id(conversation_id)
         if target_id is None:
@@ -277,7 +278,7 @@ class Conversations:
     def _find_latest_turn_id(self, conversation_id: str) -> str | None:
         """Scan items in descending order for the most recent LLM turn."""
         fallback: ConversationItem | None = None
-        for item in self.items.iter(conversation_id, order="desc"):
+        for item in self.items.list(conversation_id, order="desc"):
             if item.node_type == "assistant" or item.operation_name == "chat":
                 return item.id
             if fallback is None and item.output_message is not None:
