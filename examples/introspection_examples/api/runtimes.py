@@ -62,8 +62,29 @@ def main() -> None:
         )
         print(f"uploaded binary file: {binary.id}")
 
-        files_page = runner.files.list()
-        print(f"total files (first page): {len(files_page.records)}")
+        # `list()` returns a Pager: `.page()` for the first page with its
+        # envelope metadata, or iterate it to stream every item across pages.
+        files_page = runner.files.list(include_total=True).page()
+        print(f"total files: {files_page.total_count}")
+        for f in runner.files.list():
+            print(f"  file {f.id} ({f.name})")
+
+        # Read-only conversations namespace: list recent conversations,
+        # then load the latest LLM turn of one as a Responses-API-style
+        # view and walk its per-turn transcript.
+        convos_page = runner.conversations.list(limit=5).page()
+        print(f"recent conversations (first page): {len(convos_page.records)}")
+        if convos_page.records:
+            summary = convos_page.records[0]
+            cid = summary.conversation_id or summary.trace_id
+            response = runner.conversations.retrieve(cid)
+            if response is not None:
+                print(
+                    f"latest turn of {cid}: model={response.model}, "
+                    f"{len(response.input_messages)} input message(s)"
+                )
+            for item in runner.conversations.items.list(cid, order="asc"):
+                print(f"  item {item.id} ({item.node_type})")
     finally:
         runner.close()
         client.shutdown()

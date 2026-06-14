@@ -69,7 +69,7 @@ def test_iter_follows_pagination(fake_api: FakeAPI):
         return httpx.Response(200, json=to_jsonable(next(pages)))
 
     fake_api.add_handler("GET", "/v1/runtimes", _handler)
-    names = [r.name for r in _runtimes(fake_api).iter(project_id=PROJECT_ID)]
+    names = [r.name for r in _runtimes(fake_api).list(project_id=PROJECT_ID)]
     assert names == ["a", "b"]
     # The cursor from page 1 must be sent on the page-2 request; without
     # this a client that never forwarded ``next`` would still pass.

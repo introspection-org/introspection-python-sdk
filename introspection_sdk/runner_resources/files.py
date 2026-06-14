@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk.pagination import Pager, cursor_paginate
 from introspection_sdk.schemas.files import (
     File,
     FileCreateTextRequest,
@@ -65,25 +66,23 @@ class FileVersions:
         limit: int = 100,
         next: str | None = None,
         include_total: bool = False,
-    ) -> Paginated[File]:
-        params: dict[str, Any] = {
-            "limit": limit,
-            "next": next,
-            "include_total": include_total,
-        }
-        payload = self._http.request(
-            "GET", f"/v1/files/{file_id}/versions", params=params
-        )
-        return Paginated[File].model_validate(payload)
+    ) -> Pager[File, Paginated[File]]:
+        """List versions of a file. Iterate the returned :class:`Pager` to
+        stream every version across pages, or call ``.page()`` for the
+        first page only."""
 
-    def iter(self, file_id: str, **filters: Any) -> Iterator[File]:
-        next_token: str | None = filters.pop("next", None)
-        while True:
-            page = self.list(file_id, next=next_token, **filters)
-            yield from page.records
-            if not page.next:
-                return
-            next_token = page.next
+        def fetch(cursor: str | None) -> Paginated[File]:
+            params: dict[str, Any] = {
+                "limit": limit,
+                "next": cursor,
+                "include_total": include_total,
+            }
+            payload = self._http.request(
+                "GET", f"/v1/files/{file_id}/versions", params=params
+            )
+            return Paginated[File].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
 
     def get(self, file_id: str, version_id: str) -> File:
         payload = self._http.request(
@@ -133,30 +132,27 @@ class Files:
         name: str | None = None,
         file_type: FileType | str | None = None,
         storage_path: str | None = None,
-    ) -> Paginated[File]:
-        params: dict[str, Any] = {
-            "limit": limit,
-            "next": next,
-            "include_total": include_total,
-            "name": name,
-            "file_type": (
-                file_type.value
-                if isinstance(file_type, FileType)
-                else file_type
-            ),
-            "storage_path": storage_path,
-        }
-        payload = self._http.request("GET", "/v1/files", params=params)
-        return Paginated[File].model_validate(payload)
+    ) -> Pager[File, Paginated[File]]:
+        """List files. Iterate the returned :class:`Pager` to stream every
+        file across pages, or call ``.page()`` for the first page only."""
 
-    def iter(self, **filters: Any) -> Iterator[File]:
-        next_token: str | None = filters.pop("next", None)
-        while True:
-            page = self.list(next=next_token, **filters)
-            yield from page.records
-            if not page.next:
-                return
-            next_token = page.next
+        def fetch(cursor: str | None) -> Paginated[File]:
+            params: dict[str, Any] = {
+                "limit": limit,
+                "next": cursor,
+                "include_total": include_total,
+                "name": name,
+                "file_type": (
+                    file_type.value
+                    if isinstance(file_type, FileType)
+                    else file_type
+                ),
+                "storage_path": storage_path,
+            }
+            payload = self._http.request("GET", "/v1/files", params=params)
+            return Paginated[File].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
 
     def upload(
         self,

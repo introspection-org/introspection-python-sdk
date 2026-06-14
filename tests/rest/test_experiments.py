@@ -37,7 +37,7 @@ def test_iter_stops_when_no_next(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
     )
-    records = list(_experiments(fake_api).iter(project_id=PROJECT_ID))
+    records = list(_experiments(fake_api).list(project_id=PROJECT_ID))
     assert len(records) == 1
 
 

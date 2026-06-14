@@ -34,7 +34,7 @@ def test_list_serialises_uuid_filters(fake_api: FakeAPI):
 
 def test_iter(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/recipes", json_body=paginated([recipe_payload()]))
-    assert len(list(_recipes(fake_api).iter(project_id=PROJECT_ID))) == 1
+    assert len(list(_recipes(fake_api).list(project_id=PROJECT_ID))) == 1
 
 
 def test_get(fake_api: FakeAPI):

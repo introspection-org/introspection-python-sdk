@@ -54,7 +54,7 @@ pip install 'introspection-sdk[all]'            # Everything above
 
 The Python SDK exposes three surfaces you can adopt independently:
 
-1. **Introspection API (runtimes, tasks, files)** with `IntrospectionClient` — the main Introspection API. Zero OpenTelemetry imports. Always available.
+1. **Introspection API (runtimes, tasks, files, conversations)** with `IntrospectionClient` — the main Introspection API. Zero OpenTelemetry imports. Always available.
 2. **Analytics events (track, feedback, identify)** with `IntrospectionLogs` — OTel logs exporter with baggage helpers. Owns its own `LoggerProvider`. Lives at `introspection_sdk.IntrospectionLogs`. Requires the `[otel]` extra.
 3. **Traces (span processors + instrumentors)** with `IntrospectionSpanProcessor` and friends — `IntrospectionTracingProcessor`, `ClaudeTracingProcessor`, the LangChain callback handler, `AnthropicInstrumentor`, `GeminiInstrumentor`. Plus the `introspection_sdk.init()` convenience that auto-wires every supported framework. All under `introspection_sdk.otel` (or the dedicated `introspection_sdk.integrations.langchain` subpath for the LangChain handler). Requires the `[otel]` extra.
 
@@ -80,6 +80,22 @@ for event in run.stream():
 
 runner.close()
 client.shutdown()
+```
+
+A Runner exposes three DP-bound namespaces side by side: `runner.tasks`, `runner.files`, and the read-only `runner.conversations`. The conversations namespace lists conversation summaries (`runner.conversations.list()`), loads the latest LLM turn of a conversation as a Responses-API-style view (`runner.conversations.retrieve(conversation_id)`), and walks a conversation's per-turn items (`runner.conversations.items.list(...)`).
+
+Every `list()` returns a `Pager`: iterate it to stream every item across pages (fetched lazily), or call `.page()` for the first page with its envelope metadata (counts, cursors):
+
+```python
+# Stream every summary across all pages.
+for summary in runner.conversations.list(limit=20):
+    response = runner.conversations.retrieve(summary.conversation_id or summary.trace_id)
+    if response is not None:
+        print(response.model, len(response.input_messages))
+
+# Or just the first page, with totals.
+first = runner.files.list(include_total=True).page()
+print(first.total_count, len(first.records))
 ```
 
 See [`examples/api/runtimes.py`](examples/introspection_examples/api/runtimes.py) for an end-to-end walkthrough.

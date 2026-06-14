@@ -10,11 +10,12 @@ caller's project on first use.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk.pagination import Pager, cursor_paginate
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.recipes import Recipe
@@ -78,26 +79,24 @@ class Runtimes:
         only_active: bool | None = None,
         limit: int = 100,
         next: str | None = None,
-    ) -> Paginated[Runtime]:
-        params: dict[str, Any] = {
-            "project_id": project_id,
-            "name": name,
-            "recipe_id": recipe_id,
-            "only_active": only_active,
-            "limit": limit,
-            "next": next,
-        }
-        payload = self._http.request("GET", "/v1/runtimes", params=params)
-        return Paginated[Runtime].model_validate(payload)
+    ) -> Pager[Runtime, Paginated[Runtime]]:
+        """List runtimes. Iterate the returned :class:`Pager` to stream
+        every runtime across pages, or call ``.page()`` for the first page
+        only."""
 
-    def iter(self, **filters: Any) -> Iterator[Runtime]:
-        next_token: str | None = filters.pop("next", None)
-        while True:
-            page = self.list(next=next_token, **filters)
-            yield from page.records
-            if not page.next:
-                return
-            next_token = page.next
+        def fetch(cursor: str | None) -> Paginated[Runtime]:
+            params: dict[str, Any] = {
+                "project_id": project_id,
+                "name": name,
+                "recipe_id": recipe_id,
+                "only_active": only_active,
+                "limit": limit,
+                "next": cursor,
+            }
+            payload = self._http.request("GET", "/v1/runtimes", params=params)
+            return Paginated[Runtime].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
 
     def get(self, runtime_id: str | UUID, *, project_id: str) -> Runtime:
         payload = self._http.request(
@@ -202,7 +201,7 @@ class RuntimeHandle:
         }
         if self._project_id:
             params["project_id"] = self._project_id
-        page = self._runtimes.list(**params)
+        page = self._runtimes.list(**params).page()
         if not page.records:
             raise LookupError(f"No active runtime named {name!r}")
         if len(page.records) > 1:

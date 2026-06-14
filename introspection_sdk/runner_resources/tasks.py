@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk.pagination import Pager, cursor_paginate
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.tasks import (
     Task,
@@ -115,29 +116,26 @@ class Tasks:
         statuses: builtins.list[str] | None = None,
         modes: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
-    ) -> Paginated[Task]:
-        params: dict[str, Any] = {
-            "limit": limit,
-            "next": next,
-            "include_total": include_total,
-        }
-        if statuses:
-            params["statuses"] = statuses
-        if modes:
-            params["modes"] = modes
-        if require_automation_id is not None:
-            params["require_automation_id"] = require_automation_id
-        payload = self._http.request("GET", "/v1/tasks", params=params)
-        return Paginated[Task].model_validate(payload)
+    ) -> Pager[Task, Paginated[Task]]:
+        """List tasks. Iterate the returned :class:`Pager` to stream every
+        task across pages, or call ``.page()`` for the first page only."""
 
-    def iter(self, **filters: Any) -> Iterator[Task]:
-        next_token: str | None = filters.pop("next", None)
-        while True:
-            page = self.list(next=next_token, **filters)
-            yield from page.records
-            if not page.next:
-                return
-            next_token = page.next
+        def fetch(cursor: str | None) -> Paginated[Task]:
+            params: dict[str, Any] = {
+                "limit": limit,
+                "next": cursor,
+                "include_total": include_total,
+            }
+            if statuses:
+                params["statuses"] = statuses
+            if modes:
+                params["modes"] = modes
+            if require_automation_id is not None:
+                params["require_automation_id"] = require_automation_id
+            payload = self._http.request("GET", "/v1/tasks", params=params)
+            return Paginated[Task].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
 
     def create(
         self,
