@@ -1,5 +1,11 @@
-"""OTel Gen AI Semantic Convention schemas."""
+"""OTel Gen AI Semantic Convention schemas and DP resource mirrors."""
 
+from introspection_sdk.schemas.conversations import (
+    ConversationItem,
+    ConversationItemList,
+    ConversationResponse,
+    ConversationSummary,
+)
 from introspection_sdk.schemas.genai import (
     InputMessage,
     InputMessages,
@@ -12,6 +18,10 @@ from introspection_sdk.schemas.genai import (
 )
 
 __all__ = [
+    "ConversationItem",
+    "ConversationItemList",
+    "ConversationResponse",
+    "ConversationSummary",
     "TextPart",
     "ToolCallRequestPart",
     "ToolCallResponsePart",

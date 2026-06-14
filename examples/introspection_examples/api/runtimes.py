@@ -64,6 +64,23 @@ def main() -> None:
 
         files_page = runner.files.list()
         print(f"total files (first page): {len(files_page.records)}")
+
+        # Read-only conversations namespace: list recent conversations,
+        # then load the latest LLM turn of one as a Responses-API-style
+        # view and walk its per-turn transcript.
+        convos_page = runner.conversations.list(limit=5)
+        print(f"recent conversations (first page): {len(convos_page.records)}")
+        if convos_page.records:
+            summary = convos_page.records[0]
+            cid = summary.conversation_id or summary.trace_id
+            response = runner.conversations.retrieve(cid)
+            if response is not None:
+                print(
+                    f"latest turn of {cid}: model={response.model}, "
+                    f"{len(response.input_messages)} input message(s)"
+                )
+            for item in runner.conversations.items.iter(cid, order="asc"):
+                print(f"  item {item.id} ({item.node_type})")
     finally:
         runner.close()
         client.shutdown()

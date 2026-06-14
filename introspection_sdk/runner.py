@@ -3,8 +3,9 @@
 
 The Runner is an agent-session with a runtime context attached. It
 owns the DP endpoint + session-locator JWT minted by the CP
-``/run`` call and exposes ``runner.tasks`` and ``runner.files``
-that target that endpoint. The DP-side agent-session machinery
+``/run`` call and exposes ``runner.tasks``, ``runner.files`` and the
+read-only ``runner.conversations`` namespaces that target that
+endpoint. The DP-side agent-session machinery
 materializes the real access token from the session lookup on
 each request, so the SDK does not need to drive refresh itself —
 ``runner.refresh()`` stays as a manual escape hatch that re-calls
@@ -18,9 +19,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from datetime import datetime
 
-from introspection_sdk._errors import IntrospectionAPIError
+from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk._http import _HttpClient
-from introspection_sdk.runner_resources import Files, Tasks
+from introspection_sdk.runner_resources import Conversations, Files, Tasks
 from introspection_sdk.schemas.runner import (
     RunnerContext,
     RunnerDeployment,
@@ -55,6 +56,7 @@ class Runner:
         self._http = self._build_http(spec)
         self._tasks = Tasks(self._http)
         self._files = Files(self._http)
+        self._conversations = Conversations(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _HttpClient:
         return _HttpClient(
@@ -66,7 +68,7 @@ class Runner:
 
     def _check_open(self) -> None:
         if self._closed:
-            raise IntrospectionAPIError(
+            raise RunnerExpiredError(
                 "Runner has been closed; create a new one via "
                 "client.runtimes(...).run() or client.experiments(...).run().",
                 status_code=0,
@@ -83,6 +85,12 @@ class Runner:
         """DP ``/v1/files`` namespace bound to this Runner."""
         self._check_open()
         return self._files
+
+    @property
+    def conversations(self) -> Conversations:
+        """Read-only DP ``/v1/conversations`` namespace bound to this Runner."""
+        self._check_open()
+        return self._conversations
 
     @property
     def context(self) -> RunnerContext:
@@ -128,6 +136,7 @@ class Runner:
         self._http = self._build_http(new_spec)
         self._tasks = Tasks(self._http)
         self._files = Files(self._http)
+        self._conversations = Conversations(self._http)
         try:
             old_http.close()
         except Exception:  # noqa: BLE001 — best-effort cleanup
