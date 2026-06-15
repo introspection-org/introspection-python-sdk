@@ -83,7 +83,6 @@ jobs:
   create-tag:
     name: Create tag
     needs: resolve-version
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/tag.yml
     with:
       version: ${{ needs.resolve-version.outputs.version }}
