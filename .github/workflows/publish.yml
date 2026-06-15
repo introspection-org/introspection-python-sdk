@@ -40,6 +40,9 @@ jobs:
   # ── Test ───────────────────────────────────────────────────────────
   test:
     name: Test
+    # Tag-push releases already passed ci.yml on the tagged commit; only a
+    # manual workflow_dispatch publish lacks that upstream gate, so test there.
+    if: github.event_name == 'workflow_dispatch'
     needs: resolve-version
     runs-on: ubuntu-latest
     permissions:
@@ -75,6 +78,10 @@ jobs:
   publish:
     name: Publish v${{ needs.resolve-version.outputs.version }} to PyPI
     needs: [resolve-version, test]
+    if: |
+      always() &&
+      needs.resolve-version.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
     environment: publish
     permissions:
