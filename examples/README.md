@@ -11,7 +11,8 @@ export INTROSPECTION_TOKEN=your-token
 ## REST API
 
 ```bash
-uv run python -m introspection_examples.api.runtimes                 # Runner: tasks + files end-to-end
+uv run python -m introspection_examples.api.runtimes                 # Runner: tasks + files end-to-end (sync)
+uv run python -m introspection_examples.api.async_runtimes           # AsyncRunner: same flow on asyncio
 ```
 
 ## One-liner: `introspection.init()`

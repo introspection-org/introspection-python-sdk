@@ -40,8 +40,11 @@ from introspection_sdk._errors import (
     StreamError,
     ValidationError,
 )
-from introspection_sdk.client import IntrospectionClient
-from introspection_sdk.runner import Runner
+from introspection_sdk.client import (
+    AsyncIntrospectionClient,
+    IntrospectionClient,
+)
+from introspection_sdk.runner import AsyncRunner, Runner
 
 if TYPE_CHECKING:
     # Static type-checkers see the real classes; at runtime they're
@@ -190,6 +193,8 @@ def __getattr__(name: str) -> object:
 
 __all__ = [
     # Always-available REST surface
+    "AsyncIntrospectionClient",
+    "AsyncRunner",
     "AuthenticationError",
     "ConflictError",
     "InsufficientScopeError",

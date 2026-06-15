@@ -1,0 +1,301 @@
+"""Tests for the async REST / Runner surface.
+
+The async twin of the sync contract tests: same in-process
+``httpx.MockTransport`` route table (see ``conftest.FakeAPI``), driven
+through the ``Async*`` namespaces. Nothing in ``introspection_sdk`` is
+patched or stubbed. ``asyncio_mode = "auto"`` (pyproject) means the
+``async def test_*`` functions run without an explicit marker.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from introspection_sdk._errors import IntrospectionAPIError
+from introspection_sdk.pagination import AsyncPager
+from introspection_sdk.resources.experiments import AsyncExperiments
+from introspection_sdk.resources.runtimes import AsyncRuntimes
+from introspection_sdk.runner import AsyncRunner
+from introspection_sdk.runner_resources import (
+    AsyncFiles,
+    AsyncRunHandle,
+    AsyncTasks,
+)
+from introspection_sdk.schemas.runner import RunnerSpec
+from introspection_sdk.streaming import parse_sse_async
+
+from .conftest import (
+    EXPERIMENT_ID,
+    FILE_ID,
+    RUNTIME_ID,
+    TASK_ID,
+    FakeAPI,
+    experiment_payload,
+    file_payload,
+    paginated,
+    runner_spec_payload,
+    runtime_payload,
+    task_cancel_response,
+    task_create_response,
+    task_payload,
+    task_run_response,
+)
+
+
+def _spec(**over):
+    return runner_spec_payload(**over)
+
+
+# --- _AsyncHttpClient ------------------------------------------------
+
+
+async def test_http_request_and_error(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/tasks/" + TASK_ID, json_body=task_payload())
+    fake_api.add("GET", "/v1/tasks/missing", status=404, json_body={})
+    http = fake_api.async_client()
+    try:
+        payload = await http.request("GET", f"/v1/tasks/{TASK_ID}")
+        assert payload["id"] == TASK_ID
+        with pytest.raises(IntrospectionAPIError):
+            await http.request("GET", "/v1/tasks/missing")
+    finally:
+        await http.aclose()
+
+
+async def test_http_stream_bytes(fake_api: FakeAPI):
+    fake_api.add("GET", f"/v1/files/{FILE_ID}/content", content=b"chunk-data")
+    http = fake_api.async_client()
+    try:
+        chunks = [
+            c async for c in http.stream_bytes(f"/v1/files/{FILE_ID}/content")
+        ]
+        assert b"".join(chunks) == b"chunk-data"
+    finally:
+        await http.aclose()
+
+
+# --- AsyncPager ------------------------------------------------------
+
+
+async def test_pager_await_returns_first_page(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/tasks",
+        json_body=paginated([task_payload()], total_count=1),
+    )
+    pager = AsyncTasks(fake_api.async_client()).list(include_total=True)
+    assert isinstance(pager, AsyncPager)
+    page = await pager  # awaitable -> first page with envelope metadata
+    assert page.total_count == 1
+    assert str(page.records[0].id) == TASK_ID
+
+
+async def test_pager_async_iter_walks_pages():
+    id_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    id_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+    pages = {
+        None: paginated([task_payload(id=id_a)], next="cur"),
+        "cur": paginated([task_payload(id=id_b)], next=None),
+    }
+
+    async def fetch(cursor):
+        return pages[cursor]
+
+    from introspection_sdk.pagination import async_cursor_paginate
+
+    pager = async_cursor_paginate(fetch)
+    ids = [t.id async for t in pager]
+    assert [str(i) for i in ids] == [id_a, id_b]
+
+
+# --- parse_sse_async -------------------------------------------------
+
+
+async def test_parse_sse_async():
+    async def lines():
+        for line in ["event: text", "data: hel", "", "data: lo", ""]:
+            yield line
+
+    events = [e async for e in parse_sse_async(lines())]
+    assert [e.data for e in events] == ["hel", "lo"]
+
+
+# --- AsyncTasks ------------------------------------------------------
+
+
+async def test_tasks_create_and_get(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    fake_api.add("GET", f"/v1/tasks/{TASK_ID}", json_body=task_payload())
+    tasks = AsyncTasks(fake_api.async_client())
+    res = await tasks.create(prompt="hello")
+    assert str(res.task.id) == TASK_ID
+    got = await tasks.get(TASK_ID)
+    assert got.title == "Summarize repo"
+
+
+async def test_tasks_start_returns_async_handle(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    handle = await AsyncTasks(fake_api.async_client()).start(prompt="go")
+    assert isinstance(handle, AsyncRunHandle)
+    assert handle.run.id == "run-1"
+
+
+async def test_run_handle_stream_and_text(fake_api: FakeAPI):
+    sse = "event: text\ndata: hel\n\nevent: text\ndata: lo\n\n"
+    fake_api.add(
+        "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
+    )
+    fake_api.add(
+        "GET",
+        f"/v1/tasks/{TASK_ID}/runs/run-1/stream",
+        content=sse.encode(),
+    )
+    handle = await AsyncTasks(fake_api.async_client()).runs.create(
+        TASK_ID, message="x"
+    )
+    events = [e async for e in handle.stream()]
+    assert [e.data for e in events] == ["hel", "lo"]
+    assert await handle.text() == "hello"
+
+
+async def test_run_handle_cancel(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs/run-1/cancel",
+        json_body=task_cancel_response("run-1"),
+    )
+    handle = await AsyncTasks(fake_api.async_client()).runs.create(
+        TASK_ID, message="x"
+    )
+    cancelled = await handle.cancel()
+    assert cancelled.id == "run-1"
+
+
+# --- AsyncFiles ------------------------------------------------------
+
+
+async def test_files_create_text_and_download(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", json_body=file_payload())
+    fake_api.add("GET", f"/v1/files/{FILE_ID}/content", content=b"bytes-here")
+    files = AsyncFiles(fake_api.async_client())
+    created = await files.create_text(name="n.md", content="# hi")
+    assert str(created.id) == FILE_ID
+    data = await files.download(FILE_ID)
+    assert data == b"bytes-here"
+
+
+async def test_files_list_async_iter(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    out = [f async for f in AsyncFiles(fake_api.async_client()).list()]
+    assert len(out) == 1
+
+
+# --- AsyncRunner ------------------------------------------------------
+
+
+def _runner() -> AsyncRunner:
+    spec = _spec()
+
+    async def refresher() -> RunnerSpec:
+        return spec
+
+    return AsyncRunner(spec, refresher=refresher)
+
+
+async def test_runner_accessors_and_namespaces():
+    runner = _runner()
+    assert runner.session_id == "sess-1"
+    assert runner.dp_endpoint == "https://dp.test"
+    assert isinstance(runner.tasks, AsyncTasks)
+    assert isinstance(runner.files, AsyncFiles)
+    await runner.close()
+
+
+async def test_runner_refresh_swaps_spec():
+    specs = iter([_spec(session_id="old"), _spec(session_id="new")])
+
+    async def refresher() -> RunnerSpec:
+        return next(specs)
+
+    runner = AsyncRunner(next(specs), refresher=refresher)
+    assert runner.session_id == "old"
+    old_tasks = runner.tasks
+    await runner.refresh()
+    assert runner.session_id == "new"
+    assert runner.tasks is not old_tasks
+    await runner.close()
+
+
+async def test_runner_close_blocks_use_and_aenter():
+    async with _runner() as runner:
+        assert runner.session_id == "sess-1"
+    with pytest.raises(IntrospectionAPIError, match="has been closed"):
+        _ = runner.tasks
+
+
+# --- AsyncRuntimes / AsyncExperiments .run() -> AsyncRunner ----------
+
+
+async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"/v1/runtimes/{RUNTIME_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    runtimes = AsyncRuntimes(fake_api.async_client())
+    runner = await runtimes(RUNTIME_ID).run(identity={"user_id": "u1"})
+    assert isinstance(runner, AsyncRunner)
+    assert runner.dp_endpoint == "https://dp.test"
+    await runner.close()
+
+
+async def test_runtime_handle_resolves_name(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/runtimes/{RUNTIME_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    runtimes = AsyncRuntimes(fake_api.async_client())
+    runner = await runtimes("checkout-agent").run()
+    assert isinstance(runner, AsyncRunner)
+    # First call lists by name, second posts /run.
+    assert fake_api.requests[0].path == "/v1/runtimes"
+    assert fake_api.last_request.path == f"/v1/runtimes/{RUNTIME_ID}/run"
+    await runner.close()
+
+
+async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"/v1/experiments/{EXPERIMENT_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    experiments = AsyncExperiments(fake_api.async_client())
+    runner = await experiments(EXPERIMENT_ID).run()
+    assert isinstance(runner, AsyncRunner)
+    await runner.close()
+
+
+async def test_experiment_lifecycle(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"/v1/experiments/{EXPERIMENT_ID}/start",
+        json_body=experiment_payload(status="running"),
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/experiments/{EXPERIMENT_ID}/end",
+        json_body=experiment_payload(status="concluded"),
+    )
+    handle = AsyncExperiments(fake_api.async_client())(EXPERIMENT_ID)
+    started = await handle.start()
+    assert started.status == "running"
+    ended = await handle.end(notes="done")
+    assert ended.status == "concluded"
+    assert fake_api.last_request.json()["notes"] == "done"

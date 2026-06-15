@@ -12,9 +12,14 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
-from introspection_sdk._http import _HttpClient
-from introspection_sdk.pagination import Pager, cursor_paginate
-from introspection_sdk.runner import Runner
+from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk.pagination import (
+    AsyncPager,
+    Pager,
+    async_cursor_paginate,
+    cursor_paginate,
+)
+from introspection_sdk.runner import AsyncRunner, Runner
 from introspection_sdk.schemas.experiments import (
     Experiment,
     ExperimentCreate,
@@ -247,4 +252,231 @@ class ExperimentHandle:
         return self._experiments._cancel(self._experiment_id)
 
 
-__all__ = ["ExperimentHandle", "Experiments"]
+class AsyncExperiments:
+    """Async twin of :class:`Experiments` (CP ``/v1/experiments``).
+
+    Also callable: ``client.experiments(id)`` returns an
+    :class:`AsyncExperimentHandle`.
+    """
+
+    def __init__(
+        self,
+        http: _AsyncHttpClient,
+        *,
+        additional_headers: Mapping[str, str] | None = None,
+    ) -> None:
+        self._http = http
+        self._additional_headers = additional_headers
+
+    def __call__(self, experiment_id: str | UUID) -> AsyncExperimentHandle:
+        return AsyncExperimentHandle(self, experiment_id=experiment_id)
+
+    # --- CRUD --------------------------------------------------------
+
+    def list(
+        self,
+        *,
+        project_id: str,
+        name: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        next: str | None = None,
+    ) -> AsyncPager[Experiment, Paginated[Experiment]]:
+        """List experiments. ``await`` the returned :class:`AsyncPager` for
+        the first page, or ``async for`` it to stream every experiment across
+        pages."""
+
+        async def fetch(cursor: str | None) -> Paginated[Experiment]:
+            params: dict[str, Any] = {
+                "project_id": project_id,
+                "name": name,
+                "status": status,
+                "limit": limit,
+                "next": cursor,
+            }
+            payload = await self._http.request(
+                "GET", "/v1/experiments", params=params
+            )
+            return Paginated[Experiment].model_validate(payload)
+
+        return async_cursor_paginate(fetch, start=next)
+
+    async def get(
+        self, experiment_id: str | UUID, *, project_id: str | None = None
+    ) -> Experiment:
+        params: dict[str, Any] = {}
+        if project_id:
+            params["project_id"] = project_id
+        payload = await self._http.request(
+            "GET",
+            f"/v1/experiments/{experiment_id}",
+            params=params or None,
+        )
+        return Experiment.model_validate(payload)
+
+    async def create(
+        self, input: ExperimentCreate | dict[str, Any]
+    ) -> Experiment:
+        body = (
+            input.model_dump(exclude_none=True, mode="json")
+            if isinstance(input, ExperimentCreate)
+            else {k: v for k, v in input.items() if v is not None}
+        )
+        payload = await self._http.request(
+            "POST", "/v1/experiments", json=body
+        )
+        return Experiment.model_validate(payload)
+
+    async def update(
+        self,
+        experiment_id: str | UUID,
+        input: ExperimentUpdate | dict[str, Any],
+    ) -> Experiment:
+        body = (
+            input.model_dump(exclude_none=True, mode="json")
+            if isinstance(input, ExperimentUpdate)
+            else {k: v for k, v in input.items() if v is not None}
+        )
+        payload = await self._http.request(
+            "PATCH", f"/v1/experiments/{experiment_id}", json=body
+        )
+        return Experiment.model_validate(payload)
+
+    async def delete(self, experiment_id: str | UUID) -> None:
+        await self._http.request(
+            "DELETE",
+            f"/v1/experiments/{experiment_id}",
+            expect="empty",
+        )
+
+    # --- /run + lifecycle -------------------------------------------
+
+    async def _post_run(
+        self,
+        experiment_id: str | UUID,
+        options: RunRequest,
+    ) -> RunnerSpec:
+        body: dict[str, Any] = options.model_dump(
+            exclude_none=True, mode="json"
+        )
+        payload = await self._http.request(
+            "POST", f"/v1/experiments/{experiment_id}/run", json=body
+        )
+        return RunnerSpec.model_validate(payload)
+
+    async def _start(self, experiment_id: str | UUID) -> Experiment:
+        payload = await self._http.request(
+            "POST", f"/v1/experiments/{experiment_id}/start"
+        )
+        return Experiment.model_validate(payload)
+
+    async def _end(
+        self,
+        experiment_id: str | UUID,
+        *,
+        winning_arm_label: str | None = None,
+        notes: str | None = None,
+    ) -> Experiment:
+        body: dict[str, Any] = {}
+        if winning_arm_label is not None:
+            body["winning_arm_label"] = winning_arm_label
+        if notes is not None:
+            body["notes"] = notes
+        payload = await self._http.request(
+            "POST",
+            f"/v1/experiments/{experiment_id}/end",
+            json=body,
+        )
+        return Experiment.model_validate(payload)
+
+    async def _cancel(self, experiment_id: str | UUID) -> Experiment:
+        payload = await self._http.request(
+            "POST", f"/v1/experiments/{experiment_id}/cancel"
+        )
+        return Experiment.model_validate(payload)
+
+
+class AsyncExperimentHandle:
+    """Async twin of :class:`ExperimentHandle`.
+
+    Built by ``client.experiments(id)``.
+    """
+
+    def __init__(
+        self,
+        experiments: AsyncExperiments,
+        *,
+        experiment_id: str | UUID,
+    ) -> None:
+        self._experiments = experiments
+        self._experiment_id = (
+            str(experiment_id)
+            if isinstance(experiment_id, UUID)
+            else experiment_id
+        )
+
+    @property
+    def experiment_id(self) -> str:
+        return self._experiment_id
+
+    async def run(
+        self,
+        *,
+        identity: RunnerIdentity | dict[str, Any] | None = None,
+        caller: RunCaller | dict[str, Any] | None = None,
+        ttl_seconds: int | None = 3600,
+    ) -> AsyncRunner:
+        ident: RunnerIdentity | None
+        if identity is None:
+            ident = None
+        elif isinstance(identity, RunnerIdentity):
+            ident = identity
+        else:
+            ident = RunnerIdentity.model_validate(identity)
+        call: RunCaller | None
+        if caller is None:
+            call = None
+        elif isinstance(caller, RunCaller):
+            call = caller
+        else:
+            call = RunCaller.model_validate(caller)
+        options = RunRequest(
+            identity=ident, caller=call, ttl_seconds=ttl_seconds
+        )
+        eid = self._experiment_id
+
+        async def refresher() -> RunnerSpec:
+            return await self._experiments._post_run(eid, options)
+
+        spec = await refresher()
+        return AsyncRunner(
+            spec,
+            refresher=refresher,
+            additional_headers=self._experiments._additional_headers,
+        )
+
+    async def start(self) -> Experiment:
+        return await self._experiments._start(self._experiment_id)
+
+    async def end(
+        self,
+        *,
+        winning_arm_label: str | None = None,
+        notes: str | None = None,
+    ) -> Experiment:
+        return await self._experiments._end(
+            self._experiment_id,
+            winning_arm_label=winning_arm_label,
+            notes=notes,
+        )
+
+    async def cancel(self) -> Experiment:
+        return await self._experiments._cancel(self._experiment_id)
+
+
+__all__ = [
+    "AsyncExperimentHandle",
+    "AsyncExperiments",
+    "ExperimentHandle",
+    "Experiments",
+]
