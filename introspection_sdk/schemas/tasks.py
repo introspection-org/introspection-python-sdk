@@ -43,6 +43,24 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class TaskVisibility(StrEnum):
+    """Minimum sharing scope of a task.
+
+    - ``identity`` — only the caller identity that owns the task (default
+      when the credential carries an identity claim).
+    - ``member`` — the owning member's sessions.
+    - ``project`` — any project principal (default for identity-less
+      credentials; pre-visibility behaviour).
+
+    The task's ``identity_key`` is derived from JWT claims, never the
+    request body.
+    """
+
+    IDENTITY = "identity"
+    MEMBER = "member"
+    PROJECT = "project"
+
+
 class AgentInfo(_ApiModel):
     sandbox_status: str | None = None
     session_id: str | None = None
@@ -67,6 +85,7 @@ class Task(_ApiModel):
     last_user_message_at: datetime | None = None
     metadata: dict[str, Any] | None = None
     agent: AgentInfo | None = None
+    visibility: TaskVisibility | None = None
 
 
 class TaskCreateRequest(_ApiModel):
@@ -76,6 +95,22 @@ class TaskCreateRequest(_ApiModel):
     system_id: str | None = None
     repository_id: str | None = None
     metadata: dict[str, Any] | None = None
+    visibility: TaskVisibility | None = Field(
+        default=None,
+        description=(
+            "Sharing scope for the task. Defaults to 'identity' when the "
+            "credential carries an identity claim, else 'project'."
+        ),
+    )
+    idle_timeout_seconds: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Override the interactive idle window (seconds) before the "
+            "sandbox is torn down. 0 tears down as soon as it's provisioned; "
+            "omit to use the deployment default. Clamped to the task timeout."
+        ),
+    )
 
 
 class TaskUpdateRequest(_ApiModel):

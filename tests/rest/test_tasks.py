@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
-from introspection_sdk.schemas.tasks import TaskMode, TaskPrompt
+from introspection_sdk.schemas.tasks import (
+    TaskMode,
+    TaskPrompt,
+    TaskVisibility,
+)
 
 from .conftest import (
     TASK_ID,
@@ -44,6 +48,28 @@ def test_create_serialises_mode_enum(fake_api: FakeAPI):
     body = fake_api.last_request.json()
     assert body["mode"] == "introspect"
     assert "metadata" not in body  # None dropped
+
+
+def test_create_sends_visibility_and_idle_timeout(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(
+        prompt="hello",
+        visibility=TaskVisibility.IDENTITY,
+        idle_timeout_seconds=0,
+    )
+    body = fake_api.last_request.json()
+    assert body["visibility"] == "identity"  # enum serialised to its value
+    assert body["idle_timeout_seconds"] == 0  # 0 is meaningful, not dropped
+
+
+def test_start_forwards_visibility_and_idle_timeout(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).start(
+        prompt="go", visibility="member", idle_timeout_seconds=120
+    )
+    body = fake_api.last_request.json()
+    assert body["visibility"] == "member"  # plain string passes through
+    assert body["idle_timeout_seconds"] == 120
 
 
 def test_get(fake_api: FakeAPI):
