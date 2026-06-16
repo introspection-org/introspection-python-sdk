@@ -26,6 +26,7 @@ from introspection_sdk.schemas.tasks import (
     TaskPrompt,
     TaskRun,
     TaskRunResponse,
+    TaskVisibility,
 )
 from introspection_sdk.streaming import SseEvent, parse_sse, parse_sse_async
 
@@ -151,6 +152,8 @@ class Tasks:
         system_id: str | None = None,
         repository_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        visibility: TaskVisibility | str | None = None,
+        idle_timeout_seconds: int | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -159,6 +162,12 @@ class Tasks:
             "system_id": system_id,
             "repository_id": repository_id,
             "metadata": metadata,
+            "visibility": (
+                visibility.value
+                if isinstance(visibility, TaskVisibility)
+                else visibility
+            ),
+            "idle_timeout_seconds": idle_timeout_seconds,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)
@@ -217,6 +226,8 @@ class Tasks:
         system_id: str | None = None,
         repository_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        visibility: TaskVisibility | str | None = None,
+        idle_timeout_seconds: int | None = None,
     ) -> RunHandle:
         """Cursor-style sugar: create a task + return a handle on its initial run.
 
@@ -231,6 +242,8 @@ class Tasks:
             system_id=system_id,
             repository_id=repository_id,
             metadata=metadata,
+            visibility=visibility,
+            idle_timeout_seconds=idle_timeout_seconds,
         )
         return RunHandle(res.task, res.run, self.runs)
 
@@ -362,6 +375,8 @@ class AsyncTasks:
         system_id: str | None = None,
         repository_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        visibility: TaskVisibility | str | None = None,
+        idle_timeout_seconds: int | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -370,6 +385,12 @@ class AsyncTasks:
             "system_id": system_id,
             "repository_id": repository_id,
             "metadata": metadata,
+            "visibility": (
+                visibility.value
+                if isinstance(visibility, TaskVisibility)
+                else visibility
+            ),
+            "idle_timeout_seconds": idle_timeout_seconds,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
@@ -430,6 +451,8 @@ class AsyncTasks:
         system_id: str | None = None,
         repository_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        visibility: TaskVisibility | str | None = None,
+        idle_timeout_seconds: int | None = None,
     ) -> AsyncRunHandle:
         """Cursor-style sugar: create a task + return a handle on its initial
         run.
@@ -445,5 +468,7 @@ class AsyncTasks:
             system_id=system_id,
             repository_id=repository_id,
             metadata=metadata,
+            visibility=visibility,
+            idle_timeout_seconds=idle_timeout_seconds,
         )
         return AsyncRunHandle(res.task, res.run, self.runs)
