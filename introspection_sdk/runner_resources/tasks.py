@@ -155,7 +155,6 @@ class Tasks:
         visibility: TaskVisibility | str | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
-        forked_response_id: str | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -171,7 +170,6 @@ class Tasks:
             ),
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
-            "forked_response_id": forked_response_id,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)
@@ -382,7 +380,6 @@ class AsyncTasks:
         visibility: TaskVisibility | str | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
-        forked_response_id: str | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -398,7 +395,6 @@ class AsyncTasks:
             ),
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
-            "forked_response_id": forked_response_id,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
