@@ -34,9 +34,10 @@ class ResourceShare(_ApiModel):
     """Member-targeted grant; ``None`` means a project-wide grant (everyone)."""
     created_by_member_id: UUID
     """Grantor (always a member) — the revoke gate."""
-    url: str | None = None
-    """Fully-qualified GET URL for the shared resource, carrying the
-    ``?share_id`` capability (e.g. ``…/v1/files/{id}?share_id=…``)."""
+    url: str
+    """Fully-qualified GET URL for the shared resource, carrying the ``?share_id``
+    capability (e.g. ``…/v1/files/{id}?share_id=…``). Always present on
+    ``/v1/shares`` reads."""
 
 
 class ShareCreateRequest(_ApiModel):
