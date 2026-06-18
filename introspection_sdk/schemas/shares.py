@@ -20,10 +20,6 @@ class ShareResourceType(StrEnum):
     CONVERSATION = "conversation"
 
 
-class ShareVisibilityLevel(StrEnum):
-    PROJECT = "project"
-
-
 class ResourceShare(_ApiModel):
     """A read-sharing grant for a file or conversation (`/v1/shares`)."""
 
@@ -34,19 +30,19 @@ class ResourceShare(_ApiModel):
     updated_at: datetime
     resource_type: ShareResourceType
     resource_id: str
-    visibility_level: ShareVisibilityLevel | None = None
     granted_member_id: UUID | None = None
-    created_by_member_id: UUID | None = None
+    """Member-targeted grant; ``None`` means a project-wide grant (everyone)."""
+    created_by_member_id: UUID
+    """Grantor (always a member) — the revoke gate."""
     url: str | None = None
     """Fully-qualified GET URL for the shared resource, carrying the
     ``?share_id`` capability (e.g. ``…/v1/files/{id}?share_id=…``)."""
 
 
 class ShareCreateRequest(_ApiModel):
-    """Create a grant — exactly one of ``visibility_level`` /
-    ``granted_member_id`` must be set."""
+    """Create a grant. Omit ``granted_member_id`` for a project-wide grant; set
+    it to target one member."""
 
     resource_type: ShareResourceType
     resource_id: str
-    visibility_level: ShareVisibilityLevel | None = None
     granted_member_id: UUID | None = None

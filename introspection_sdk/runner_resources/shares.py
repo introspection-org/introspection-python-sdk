@@ -23,7 +23,6 @@ from introspection_sdk.schemas.shares import (
     ResourceShare,
     ShareCreateRequest,
     ShareResourceType,
-    ShareVisibilityLevel,
 )
 
 
@@ -54,13 +53,11 @@ def _create_body(
     *,
     resource_type: ShareResourceType | str,
     resource_id: str,
-    visibility_level: ShareVisibilityLevel | str | None,
     granted_member_id: str | None,
 ) -> dict[str, Any]:
     return ShareCreateRequest(
         resource_type=resource_type,
         resource_id=resource_id,
-        visibility_level=visibility_level,
         granted_member_id=granted_member_id,
     ).model_dump(mode="json", exclude_none=True)
 
@@ -105,7 +102,6 @@ class Shares:
         *,
         resource_type: ShareResourceType | str,
         resource_id: str,
-        visibility_level: ShareVisibilityLevel | str | None = None,
         granted_member_id: str | None = None,
     ) -> ResourceShare:
         """Create a grant. The caller must own the target resource."""
@@ -115,7 +111,6 @@ class Shares:
             json=_create_body(
                 resource_type=resource_type,
                 resource_id=resource_id,
-                visibility_level=visibility_level,
                 granted_member_id=granted_member_id,
             ),
         )
@@ -169,7 +164,6 @@ class AsyncShares:
         *,
         resource_type: ShareResourceType | str,
         resource_id: str,
-        visibility_level: ShareVisibilityLevel | str | None = None,
         granted_member_id: str | None = None,
     ) -> ResourceShare:
         """Create a grant. The caller must own the target resource."""
@@ -179,7 +173,6 @@ class AsyncShares:
             json=_create_body(
                 resource_type=resource_type,
                 resource_id=resource_id,
-                visibility_level=visibility_level,
                 granted_member_id=granted_member_id,
             ),
         )
