@@ -52,6 +52,33 @@ async def main() -> None:
             async for event in run.stream():
                 print(f"[{event.event}] {event.data}")
 
+            # Once the run has drained, the task carries its conversation id
+            # in metadata. Fetch that conversation, then mint a read-share —
+            # the grant's `url` (carrying the `?share_id` capability) is what
+            # you hand out, or feed back as `fork_share_id` to branch a new
+            # task off this conversation.
+            conversation_id = (
+                (run.task.metadata or {}).get("conversation_id")
+                if run.task
+                else None
+            )
+            if conversation_id:
+                response = await runner.conversations.retrieve(conversation_id)
+                if response is not None:
+                    print(
+                        f"completed conversation {conversation_id}: "
+                        f"model={response.model}, "
+                        f"{len(response.output_messages)} output message(s)"
+                    )
+                share = await runner.shares.create(
+                    resource_type="conversation",
+                    resource_id=conversation_id,
+                )
+                print(f"shared conversation -> {share.url}")
+                # Branch a fresh task off the shared conversation's history:
+                #   await runner.tasks.create(
+                #       prompt="continue", fork_share_id=str(share.id))
+
             file = await runner.files.create_text(
                 name="notes.md",
                 content="# Hello\n\nFrom the async Python SDK.",
