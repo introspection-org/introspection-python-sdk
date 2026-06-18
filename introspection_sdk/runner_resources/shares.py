@@ -2,9 +2,9 @@
 
 Bound to a :class:`~introspection_sdk.runner.Runner` — every call targets the
 runner's DP endpoint with its short-lived JWT. ``create`` / ``list`` / ``get`` /
-``delete`` manage grants; ``fork_task`` branches a new task off a shared
-conversation. A grant carries a ``url`` (with the ``?share_id`` capability) for
-reading the shared resource.
+``delete`` manage grants. A grant carries a ``url`` (with the ``?share_id``
+capability) for reading the shared resource. To fork a new task from a shared
+conversation, pass ``fork_share_id`` to ``runner.tasks.create(...)``.
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ from introspection_sdk.schemas.shares import (
     ShareResourceType,
     ShareVisibilityLevel,
 )
-from introspection_sdk.schemas.tasks import TaskCreateResponse
 
 
 def _list_params(
@@ -64,19 +63,6 @@ def _create_body(
         visibility_level=visibility_level,
         granted_member_id=granted_member_id,
     ).model_dump(mode="json", exclude_none=True)
-
-
-def _fork_body(
-    share_id: str,
-    from_response_id: str | None,
-    prompt: str | None,
-) -> dict[str, Any]:
-    body: dict[str, Any] = {"fork_share_id": share_id}
-    if from_response_id is not None:
-        body["forked_response_id"] = from_response_id
-    if prompt is not None:
-        body["prompt"] = prompt
-    return body
 
 
 class Shares:
@@ -142,21 +128,6 @@ class Shares:
     def delete(self, share_id: str) -> None:
         self._http.request("DELETE", f"/v1/shares/{share_id}", expect="empty")
 
-    def fork_task(
-        self,
-        share_id: str,
-        *,
-        from_response_id: str | None = None,
-        prompt: str | None = None,
-    ) -> TaskCreateResponse:
-        """Fork a new task from a shared **conversation**, seeded at
-        ``from_response_id`` (default: the conversation's latest item). A *file*
-        share cannot be forked."""
-        payload = self._http.request(
-            "POST", "/v1/tasks", json=_fork_body(share_id, from_response_id, prompt)
-        )
-        return TaskCreateResponse.model_validate(payload)
-
 
 class AsyncShares:
     """Asynchronous `/v1/shares` resource."""
@@ -220,18 +191,3 @@ class AsyncShares:
 
     async def delete(self, share_id: str) -> None:
         await self._http.request("DELETE", f"/v1/shares/{share_id}", expect="empty")
-
-    async def fork_task(
-        self,
-        share_id: str,
-        *,
-        from_response_id: str | None = None,
-        prompt: str | None = None,
-    ) -> TaskCreateResponse:
-        """Fork a new task from a shared **conversation**, seeded at
-        ``from_response_id`` (default: the conversation's latest item). A *file*
-        share cannot be forked."""
-        payload = await self._http.request(
-            "POST", "/v1/tasks", json=_fork_body(share_id, from_response_id, prompt)
-        )
-        return TaskCreateResponse.model_validate(payload)

@@ -111,6 +111,22 @@ class TaskCreateRequest(_ApiModel):
             "omit to use the deployment default. Clamped to the task timeout."
         ),
     )
+    fork_share_id: str | None = Field(
+        default=None,
+        description=(
+            "Fork from a shared conversation: the /v1/shares grant id for the "
+            "source conversation. Its presence makes this create a fork — the "
+            "server verifies read access via the share and seeds the new task "
+            "with that conversation's history (hydrated from forked_response_id)."
+        ),
+    )
+    forked_response_id: str | None = Field(
+        default=None,
+        description=(
+            "The conversation item / response id to branch at; defaults to the "
+            "conversation's latest item. Only meaningful with fork_share_id."
+        ),
+    )
 
 
 class TaskUpdateRequest(_ApiModel):
