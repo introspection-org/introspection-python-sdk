@@ -57,20 +57,20 @@ class Runtimes:
         self,
         http: _HttpClient,
         *,
-        default_project_id: str | None = None,
         additional_headers: Mapping[str, str] | None = None,
     ) -> None:
         self._http = http
-        self._default_project_id = default_project_id
         self._additional_headers = additional_headers
 
     def __call__(
         self, id_or_name: str | UUID, *, project_id: str | None = None
     ) -> RuntimeHandle:
+        # The project is scoped by the API key server-side; `project_id` is an
+        # explicit per-call override only — there is no client-level default.
         return RuntimeHandle(
             self,
             id_or_name=id_or_name,
-            project_id=project_id or self._default_project_id,
+            project_id=project_id,
         )
 
     # --- CRUD --------------------------------------------------------
@@ -303,20 +303,20 @@ class AsyncRuntimes:
         self,
         http: _AsyncHttpClient,
         *,
-        default_project_id: str | None = None,
         additional_headers: Mapping[str, str] | None = None,
     ) -> None:
         self._http = http
-        self._default_project_id = default_project_id
         self._additional_headers = additional_headers
 
     def __call__(
         self, id_or_name: str | UUID, *, project_id: str | None = None
     ) -> AsyncRuntimeHandle:
+        # The project is scoped by the API key server-side; `project_id` is an
+        # explicit per-call override only — there is no client-level default.
         return AsyncRuntimeHandle(
             self,
             id_or_name=id_or_name,
-            project_id=project_id or self._default_project_id,
+            project_id=project_id,
         )
 
     # --- CRUD --------------------------------------------------------

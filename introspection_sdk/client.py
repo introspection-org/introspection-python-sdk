@@ -53,7 +53,6 @@ class IntrospectionClient:
         *,
         token: str | None = None,
         base_api_url: str | None = None,
-        project_id: str | None = None,
         additional_headers: dict[str, str] | None = None,
     ) -> None:
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
@@ -61,7 +60,6 @@ class IntrospectionClient:
             "INTROSPECTION_BASE_API_URL",
             "https://api.introspection.dev",
         )
-        self._project_id = project_id or os.getenv("INTROSPECTION_PROJECT_ID")
         self._additional_headers = additional_headers
         self._http = _HttpClient(
             api_url=self._base_api_url,
@@ -70,7 +68,6 @@ class IntrospectionClient:
         )
         self.runtimes = Runtimes(
             self._http,
-            default_project_id=self._project_id,
             additional_headers=self._additional_headers,
         )
         self.experiments = Experiments(
@@ -116,7 +113,6 @@ class AsyncIntrospectionClient:
         *,
         token: str | None = None,
         base_api_url: str | None = None,
-        project_id: str | None = None,
         additional_headers: dict[str, str] | None = None,
     ) -> None:
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
@@ -124,7 +120,6 @@ class AsyncIntrospectionClient:
             "INTROSPECTION_BASE_API_URL",
             "https://api.introspection.dev",
         )
-        self._project_id = project_id or os.getenv("INTROSPECTION_PROJECT_ID")
         self._additional_headers = additional_headers
         self._http = _AsyncHttpClient(
             api_url=self._base_api_url,
@@ -133,7 +128,6 @@ class AsyncIntrospectionClient:
         )
         self.runtimes = AsyncRuntimes(
             self._http,
-            default_project_id=self._project_id,
             additional_headers=self._additional_headers,
         )
         self.experiments = AsyncExperiments(

@@ -31,10 +31,8 @@ from .conftest import (
 )
 
 
-def _runtimes(
-    fake_api: FakeAPI, default_project_id: str | None = None
-) -> Runtimes:
-    return Runtimes(fake_api.client(), default_project_id=default_project_id)
+def _runtimes(fake_api: FakeAPI) -> Runtimes:
+    return Runtimes(fake_api.client())
 
 
 def test_looks_like_uuid():
@@ -120,7 +118,7 @@ def test_handle_with_uuid_skips_name_resolution(fake_api: FakeAPI):
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runtimes = _runtimes(fake_api, default_project_id=PROJECT_ID)
+    runtimes = _runtimes(fake_api)
     runner = runtimes(RUNTIME_ID).run()
     assert isinstance(runner, Runner)
     # No list call happened — only the /run POST.
@@ -135,7 +133,7 @@ def test_handle_resolves_name_via_list(fake_api: FakeAPI):
         "/v1/runtimes",
         json_body=paginated([runtime_payload()]),
     )
-    runtimes = _runtimes(fake_api, default_project_id=PROJECT_ID)
+    runtimes = _runtimes(fake_api)
     handle = runtimes("checkout-agent")
     assert handle.runtime_id == RUNTIME_ID
     assert fake_api.last_request.params.get("name") == "checkout-agent"
@@ -143,7 +141,7 @@ def test_handle_resolves_name_via_list(fake_api: FakeAPI):
 
 def test_handle_name_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
-    handle = _runtimes(fake_api, default_project_id=PROJECT_ID)("missing")
+    handle = _runtimes(fake_api)("missing")
     with pytest.raises(LookupError, match="No active runtime"):
         _ = handle.runtime_id
 
@@ -154,7 +152,7 @@ def test_handle_ambiguous_name_raises(fake_api: FakeAPI):
         "/v1/runtimes",
         json_body=paginated([runtime_payload(), runtime_payload()]),
     )
-    handle = _runtimes(fake_api, default_project_id=PROJECT_ID)("dup")
+    handle = _runtimes(fake_api)("dup")
     with pytest.raises(LookupError, match="Ambiguous"):
         _ = handle.runtime_id
 
@@ -165,7 +163,7 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runtimes = _runtimes(fake_api, default_project_id=PROJECT_ID)
+    runtimes = _runtimes(fake_api)
     runner = runtimes(RUNTIME_ID).run(
         identity={"user_id": "u1"}, caller={"locale": "en"}
     )
@@ -184,7 +182,7 @@ def test_pin_injects_recipe_id_on_run(fake_api: FakeAPI):
         json_body=runner_spec_payload(),
     )
     recipe = Recipe.model_validate(recipe_payload())
-    runtimes = _runtimes(fake_api, default_project_id=PROJECT_ID)
+    runtimes = _runtimes(fake_api)
     runtimes(RUNTIME_ID).pin(recipe).run()
     assert fake_api.last_request.json()["recipe_id"] == RECIPE_ID
 
@@ -195,7 +193,9 @@ def test_activate(fake_api: FakeAPI):
         f"/v1/runtimes/{RUNTIME_ID}/activate",
         json_body=runtime_payload(is_active=True),
     )
-    runtimes = _runtimes(fake_api, default_project_id=PROJECT_ID)
-    rt = runtimes(RUNTIME_ID).activate()
+    runtimes = _runtimes(fake_api)
+    # No client-level default project: the per-call override is the only way
+    # to scope activate to a specific project.
+    rt = runtimes(RUNTIME_ID).activate(project_id=PROJECT_ID)
     assert rt.is_active is True
     assert fake_api.last_request.json()["project_id"] == PROJECT_ID

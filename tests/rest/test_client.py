@@ -17,23 +17,19 @@ def test_explicit_args_wire_up_namespaces():
     client = IntrospectionClient(
         token="tok",
         base_api_url="https://api.example.test",
-        project_id="proj-1",
     )
     assert isinstance(client.runtimes, Runtimes)
     assert isinstance(client.experiments, Experiments)
     assert isinstance(client.recipes, Recipes)
     assert client._token == "tok"
     assert client._base_api_url == "https://api.example.test"
-    assert client._project_id == "proj-1"
 
 
 def test_defaults_come_from_environment(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("INTROSPECTION_TOKEN", "env-token")
-    monkeypatch.setenv("INTROSPECTION_PROJECT_ID", "env-proj")
     monkeypatch.delenv("INTROSPECTION_BASE_API_URL", raising=False)
     client = IntrospectionClient()
     assert client._token == "env-token"
-    assert client._project_id == "env-proj"
     assert client._base_api_url == "https://api.introspection.dev"
 
 
@@ -45,9 +41,14 @@ def test_base_url_override_from_environment(
     assert client._base_api_url == "https://custom.test"
 
 
-def test_default_project_id_flows_into_runtimes():
-    client = IntrospectionClient(token="t", project_id="proj-9")
-    assert client.runtimes._default_project_id == "proj-9"
+def test_project_is_not_a_client_option(monkeypatch: pytest.MonkeyPatch):
+    # The project is scoped by the API key server-side — the client neither
+    # accepts a `project_id` kwarg nor reads INTROSPECTION_PROJECT_ID.
+    monkeypatch.setenv("INTROSPECTION_PROJECT_ID", "env-proj")
+    with pytest.raises(TypeError):
+        IntrospectionClient(token="t", project_id="proj-9")  # type: ignore[call-arg]
+    client = IntrospectionClient(token="t")
+    assert not hasattr(client, "_project_id")
 
 
 def test_shutdown_is_safe_to_call_twice():
