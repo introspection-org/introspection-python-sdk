@@ -183,4 +183,6 @@ class AsyncShares:
         return ResourceShare.model_validate(payload)
 
     async def delete(self, share_id: str) -> None:
-        await self._http.request("DELETE", f"/v1/shares/{share_id}", expect="empty")
+        await self._http.request(
+            "DELETE", f"/v1/shares/{share_id}", expect="empty"
+        )
