@@ -55,10 +55,14 @@ def _create_body(
     resource_id: str,
     granted_member_id: str | None,
 ) -> dict[str, Any]:
-    return ShareCreateRequest(
-        resource_type=resource_type,
-        resource_id=resource_id,
-        granted_member_id=granted_member_id,
+    # Loose public inputs (plain str / enum) are coerced by validation:
+    # str -> ShareResourceType, str -> UUID for granted_member_id.
+    return ShareCreateRequest.model_validate(
+        {
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "granted_member_id": granted_member_id,
+        }
     ).model_dump(mode="json", exclude_none=True)
 
 
