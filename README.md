@@ -133,7 +133,8 @@ and LangSmith) see [`examples/`](./examples/).
 # Introspection API (IntrospectionClient / AsyncIntrospectionClient)
 export INTROSPECTION_TOKEN="intro_xxx"
 export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
-export INTROSPECTION_PROJECT_ID="proj_…"                            # optional
+# The project is scoped by the API key — there is no project env var or
+# client option. Pass project_id per call only to override it.
 
 # OTel (IntrospectionLogs + span processors + instrumentors) — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional

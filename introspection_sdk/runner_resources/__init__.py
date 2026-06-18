@@ -12,6 +12,10 @@ from introspection_sdk.runner_resources.files import (
     Files,
     FileVersions,
 )
+from introspection_sdk.runner_resources.shares import (
+    AsyncShares,
+    Shares,
+)
 from introspection_sdk.runner_resources.tasks import (
     AsyncRunHandle,
     AsyncTaskRuns,
@@ -27,6 +31,7 @@ __all__ = [
     "AsyncFileVersions",
     "AsyncFiles",
     "AsyncRunHandle",
+    "AsyncShares",
     "AsyncTaskRuns",
     "AsyncTasks",
     "ConversationItems",
@@ -34,6 +39,7 @@ __all__ = [
     "Files",
     "FileVersions",
     "RunHandle",
+    "Shares",
     "TaskRuns",
     "Tasks",
 ]
