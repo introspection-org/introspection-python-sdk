@@ -24,9 +24,11 @@ from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     AsyncFiles,
+    AsyncShares,
     AsyncTasks,
     Conversations,
     Files,
+    Shares,
     Tasks,
 )
 from introspection_sdk.schemas.runner import (
@@ -64,6 +66,7 @@ class Runner:
         self._tasks = Tasks(self._http)
         self._files = Files(self._http)
         self._conversations = Conversations(self._http)
+        self._shares = Shares(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _HttpClient:
         return _HttpClient(
@@ -98,6 +101,12 @@ class Runner:
         """Read-only DP ``/v1/conversations`` namespace bound to this Runner."""
         self._check_open()
         return self._conversations
+
+    @property
+    def shares(self) -> Shares:
+        """DP ``/v1/shares`` read-sharing namespace bound to this Runner."""
+        self._check_open()
+        return self._shares
 
     @property
     def context(self) -> RunnerContext:
@@ -144,6 +153,7 @@ class Runner:
         self._tasks = Tasks(self._http)
         self._files = Files(self._http)
         self._conversations = Conversations(self._http)
+        self._shares = Shares(self._http)
         try:
             old_http.close()
         except Exception:  # noqa: BLE001 — best-effort cleanup
@@ -199,6 +209,7 @@ class AsyncRunner:
         self._tasks = AsyncTasks(self._http)
         self._files = AsyncFiles(self._http)
         self._conversations = AsyncConversations(self._http)
+        self._shares = AsyncShares(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
         return _AsyncHttpClient(
@@ -234,6 +245,12 @@ class AsyncRunner:
         Runner."""
         self._check_open()
         return self._conversations
+
+    @property
+    def shares(self) -> AsyncShares:
+        """DP ``/v1/shares`` read-sharing namespace bound to this Runner."""
+        self._check_open()
+        return self._shares
 
     @property
     def context(self) -> RunnerContext:
@@ -280,6 +297,7 @@ class AsyncRunner:
         self._tasks = AsyncTasks(self._http)
         self._files = AsyncFiles(self._http)
         self._conversations = AsyncConversations(self._http)
+        self._shares = AsyncShares(self._http)
         try:
             await old_http.aclose()
         except Exception:  # noqa: BLE001 — best-effort cleanup
