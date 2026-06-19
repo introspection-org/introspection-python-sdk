@@ -88,10 +88,10 @@ class IntrospectionClient:
     @classmethod
     def from_service_account(
         cls,
-        *,
         client_id: str,
         client_secret: str,
         project_id: str,
+        *,
         scope: str | None = None,
         base_api_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
@@ -197,10 +197,10 @@ class AsyncIntrospectionClient:
     @classmethod
     async def from_service_account(
         cls,
-        *,
         client_id: str,
         client_secret: str,
         project_id: str,
+        *,
         scope: str | None = None,
         base_api_url: str | None = None,
         additional_headers: dict[str, str] | None = None,

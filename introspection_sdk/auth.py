@@ -89,7 +89,6 @@ def _resolve_base_api_url(base_api_url: str | None) -> str:
 
 
 def _service_account_form(
-    *,
     client_id: str,
     client_secret: str,
     project_id: str,
@@ -107,7 +106,6 @@ def _service_account_form(
 
 
 def _token_exchange_form(
-    *,
     subject_token: str,
     client_id: str,
     project_id: str,
@@ -128,7 +126,6 @@ def _token_exchange_form(
 
 
 def _authorization_code_form(
-    *,
     code: str,
     client_id: str,
     redirect_uri: str,
@@ -183,10 +180,10 @@ async def _apost_token_form(
 
 
 def service_account_token(
-    *,
     client_id: str,
     client_secret: str,
     project_id: str,
+    *,
     scope: str | None = None,
     base_api_url: str | None = None,
     transport: httpx.BaseTransport | None = None,
@@ -214,10 +211,10 @@ def service_account_token(
 
 
 async def async_service_account_token(
-    *,
     client_id: str,
     client_secret: str,
     project_id: str,
+    *,
     scope: str | None = None,
     base_api_url: str | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
@@ -238,10 +235,10 @@ async def async_service_account_token(
 
 
 def token_exchange(
-    *,
     subject_token: str,
     client_id: str,
     project_id: str,
+    *,
     subject_token_type: str | None = None,
     scope: str | None = None,
     base_api_url: str | None = None,
@@ -268,10 +265,10 @@ def token_exchange(
 
 
 async def async_token_exchange(
-    *,
     subject_token: str,
     client_id: str,
     project_id: str,
+    *,
     subject_token_type: str | None = None,
     scope: str | None = None,
     base_api_url: str | None = None,
@@ -294,11 +291,11 @@ async def async_token_exchange(
 
 
 def authorization_code_token(
-    *,
     code: str,
     client_id: str,
     redirect_uri: str,
     code_verifier: str,
+    *,
     base_api_url: str | None = None,
     transport: httpx.BaseTransport | None = None,
 ) -> OAuthToken:
@@ -321,11 +318,11 @@ def authorization_code_token(
 
 
 async def async_authorization_code_token(
-    *,
     code: str,
     client_id: str,
     redirect_uri: str,
     code_verifier: str,
+    *,
     base_api_url: str | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> OAuthToken:
