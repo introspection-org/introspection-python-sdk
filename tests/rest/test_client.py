@@ -9,8 +9,27 @@ from __future__ import annotations
 
 import pytest
 
-from introspection_sdk.client import IntrospectionClient
+from introspection_sdk.client import (
+    AsyncIntrospectionClient,
+    IntrospectionClient,
+)
 from introspection_sdk.resources import Experiments, Recipes, Runtimes
+
+
+class _RaisingHttp:
+    """Fake HTTP client whose close raises — exercises the best-effort
+    cleanup branch in ``shutdown`` without patching SDK internals."""
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+        raise RuntimeError("close boom")
+
+    async def aclose(self) -> None:
+        self.closed = True
+        raise RuntimeError("aclose boom")
 
 
 def test_explicit_args_wire_up_namespaces():
@@ -55,3 +74,28 @@ def test_shutdown_is_safe_to_call_twice():
     client = IntrospectionClient(token="t")
     client.shutdown()
     client.shutdown()  # best-effort, no raise
+
+
+def test_shutdown_swallows_close_errors():
+    client = IntrospectionClient(token="t")
+    raising = _RaisingHttp()
+    client._http = raising  # type: ignore[assignment]
+    client.shutdown()  # best-effort: the close error is swallowed
+    assert raising.closed
+
+
+@pytest.mark.asyncio
+async def test_async_shutdown_swallows_close_errors():
+    client = AsyncIntrospectionClient(token="t")
+    raising = _RaisingHttp()
+    client._http = raising  # type: ignore[assignment]
+    await client.shutdown()  # best-effort: the aclose error is swallowed
+    assert raising.closed
+
+
+@pytest.mark.asyncio
+async def test_async_context_manager_shuts_down_on_exit():
+    async with AsyncIntrospectionClient(token="t") as client:
+        assert isinstance(client, AsyncIntrospectionClient)
+        client._http = _RaisingHttp()  # type: ignore[assignment]
+    # Exiting the block calls shutdown(); the close error is swallowed.

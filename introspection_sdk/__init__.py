@@ -40,6 +40,15 @@ from introspection_sdk._errors import (
     StreamError,
     ValidationError,
 )
+from introspection_sdk.auth import (
+    OAuthToken,
+    async_authorization_code_token,
+    async_service_account_token,
+    async_token_exchange,
+    authorization_code_token,
+    service_account_token,
+    token_exchange,
+)
 from introspection_sdk.client import (
     AsyncIntrospectionClient,
     IntrospectionClient,
@@ -202,12 +211,20 @@ __all__ = [
     "IntrospectionClient",
     "NetworkError",
     "NotFoundError",
+    "OAuthToken",
     "RateLimitError",
     "Runner",
     "RunnerExpiredError",
     "SandboxUnavailableError",
     "StreamError",
     "ValidationError",
+    # Server-side OAuth helpers (machine / federated auth)
+    "async_authorization_code_token",
+    "async_service_account_token",
+    "async_token_exchange",
+    "authorization_code_token",
+    "service_account_token",
+    "token_exchange",
     # OTel-only (lazy-loaded; require `[otel]` extra)
     "AdvancedOptions",
     "AnthropicInstrumentor",

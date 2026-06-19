@@ -111,6 +111,35 @@ class Runtimes:
         )
         return Runtime.model_validate(payload)
 
+    def resolve_by_name(
+        self, name: str, *, project_id: str | None = None
+    ) -> Runtime:
+        """Resolve an active runtime by name on the caller's project.
+
+        The standalone form of ``client.runtimes(name)`` resolution —
+        handy for a server broker that resolves a ``runtime_id`` to hand
+        to a browser client (which talks only to the Data Plane and never
+        resolves runtimes itself). The project is scoped by the token
+        server-side; pass ``project_id`` only to override it.
+
+        Raises ``LookupError`` if no active runtime matches the name, or
+        if the name is ambiguous (more than one active match).
+        """
+        page = self.list(
+            name=name,
+            only_active=True,
+            limit=2,
+            project_id=project_id,
+        ).page()
+        if not page.records:
+            raise LookupError(f"No active runtime named {name!r}")
+        if len(page.records) > 1:
+            raise LookupError(
+                f"Ambiguous runtime name {name!r}: "
+                f"{len(page.records)} active matches"
+            )
+        return page.records[0]
+
     def create(self, input: RuntimeCreate | dict[str, Any]) -> Runtime:
         body = (
             input.model_dump(exclude_none=True, mode="json")
@@ -198,23 +227,10 @@ class RuntimeHandle:
     def _resolve(self) -> str:
         if self._resolved_id is not None:
             return self._resolved_id
-        name = str(self._raw)
-        params: dict[str, Any] = {
-            "name": name,
-            "only_active": True,
-            "limit": 2,
-        }
-        if self._project_id:
-            params["project_id"] = self._project_id
-        page = self._runtimes.list(**params).page()
-        if not page.records:
-            raise LookupError(f"No active runtime named {name!r}")
-        if len(page.records) > 1:
-            raise LookupError(
-                f"Ambiguous runtime name {name!r}: "
-                f"{len(page.records)} active matches"
-            )
-        self._resolved_id = str(page.records[0].id)
+        runtime = self._runtimes.resolve_by_name(
+            str(self._raw), project_id=self._project_id
+        )
+        self._resolved_id = str(runtime.id)
         return self._resolved_id
 
     def run(
@@ -359,6 +375,32 @@ class AsyncRuntimes:
         )
         return Runtime.model_validate(payload)
 
+    async def resolve_by_name(
+        self, name: str, *, project_id: str | None = None
+    ) -> Runtime:
+        """Async twin of :meth:`Runtimes.resolve_by_name`.
+
+        Resolve an active runtime by name on the caller's project — the
+        standalone form of ``client.runtimes(name)`` resolution, handy
+        for a server broker that resolves a ``runtime_id`` to hand to a
+        browser client. Raises ``LookupError`` if no active runtime
+        matches, or if the name is ambiguous.
+        """
+        page = await self.list(
+            name=name,
+            only_active=True,
+            limit=2,
+            project_id=project_id,
+        ).page()
+        if not page.records:
+            raise LookupError(f"No active runtime named {name!r}")
+        if len(page.records) > 1:
+            raise LookupError(
+                f"Ambiguous runtime name {name!r}: "
+                f"{len(page.records)} active matches"
+            )
+        return page.records[0]
+
     async def create(self, input: RuntimeCreate | dict[str, Any]) -> Runtime:
         body = (
             input.model_dump(exclude_none=True, mode="json")
@@ -442,23 +484,10 @@ class AsyncRuntimeHandle:
     async def _resolve(self) -> str:
         if self._resolved_id is not None:
             return self._resolved_id
-        name = str(self._raw)
-        params: dict[str, Any] = {
-            "name": name,
-            "only_active": True,
-            "limit": 2,
-        }
-        if self._project_id:
-            params["project_id"] = self._project_id
-        page = await self._runtimes.list(**params).page()
-        if not page.records:
-            raise LookupError(f"No active runtime named {name!r}")
-        if len(page.records) > 1:
-            raise LookupError(
-                f"Ambiguous runtime name {name!r}: "
-                f"{len(page.records)} active matches"
-            )
-        self._resolved_id = str(page.records[0].id)
+        runtime = await self._runtimes.resolve_by_name(
+            str(self._raw), project_id=self._project_id
+        )
+        self._resolved_id = str(runtime.id)
         return self._resolved_id
 
     async def run(

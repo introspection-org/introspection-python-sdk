@@ -157,6 +157,38 @@ def test_handle_ambiguous_name_raises(fake_api: FakeAPI):
         _ = handle.runtime_id
 
 
+def test_resolve_by_name_returns_runtime(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body=paginated([runtime_payload()]),
+    )
+    runtime = _runtimes(fake_api).resolve_by_name(
+        "checkout-agent", project_id=PROJECT_ID
+    )
+    assert str(runtime.id) == RUNTIME_ID
+    params = fake_api.last_request.params
+    assert params.get("name") == "checkout-agent"
+    assert params.get("only_active") == "true"
+    assert params.get("project_id") == PROJECT_ID
+
+
+def test_resolve_by_name_not_found_raises(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
+    with pytest.raises(LookupError, match="No active runtime"):
+        _runtimes(fake_api).resolve_by_name("missing")
+
+
+def test_resolve_by_name_ambiguous_raises(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body=paginated([runtime_payload(), runtime_payload()]),
+    )
+    with pytest.raises(LookupError, match="Ambiguous"):
+        _runtimes(fake_api).resolve_by_name("dup")
+
+
 def test_run_returns_runner_with_context(fake_api: FakeAPI):
     fake_api.add(
         "POST",
