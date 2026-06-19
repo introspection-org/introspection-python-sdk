@@ -19,7 +19,13 @@ __all__ = ["AsyncIntrospectionClient", "IntrospectionClient"]
 
 import os
 
+import httpx
+
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk.auth import (
+    async_service_account_token,
+    service_account_token,
+)
 from introspection_sdk.resources import (
     AsyncExperiments,
     AsyncRecipes,
@@ -77,6 +83,55 @@ class IntrospectionClient:
         self.recipes = Recipes(
             self._http,
             additional_headers=self._additional_headers,
+        )
+
+    @classmethod
+    def from_service_account(
+        cls,
+        client_id: str,
+        client_secret: str,
+        project_id: str,
+        *,
+        scope: str | None = None,
+        base_api_url: str | None = None,
+        additional_headers: dict[str, str] | None = None,
+        transport: httpx.BaseTransport | None = None,
+    ) -> IntrospectionClient:
+        """Authenticate as a confidential service account and return a
+        ready client.
+
+        Mints a short-lived, project-scoped CP access token via the
+        ``client_credentials`` grant (see
+        :func:`~introspection_sdk.auth.service_account_token`) and wires
+        it in as the bearer token, so the runtime flow works exactly as
+        it does with an API key::
+
+            client = IntrospectionClient.from_service_account(
+                client_id=os.environ["INTRO_SA_CLIENT_ID"],
+                client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
+                project_id=os.environ["INTRO_PROJECT_ID"],
+            )
+            runner = client.runtimes("customer-agent").run()
+
+        The token is not auto-refreshed: it lives for ``expires_in``
+        seconds, so re-mint (call this again) for long-lived processes
+        once it lapses. Call
+        :func:`~introspection_sdk.auth.service_account_token` directly if
+        you also need the resolved ``dp_url`` (e.g. to hand a browser the
+        Data Plane endpoint).
+        """
+        token = service_account_token(
+            client_id=client_id,
+            client_secret=client_secret,
+            project_id=project_id,
+            scope=scope,
+            base_api_url=base_api_url,
+            transport=transport,
+        )
+        return cls(
+            token=token.access_token,
+            base_api_url=base_api_url,
+            additional_headers=additional_headers,
         )
 
     def shutdown(self) -> None:
@@ -137,6 +192,47 @@ class AsyncIntrospectionClient:
         self.recipes = AsyncRecipes(
             self._http,
             additional_headers=self._additional_headers,
+        )
+
+    @classmethod
+    async def from_service_account(
+        cls,
+        client_id: str,
+        client_secret: str,
+        project_id: str,
+        *,
+        scope: str | None = None,
+        base_api_url: str | None = None,
+        additional_headers: dict[str, str] | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> AsyncIntrospectionClient:
+        """Async twin of
+        :meth:`IntrospectionClient.from_service_account`.
+
+        Mints the ``client_credentials`` token without blocking the event
+        loop (see
+        :func:`~introspection_sdk.auth.async_service_account_token`) and
+        returns a ready :class:`AsyncIntrospectionClient`::
+
+            client = await AsyncIntrospectionClient.from_service_account(
+                client_id=os.environ["INTRO_SA_CLIENT_ID"],
+                client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
+                project_id=os.environ["INTRO_PROJECT_ID"],
+            )
+            runner = await client.runtimes("customer-agent").run()
+        """
+        token = await async_service_account_token(
+            client_id=client_id,
+            client_secret=client_secret,
+            project_id=project_id,
+            scope=scope,
+            base_api_url=base_api_url,
+            transport=transport,
+        )
+        return cls(
+            token=token.access_token,
+            base_api_url=base_api_url,
+            additional_headers=additional_headers,
         )
 
     async def shutdown(self) -> None:

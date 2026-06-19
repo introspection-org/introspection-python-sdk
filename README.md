@@ -89,6 +89,53 @@ print(first.total_count, len(first.records))
 See [`examples/api/async_runtimes.py`](examples/introspection_examples/api/async_runtimes.py)
 for an end-to-end walkthrough.
 
+### Service-account (machine) auth
+
+A long-lived `INTROSPECTION_TOKEN` is the simplest credential. For headless /
+CI callers that should not ship a static key, authenticate as a confidential
+**service-account** Application instead — `from_service_account` mints a
+short-lived, project-scoped token via the OAuth `client_credentials` grant and
+wires it in, so the runtime flow is unchanged:
+
+```python
+from introspection_sdk import IntrospectionClient
+
+client = IntrospectionClient.from_service_account(
+    client_id="intro_app_…",      # confidential Application
+    client_secret="intro_sk_…",   # minted once, kept server-side
+    project_id="proj_…",          # the token is project-scoped
+)
+runner = client.runtimes("customer-agent").run()
+```
+
+The token is not auto-refreshed — re-mint once it expires
+(`AsyncIntrospectionClient.from_service_account` is the awaitable twin).
+
+When you're a **server broker** handing credentials to a browser client, mint
+the token directly to also read `dp_url` (the Data Plane endpoint the Control
+Plane resolved for the project) and resolve the runtime name to a concrete
+`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser SDK talks
+to the Data Plane without a hardcoded URL:
+
+```python
+from introspection_sdk import IntrospectionClient, service_account_token
+
+token = service_account_token(
+    client_id="intro_app_…",
+    client_secret="intro_sk_…",
+    project_id="proj_…",
+)
+client = IntrospectionClient(token=token.access_token)
+runtime = client.runtimes.resolve_by_name("customer-agent")
+# -> hand { token.access_token, runtime.id, token.dp_url } to the browser
+```
+
+`token_exchange` (RFC 8693 partner-IdP federation) and
+`authorization_code_token` (PKCE hosted-login callback) are the matching
+server-side helpers for end-user auth — each returns the same `OAuthToken`
+shape, carrying `dp_url`. See
+[`examples/api/service_account.py`](examples/introspection_examples/api/service_account.py).
+
 ### Sync client
 
 Not on `asyncio`? `IntrospectionClient` is the synchronous twin with an
