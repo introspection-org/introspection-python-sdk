@@ -1,26 +1,28 @@
-"""Minimal Server-Sent Events parser over an iterator of lines.
+"""AG-UI event parsing over the task run SSE transport.
 
-DP returns ``text/event-stream`` and proxies raw frames from the
-agents-worker; the DP does not define the event taxonomy. This parser
-emits raw ``SseEvent`` dicts so callers can branch on ``event`` and
-``json.loads`` ``data`` themselves.
+The HTTP response still uses Server-Sent Events as a transport detail, but
+the public SDK surface yields validated AG-UI protocol events only.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterable, AsyncIterator, Iterable, Iterator
 from dataclasses import dataclass, field
+from typing import Any
+
+from introspection_sdk.schemas.agui import AGUIEvent, validate_ag_ui_event
 
 
 @dataclass(slots=True)
-class SseEvent:
+class _SseEvent:
     event: str = "message"
     data: str = ""
     id: str | None = None
     retry: int | None = None
     _data_parts: list[str] = field(default_factory=list)
 
-    def _finalize(self) -> SseEvent:
+    def _finalize(self) -> _SseEvent:
         self.data = "\n".join(self._data_parts)
         return self
 
@@ -29,19 +31,19 @@ class _SseAccumulator:
     """Incremental SSE line parser shared by the sync and async drivers.
 
     Feed wire lines one at a time via :meth:`feed`; it returns a
-    finalized :class:`SseEvent` whenever a blank line closes a non-empty
+    finalized SSE frame whenever a blank line closes a non-empty
     event, else ``None``. Call :meth:`flush` once the stream ends to emit
     any trailing event.
     """
 
     def __init__(self) -> None:
-        self._cur = SseEvent()
+        self._cur = _SseEvent()
         self._has_content = False
 
-    def feed(self, line: str) -> SseEvent | None:
+    def feed(self, line: str) -> _SseEvent | None:
         if line == "":
             event = self._cur._finalize() if self._has_content else None
-            self._cur = SseEvent()
+            self._cur = _SseEvent()
             self._has_content = False
             return event
         if line.startswith(":"):
@@ -65,12 +67,11 @@ class _SseAccumulator:
                 pass
         return None
 
-    def flush(self) -> SseEvent | None:
+    def flush(self) -> _SseEvent | None:
         return self._cur._finalize() if self._has_content else None
 
 
-def parse_sse(lines: Iterable[str]) -> Iterator[SseEvent]:
-    """Yield ``SseEvent`` instances from a stream of SSE wire lines."""
+def _parse_sse(lines: Iterable[str]) -> Iterator[_SseEvent]:
     acc = _SseAccumulator()
     for line in lines:
         event = acc.feed(line)
@@ -81,11 +82,9 @@ def parse_sse(lines: Iterable[str]) -> Iterator[SseEvent]:
         yield tail
 
 
-async def parse_sse_async(
+async def _parse_sse_async(
     lines: AsyncIterable[str],
-) -> AsyncIterator[SseEvent]:
-    """Async twin of :func:`parse_sse` over an async stream of SSE wire
-    lines."""
+) -> AsyncIterator[_SseEvent]:
     acc = _SseAccumulator()
     async for line in lines:
         event = acc.feed(line)
@@ -94,3 +93,26 @@ async def parse_sse_async(
     tail = acc.flush()
     if tail is not None:
         yield tail
+
+
+def parse_ag_ui_events(lines: Iterable[str]) -> Iterator[AGUIEvent]:
+    """Yield AG-UI events from ``event: ag_ui`` SSE frames.
+
+    Non-AG-UI transport frames, such as heartbeats, are ignored.
+    """
+    for event in _parse_sse(lines):
+        if event.event != "ag_ui":
+            continue
+        payload = json.loads(event.data)
+        yield validate_ag_ui_event(payload)
+
+
+async def parse_ag_ui_events_async(
+    lines: AsyncIterable[str],
+) -> AsyncIterator[AGUIEvent]:
+    """Async twin of :func:`parse_ag_ui_events`."""
+    async for event in _parse_sse_async(lines):
+        if event.event != "ag_ui":
+            continue
+        payload: Any = json.loads(event.data)
+        yield validate_ag_ui_event(payload)

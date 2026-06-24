@@ -74,7 +74,7 @@ def main() -> None:
     try:
         run = runner.tasks.start(prompt="Say hello in one sentence.")
         for event in run.stream():
-            print(f"[{event.event}] {event.data}")
+            print(event.model_dump_json(by_alias=True, exclude_none=True))
     finally:
         runner.close()
         client.shutdown()

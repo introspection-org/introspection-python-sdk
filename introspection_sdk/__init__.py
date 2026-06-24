@@ -54,6 +54,12 @@ from introspection_sdk.client import (
     IntrospectionClient,
 )
 from introspection_sdk.runner import AsyncRunner, Runner
+from introspection_sdk.schemas.agui import (
+    AGUIEvent,
+    EventType,
+    Interrupt,
+    ResumeEntry,
+)
 
 if TYPE_CHECKING:
     # Static type-checkers see the real classes; at runtime they're
@@ -204,15 +210,19 @@ __all__ = [
     # Always-available REST surface
     "AsyncIntrospectionClient",
     "AsyncRunner",
+    "AGUIEvent",
     "AuthenticationError",
     "ConflictError",
+    "EventType",
     "InsufficientScopeError",
     "IntrospectionAPIError",
     "IntrospectionClient",
+    "Interrupt",
     "NetworkError",
     "NotFoundError",
     "OAuthToken",
     "RateLimitError",
+    "ResumeEntry",
     "Runner",
     "RunnerExpiredError",
     "SandboxUnavailableError",

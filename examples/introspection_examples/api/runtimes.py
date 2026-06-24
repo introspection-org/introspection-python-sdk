@@ -43,7 +43,7 @@ def main() -> None:
         print(f"spawned task={task_id}, run={run.run.id}")
 
         for event in run.stream():
-            print(f"[{event.event}] {event.data}")
+            print(event.model_dump_json(by_alias=True, exclude_none=True))
 
         # Once the run has drained, the task carries its conversation id in
         # metadata. Fetch that conversation, then mint a read-share for it —
