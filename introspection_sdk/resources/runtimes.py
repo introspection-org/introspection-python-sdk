@@ -82,12 +82,18 @@ class Runtimes:
         name: str | None = None,
         recipe_id: str | None = None,
         only_active: bool | None = None,
+        environment: str | None = None,
+        exclude_yanked: bool | None = None,
         limit: int = 100,
         next: str | None = None,
     ) -> Pager[Runtime, Paginated[Runtime]]:
         """List runtimes. Iterate the returned :class:`Pager` to stream
         every runtime across pages, or call ``.page()`` for the first page
-        only."""
+        only.
+
+        Pass ``environment`` to restrict to runtimes serving that lane and
+        ``exclude_yanked=True`` to omit withdrawn runtimes (mirrors the
+        server-side active resolution)."""
 
         def fetch(cursor: str | None) -> Paginated[Runtime]:
             params: dict[str, Any] = {
@@ -95,6 +101,8 @@ class Runtimes:
                 "name": name,
                 "recipe_id": recipe_id,
                 "only_active": only_active,
+                "environment": environment,
+                "exclude_yanked": exclude_yanked,
                 "limit": limit,
                 "next": cursor,
             }
@@ -161,6 +169,29 @@ class Runtimes:
         )
         payload = self._http.request(
             "PATCH", f"/v1/runtimes/{runtime_id}", json=body
+        )
+        return Runtime.model_validate(payload)
+
+    def yank(
+        self, runtime_id: str | UUID, *, reason: str | None = None
+    ) -> Runtime:
+        """Withdraw a runtime so it stops resolving as the active runtime for
+        its environment. In-flight sticky runs keep using it; new runs fall
+        back to the previous active runtime (or "none active" until a
+        replacement is promoted)."""
+        body: dict[str, Any] = {"yanked": True}
+        if reason is not None:
+            body["yanked_reason"] = reason
+        payload = self._http.request(
+            "PATCH", f"/v1/runtimes/{runtime_id}", json=body
+        )
+        return Runtime.model_validate(payload)
+
+    def unyank(self, runtime_id: str | UUID) -> Runtime:
+        """Reverse a :meth:`yank`, making the runtime eligible to resolve
+        again."""
+        payload = self._http.request(
+            "PATCH", f"/v1/runtimes/{runtime_id}", json={"yanked": False}
         )
         return Runtime.model_validate(payload)
 
@@ -344,12 +375,18 @@ class AsyncRuntimes:
         name: str | None = None,
         recipe_id: str | None = None,
         only_active: bool | None = None,
+        environment: str | None = None,
+        exclude_yanked: bool | None = None,
         limit: int = 100,
         next: str | None = None,
     ) -> AsyncPager[Runtime, Paginated[Runtime]]:
         """List runtimes. ``await`` the returned :class:`AsyncPager` for the
         first page, or ``async for`` it to stream every runtime across
-        pages."""
+        pages.
+
+        Pass ``environment`` to restrict to runtimes serving that lane and
+        ``exclude_yanked=True`` to omit withdrawn runtimes (mirrors the
+        server-side active resolution)."""
 
         async def fetch(cursor: str | None) -> Paginated[Runtime]:
             params: dict[str, Any] = {
@@ -357,6 +394,8 @@ class AsyncRuntimes:
                 "name": name,
                 "recipe_id": recipe_id,
                 "only_active": only_active,
+                "environment": environment,
+                "exclude_yanked": exclude_yanked,
                 "limit": limit,
                 "next": cursor,
             }
@@ -422,6 +461,28 @@ class AsyncRuntimes:
         )
         payload = await self._http.request(
             "PATCH", f"/v1/runtimes/{runtime_id}", json=body
+        )
+        return Runtime.model_validate(payload)
+
+    async def yank(
+        self, runtime_id: str | UUID, *, reason: str | None = None
+    ) -> Runtime:
+        """Async twin of :meth:`Runtimes.yank`. Withdraw a runtime so it stops
+        resolving as the active runtime for its environment; in-flight sticky
+        runs keep using it."""
+        body: dict[str, Any] = {"yanked": True}
+        if reason is not None:
+            body["yanked_reason"] = reason
+        payload = await self._http.request(
+            "PATCH", f"/v1/runtimes/{runtime_id}", json=body
+        )
+        return Runtime.model_validate(payload)
+
+    async def unyank(self, runtime_id: str | UUID) -> Runtime:
+        """Reverse a :meth:`yank`, making the runtime eligible to resolve
+        again."""
+        payload = await self._http.request(
+            "PATCH", f"/v1/runtimes/{runtime_id}", json={"yanked": False}
         )
         return Runtime.model_validate(payload)
 
