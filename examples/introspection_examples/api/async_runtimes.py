@@ -50,7 +50,7 @@ async def main() -> None:
             # `async for` over the SSE stream — frames arrive without
             # blocking the event loop.
             async for event in run.stream():
-                print(f"[{event.event}] {event.data}")
+                print(event.model_dump_json(by_alias=True, exclude_none=True))
 
             # Once the run has drained, the task carries its conversation id
             # in metadata. Fetch that conversation, then mint a read-share —

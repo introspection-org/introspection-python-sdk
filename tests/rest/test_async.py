@@ -21,8 +21,10 @@ from introspection_sdk.runner_resources import (
     AsyncRunHandle,
     AsyncTasks,
 )
+from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.runner import RunnerSpec
-from introspection_sdk.streaming import parse_sse_async
+from introspection_sdk.schemas.tasks import TaskRunKind
+from introspection_sdk.streaming import parse_ag_ui_events_async
 
 from .conftest import (
     EXPERIMENT_ID,
@@ -108,16 +110,25 @@ async def test_pager_async_iter_walks_pages():
     assert [str(i) for i in ids] == [id_a, id_b]
 
 
-# --- parse_sse_async -------------------------------------------------
-
-
-async def test_parse_sse_async():
+async def test_parse_ag_ui_events_async():
     async def lines():
-        for line in ["event: text", "data: hel", "", "data: lo", ""]:
+        for line in [
+            "event: heartbeat",
+            "data: {}",
+            "",
+            "event: ag_ui",
+            (
+                'data: {"type":"TEXT_MESSAGE_CONTENT",'
+                '"messageId":"msg-1","delta":"hi"}'
+            ),
+            "",
+        ]:
             yield line
 
-    events = [e async for e in parse_sse_async(lines())]
-    assert [e.data for e in events] == ["hel", "lo"]
+    events = [e async for e in parse_ag_ui_events_async(lines())]
+    assert [
+        e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events
+    ] == ["hi"]
 
 
 # --- AsyncTasks ------------------------------------------------------
@@ -141,7 +152,12 @@ async def test_tasks_start_returns_async_handle(fake_api: FakeAPI):
 
 
 async def test_run_handle_stream_and_text(fake_api: FakeAPI):
-    sse = "event: text\ndata: hel\n\nevent: text\ndata: lo\n\n"
+    sse = (
+        'event: ag_ui\ndata: {"type":"TEXT_MESSAGE_CONTENT",'
+        '"messageId":"msg-1","delta":"hel"}\n\n'
+        'event: ag_ui\ndata: {"type":"TEXT_MESSAGE_CHUNK",'
+        '"messageId":"msg-1","delta":"lo"}\n\n'
+    )
     fake_api.add(
         "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
     )
@@ -154,8 +170,47 @@ async def test_run_handle_stream_and_text(fake_api: FakeAPI):
         TASK_ID, message="x"
     )
     events = [e async for e in handle.stream()]
-    assert [e.data for e in events] == ["hel", "lo"]
+    assert [
+        e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events
+    ] == ["hel", "lo"]
     assert await handle.text() == "hello"
+
+
+async def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
+    )
+    await AsyncTasks(fake_api.async_client()).runs.create(
+        TASK_ID,
+        message="revise",
+        kind=TaskRunKind.STEER,
+        metadata={"source": "test"},
+    )
+    assert fake_api.last_request.json() == {
+        "message": "revise",
+        "kind": "steer",
+        "metadata": {"source": "test"},
+    }
+
+
+async def test_runs_resume_posts_ag_ui_resume_entries(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
+    )
+    handle = await AsyncTasks(fake_api.async_client()).runs.resume(
+        TASK_ID,
+        resume=[
+            ResumeEntry(interrupt_id="interrupt-1", status="resolved"),
+            {"interruptId": "interrupt-2", "status": "cancelled"},
+        ],
+    )
+    assert handle.run.id == "run-1"
+    assert fake_api.last_request.json() == {
+        "resume": [
+            {"interruptId": "interrupt-1", "status": "resolved"},
+            {"interruptId": "interrupt-2", "status": "cancelled"},
+        ]
+    }
 
 
 async def test_run_handle_cancel(fake_api: FakeAPI):

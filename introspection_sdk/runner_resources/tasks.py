@@ -17,6 +17,12 @@ from introspection_sdk.pagination import (
     async_cursor_paginate,
     cursor_paginate,
 )
+from introspection_sdk.schemas.agui import (
+    AGUIEvent,
+    ResumeEntry,
+    TextMessageChunkEvent,
+    TextMessageContentEvent,
+)
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.tasks import (
     Task,
@@ -25,16 +31,33 @@ from introspection_sdk.schemas.tasks import (
     TaskMode,
     TaskPrompt,
     TaskRun,
+    TaskRunKind,
     TaskRunResponse,
 )
-from introspection_sdk.streaming import SseEvent, parse_sse, parse_sse_async
+from introspection_sdk.streaming import (
+    parse_ag_ui_events,
+    parse_ag_ui_events_async,
+)
+
+
+def _resume_body(
+    resume: list[ResumeEntry | dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "resume": [
+            entry.model_dump(exclude_none=True, by_alias=True)
+            if isinstance(entry, ResumeEntry)
+            else entry
+            for entry in resume
+        ]
+    }
 
 
 class RunHandle:
     """Returned by ``Tasks.start(...)`` and ``TaskRuns.create(...)``.
 
-    Mirrors the Cursor SDK shape: ``handle.stream()`` to iterate raw
-    SSE events, ``handle.text()`` to collect text frames into a string,
+    Mirrors the Cursor SDK shape: ``handle.stream()`` to iterate validated
+    AG-UI events, ``handle.text()`` to collect text deltas into a string,
     ``handle.cancel()`` to cancel the run.
     """
 
@@ -48,7 +71,7 @@ class RunHandle:
         self.run = run
         self._runs = runs
 
-    def stream(self) -> Iterator[SseEvent]:
+    def stream(self) -> Iterator[AGUIEvent]:
         return self._runs.stream(str(self.run.task_id), self.run.id)
 
     def cancel(self) -> TaskCancelResponse:
@@ -57,8 +80,8 @@ class RunHandle:
     def text(self) -> str:
         out: list[str] = []
         for ev in self.stream():
-            if ev.event in ("text", "message"):
-                out.append(ev.data)
+            if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
+                out.append(str(ev.delta or ""))
         return "".join(out)
 
 
@@ -72,6 +95,8 @@ class TaskRuns:
         *,
         prompt: TaskPrompt | dict[str, Any] | None = None,
         message: str | None = None,
+        kind: TaskRunKind | str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RunHandle:
         body: dict[str, Any] = {}
         if prompt is not None:
@@ -82,8 +107,26 @@ class TaskRuns:
             )
         if message is not None:
             body["message"] = message
+        if kind is not None:
+            body["kind"] = (
+                kind.value if isinstance(kind, TaskRunKind) else kind
+            )
+        if metadata is not None:
+            body["metadata"] = metadata
         payload = self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs", json=body
+        )
+        res = TaskRunResponse.model_validate(payload)
+        return RunHandle(None, res.run, self)
+
+    def resume(
+        self,
+        task_id: str,
+        *,
+        resume: list[ResumeEntry | dict[str, Any]],
+    ) -> RunHandle:
+        payload = self._http.request(
+            "POST", f"/v1/tasks/{task_id}/runs", json=_resume_body(resume)
         )
         res = TaskRunResponse.model_validate(payload)
         return RunHandle(None, res.run, self)
@@ -100,11 +143,11 @@ class TaskRuns:
         )
         return TaskCancelResponse.model_validate(payload)
 
-    def stream(self, task_id: str, run_id: str) -> Iterator[SseEvent]:
+    def stream(self, task_id: str, run_id: str) -> Iterator[AGUIEvent]:
         lines = self._http.stream_sse_lines(
             f"/v1/tasks/{task_id}/runs/{run_id}/stream"
         )
-        yield from parse_sse(lines)
+        yield from parse_ag_ui_events(lines)
 
 
 class Tasks:
@@ -246,7 +289,7 @@ class AsyncRunHandle:
 
     Returned by ``AsyncTasks.start(...)`` and ``AsyncTaskRuns.create(...)``.
     ``await handle.stream()`` is replaced by ``async for ev in
-    handle.stream()`` to iterate raw SSE events; ``await handle.text()``
+    handle.stream()`` to iterate AG-UI events; ``await handle.text()``
     collects text frames; ``await handle.cancel()`` cancels the run.
     """
 
@@ -260,7 +303,7 @@ class AsyncRunHandle:
         self.run = run
         self._runs = runs
 
-    def stream(self) -> AsyncIterator[SseEvent]:
+    def stream(self) -> AsyncIterator[AGUIEvent]:
         return self._runs.stream(str(self.run.task_id), self.run.id)
 
     async def cancel(self) -> TaskCancelResponse:
@@ -269,8 +312,8 @@ class AsyncRunHandle:
     async def text(self) -> str:
         out: list[str] = []
         async for ev in self.stream():
-            if ev.event in ("text", "message"):
-                out.append(ev.data)
+            if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
+                out.append(str(ev.delta or ""))
         return "".join(out)
 
 
@@ -284,6 +327,8 @@ class AsyncTaskRuns:
         *,
         prompt: TaskPrompt | dict[str, Any] | None = None,
         message: str | None = None,
+        kind: TaskRunKind | str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> AsyncRunHandle:
         body: dict[str, Any] = {}
         if prompt is not None:
@@ -294,8 +339,26 @@ class AsyncTaskRuns:
             )
         if message is not None:
             body["message"] = message
+        if kind is not None:
+            body["kind"] = (
+                kind.value if isinstance(kind, TaskRunKind) else kind
+            )
+        if metadata is not None:
+            body["metadata"] = metadata
         payload = await self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs", json=body
+        )
+        res = TaskRunResponse.model_validate(payload)
+        return AsyncRunHandle(None, res.run, self)
+
+    async def resume(
+        self,
+        task_id: str,
+        *,
+        resume: list[ResumeEntry | dict[str, Any]],
+    ) -> AsyncRunHandle:
+        payload = await self._http.request(
+            "POST", f"/v1/tasks/{task_id}/runs", json=_resume_body(resume)
         )
         res = TaskRunResponse.model_validate(payload)
         return AsyncRunHandle(None, res.run, self)
@@ -314,11 +377,11 @@ class AsyncTaskRuns:
 
     async def stream(
         self, task_id: str, run_id: str
-    ) -> AsyncIterator[SseEvent]:
+    ) -> AsyncIterator[AGUIEvent]:
         lines = self._http.stream_sse_lines(
             f"/v1/tasks/{task_id}/runs/{run_id}/stream"
         )
-        async for event in parse_sse_async(lines):
+        async for event in parse_ag_ui_events_async(lines):
             yield event
 
 

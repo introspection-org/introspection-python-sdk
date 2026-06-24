@@ -13,6 +13,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from introspection_sdk.schemas.agui import ResumeEntry
+
 
 class _ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -36,6 +38,7 @@ class TaskStatus(StrEnum):
     QUEUED = "queued"
     SCHEDULED = "scheduled"
     RUNNING = "running"
+    AWAITING_USER = "awaiting_user"
     IDLE = "idle"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -107,9 +110,21 @@ class TaskPrompt(_ApiModel):
     images: list[str] | None = None
 
 
+class TaskRunKind(StrEnum):
+    PROMPT = "prompt"
+    STEER = "steer"
+    CLEAR = "clear"
+
+
 class TaskRunCreateRequest(_ApiModel):
     prompt: TaskPrompt | None = None
     message: str | None = None
+    kind: TaskRunKind | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class TaskRunResumeRequest(_ApiModel):
+    resume: list[ResumeEntry]
 
 
 class TaskRun(_ApiModel):

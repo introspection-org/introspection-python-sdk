@@ -1,5 +1,11 @@
 """OTel Gen AI Semantic Convention schemas and DP resource mirrors."""
 
+from introspection_sdk.schemas.agui import (
+    AGUIEvent,
+    EventType,
+    Interrupt,
+    ResumeEntry,
+)
 from introspection_sdk.schemas.conversations import (
     ConversationItem,
     ConversationItemList,
@@ -18,10 +24,14 @@ from introspection_sdk.schemas.genai import (
 )
 
 __all__ = [
+    "AGUIEvent",
     "ConversationItem",
     "ConversationItemList",
     "ConversationResponse",
     "ConversationSummary",
+    "EventType",
+    "Interrupt",
+    "ResumeEntry",
     "TextPart",
     "ToolCallRequestPart",
     "ToolCallResponsePart",

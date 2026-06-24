@@ -55,7 +55,7 @@ async def main() -> None:
             run = await runner.tasks.start(prompt="Say hello in one sentence.")
 
             async for event in run.stream():
-                print(f"[{event.event}] {event.data}")
+                print(event.model_dump_json(by_alias=True, exclude_none=True))
 
 
 asyncio.run(main())
@@ -150,7 +150,7 @@ runner = client.runtimes("customer-agent").run()
 
 run = runner.tasks.start(prompt="Say hello in one sentence.")
 for event in run.stream():
-    print(f"[{event.event}] {event.data}")
+    print(event.model_dump_json(by_alias=True, exclude_none=True))
 
 runner.close()
 client.shutdown()

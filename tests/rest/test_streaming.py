@@ -1,80 +1,96 @@
-"""Unit tests for the SSE parser (:func:`parse_sse`).
+"""Unit tests for AG-UI stream parsing.
 
 Pure function over an iterable of wire lines — no transport, no mocks.
 """
 
 from __future__ import annotations
 
-from introspection_sdk.streaming import SseEvent, parse_sse
+import pytest
+from pydantic import ValidationError
+
+from introspection_sdk.schemas.agui import (
+    EventType,
+    ResumeEntry,
+    validate_ag_ui_event,
+)
+from introspection_sdk.streaming import parse_ag_ui_events
 
 
-def _events(lines: list[str]) -> list[SseEvent]:
-    return list(parse_sse(lines))
-
-
-def test_single_event_with_event_and_data():
-    events = _events(["event: text", "data: hello", ""])
+def test_parse_ag_ui_events_yields_ag_ui_frames_only():
+    event = (
+        '{"type":"TEXT_MESSAGE_CONTENT","messageId":"msg-1","delta":"hello"}'
+    )
+    events = list(
+        parse_ag_ui_events(
+            [
+                "event: heartbeat",
+                "data: {}",
+                "",
+                "event: ag_ui",
+                f"data: {event}",
+                "",
+            ]
+        )
+    )
     assert len(events) == 1
-    assert events[0].event == "text"
-    assert events[0].data == "hello"
+    assert events[0].type == EventType.TEXT_MESSAGE_CONTENT
+    assert events[0].model_dump(exclude_none=True, by_alias=True) == {
+        "type": EventType.TEXT_MESSAGE_CONTENT,
+        "messageId": "msg-1",
+        "delta": "hello",
+    }
 
 
-def test_default_event_name_is_message():
-    events = _events(["data: hi", ""])
-    assert events[0].event == "message"
-    assert events[0].data == "hi"
+def test_parse_ag_ui_events_handles_multiline_json():
+    events = list(
+        parse_ag_ui_events(
+            [
+                "event: ag_ui",
+                'data: {"type":"TEXT_MESSAGE_CONTENT",',
+                'data: "messageId":"msg-1",',
+                'data: "delta":"hello"}',
+                "",
+            ]
+        )
+    )
+    assert events[0].model_dump(exclude_none=True, by_alias=True) == {
+        "type": "TEXT_MESSAGE_CONTENT",
+        "messageId": "msg-1",
+        "delta": "hello",
+    }
 
 
-def test_multiline_data_is_joined_with_newlines():
-    events = _events(["data: line1", "data: line2", ""])
-    assert events[0].data == "line1\nline2"
+def test_parse_ag_ui_events_rejects_invalid_payload():
+    with pytest.raises(ValidationError):
+        list(parse_ag_ui_events(["event: ag_ui", 'data: {"type":"NOPE"}', ""]))
 
 
-def test_comment_lines_are_ignored():
-    events = _events([": keep-alive", "data: payload", ""])
-    assert len(events) == 1
-    assert events[0].data == "payload"
+def test_ag_ui_resume_entry_uses_camel_case_aliases():
+    entry = ResumeEntry(interrupt_id="interrupt-1", status="resolved")
+    assert entry.model_dump(exclude_none=True, by_alias=True) == {
+        "interruptId": "interrupt-1",
+        "status": "resolved",
+    }
 
 
-def test_id_and_retry_fields_are_parsed():
-    events = _events(["id: 7", "retry: 3000", "data: x", ""])
-    assert events[0].id == "7"
-    assert events[0].retry == 3000
-
-
-def test_invalid_retry_is_ignored():
-    events = _events(["retry: soon", "data: x", ""])
-    assert events[0].retry is None
-
-
-def test_leading_space_after_colon_is_stripped_once():
-    # "data:  x" -> value is " x" (only the first space is consumed).
-    events = _events(["data:  x", ""])
-    assert events[0].data == " x"
-
-
-def test_value_without_space_is_preserved():
-    events = _events(["data:x", ""])
-    assert events[0].data == "x"
-
-
-def test_multiple_events_separated_by_blank_lines():
-    events = _events(["data: a", "", "data: b", "", "data: c", ""])
-    assert [e.data for e in events] == ["a", "b", "c"]
-
-
-def test_blank_lines_without_content_emit_nothing():
-    assert _events(["", "", ""]) == []
-
-
-def test_trailing_event_without_blank_line_is_flushed():
-    events = _events(["event: done", "data: bye"])
-    assert len(events) == 1
-    assert events[0].event == "done"
-    assert events[0].data == "bye"
-
-
-def test_event_only_frame_has_empty_data():
-    events = _events(["event: ping", ""])
-    assert events[0].event == "ping"
-    assert events[0].data == ""
+def test_ag_ui_run_finished_interrupt_outcome_round_trips():
+    event = validate_ag_ui_event(
+        {
+            "type": "RUN_FINISHED",
+            "threadId": "task-1",
+            "runId": "run-1",
+            "outcome": {
+                "type": "interrupt",
+                "interrupts": [
+                    {
+                        "id": "interrupt-1",
+                        "reason": "approval",
+                        "toolCallId": "tool-1",
+                    }
+                ],
+            },
+        }
+    )
+    dumped = event.model_dump(exclude_none=True, by_alias=True)
+    assert dumped["threadId"] == "task-1"
+    assert dumped["outcome"]["interrupts"][0]["toolCallId"] == "tool-1"

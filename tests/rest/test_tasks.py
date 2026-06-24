@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
+from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
     TaskMode,
     TaskPrompt,
+    TaskRunKind,
 )
 
 from .conftest import (
@@ -133,6 +135,59 @@ def test_runs_create_with_message(fake_api: FakeAPI):
     assert fake_api.last_request.json() == {"message": "ping"}
 
 
+def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs",
+        json_body=task_run_response(),
+    )
+    _tasks(fake_api).runs.create(
+        TASK_ID,
+        message="revise",
+        kind=TaskRunKind.STEER,
+        metadata={"source": "test"},
+    )
+    assert fake_api.last_request.json() == {
+        "message": "revise",
+        "kind": "steer",
+        "metadata": {"source": "test"},
+    }
+
+
+def test_runs_resume_posts_ag_ui_resume_entries(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs",
+        json_body=task_run_response(),
+    )
+    handle = _tasks(fake_api).runs.resume(
+        TASK_ID,
+        resume=[
+            ResumeEntry(interrupt_id="interrupt-1", status="resolved"),
+            {
+                "interruptId": "interrupt-2",
+                "status": "cancelled",
+                "payload": {"reason": "skip"},
+            },
+        ],
+    )
+    assert handle.run.id == "run-1"
+    assert fake_api.last_request.json() == {
+        "resume": [
+            {"interruptId": "interrupt-1", "status": "resolved"},
+            {
+                "interruptId": "interrupt-2",
+                "status": "cancelled",
+                "payload": {"reason": "skip"},
+            },
+        ]
+    }
+
+
+def test_tasks_does_not_expose_resume(fake_api: FakeAPI):
+    assert not hasattr(_tasks(fake_api), "resume")
+
+
 def test_runs_get(fake_api: FakeAPI):
     fake_api.add(
         "GET",
@@ -159,7 +214,12 @@ def test_run_handle_cancel(fake_api: FakeAPI):
 
 
 def test_run_handle_stream_and_text(fake_api: FakeAPI):
-    sse = "event: text\ndata: hel\n\nevent: text\ndata: lo\n\n"
+    sse = (
+        'event: ag_ui\ndata: {"type":"TEXT_MESSAGE_CONTENT",'
+        '"messageId":"msg-1","delta":"hel"}\n\n'
+        'event: ag_ui\ndata: {"type":"TEXT_MESSAGE_CHUNK",'
+        '"messageId":"msg-1","delta":"lo"}\n\n'
+    )
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs",
@@ -172,6 +232,8 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
     )
     handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
     events = list(handle.stream())
-    assert [e.data for e in events] == ["hel", "lo"]
-    # text() re-streams and concatenates text/message frames.
+    assert [
+        e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events
+    ] == ["hel", "lo"]
+    # text() re-streams and concatenates AG-UI text deltas.
     assert handle.text() == "hello"
