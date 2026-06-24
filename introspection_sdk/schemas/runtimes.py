@@ -32,6 +32,24 @@ class RuntimeLlmMode(StrEnum):
     BYOK = "byok"
 
 
+class RuntimeResolutionMode(StrEnum):
+    """How a runtime group resolves which runtime serves a run.
+
+    - ``sticky``: a run pins the runtime that was active when it started and
+      keeps using it for the whole conversation, even after a newer runtime
+      is promoted. The production default.
+    - ``latest``: every run (including restarts of an existing task) resolves
+      the runtime currently active for the environment. The default for
+      non-production environments.
+
+    A per-run override on the run request beats the group's setting; a yanked
+    runtime is never resolved under either mode.
+    """
+
+    STICKY = "sticky"
+    LATEST = "latest"
+
+
 class Runtime(_ApiModel):
     id: UUID
     org_id: UUID
@@ -44,6 +62,10 @@ class Runtime(_ApiModel):
     llm_mode: RuntimeLlmMode = RuntimeLlmMode.MANAGED
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    # When set, the runtime has been withdrawn and never resolves as the
+    # active runtime for its environment; in-flight sticky runs keep using it.
+    yanked_at: datetime | None = None
+    yanked_reason: str | None = None
 
 
 class RuntimeCreate(_ApiModel):
@@ -65,4 +87,10 @@ class RuntimeUpdate(_ApiModel):
     llm_mode: RuntimeLlmMode | None = None
 
 
-__all__ = ["Runtime", "RuntimeCreate", "RuntimeLlmMode", "RuntimeUpdate"]
+__all__ = [
+    "Runtime",
+    "RuntimeCreate",
+    "RuntimeLlmMode",
+    "RuntimeResolutionMode",
+    "RuntimeUpdate",
+]
