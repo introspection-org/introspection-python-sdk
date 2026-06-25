@@ -44,8 +44,8 @@ class Recipes:
     def list(
         self,
         *,
-        project_id: str | UUID,
-        repository_id: str | UUID | None = None,
+        project: str | UUID,
+        repository_id: UUID | None = None,
         name: str | None = None,
         git_ref: str | None = None,
         git_commit_sha: str | None = None,
@@ -58,7 +58,7 @@ class Recipes:
 
         def fetch(cursor: str | None) -> Paginated[Recipe]:
             params: dict[str, Any] = {
-                "project_id": str(project_id),
+                "project": str(project),
                 "repository_id": (
                     str(repository_id) if repository_id is not None else None
                 ),
@@ -74,7 +74,7 @@ class Recipes:
 
         return cursor_paginate(fetch, start=next)
 
-    def get(self, recipe_id: str | UUID) -> Recipe:
+    def get(self, recipe_id: UUID) -> Recipe:
         payload = self._http.request("GET", f"/v1/recipes/{recipe_id}")
         return Recipe.model_validate(payload)
 
@@ -89,7 +89,7 @@ class Recipes:
 
     def update(
         self,
-        recipe_id: str | UUID,
+        recipe_id: UUID,
         patch: RecipeUpdate | dict[str, Any],
     ) -> Recipe:
         body = (
@@ -102,7 +102,7 @@ class Recipes:
         )
         return Recipe.model_validate(payload)
 
-    def delete(self, recipe_id: str | UUID) -> None:
+    def delete(self, recipe_id: UUID) -> None:
         self._http.request(
             "DELETE",
             f"/v1/recipes/{recipe_id}",
@@ -127,8 +127,8 @@ class AsyncRecipes:
     def list(
         self,
         *,
-        project_id: str | UUID,
-        repository_id: str | UUID | None = None,
+        project: str | UUID,
+        repository_id: UUID | None = None,
         name: str | None = None,
         git_ref: str | None = None,
         git_commit_sha: str | None = None,
@@ -142,7 +142,7 @@ class AsyncRecipes:
 
         async def fetch(cursor: str | None) -> Paginated[Recipe]:
             params: dict[str, Any] = {
-                "project_id": str(project_id),
+                "project": str(project),
                 "repository_id": (
                     str(repository_id) if repository_id is not None else None
                 ),
@@ -160,7 +160,7 @@ class AsyncRecipes:
 
         return async_cursor_paginate(fetch, start=next)
 
-    async def get(self, recipe_id: str | UUID) -> Recipe:
+    async def get(self, recipe_id: UUID) -> Recipe:
         payload = await self._http.request("GET", f"/v1/recipes/{recipe_id}")
         return Recipe.model_validate(payload)
 
@@ -175,7 +175,7 @@ class AsyncRecipes:
 
     async def update(
         self,
-        recipe_id: str | UUID,
+        recipe_id: UUID,
         patch: RecipeUpdate | dict[str, Any],
     ) -> Recipe:
         body = (
@@ -188,7 +188,7 @@ class AsyncRecipes:
         )
         return Recipe.model_validate(payload)
 
-    async def delete(self, recipe_id: str | UUID) -> None:
+    async def delete(self, recipe_id: UUID) -> None:
         await self._http.request(
             "DELETE",
             f"/v1/recipes/{recipe_id}",

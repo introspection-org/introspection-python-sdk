@@ -33,7 +33,7 @@ class Recipe(_ApiModel):
 
 
 class RecipeCreate(_ApiModel):
-    project_id: UUID
+    project: str | UUID
     repository_id: UUID
     name: str
     git_ref: str

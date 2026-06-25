@@ -69,7 +69,7 @@ def test_service_account_token_builds_form_and_parses(fake_api: FakeAPI):
     token = service_account_token(
         client_id="intro_app_123",
         client_secret="intro_sk_456",
-        project_id="proj-1",
+        project="proj-1",
         scope="runtimes:run",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
@@ -84,7 +84,7 @@ def test_service_account_token_builds_form_and_parses(fake_api: FakeAPI):
         "grant_type": "client_credentials",
         "client_id": "intro_app_123",
         "client_secret": "intro_sk_456",
-        "project_id": "proj-1",
+        "project": "proj-1",
         "scope": "runtimes:run",
     }
 
@@ -95,7 +95,7 @@ def test_service_account_token_omits_empty_scope(fake_api: FakeAPI):
     service_account_token(
         client_id="intro_app_123",
         client_secret="intro_sk_456",
-        project_id="proj-1",
+        project="proj-1",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
     )
@@ -115,7 +115,7 @@ def test_service_account_token_maps_errors(fake_api: FakeAPI):
         service_account_token(
             client_id="bad",
             client_secret="bad",
-            project_id="proj-1",
+            project="proj-1",
             base_api_url="https://api.test",
             transport=fake_api.transport(),
         )
@@ -130,7 +130,7 @@ def test_token_exchange_defaults_subject_token_type(fake_api: FakeAPI):
     token_exchange(
         subject_token="partner-id-token",
         client_id="intro_app_fed",
-        project_id="proj-1",
+        project="proj-1",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
     )
@@ -152,7 +152,7 @@ def test_token_exchange_includes_scope(fake_api: FakeAPI):
     token_exchange(
         subject_token="partner-id-token",
         client_id="intro_app_fed",
-        project_id="proj-1",
+        project="proj-1",
         scope="runtimes:run files:read",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
@@ -198,7 +198,7 @@ def test_base_api_url_falls_back_to_env(
     token = service_account_token(
         client_id="intro_app_123",
         client_secret="intro_sk_456",
-        project_id="proj-1",
+        project="proj-1",
         transport=fake_api.transport(),
     )
 
@@ -214,7 +214,7 @@ def test_from_service_account_wires_token(fake_api: FakeAPI):
     client = IntrospectionClient.from_service_account(
         client_id="intro_app_123",
         client_secret="intro_sk_456",
-        project_id="proj-1",
+        project="proj-1",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
     )
@@ -234,7 +234,7 @@ async def test_async_service_account_token(fake_api: FakeAPI):
     token = await async_service_account_token(
         client_id="intro_app_123",
         client_secret="intro_sk_456",
-        project_id="proj-1",
+        project="proj-1",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
     )
@@ -250,7 +250,7 @@ async def test_async_token_exchange(fake_api: FakeAPI):
     await async_token_exchange(
         subject_token="partner-id-token",
         client_id="intro_app_fed",
-        project_id="proj-1",
+        project="proj-1",
         subject_token_type="urn:custom:token",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
@@ -282,7 +282,7 @@ async def test_async_from_service_account_wires_token(fake_api: FakeAPI):
     client = await AsyncIntrospectionClient.from_service_account(
         client_id="intro_app_123",
         client_secret="intro_sk_456",
-        project_id="proj-1",
+        project="proj-1",
         base_api_url="https://api.test",
         transport=fake_api.transport(),
     )
@@ -304,7 +304,7 @@ async def test_async_token_maps_http_errors(fake_api: FakeAPI):
         await async_service_account_token(
             client_id="bad",
             client_secret="bad",
-            project_id="proj-1",
+            project="proj-1",
             base_api_url="https://api.test",
             transport=fake_api.transport(),
         )
@@ -318,7 +318,7 @@ def test_service_account_token_wraps_network_errors():
         service_account_token(
             client_id="intro_app_123",
             client_secret="intro_sk_456",
-            project_id="proj-1",
+            project="proj-1",
             base_api_url="https://api.test",
             transport=_raising_transport(),
         )
@@ -330,7 +330,7 @@ async def test_async_service_account_token_wraps_network_errors():
         await async_service_account_token(
             client_id="intro_app_123",
             client_secret="intro_sk_456",
-            project_id="proj-1",
+            project="proj-1",
             base_api_url="https://api.test",
             transport=_raising_transport(),
         )

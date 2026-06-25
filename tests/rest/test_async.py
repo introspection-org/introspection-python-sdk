@@ -9,6 +9,8 @@ patched or stubbed. ``asyncio_mode = "auto"`` (pyproject) means the
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 
 from introspection_sdk._errors import IntrospectionAPIError
@@ -295,19 +297,24 @@ async def test_runner_close_blocks_use_and_aenter():
 
 
 async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
+    runtime_group_id = "33333333-3333-3333-3333-333333333333"
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
     fake_api.add(
         "POST",
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
     runtimes = AsyncRuntimes(fake_api.async_client())
-    runner = await runtimes(RUNTIME_ID).run(identity={"user_id": "u1"})
+    runner = await runtimes(runtime_group_id).run(identity={"user_id": "u1"})
     assert isinstance(runner, AsyncRunner)
     assert runner.dp_endpoint == "https://dp.test"
+    assert fake_api.requests[0].params.get("runtime") == runtime_group_id
     await runner.close()
 
 
-async def test_runtime_handle_resolves_name(fake_api: FakeAPI):
+async def test_runtime_handle_resolves_slug(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
     )
@@ -319,7 +326,7 @@ async def test_runtime_handle_resolves_name(fake_api: FakeAPI):
     runtimes = AsyncRuntimes(fake_api.async_client())
     runner = await runtimes("checkout-agent").run()
     assert isinstance(runner, AsyncRunner)
-    # First call lists by name, second posts /run.
+    # First call lists by slug, second posts /run.
     assert fake_api.requests[0].path == "/v1/runtimes"
     assert fake_api.last_request.path == f"/v1/runtimes/{RUNTIME_ID}/run"
     await runner.close()
@@ -332,7 +339,7 @@ async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
         json_body=runner_spec_payload(),
     )
     experiments = AsyncExperiments(fake_api.async_client())
-    runner = await experiments(EXPERIMENT_ID).run()
+    runner = await experiments(UUID(EXPERIMENT_ID)).run()
     assert isinstance(runner, AsyncRunner)
     await runner.close()
 
@@ -348,7 +355,7 @@ async def test_experiment_lifecycle(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/end",
         json_body=experiment_payload(status="concluded"),
     )
-    handle = AsyncExperiments(fake_api.async_client())(EXPERIMENT_ID)
+    handle = AsyncExperiments(fake_api.async_client())(UUID(EXPERIMENT_ID))
     started = await handle.start()
     assert started.status == "running"
     ended = await handle.end(notes="done")

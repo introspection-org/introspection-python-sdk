@@ -21,7 +21,7 @@ Run with:
         uv run python -m introspection_examples.api.runtime_resolution
 
 Optional env:
-    INTROSPECTION_RUNTIME_NAME  - runtime to resolve (default: customer-agent)
+    INTROSPECTION_RUNTIME       - runtime slug or id (default: customer-agent)
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
 
 The project is scoped by the API key — there is no client-level project
@@ -38,11 +38,10 @@ from introspection_sdk import IntrospectionClient
 def main() -> None:
     client = IntrospectionClient()
 
-    runtime_name = os.getenv("INTROSPECTION_RUNTIME_NAME", "customer-agent")
+    runtime = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
 
-    # 1) Resolve what's currently serving production. resolve_by_name only
-    #    matches active, non-yanked runtimes.
-    active = client.runtimes.resolve_by_name(runtime_name)
+    # 1) Resolve what's currently serving production. Runtime accepts slug or id.
+    active = client.runtimes.resolve(runtime)
     suffix = (
         f" — YANKED: {active.yanked_reason or ''}" if active.yanked_at else ""
     )
@@ -74,7 +73,7 @@ def main() -> None:
     # 4) Re-resolve — the group now points production at the previous runtime,
     #    or raises LookupError if nothing else is active for the environment.
     try:
-        fallback = client.runtimes.resolve_by_name(runtime_name)
+        fallback = client.runtimes.resolve(runtime)
         print(f"production now resolves to: {fallback.name} ({fallback.id})")
     except LookupError:
         print(

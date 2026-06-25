@@ -8,7 +8,7 @@ stay server-side, and you re-mint when the token expires.
 Two ways to use it, both shown below:
 
 1. ``IntrospectionClient.from_service_account(...)`` — mint and construct
-   a ready client in one call. The usual ``client.runtimes(name).run()``
+   a ready client in one call. The usual ``client.runtimes(slug).run()``
    flow then works unchanged.
 2. ``service_account_token(...)`` directly — when you also need the
    resolved ``dp_url`` (the Data Plane endpoint the CP picked for the
@@ -19,12 +19,12 @@ Two ways to use it, both shown below:
 Run with:
     INTRO_SA_CLIENT_ID=intro_app_xxx
     INTRO_SA_CLIENT_SECRET=intro_sk_xxx
-    INTRO_PROJECT_ID=...
+    INTRO_PROJECT=...
 
         uv run python -m introspection_examples.api.service_account
 
 Optional env:
-    INTROSPECTION_RUNTIME_NAME  - runtime to resolve (default customer-agent)
+    INTROSPECTION_RUNTIME       - runtime slug or id (default customer-agent)
     INTROSPECTION_BASE_API_URL  - CP REST API host
 """
 
@@ -45,32 +45,30 @@ def _require(name: str) -> str:
 def main() -> None:
     client_id = _require("INTRO_SA_CLIENT_ID")
     client_secret = _require("INTRO_SA_CLIENT_SECRET")
-    project_id = _require("INTRO_PROJECT_ID")
-    runtime_name = os.getenv("INTROSPECTION_RUNTIME_NAME", "customer-agent")
+    project = _require("INTRO_PROJECT")
+    runtime = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
 
     # (1) Mint-and-construct: the simplest path for a server/CI caller.
     client = IntrospectionClient.from_service_account(
         client_id=client_id,
         client_secret=client_secret,
-        project_id=project_id,
+        project=project,
     )
 
     # (2) Broker path: mint the token explicitly to also read `dp_url`
-    # (resolved server-side by the CP), and resolve the runtime name to a
+    # (resolved server-side by the CP), and resolve the runtime slug to a
     # concrete `runtime_id`. A web broker returns these three to a browser
     # client — `{ token, runtime_id, dp_url }` — so the SPA connects to the
     # Data Plane directly without hardcoding the DP URL.
     token = service_account_token(
         client_id=client_id,
         client_secret=client_secret,
-        project_id=project_id,
+        project=project,
     )
-    runtime = client.runtimes.resolve_by_name(
-        runtime_name, project_id=project_id
-    )
-    print(f"runtime_id={runtime.id}, dp_url={token.dp_url}")
+    resolved_runtime = client.runtimes.resolve(runtime, project=project)
+    print(f"runtime_id={resolved_runtime.id}, dp_url={token.dp_url}")
 
-    runner = client.runtimes(runtime_name).run()
+    runner = client.runtimes(runtime).run()
     try:
         run = runner.tasks.start(prompt="Say hello in one sentence.")
         for event in run.stream():

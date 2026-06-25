@@ -27,7 +27,6 @@ logs = IntrospectionLogs(
     token="intro_xxx",        # or env: INTROSPECTION_TOKEN
     service_name="my-service",
     base_url="https://otel.introspection.dev",  # or env: INTROSPECTION_BASE_OTEL_URL
-    project_id="proj_…",      # or env: INTROSPECTION_PROJECT_ID — optional
 )
 
 with logs.identify("user_123", traits={"plan": "pro"}):

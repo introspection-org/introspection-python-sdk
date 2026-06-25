@@ -194,7 +194,7 @@ def to_jsonable(obj: Any) -> Any:
         return obj.model_dump(mode="json")
     if isinstance(obj, dict):
         return {k: to_jsonable(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, list | tuple):
         return [to_jsonable(v) for v in obj]
     return obj
 
@@ -204,7 +204,8 @@ def runtime_payload(**over: Any) -> Runtime:
         "id": RUNTIME_ID,
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
-        "name": "checkout-agent",
+        "name": "Checkout Agent",
+        "slug": "checkout-agent",
         "recipe_id": RECIPE_ID,
         "is_active": True,
     }

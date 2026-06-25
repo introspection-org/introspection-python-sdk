@@ -103,7 +103,7 @@ from introspection_sdk import IntrospectionClient
 client = IntrospectionClient.from_service_account(
     client_id="intro_app_…",      # confidential Application
     client_secret="intro_sk_…",   # minted once, kept server-side
-    project_id="proj_…",          # the token is project-scoped
+    project="my-project",         # slug or UUID; the token is project-scoped
 )
 runner = client.runtimes("customer-agent").run()
 ```
@@ -113,7 +113,7 @@ The token is not auto-refreshed — re-mint once it expires
 
 When you're a **server broker** handing credentials to a browser client, mint
 the token directly to also read `dp_url` (the Data Plane endpoint the Control
-Plane resolved for the project) and resolve the runtime name to a concrete
+Plane resolved for the project) and resolve the runtime slug to a concrete
 `runtime_id` — return `{ token, runtime_id, dp_url }` so the browser SDK talks
 to the Data Plane without a hardcoded URL:
 
@@ -123,10 +123,10 @@ from introspection_sdk import IntrospectionClient, service_account_token
 token = service_account_token(
     client_id="intro_app_…",
     client_secret="intro_sk_…",
-    project_id="proj_…",
+    project="my-project",
 )
 client = IntrospectionClient(token=token.access_token)
-runtime = client.runtimes.resolve_by_name("customer-agent")
+runtime = client.runtimes.resolve("customer-agent")
 # -> hand { token.access_token, runtime.id, token.dp_url } to the browser
 ```
 
@@ -180,8 +180,8 @@ and LangSmith) see [`examples/`](./examples/).
 # Introspection API (IntrospectionClient / AsyncIntrospectionClient)
 export INTROSPECTION_TOKEN="intro_xxx"
 export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
-# The project is scoped by the API key — there is no project env var or
-# client option. Pass project_id per call only to override it.
+# The project is scoped by the API key. Pass project per call only to override
+# it with a slug or UUID.
 
 # OTel (IntrospectionLogs + span processors + instrumentors) — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional

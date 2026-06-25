@@ -40,7 +40,7 @@ class IntrospectionClient:
     """REST-only Introspection client (no OpenTelemetry).
 
     Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``client.runtimes(name).run()`` and
+    surface. ``client.runtimes(slug).run()`` and
     ``client.experiments(id).run()`` mint a
     :class:`~introspection_sdk.runner.Runner` for DP traffic
     (``runner.tasks`` / ``runner.files``).
@@ -90,7 +90,7 @@ class IntrospectionClient:
         cls,
         client_id: str,
         client_secret: str,
-        project_id: str,
+        project: str,
         *,
         scope: str | None = None,
         base_api_url: str | None = None,
@@ -109,7 +109,7 @@ class IntrospectionClient:
             client = IntrospectionClient.from_service_account(
                 client_id=os.environ["INTRO_SA_CLIENT_ID"],
                 client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
-                project_id=os.environ["INTRO_PROJECT_ID"],
+                project=os.environ["INTRO_PROJECT"],
             )
             runner = client.runtimes("customer-agent").run()
 
@@ -123,7 +123,7 @@ class IntrospectionClient:
         token = service_account_token(
             client_id=client_id,
             client_secret=client_secret,
-            project_id=project_id,
+            project=project,
             scope=scope,
             base_api_url=base_api_url,
             transport=transport,
@@ -146,7 +146,7 @@ class AsyncIntrospectionClient:
     """Async twin of :class:`IntrospectionClient` (no OpenTelemetry).
 
     Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``await client.runtimes(name).run()`` and
+    surface. ``await client.runtimes(slug).run()`` and
     ``await client.experiments(id).run()`` mint an
     :class:`~introspection_sdk.runner.AsyncRunner` for DP traffic
     (``await runner.tasks...`` / ``await runner.files...``).
@@ -199,7 +199,7 @@ class AsyncIntrospectionClient:
         cls,
         client_id: str,
         client_secret: str,
-        project_id: str,
+        project: str,
         *,
         scope: str | None = None,
         base_api_url: str | None = None,
@@ -217,14 +217,14 @@ class AsyncIntrospectionClient:
             client = await AsyncIntrospectionClient.from_service_account(
                 client_id=os.environ["INTRO_SA_CLIENT_ID"],
                 client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
-                project_id=os.environ["INTRO_PROJECT_ID"],
+                project=os.environ["INTRO_PROJECT"],
             )
             runner = await client.runtimes("customer-agent").run()
         """
         token = await async_service_account_token(
             client_id=client_id,
             client_secret=client_secret,
-            project_id=project_id,
+            project=project,
             scope=scope,
             base_api_url=base_api_url,
             transport=transport,

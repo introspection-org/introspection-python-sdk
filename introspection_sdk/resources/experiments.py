@@ -50,7 +50,7 @@ class Experiments:
         self._http = http
         self._additional_headers = additional_headers
 
-    def __call__(self, experiment_id: str | UUID) -> ExperimentHandle:
+    def __call__(self, experiment_id: UUID) -> ExperimentHandle:
         return ExperimentHandle(self, experiment_id=experiment_id)
 
     # --- CRUD --------------------------------------------------------
@@ -58,7 +58,7 @@ class Experiments:
     def list(
         self,
         *,
-        project_id: str,
+        project: str | UUID,
         name: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -70,7 +70,7 @@ class Experiments:
 
         def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project_id": project_id,
+                "project": str(project),
                 "name": name,
                 "status": status,
                 "limit": limit,
@@ -84,11 +84,11 @@ class Experiments:
         return cursor_paginate(fetch, start=next)
 
     def get(
-        self, experiment_id: str | UUID, *, project_id: str | None = None
+        self, experiment_id: UUID, *, project: str | UUID | None = None
     ) -> Experiment:
         params: dict[str, Any] = {}
-        if project_id:
-            params["project_id"] = project_id
+        if project:
+            params["project"] = str(project)
         payload = self._http.request(
             "GET",
             f"/v1/experiments/{experiment_id}",
@@ -107,7 +107,7 @@ class Experiments:
 
     def update(
         self,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
         input: ExperimentUpdate | dict[str, Any],
     ) -> Experiment:
         body = (
@@ -120,7 +120,7 @@ class Experiments:
         )
         return Experiment.model_validate(payload)
 
-    def delete(self, experiment_id: str | UUID) -> None:
+    def delete(self, experiment_id: UUID) -> None:
         self._http.request(
             "DELETE",
             f"/v1/experiments/{experiment_id}",
@@ -131,7 +131,7 @@ class Experiments:
 
     def _post_run(
         self,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
         options: RunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
@@ -142,7 +142,7 @@ class Experiments:
         )
         return RunnerSpec.model_validate(payload)
 
-    def _start(self, experiment_id: str | UUID) -> Experiment:
+    def _start(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/start"
         )
@@ -150,7 +150,7 @@ class Experiments:
 
     def _end(
         self,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
         *,
         winning_arm_label: str | None = None,
         notes: str | None = None,
@@ -167,7 +167,7 @@ class Experiments:
         )
         return Experiment.model_validate(payload)
 
-    def _cancel(self, experiment_id: str | UUID) -> Experiment:
+    def _cancel(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/cancel"
         )
@@ -184,17 +184,13 @@ class ExperimentHandle:
         self,
         experiments: Experiments,
         *,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
     ) -> None:
         self._experiments = experiments
-        self._experiment_id = (
-            str(experiment_id)
-            if isinstance(experiment_id, UUID)
-            else experiment_id
-        )
+        self._experiment_id = experiment_id
 
     @property
-    def experiment_id(self) -> str:
+    def experiment_id(self) -> UUID:
         return self._experiment_id
 
     def run(
@@ -268,7 +264,7 @@ class AsyncExperiments:
         self._http = http
         self._additional_headers = additional_headers
 
-    def __call__(self, experiment_id: str | UUID) -> AsyncExperimentHandle:
+    def __call__(self, experiment_id: UUID) -> AsyncExperimentHandle:
         return AsyncExperimentHandle(self, experiment_id=experiment_id)
 
     # --- CRUD --------------------------------------------------------
@@ -276,7 +272,7 @@ class AsyncExperiments:
     def list(
         self,
         *,
-        project_id: str,
+        project: str | UUID,
         name: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -288,7 +284,7 @@ class AsyncExperiments:
 
         async def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project_id": project_id,
+                "project": str(project),
                 "name": name,
                 "status": status,
                 "limit": limit,
@@ -302,11 +298,11 @@ class AsyncExperiments:
         return async_cursor_paginate(fetch, start=next)
 
     async def get(
-        self, experiment_id: str | UUID, *, project_id: str | None = None
+        self, experiment_id: UUID, *, project: str | UUID | None = None
     ) -> Experiment:
         params: dict[str, Any] = {}
-        if project_id:
-            params["project_id"] = project_id
+        if project:
+            params["project"] = str(project)
         payload = await self._http.request(
             "GET",
             f"/v1/experiments/{experiment_id}",
@@ -329,7 +325,7 @@ class AsyncExperiments:
 
     async def update(
         self,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
         input: ExperimentUpdate | dict[str, Any],
     ) -> Experiment:
         body = (
@@ -342,7 +338,7 @@ class AsyncExperiments:
         )
         return Experiment.model_validate(payload)
 
-    async def delete(self, experiment_id: str | UUID) -> None:
+    async def delete(self, experiment_id: UUID) -> None:
         await self._http.request(
             "DELETE",
             f"/v1/experiments/{experiment_id}",
@@ -353,7 +349,7 @@ class AsyncExperiments:
 
     async def _post_run(
         self,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
         options: RunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
@@ -364,7 +360,7 @@ class AsyncExperiments:
         )
         return RunnerSpec.model_validate(payload)
 
-    async def _start(self, experiment_id: str | UUID) -> Experiment:
+    async def _start(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/start"
         )
@@ -372,7 +368,7 @@ class AsyncExperiments:
 
     async def _end(
         self,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
         *,
         winning_arm_label: str | None = None,
         notes: str | None = None,
@@ -389,7 +385,7 @@ class AsyncExperiments:
         )
         return Experiment.model_validate(payload)
 
-    async def _cancel(self, experiment_id: str | UUID) -> Experiment:
+    async def _cancel(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/cancel"
         )
@@ -406,17 +402,13 @@ class AsyncExperimentHandle:
         self,
         experiments: AsyncExperiments,
         *,
-        experiment_id: str | UUID,
+        experiment_id: UUID,
     ) -> None:
         self._experiments = experiments
-        self._experiment_id = (
-            str(experiment_id)
-            if isinstance(experiment_id, UUID)
-            else experiment_id
-        )
+        self._experiment_id = experiment_id
 
     @property
-    def experiment_id(self) -> str:
+    def experiment_id(self) -> UUID:
         return self._experiment_id
 
     async def run(
