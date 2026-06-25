@@ -103,7 +103,7 @@ from introspection_sdk import IntrospectionClient
 client = IntrospectionClient.from_service_account(
     client_id="intro_app_…",      # confidential Application
     client_secret="intro_sk_…",   # minted once, kept server-side
-    project_id="proj_…",          # the token is project-scoped
+    project="my-project",         # slug or UUID; the token is project-scoped
 )
 runner = client.runtimes("customer-agent").run()
 ```
@@ -123,7 +123,7 @@ from introspection_sdk import IntrospectionClient, service_account_token
 token = service_account_token(
     client_id="intro_app_…",
     client_secret="intro_sk_…",
-    project_id="proj_…",
+    project="my-project",
 )
 client = IntrospectionClient(token=token.access_token)
 runtime = client.runtimes.resolve("customer-agent")
@@ -180,8 +180,8 @@ and LangSmith) see [`examples/`](./examples/).
 # Introspection API (IntrospectionClient / AsyncIntrospectionClient)
 export INTROSPECTION_TOKEN="intro_xxx"
 export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
-# The project is scoped by the API key — there is no project env var or
-# client option. Pass project_id per call only to override it.
+# The project is scoped by the API key. Pass project per call only to override
+# it with a slug or UUID.
 
 # OTel (IntrospectionLogs + span processors + instrumentors) — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional

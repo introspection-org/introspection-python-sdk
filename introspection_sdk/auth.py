@@ -62,7 +62,7 @@ class OAuthToken(BaseModel):
 
     No refresh token is issued for the machine grants — re-mint (call the
     helper again) once it expires. Additional wire fields the CP returns
-    (``project_id``, ``org_id``, …) are preserved but left unmodelled.
+    (``project``, ``org_id``, …) are preserved but left unmodelled.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -91,14 +91,14 @@ def _resolve_base_api_url(base_api_url: str | None) -> str:
 def _service_account_form(
     client_id: str,
     client_secret: str,
-    project_id: str,
+    project: str,
     scope: str | None,
 ) -> dict[str, str]:
     form = {
         "grant_type": _GRANT_CLIENT_CREDENTIALS,
         "client_id": client_id,
         "client_secret": client_secret,
-        "project_id": project_id,
+        "project": project,
     }
     if scope:
         form["scope"] = scope
@@ -108,7 +108,7 @@ def _service_account_form(
 def _token_exchange_form(
     subject_token: str,
     client_id: str,
-    project_id: str,
+    project: str,
     subject_token_type: str | None,
     scope: str | None,
 ) -> dict[str, str]:
@@ -118,7 +118,7 @@ def _token_exchange_form(
         "subject_token_type": subject_token_type
         or _SUBJECT_TOKEN_TYPE_ID_TOKEN,
         "client_id": client_id,
-        "project_id": project_id,
+        "project": project,
     }
     if scope:
         form["scope"] = scope
@@ -182,7 +182,7 @@ async def _apost_token_form(
 def service_account_token(
     client_id: str,
     client_secret: str,
-    project_id: str,
+    project: str,
     *,
     scope: str | None = None,
     base_api_url: str | None = None,
@@ -191,7 +191,7 @@ def service_account_token(
     """Mint a project-scoped CP access token from service-account creds.
 
     ``client_id`` (``intro_app_…``) and ``client_secret`` (``intro_sk_…``)
-    come from a confidential machine Application; ``project_id`` scopes the
+    come from a confidential machine Application; ``project`` scopes the
     token (the project must belong to the Application's organization).
     ``scope`` is capped server-side to the Application's allowed scopes.
 
@@ -202,7 +202,7 @@ def service_account_token(
     form = _service_account_form(
         client_id=client_id,
         client_secret=client_secret,
-        project_id=project_id,
+        project=project,
         scope=scope,
     )
     return _post_token_form(
@@ -213,7 +213,7 @@ def service_account_token(
 async def async_service_account_token(
     client_id: str,
     client_secret: str,
-    project_id: str,
+    project: str,
     *,
     scope: str | None = None,
     base_api_url: str | None = None,
@@ -223,7 +223,7 @@ async def async_service_account_token(
     form = _service_account_form(
         client_id=client_id,
         client_secret=client_secret,
-        project_id=project_id,
+        project=project,
         scope=scope,
     )
     return await _apost_token_form(
@@ -237,7 +237,7 @@ async def async_service_account_token(
 def token_exchange(
     subject_token: str,
     client_id: str,
-    project_id: str,
+    project: str,
     *,
     subject_token_type: str | None = None,
     scope: str | None = None,
@@ -255,7 +255,7 @@ def token_exchange(
     form = _token_exchange_form(
         subject_token=subject_token,
         client_id=client_id,
-        project_id=project_id,
+        project=project,
         subject_token_type=subject_token_type,
         scope=scope,
     )
@@ -267,7 +267,7 @@ def token_exchange(
 async def async_token_exchange(
     subject_token: str,
     client_id: str,
-    project_id: str,
+    project: str,
     *,
     subject_token_type: str | None = None,
     scope: str | None = None,
@@ -278,7 +278,7 @@ async def async_token_exchange(
     form = _token_exchange_form(
         subject_token=subject_token,
         client_id=client_id,
-        project_id=project_id,
+        project=project,
         subject_token_type=subject_token_type,
         scope=scope,
     )

@@ -62,8 +62,8 @@ def test_base_url_override_from_environment(
 
 def test_project_is_not_a_client_option(monkeypatch: pytest.MonkeyPatch):
     # The project is scoped by the API key server-side — the client neither
-    # accepts a `project_id` kwarg nor reads INTROSPECTION_PROJECT_ID.
-    monkeypatch.setenv("INTROSPECTION_PROJECT_ID", "env-proj")
+    # accepts a `project_id` kwarg nor reads an ambient project selector.
+    monkeypatch.setenv("INTROSPECTION_PROJECT", "env-proj")
     with pytest.raises(TypeError):
         IntrospectionClient(token="t", project_id="proj-9")  # type: ignore[call-arg]
     client = IntrospectionClient(token="t")

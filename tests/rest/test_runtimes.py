@@ -10,10 +10,7 @@ from uuid import UUID
 import httpx
 import pytest
 
-from introspection_sdk.resources.runtimes import (
-    Runtimes,
-    _looks_like_uuid,
-)
+from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.recipes import Recipe
 from introspection_sdk.schemas.runtimes import RuntimeCreate
@@ -33,11 +30,6 @@ from .conftest import (
 
 def _runtimes(fake_api: FakeAPI) -> Runtimes:
     return Runtimes(fake_api.client())
-
-
-def test_looks_like_uuid():
-    assert _looks_like_uuid(RUNTIME_ID)
-    assert not _looks_like_uuid("checkout-agent")
 
 
 def test_list_validates_and_drops_none_params(fake_api: FakeAPI):
@@ -114,19 +106,28 @@ def test_update_patches(fake_api: FakeAPI):
     assert fake_api.last_request.method == "PATCH"
 
 
-def test_handle_with_uuid_skips_name_resolution(fake_api: FakeAPI):
+def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):
+    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body=paginated([runtime_payload()]),
+    )
     fake_api.add(
         "POST",
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
     runtimes = _runtimes(fake_api)
-    runner = runtimes(UUID(RUNTIME_ID)).run()
+    runner = runtimes(runtime_group_id).run()
     assert isinstance(runner, Runner)
-    # No list call happened — only the /run POST.
+    # User-facing runtime UUIDs are runtime group IDs, so the handle resolves
+    # them before opening a runner against the returned concrete runtime row.
     assert [r.path for r in fake_api.requests] == [
+        "/v1/runtimes",
         f"/v1/runtimes/{RUNTIME_ID}/run"
     ]
+    assert fake_api.requests[0].params.get("runtime") == str(runtime_group_id)
 
 
 def test_handle_resolves_runtime_via_list(fake_api: FakeAPI):
@@ -190,13 +191,19 @@ def test_resolve_ambiguous_raises(fake_api: FakeAPI):
 
 
 def test_run_returns_runner_with_context(fake_api: FakeAPI):
+    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body=paginated([runtime_payload()]),
+    )
     fake_api.add(
         "POST",
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
     runtimes = _runtimes(fake_api)
-    runner = runtimes(UUID(RUNTIME_ID)).run(
+    runner = runtimes(runtime_group_id).run(
         identity={"user_id": "u1"}, caller={"locale": "en"}
     )
     assert runner.session_id == "sess-1"
@@ -208,6 +215,12 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
 
 
 def test_pin_injects_recipe_id_on_run(fake_api: FakeAPI):
+    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body=paginated([runtime_payload()]),
+    )
     fake_api.add(
         "POST",
         f"/v1/runtimes/{RUNTIME_ID}/run",
@@ -215,11 +228,17 @@ def test_pin_injects_recipe_id_on_run(fake_api: FakeAPI):
     )
     recipe = Recipe.model_validate(recipe_payload())
     runtimes = _runtimes(fake_api)
-    runtimes(UUID(RUNTIME_ID)).pin(recipe).run()
+    runtimes(runtime_group_id).pin(recipe).run()
     assert fake_api.last_request.json()["recipe_id"] == RECIPE_ID
 
 
 def test_activate(fake_api: FakeAPI):
+    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body=paginated([runtime_payload()]),
+    )
     fake_api.add(
         "POST",
         f"/v1/runtimes/{RUNTIME_ID}/activate",
@@ -228,6 +247,6 @@ def test_activate(fake_api: FakeAPI):
     runtimes = _runtimes(fake_api)
     # No client-level default project: the per-call override is the only way
     # to scope activate to a specific project.
-    rt = runtimes(UUID(RUNTIME_ID)).activate(project=PROJECT_ID)
+    rt = runtimes(runtime_group_id).activate(project=PROJECT_ID)
     assert rt.is_active is True
     assert fake_api.last_request.json()["project"] == PROJECT_ID

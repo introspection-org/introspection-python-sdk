@@ -3,13 +3,13 @@
 ``client.runtimes`` is the :class:`Runtimes` instance; calling
 ``client.runtimes(runtime)`` returns a :class:`RuntimeHandle`
 which exposes ``.run()`` and ``.activate()``. When called with a
-string that is not a UUID, the handle resolves it as a slug on the
-caller's project on first use.
+runtime slug or UUID, the handle resolves it on the caller's project
+on first use. UUID selectors are runtime group IDs; concrete runtime
+row IDs are used only by explicit ``*_id`` methods.
 """
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
@@ -35,15 +35,6 @@ from introspection_sdk.schemas.runtimes import (
     RuntimeCreate,
     RuntimeUpdate,
 )
-
-_UUID_RE = re.compile(
-    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
-    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-)
-
-
-def _looks_like_uuid(value: str) -> bool:
-    return bool(_UUID_RE.match(value))
 
 
 class Runtimes:
@@ -122,16 +113,17 @@ class Runtimes:
     def resolve(
         self, runtime: str | UUID, *, project: str | None = None
     ) -> Runtime:
-        """Resolve an active runtime by slug or id on the caller's project.
+        """Resolve an active runtime by slug or runtime group id.
 
         The standalone form of ``client.runtimes(runtime)`` resolution —
-        handy for a server broker that resolves a ``runtime_id`` to hand
+        handy for a server broker that resolves a concrete ``runtime_id`` to hand
         to a browser client (which talks only to the Data Plane and never
         resolves runtimes itself). The project is scoped by the token
         server-side; pass ``project`` only to override it.
 
-        Raises ``LookupError`` if no active runtime matches the slug or id,
-        or if the slug or id is ambiguous (more than one active match).
+        Raises ``LookupError`` if no active runtime matches the slug or
+        runtime group id, or if the selector is ambiguous (more than one active
+        match).
         """
         page = self.list(
             runtime=str(runtime),
@@ -224,10 +216,10 @@ class Runtimes:
 
 
 class RuntimeHandle:
-    """Handle for a specific runtime slug or id.
+    """Handle for a specific runtime slug or runtime group id.
 
-    Resolves a non-UUID slug lazily on first use by listing on the
-    caller's project. Built by ``client.runtimes(runtime)``.
+    Resolves the selector lazily on first use by listing on the caller's
+    project. Built by ``client.runtimes(runtime)``.
     """
 
     def __init__(
@@ -243,11 +235,6 @@ class RuntimeHandle:
         self._raw = runtime
         self._resolved_id: UUID | None = None
         self._recipe_id: UUID | None = recipe_id
-
-        if isinstance(runtime, UUID):
-            self._resolved_id = runtime
-        elif isinstance(runtime, str) and _looks_like_uuid(runtime):
-            self._resolved_id = UUID(runtime)
 
     @property
     def runtime_id(self) -> UUID:
@@ -413,11 +400,11 @@ class AsyncRuntimes:
     ) -> Runtime:
         """Async twin of :meth:`Runtimes.resolve`.
 
-        Resolve an active runtime by slug or id on the caller's project — the
+        Resolve an active runtime by slug or runtime group id on the caller's project — the
         standalone form of ``client.runtimes(runtime)`` resolution, handy
-        for a server broker that resolves a ``runtime_id`` to hand to a
+        for a server broker that resolves a concrete ``runtime_id`` to hand to a
         browser client. Raises ``LookupError`` if no active runtime
-        matches, or if the slug or id is ambiguous.
+        matches, or if the selector is ambiguous.
         """
         page = await self.list(
             runtime=str(runtime),
@@ -513,8 +500,8 @@ class AsyncRuntimes:
 class AsyncRuntimeHandle:
     """Async twin of :class:`RuntimeHandle`.
 
-    Resolves a non-UUID slug lazily on first use by listing on the
-    caller's project. Built by ``client.runtimes(runtime)``.
+    Resolves the selector lazily on first use by listing on the caller's
+    project. Built by ``client.runtimes(runtime)``.
     """
 
     def __init__(
@@ -530,11 +517,6 @@ class AsyncRuntimeHandle:
         self._raw = runtime
         self._resolved_id: UUID | None = None
         self._recipe_id: UUID | None = recipe_id
-
-        if isinstance(runtime, UUID):
-            self._resolved_id = runtime
-        elif isinstance(runtime, str) and _looks_like_uuid(runtime):
-            self._resolved_id = UUID(runtime)
 
     async def _resolve(self) -> UUID:
         if self._resolved_id is not None:

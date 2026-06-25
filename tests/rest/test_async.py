@@ -295,15 +295,20 @@ async def test_runner_close_blocks_use_and_aenter():
 
 
 async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
+    runtime_group_id = "33333333-3333-3333-3333-333333333333"
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
     fake_api.add(
         "POST",
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
     runtimes = AsyncRuntimes(fake_api.async_client())
-    runner = await runtimes(RUNTIME_ID).run(identity={"user_id": "u1"})
+    runner = await runtimes(runtime_group_id).run(identity={"user_id": "u1"})
     assert isinstance(runner, AsyncRunner)
     assert runner.dp_endpoint == "https://dp.test"
+    assert fake_api.requests[0].params.get("runtime") == runtime_group_id
     await runner.close()
 
 
