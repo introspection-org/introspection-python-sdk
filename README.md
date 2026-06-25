@@ -126,7 +126,7 @@ token = service_account_token(
     project_id="proj_…",
 )
 client = IntrospectionClient(token=token.access_token)
-runtime = client.runtimes.resolve_by_slug("customer-agent")
+runtime = client.runtimes.resolve("customer-agent")
 # -> hand { token.access_token, runtime.id, token.dp_url } to the browser
 ```
 

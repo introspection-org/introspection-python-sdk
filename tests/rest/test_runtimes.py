@@ -44,13 +44,14 @@ def test_list_validates_and_drops_none_params(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
     )
-    page = _runtimes(fake_api).list(project_id=PROJECT_ID, only_active=True)
+    page = _runtimes(fake_api).list(project=PROJECT_ID, only_active=True)
     assert page.count == 1
     assert str(page.records[0].id) == RUNTIME_ID
     params = fake_api.last_request.params
-    assert params.get("project_id") == PROJECT_ID
+    assert params.get("project") == PROJECT_ID
     assert params.get("only_active") == "true"
-    assert "name" not in params  # None slug filtered out
+    assert "name" not in params
+    assert "runtime" not in params
 
 
 def test_iter_follows_pagination(fake_api: FakeAPI):
@@ -67,20 +68,20 @@ def test_iter_follows_pagination(fake_api: FakeAPI):
         return httpx.Response(200, json=to_jsonable(next(pages)))
 
     fake_api.add_handler("GET", "/v1/runtimes", _handler)
-    names = [r.name for r in _runtimes(fake_api).list(project_id=PROJECT_ID)]
+    names = [r.name for r in _runtimes(fake_api).list(project=PROJECT_ID)]
     assert names == ["a", "b"]
     # The cursor from page 1 must be sent on the page-2 request; without
     # this a client that never forwarded ``next`` would still pass.
     assert seen_next == [None, "cursor-2"]
 
 
-def test_get_includes_project_id(fake_api: FakeAPI):
+def test_get_includes_project_param(fake_api: FakeAPI):
     fake_api.add(
         "GET", f"/v1/runtimes/{RUNTIME_ID}", json_body=runtime_payload()
     )
-    rt = _runtimes(fake_api).get(RUNTIME_ID, project_id=PROJECT_ID)
+    rt = _runtimes(fake_api).get(RUNTIME_ID, project=PROJECT_ID)
     assert str(rt.id) == RUNTIME_ID
-    assert fake_api.last_request.params.get("project_id") == PROJECT_ID
+    assert fake_api.last_request.params.get("project") == PROJECT_ID
 
 
 def test_create_from_model_excludes_none(fake_api: FakeAPI):
@@ -127,7 +128,7 @@ def test_handle_with_uuid_skips_name_resolution(fake_api: FakeAPI):
     ]
 
 
-def test_handle_resolves_slug_via_list(fake_api: FakeAPI):
+def test_handle_resolves_runtime_via_list(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
@@ -136,17 +137,17 @@ def test_handle_resolves_slug_via_list(fake_api: FakeAPI):
     runtimes = _runtimes(fake_api)
     handle = runtimes("checkout-agent")
     assert handle.runtime_id == RUNTIME_ID
-    assert fake_api.last_request.params.get("name") == "checkout-agent"
+    assert fake_api.last_request.params.get("runtime") == "checkout-agent"
 
 
-def test_handle_slug_not_found_raises(fake_api: FakeAPI):
+def test_handle_runtime_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
     handle = _runtimes(fake_api)("missing")
     with pytest.raises(LookupError, match="No active runtime"):
         _ = handle.runtime_id
 
 
-def test_handle_ambiguous_slug_raises(fake_api: FakeAPI):
+def test_handle_ambiguous_runtime_raises(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
@@ -157,36 +158,34 @@ def test_handle_ambiguous_slug_raises(fake_api: FakeAPI):
         _ = handle.runtime_id
 
 
-def test_resolve_by_slug_returns_runtime(fake_api: FakeAPI):
+def test_resolve_returns_runtime(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload()]),
     )
-    runtime = _runtimes(fake_api).resolve_by_slug(
-        "checkout-agent", project_id=PROJECT_ID
-    )
+    runtime = _runtimes(fake_api).resolve("checkout-agent", project=PROJECT_ID)
     assert str(runtime.id) == RUNTIME_ID
     params = fake_api.last_request.params
-    assert params.get("name") == "checkout-agent"
+    assert params.get("runtime") == "checkout-agent"
     assert params.get("only_active") == "true"
-    assert params.get("project_id") == PROJECT_ID
+    assert params.get("project") == PROJECT_ID
 
 
-def test_resolve_by_slug_not_found_raises(fake_api: FakeAPI):
+def test_resolve_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
     with pytest.raises(LookupError, match="No active runtime"):
-        _runtimes(fake_api).resolve_by_slug("missing")
+        _runtimes(fake_api).resolve("missing")
 
 
-def test_resolve_by_slug_ambiguous_raises(fake_api: FakeAPI):
+def test_resolve_ambiguous_raises(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload(), runtime_payload()]),
     )
     with pytest.raises(LookupError, match="Ambiguous"):
-        _runtimes(fake_api).resolve_by_slug("dup")
+        _runtimes(fake_api).resolve("dup")
 
 
 def test_run_returns_runner_with_context(fake_api: FakeAPI):
@@ -228,6 +227,6 @@ def test_activate(fake_api: FakeAPI):
     runtimes = _runtimes(fake_api)
     # No client-level default project: the per-call override is the only way
     # to scope activate to a specific project.
-    rt = runtimes(RUNTIME_ID).activate(project_id=PROJECT_ID)
+    rt = runtimes(RUNTIME_ID).activate(project=PROJECT_ID)
     assert rt.is_active is True
-    assert fake_api.last_request.json()["project_id"] == PROJECT_ID
+    assert fake_api.last_request.json()["project"] == PROJECT_ID

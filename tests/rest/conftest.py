@@ -204,7 +204,7 @@ def runtime_payload(**over: Any) -> Runtime:
         "id": RUNTIME_ID,
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
-        "name": "checkout-agent",
+        "name": "Checkout Agent",
         "slug": "checkout-agent",
         "recipe_id": RECIPE_ID,
         "is_active": True,

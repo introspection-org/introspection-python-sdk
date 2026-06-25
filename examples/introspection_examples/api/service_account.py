@@ -65,9 +65,7 @@ def main() -> None:
         client_secret=client_secret,
         project_id=project_id,
     )
-    resolved_runtime = client.runtimes.resolve_by_slug(
-        runtime, project_id=project_id
-    )
+    resolved_runtime = client.runtimes.resolve(runtime, project=project_id)
     print(f"runtime_id={resolved_runtime.id}, dp_url={token.dp_url}")
 
     runner = client.runtimes(runtime).run()
