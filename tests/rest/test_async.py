@@ -9,6 +9,8 @@ patched or stubbed. ``asyncio_mode = "auto"`` (pyproject) means the
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 
 from introspection_sdk._errors import IntrospectionAPIError
@@ -337,7 +339,7 @@ async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
         json_body=runner_spec_payload(),
     )
     experiments = AsyncExperiments(fake_api.async_client())
-    runner = await experiments(EXPERIMENT_ID).run()
+    runner = await experiments(UUID(EXPERIMENT_ID)).run()
     assert isinstance(runner, AsyncRunner)
     await runner.close()
 
@@ -353,7 +355,7 @@ async def test_experiment_lifecycle(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/end",
         json_body=experiment_payload(status="concluded"),
     )
-    handle = AsyncExperiments(fake_api.async_client())(EXPERIMENT_ID)
+    handle = AsyncExperiments(fake_api.async_client())(UUID(EXPERIMENT_ID))
     started = await handle.start()
     assert started.status == "running"
     ended = await handle.end(notes="done")

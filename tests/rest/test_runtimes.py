@@ -125,7 +125,7 @@ def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):
     # them before opening a runner against the returned concrete runtime row.
     assert [r.path for r in fake_api.requests] == [
         "/v1/runtimes",
-        f"/v1/runtimes/{RUNTIME_ID}/run"
+        f"/v1/runtimes/{RUNTIME_ID}/run",
     ]
     assert fake_api.requests[0].params.get("runtime") == str(runtime_group_id)
 
