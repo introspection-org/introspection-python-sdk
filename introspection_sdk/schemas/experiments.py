@@ -50,7 +50,7 @@ class Experiment(_ApiModel):
 
 
 class ExperimentCreate(_ApiModel):
-    project_id: UUID
+    project: str | UUID
     name: str
     arms: list[Arm] | None = None
     description: str | None = None

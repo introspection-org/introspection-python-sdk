@@ -58,7 +58,7 @@ class Experiments:
     def list(
         self,
         *,
-        project_id: UUID,
+        project: str | UUID,
         name: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -70,7 +70,7 @@ class Experiments:
 
         def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project_id": str(project_id),
+                "project": str(project),
                 "name": name,
                 "status": status,
                 "limit": limit,
@@ -84,11 +84,11 @@ class Experiments:
         return cursor_paginate(fetch, start=next)
 
     def get(
-        self, experiment_id: UUID, *, project_id: UUID | None = None
+        self, experiment_id: UUID, *, project: str | UUID | None = None
     ) -> Experiment:
         params: dict[str, Any] = {}
-        if project_id:
-            params["project_id"] = str(project_id)
+        if project:
+            params["project"] = str(project)
         payload = self._http.request(
             "GET",
             f"/v1/experiments/{experiment_id}",
@@ -272,7 +272,7 @@ class AsyncExperiments:
     def list(
         self,
         *,
-        project_id: UUID,
+        project: str | UUID,
         name: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -284,7 +284,7 @@ class AsyncExperiments:
 
         async def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project_id": str(project_id),
+                "project": str(project),
                 "name": name,
                 "status": status,
                 "limit": limit,
@@ -298,11 +298,11 @@ class AsyncExperiments:
         return async_cursor_paginate(fetch, start=next)
 
     async def get(
-        self, experiment_id: UUID, *, project_id: UUID | None = None
+        self, experiment_id: UUID, *, project: str | UUID | None = None
     ) -> Experiment:
         params: dict[str, Any] = {}
-        if project_id:
-            params["project_id"] = str(project_id)
+        if project:
+            params["project"] = str(project)
         payload = await self._http.request(
             "GET",
             f"/v1/experiments/{experiment_id}",

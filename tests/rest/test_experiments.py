@@ -28,9 +28,7 @@ def test_list(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
     )
-    page = _experiments(fake_api).list(
-        project_id=UUID(PROJECT_ID), status="running"
-    )
+    page = _experiments(fake_api).list(project=PROJECT_ID, status="running")
     assert page.records[0].name == "prompt-bake-off"
     assert fake_api.last_request.params.get("status") == "running"
 
@@ -39,11 +37,11 @@ def test_iter_stops_when_no_next(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
     )
-    records = list(_experiments(fake_api).list(project_id=UUID(PROJECT_ID)))
+    records = list(_experiments(fake_api).list(project=PROJECT_ID))
     assert len(records) == 1
 
 
-def test_get_without_project_id_sends_no_params(fake_api: FakeAPI):
+def test_get_without_project_sends_no_params(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         f"/v1/experiments/{EXPERIMENT_ID}",
@@ -53,22 +51,20 @@ def test_get_without_project_id_sends_no_params(fake_api: FakeAPI):
     assert list(fake_api.last_request.params.keys()) == []
 
 
-def test_get_with_project_id(fake_api: FakeAPI):
+def test_get_with_project(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         f"/v1/experiments/{EXPERIMENT_ID}",
         json_body=experiment_payload(),
     )
-    _experiments(fake_api).get(
-        UUID(EXPERIMENT_ID), project_id=UUID(PROJECT_ID)
-    )
-    assert fake_api.last_request.params.get("project_id") == PROJECT_ID
+    _experiments(fake_api).get(UUID(EXPERIMENT_ID), project=PROJECT_ID)
+    assert fake_api.last_request.params.get("project") == PROJECT_ID
 
 
 def test_create_from_model(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
     _experiments(fake_api).create(
-        ExperimentCreate(project_id=UUID(PROJECT_ID), name="prompt-bake-off")
+        ExperimentCreate(project=PROJECT_ID, name="prompt-bake-off")
     )
     assert fake_api.last_request.json()["name"] == "prompt-bake-off"
 
@@ -76,7 +72,7 @@ def test_create_from_model(fake_api: FakeAPI):
 def test_create_from_dict(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
     _experiments(fake_api).create(
-        {"project_id": PROJECT_ID, "name": "x", "description": None}
+        {"project": PROJECT_ID, "name": "x", "description": None}
     )
     assert "description" not in fake_api.last_request.json()
 
