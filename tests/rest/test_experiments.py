@@ -28,7 +28,9 @@ def test_list(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
     )
-    page = _experiments(fake_api).list(project_id=PROJECT_ID, status="running")
+    page = _experiments(fake_api).list(
+        project_id=UUID(PROJECT_ID), status="running"
+    )
     assert page.records[0].name == "prompt-bake-off"
     assert fake_api.last_request.params.get("status") == "running"
 
@@ -37,7 +39,7 @@ def test_iter_stops_when_no_next(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
     )
-    records = list(_experiments(fake_api).list(project_id=PROJECT_ID))
+    records = list(_experiments(fake_api).list(project_id=UUID(PROJECT_ID)))
     assert len(records) == 1
 
 
@@ -47,7 +49,7 @@ def test_get_without_project_id_sends_no_params(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}",
         json_body=experiment_payload(),
     )
-    _experiments(fake_api).get(EXPERIMENT_ID)
+    _experiments(fake_api).get(UUID(EXPERIMENT_ID))
     assert list(fake_api.last_request.params.keys()) == []
 
 
@@ -57,7 +59,9 @@ def test_get_with_project_id(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}",
         json_body=experiment_payload(),
     )
-    _experiments(fake_api).get(EXPERIMENT_ID, project_id=PROJECT_ID)
+    _experiments(fake_api).get(
+        UUID(EXPERIMENT_ID), project_id=UUID(PROJECT_ID)
+    )
     assert fake_api.last_request.params.get("project_id") == PROJECT_ID
 
 
@@ -83,13 +87,15 @@ def test_update(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}",
         json_body=experiment_payload(name="renamed"),
     )
-    exp = _experiments(fake_api).update(EXPERIMENT_ID, {"name": "renamed"})
+    exp = _experiments(fake_api).update(
+        UUID(EXPERIMENT_ID), {"name": "renamed"}
+    )
     assert exp.name == "renamed"
 
 
 def test_delete_expects_empty(fake_api: FakeAPI):
     fake_api.add("DELETE", f"/v1/experiments/{EXPERIMENT_ID}", status=204)
-    assert _experiments(fake_api).delete(EXPERIMENT_ID) is None
+    assert _experiments(fake_api).delete(UUID(EXPERIMENT_ID)) is None
 
 
 def test_handle_run(fake_api: FakeAPI):
@@ -98,7 +104,7 @@ def test_handle_run(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runner = _experiments(fake_api)(EXPERIMENT_ID).run(ttl_seconds=60)
+    runner = _experiments(fake_api)(UUID(EXPERIMENT_ID)).run(ttl_seconds=60)
     assert isinstance(runner, Runner)
     assert fake_api.last_request.json()["ttl_seconds"] == 60
 
@@ -119,7 +125,7 @@ def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/cancel",
         json_body=experiment_payload(status="cancelled"),
     )
-    handle = _experiments(fake_api)(EXPERIMENT_ID)
+    handle = _experiments(fake_api)(UUID(EXPERIMENT_ID))
 
     assert handle.start().status.value == "running"
 
@@ -132,5 +138,5 @@ def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
 
 
 def test_handle_experiment_id_property(fake_api: FakeAPI):
-    handle = _experiments(fake_api)(EXPERIMENT_ID)
-    assert handle.experiment_id == EXPERIMENT_ID
+    handle = _experiments(fake_api)(UUID(EXPERIMENT_ID))
+    assert handle.experiment_id == UUID(EXPERIMENT_ID)

@@ -77,7 +77,7 @@ class TaskCreateRequest(_ApiModel):
     prompt: str | None = None
     mode: TaskMode = TaskMode.AGENT
     system_id: str | None = None
-    repository_id: str | None = None
+    repository_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     idle_timeout_seconds: int | None = Field(
         default=None,

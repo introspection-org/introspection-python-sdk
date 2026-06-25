@@ -80,7 +80,7 @@ class Runtimes:
         *,
         project: str | None = None,
         runtime: str | None = None,
-        recipe_id: str | None = None,
+        recipe_id: UUID | None = None,
         only_active: bool | None = None,
         environment: str | None = None,
         exclude_yanked: bool | None = None,
@@ -111,7 +111,7 @@ class Runtimes:
 
         return cursor_paginate(fetch, start=next)
 
-    def get(self, runtime_id: str | UUID, *, project: str) -> Runtime:
+    def get(self, runtime_id: UUID, *, project: str) -> Runtime:
         payload = self._http.request(
             "GET",
             f"/v1/runtimes/{runtime_id}",
@@ -119,7 +119,9 @@ class Runtimes:
         )
         return Runtime.model_validate(payload)
 
-    def resolve(self, runtime: str, *, project: str | None = None) -> Runtime:
+    def resolve(
+        self, runtime: str | UUID, *, project: str | None = None
+    ) -> Runtime:
         """Resolve an active runtime by slug or id on the caller's project.
 
         The standalone form of ``client.runtimes(runtime)`` resolution —
@@ -132,7 +134,7 @@ class Runtimes:
         or if the slug or id is ambiguous (more than one active match).
         """
         page = self.list(
-            runtime=runtime,
+            runtime=str(runtime),
             only_active=True,
             limit=2,
             project=project,
@@ -157,7 +159,7 @@ class Runtimes:
 
     def update(
         self,
-        runtime_id: str | UUID,
+        runtime_id: UUID,
         input: RuntimeUpdate | dict[str, Any],
     ) -> Runtime:
         body = (
@@ -170,9 +172,7 @@ class Runtimes:
         )
         return Runtime.model_validate(payload)
 
-    def yank(
-        self, runtime_id: str | UUID, *, reason: str | None = None
-    ) -> Runtime:
+    def yank(self, runtime_id: UUID, *, reason: str | None = None) -> Runtime:
         """Withdraw a runtime so it stops resolving as the active runtime for
         its environment. In-flight sticky runs keep using it; new runs fall
         back to the previous active runtime (or "none active" until a
@@ -185,7 +185,7 @@ class Runtimes:
         )
         return Runtime.model_validate(payload)
 
-    def unyank(self, runtime_id: str | UUID) -> Runtime:
+    def unyank(self, runtime_id: UUID) -> Runtime:
         """Reverse a :meth:`yank`, making the runtime eligible to resolve
         again."""
         payload = self._http.request(
@@ -197,7 +197,7 @@ class Runtimes:
 
     def _post_run(
         self,
-        runtime_id: str | UUID,
+        runtime_id: UUID,
         options: RunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
@@ -210,7 +210,7 @@ class Runtimes:
 
     def _activate(
         self,
-        runtime_id: str | UUID,
+        runtime_id: UUID,
         *,
         project: str | None,
     ) -> Runtime:
@@ -241,23 +241,23 @@ class RuntimeHandle:
         self._runtimes = runtimes
         self._project = project
         self._raw = runtime
-        self._resolved_id: str | None = None
+        self._resolved_id: UUID | None = None
         self._recipe_id: UUID | None = recipe_id
 
         if isinstance(runtime, UUID):
-            self._resolved_id = str(runtime)
-        elif isinstance(runtime, str) and _looks_like_uuid(runtime):
             self._resolved_id = runtime
+        elif isinstance(runtime, str) and _looks_like_uuid(runtime):
+            self._resolved_id = UUID(runtime)
 
     @property
-    def runtime_id(self) -> str:
+    def runtime_id(self) -> UUID:
         return self._resolve()
 
-    def _resolve(self) -> str:
+    def _resolve(self) -> UUID:
         if self._resolved_id is not None:
             return self._resolved_id
         runtime = self._runtimes.resolve(str(self._raw), project=self._project)
-        self._resolved_id = str(runtime.id)
+        self._resolved_id = runtime.id
         return self._resolved_id
 
     def run(
@@ -367,7 +367,7 @@ class AsyncRuntimes:
         *,
         project: str | None = None,
         runtime: str | None = None,
-        recipe_id: str | None = None,
+        recipe_id: UUID | None = None,
         only_active: bool | None = None,
         environment: str | None = None,
         exclude_yanked: bool | None = None,
@@ -400,7 +400,7 @@ class AsyncRuntimes:
 
         return async_cursor_paginate(fetch, start=next)
 
-    async def get(self, runtime_id: str | UUID, *, project: str) -> Runtime:
+    async def get(self, runtime_id: UUID, *, project: str) -> Runtime:
         payload = await self._http.request(
             "GET",
             f"/v1/runtimes/{runtime_id}",
@@ -409,7 +409,7 @@ class AsyncRuntimes:
         return Runtime.model_validate(payload)
 
     async def resolve(
-        self, runtime: str, *, project: str | None = None
+        self, runtime: str | UUID, *, project: str | None = None
     ) -> Runtime:
         """Async twin of :meth:`Runtimes.resolve`.
 
@@ -420,7 +420,7 @@ class AsyncRuntimes:
         matches, or if the slug or id is ambiguous.
         """
         page = await self.list(
-            runtime=runtime,
+            runtime=str(runtime),
             only_active=True,
             limit=2,
             project=project,
@@ -445,7 +445,7 @@ class AsyncRuntimes:
 
     async def update(
         self,
-        runtime_id: str | UUID,
+        runtime_id: UUID,
         input: RuntimeUpdate | dict[str, Any],
     ) -> Runtime:
         body = (
@@ -459,7 +459,7 @@ class AsyncRuntimes:
         return Runtime.model_validate(payload)
 
     async def yank(
-        self, runtime_id: str | UUID, *, reason: str | None = None
+        self, runtime_id: UUID, *, reason: str | None = None
     ) -> Runtime:
         """Async twin of :meth:`Runtimes.yank`. Withdraw a runtime so it stops
         resolving as the active runtime for its environment; in-flight sticky
@@ -472,7 +472,7 @@ class AsyncRuntimes:
         )
         return Runtime.model_validate(payload)
 
-    async def unyank(self, runtime_id: str | UUID) -> Runtime:
+    async def unyank(self, runtime_id: UUID) -> Runtime:
         """Reverse a :meth:`yank`, making the runtime eligible to resolve
         again."""
         payload = await self._http.request(
@@ -484,7 +484,7 @@ class AsyncRuntimes:
 
     async def _post_run(
         self,
-        runtime_id: str | UUID,
+        runtime_id: UUID,
         options: RunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
@@ -497,7 +497,7 @@ class AsyncRuntimes:
 
     async def _activate(
         self,
-        runtime_id: str | UUID,
+        runtime_id: UUID,
         *,
         project: str | None,
     ) -> Runtime:
@@ -528,21 +528,21 @@ class AsyncRuntimeHandle:
         self._runtimes = runtimes
         self._project = project
         self._raw = runtime
-        self._resolved_id: str | None = None
+        self._resolved_id: UUID | None = None
         self._recipe_id: UUID | None = recipe_id
 
         if isinstance(runtime, UUID):
-            self._resolved_id = str(runtime)
-        elif isinstance(runtime, str) and _looks_like_uuid(runtime):
             self._resolved_id = runtime
+        elif isinstance(runtime, str) and _looks_like_uuid(runtime):
+            self._resolved_id = UUID(runtime)
 
-    async def _resolve(self) -> str:
+    async def _resolve(self) -> UUID:
         if self._resolved_id is not None:
             return self._resolved_id
         runtime = await self._runtimes.resolve(
             str(self._raw), project=self._project
         )
-        self._resolved_id = str(runtime.id)
+        self._resolved_id = runtime.id
         return self._resolved_id
 
     async def run(

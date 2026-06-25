@@ -9,6 +9,7 @@ from __future__ import annotations
 import builtins
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
+from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
@@ -192,7 +193,7 @@ class Tasks:
         prompt: str | None = None,
         mode: TaskMode | str = TaskMode.AGENT,
         system_id: str | None = None,
-        repository_id: str | None = None,
+        repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
@@ -202,7 +203,9 @@ class Tasks:
             "prompt": prompt,
             "mode": mode.value if isinstance(mode, TaskMode) else mode,
             "system_id": system_id,
-            "repository_id": repository_id,
+            "repository_id": (
+                str(repository_id) if repository_id is not None else None
+            ),
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
@@ -262,7 +265,7 @@ class Tasks:
         title: str | None = None,
         mode: TaskMode | str = TaskMode.AGENT,
         system_id: str | None = None,
-        repository_id: str | None = None,
+        repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
     ) -> RunHandle:
@@ -429,7 +432,7 @@ class AsyncTasks:
         prompt: str | None = None,
         mode: TaskMode | str = TaskMode.AGENT,
         system_id: str | None = None,
-        repository_id: str | None = None,
+        repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
@@ -439,7 +442,9 @@ class AsyncTasks:
             "prompt": prompt,
             "mode": mode.value if isinstance(mode, TaskMode) else mode,
             "system_id": system_id,
-            "repository_id": repository_id,
+            "repository_id": (
+                str(repository_id) if repository_id is not None else None
+            ),
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
@@ -501,7 +506,7 @@ class AsyncTasks:
         title: str | None = None,
         mode: TaskMode | str = TaskMode.AGENT,
         system_id: str | None = None,
-        repository_id: str | None = None,
+        repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
     ) -> AsyncRunHandle:
