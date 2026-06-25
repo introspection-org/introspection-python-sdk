@@ -5,8 +5,6 @@ All HTTP is served by the in-process transport in ``conftest.py``.
 
 from __future__ import annotations
 
-from uuid import UUID
-
 import httpx
 import pytest
 
@@ -87,10 +85,11 @@ def test_get_includes_project_param(fake_api: FakeAPI):
 def test_create_from_model_excludes_none(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/runtimes", json_body=runtime_payload())
     _runtimes(fake_api).create(
-        RuntimeCreate(project_id=UUID(PROJECT_ID), name="checkout-agent")
+        RuntimeCreate(project_id="main", name="checkout-agent")
     )
     body = fake_api.last_request.json()
     assert body["name"] == "checkout-agent"
+    assert body["project_id"] == "main"
     assert "description" not in body  # exclude_none
 
 

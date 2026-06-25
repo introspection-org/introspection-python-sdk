@@ -70,7 +70,7 @@ class Runtime(_ApiModel):
 
 
 class RuntimeCreate(_ApiModel):
-    project_id: UUID
+    project_id: str | UUID
     name: str
     slug: str | None = None
     recipe_id: UUID | None = None
