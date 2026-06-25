@@ -19,7 +19,7 @@ Two ways to use it, both shown below:
 Run with:
     INTRO_SA_CLIENT_ID=intro_app_xxx
     INTRO_SA_CLIENT_SECRET=intro_sk_xxx
-    INTRO_PROJECT_ID=...
+    INTRO_PROJECT=...
 
         uv run python -m introspection_examples.api.service_account
 
@@ -45,14 +45,14 @@ def _require(name: str) -> str:
 def main() -> None:
     client_id = _require("INTRO_SA_CLIENT_ID")
     client_secret = _require("INTRO_SA_CLIENT_SECRET")
-    project_id = _require("INTRO_PROJECT_ID")
+    project = _require("INTRO_PROJECT")
     runtime = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
 
     # (1) Mint-and-construct: the simplest path for a server/CI caller.
     client = IntrospectionClient.from_service_account(
         client_id=client_id,
         client_secret=client_secret,
-        project_id=project_id,
+        project=project,
     )
 
     # (2) Broker path: mint the token explicitly to also read `dp_url`
@@ -63,9 +63,9 @@ def main() -> None:
     token = service_account_token(
         client_id=client_id,
         client_secret=client_secret,
-        project_id=project_id,
+        project=project,
     )
-    resolved_runtime = client.runtimes.resolve(runtime, project=project_id)
+    resolved_runtime = client.runtimes.resolve(runtime, project=project)
     print(f"runtime_id={resolved_runtime.id}, dp_url={token.dp_url}")
 
     runner = client.runtimes(runtime).run()
