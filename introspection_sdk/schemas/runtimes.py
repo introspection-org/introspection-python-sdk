@@ -55,6 +55,7 @@ class Runtime(_ApiModel):
     org_id: UUID
     project_id: UUID
     name: str
+    slug: str
     recipe_id: UUID | None = None
     is_active: bool = False
     description: str | None = None
@@ -71,6 +72,7 @@ class Runtime(_ApiModel):
 class RuntimeCreate(_ApiModel):
     project_id: UUID
     name: str
+    slug: str | None = None
     recipe_id: UUID | None = None
     description: str | None = None
     metadata: dict[str, Any] | None = None

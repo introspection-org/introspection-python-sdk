@@ -40,7 +40,7 @@ class IntrospectionClient:
     """REST-only Introspection client (no OpenTelemetry).
 
     Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``client.runtimes(name).run()`` and
+    surface. ``client.runtimes(slug).run()`` and
     ``client.experiments(id).run()`` mint a
     :class:`~introspection_sdk.runner.Runner` for DP traffic
     (``runner.tasks`` / ``runner.files``).
@@ -146,7 +146,7 @@ class AsyncIntrospectionClient:
     """Async twin of :class:`IntrospectionClient` (no OpenTelemetry).
 
     Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``await client.runtimes(name).run()`` and
+    surface. ``await client.runtimes(slug).run()`` and
     ``await client.experiments(id).run()`` mint an
     :class:`~introspection_sdk.runner.AsyncRunner` for DP traffic
     (``await runner.tasks...`` / ``await runner.files...``).

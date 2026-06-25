@@ -307,7 +307,7 @@ async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
     await runner.close()
 
 
-async def test_runtime_handle_resolves_name(fake_api: FakeAPI):
+async def test_runtime_handle_resolves_slug(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
     )
@@ -319,7 +319,7 @@ async def test_runtime_handle_resolves_name(fake_api: FakeAPI):
     runtimes = AsyncRuntimes(fake_api.async_client())
     runner = await runtimes("checkout-agent").run()
     assert isinstance(runner, AsyncRunner)
-    # First call lists by name, second posts /run.
+    # First call lists by slug, second posts /run.
     assert fake_api.requests[0].path == "/v1/runtimes"
     assert fake_api.last_request.path == f"/v1/runtimes/{RUNTIME_ID}/run"
     await runner.close()

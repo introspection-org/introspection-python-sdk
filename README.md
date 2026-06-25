@@ -113,7 +113,7 @@ The token is not auto-refreshed — re-mint once it expires
 
 When you're a **server broker** handing credentials to a browser client, mint
 the token directly to also read `dp_url` (the Data Plane endpoint the Control
-Plane resolved for the project) and resolve the runtime name to a concrete
+Plane resolved for the project) and resolve the runtime slug to a concrete
 `runtime_id` — return `{ token, runtime_id, dp_url }` so the browser SDK talks
 to the Data Plane without a hardcoded URL:
 
@@ -126,7 +126,7 @@ token = service_account_token(
     project_id="proj_…",
 )
 client = IntrospectionClient(token=token.access_token)
-runtime = client.runtimes.resolve_by_name("customer-agent")
+runtime = client.runtimes.resolve_by_slug("customer-agent")
 # -> hand { token.access_token, runtime.id, token.dp_url } to the browser
 ```
 

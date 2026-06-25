@@ -1,9 +1,9 @@
 """``client.runtimes`` — CP CRUD + ``.run()`` returning a :class:`Runner`.
 
 ``client.runtimes`` is the :class:`Runtimes` instance; calling
-``client.runtimes(id_or_name)`` returns a :class:`RuntimeHandle`
+``client.runtimes(id_or_slug)`` returns a :class:`RuntimeHandle`
 which exposes ``.run()`` and ``.activate()``. When called with a
-string that is not a UUID, the handle resolves it by name on the
+string that is not a UUID, the handle resolves it by slug on the
 caller's project on first use.
 """
 
@@ -49,7 +49,7 @@ def _looks_like_uuid(value: str) -> bool:
 class Runtimes:
     """CP ``/v1/runtimes`` namespace.
 
-    Also callable: ``client.runtimes("name")`` returns a
+    Also callable: ``client.runtimes("runtime-slug")`` returns a
     :class:`RuntimeHandle` for that runtime.
     """
 
@@ -63,13 +63,13 @@ class Runtimes:
         self._additional_headers = additional_headers
 
     def __call__(
-        self, id_or_name: str | UUID, *, project_id: str | None = None
+        self, id_or_slug: str | UUID, *, project_id: str | None = None
     ) -> RuntimeHandle:
         # The project is scoped by the API key server-side; `project_id` is an
         # explicit per-call override only — there is no client-level default.
         return RuntimeHandle(
             self,
-            id_or_name=id_or_name,
+            id_or_slug=id_or_slug,
             project_id=project_id,
         )
 
@@ -79,7 +79,7 @@ class Runtimes:
         self,
         *,
         project_id: str | None = None,
-        name: str | None = None,
+        slug: str | None = None,
         recipe_id: str | None = None,
         only_active: bool | None = None,
         environment: str | None = None,
@@ -98,7 +98,7 @@ class Runtimes:
         def fetch(cursor: str | None) -> Paginated[Runtime]:
             params: dict[str, Any] = {
                 "project_id": project_id,
-                "name": name,
+                "name": slug,
                 "recipe_id": recipe_id,
                 "only_active": only_active,
                 "environment": environment,
@@ -119,31 +119,31 @@ class Runtimes:
         )
         return Runtime.model_validate(payload)
 
-    def resolve_by_name(
-        self, name: str, *, project_id: str | None = None
+    def resolve_by_slug(
+        self, slug: str, *, project_id: str | None = None
     ) -> Runtime:
-        """Resolve an active runtime by name on the caller's project.
+        """Resolve an active runtime by slug on the caller's project.
 
-        The standalone form of ``client.runtimes(name)`` resolution —
+        The standalone form of ``client.runtimes(slug)`` resolution —
         handy for a server broker that resolves a ``runtime_id`` to hand
         to a browser client (which talks only to the Data Plane and never
         resolves runtimes itself). The project is scoped by the token
         server-side; pass ``project_id`` only to override it.
 
-        Raises ``LookupError`` if no active runtime matches the name, or
-        if the name is ambiguous (more than one active match).
+        Raises ``LookupError`` if no active runtime matches the slug, or
+        if the slug is ambiguous (more than one active match).
         """
         page = self.list(
-            name=name,
+            slug=slug,
             only_active=True,
             limit=2,
             project_id=project_id,
         ).page()
         if not page.records:
-            raise LookupError(f"No active runtime named {name!r}")
+            raise LookupError(f"No active runtime with slug {slug!r}")
         if len(page.records) > 1:
             raise LookupError(
-                f"Ambiguous runtime name {name!r}: "
+                f"Ambiguous runtime slug {slug!r}: "
                 f"{len(page.records)} active matches"
             )
         return page.records[0]
@@ -226,30 +226,30 @@ class Runtimes:
 
 
 class RuntimeHandle:
-    """Handle for a specific runtime (by id or by name).
+    """Handle for a specific runtime (by id or by slug).
 
-    Resolves a name to an id lazily on first use by listing on the
-    caller's project. Built by ``client.runtimes(id_or_name)``.
+    Resolves a slug to an id lazily on first use by listing on the
+    caller's project. Built by ``client.runtimes(id_or_slug)``.
     """
 
     def __init__(
         self,
         runtimes: Runtimes,
         *,
-        id_or_name: str | UUID,
+        id_or_slug: str | UUID,
         project_id: str | None,
         recipe_id: UUID | None = None,
     ) -> None:
         self._runtimes = runtimes
         self._project_id = project_id
-        self._raw = id_or_name
+        self._raw = id_or_slug
         self._resolved_id: str | None = None
         self._recipe_id: UUID | None = recipe_id
 
-        if isinstance(id_or_name, UUID):
-            self._resolved_id = str(id_or_name)
-        elif isinstance(id_or_name, str) and _looks_like_uuid(id_or_name):
-            self._resolved_id = id_or_name
+        if isinstance(id_or_slug, UUID):
+            self._resolved_id = str(id_or_slug)
+        elif isinstance(id_or_slug, str) and _looks_like_uuid(id_or_slug):
+            self._resolved_id = id_or_slug
 
     @property
     def runtime_id(self) -> str:
@@ -258,7 +258,7 @@ class RuntimeHandle:
     def _resolve(self) -> str:
         if self._resolved_id is not None:
             return self._resolved_id
-        runtime = self._runtimes.resolve_by_name(
+        runtime = self._runtimes.resolve_by_slug(
             str(self._raw), project_id=self._project_id
         )
         self._resolved_id = str(runtime.id)
@@ -309,7 +309,7 @@ class RuntimeHandle:
         Returns a shallow-cloned :class:`RuntimeHandle` that captures
         the recipe id; subsequent ``.run()`` injects ``recipe_id`` into
         the ``RunRequest`` body. CP resolves the matching runtime row
-        server-side (the row in this runtime's name whose ``recipe_id``
+        server-side (the row in this runtime's slug whose ``recipe_id``
         matches the pin).
 
         Accepts a :class:`Recipe` (uses its ``.id``), a ``UUID``, or a
@@ -323,12 +323,12 @@ class RuntimeHandle:
             recipe_uuid = UUID(recipe)
         clone = RuntimeHandle(
             self._runtimes,
-            id_or_name=self._raw,
+            id_or_slug=self._raw,
             project_id=self._project_id,
             recipe_id=recipe_uuid,
         )
         # Preserve any resolution we've already done so the child
-        # handle doesn't have to re-list by name on first ``.run()``.
+        # handle doesn't have to re-list by slug on first ``.run()``.
         clone._resolved_id = self._resolved_id
         return clone
 
@@ -342,7 +342,7 @@ class RuntimeHandle:
 class AsyncRuntimes:
     """Async twin of :class:`Runtimes` (CP ``/v1/runtimes``).
 
-    Also callable: ``client.runtimes("name")`` returns an
+    Also callable: ``client.runtimes("runtime-slug")`` returns an
     :class:`AsyncRuntimeHandle` for that runtime.
     """
 
@@ -356,13 +356,13 @@ class AsyncRuntimes:
         self._additional_headers = additional_headers
 
     def __call__(
-        self, id_or_name: str | UUID, *, project_id: str | None = None
+        self, id_or_slug: str | UUID, *, project_id: str | None = None
     ) -> AsyncRuntimeHandle:
         # The project is scoped by the API key server-side; `project_id` is an
         # explicit per-call override only — there is no client-level default.
         return AsyncRuntimeHandle(
             self,
-            id_or_name=id_or_name,
+            id_or_slug=id_or_slug,
             project_id=project_id,
         )
 
@@ -372,7 +372,7 @@ class AsyncRuntimes:
         self,
         *,
         project_id: str | None = None,
-        name: str | None = None,
+        slug: str | None = None,
         recipe_id: str | None = None,
         only_active: bool | None = None,
         environment: str | None = None,
@@ -391,7 +391,7 @@ class AsyncRuntimes:
         async def fetch(cursor: str | None) -> Paginated[Runtime]:
             params: dict[str, Any] = {
                 "project_id": project_id,
-                "name": name,
+                "name": slug,
                 "recipe_id": recipe_id,
                 "only_active": only_active,
                 "environment": environment,
@@ -414,28 +414,28 @@ class AsyncRuntimes:
         )
         return Runtime.model_validate(payload)
 
-    async def resolve_by_name(
-        self, name: str, *, project_id: str | None = None
+    async def resolve_by_slug(
+        self, slug: str, *, project_id: str | None = None
     ) -> Runtime:
-        """Async twin of :meth:`Runtimes.resolve_by_name`.
+        """Async twin of :meth:`Runtimes.resolve_by_slug`.
 
-        Resolve an active runtime by name on the caller's project — the
-        standalone form of ``client.runtimes(name)`` resolution, handy
+        Resolve an active runtime by slug on the caller's project — the
+        standalone form of ``client.runtimes(slug)`` resolution, handy
         for a server broker that resolves a ``runtime_id`` to hand to a
         browser client. Raises ``LookupError`` if no active runtime
-        matches, or if the name is ambiguous.
+        matches, or if the slug is ambiguous.
         """
         page = await self.list(
-            name=name,
+            slug=slug,
             only_active=True,
             limit=2,
             project_id=project_id,
         ).page()
         if not page.records:
-            raise LookupError(f"No active runtime named {name!r}")
+            raise LookupError(f"No active runtime with slug {slug!r}")
         if len(page.records) > 1:
             raise LookupError(
-                f"Ambiguous runtime name {name!r}: "
+                f"Ambiguous runtime slug {slug!r}: "
                 f"{len(page.records)} active matches"
             )
         return page.records[0]
@@ -519,33 +519,33 @@ class AsyncRuntimes:
 class AsyncRuntimeHandle:
     """Async twin of :class:`RuntimeHandle`.
 
-    Resolves a name to an id lazily on first use by listing on the
-    caller's project. Built by ``client.runtimes(id_or_name)``.
+    Resolves a slug to an id lazily on first use by listing on the
+    caller's project. Built by ``client.runtimes(id_or_slug)``.
     """
 
     def __init__(
         self,
         runtimes: AsyncRuntimes,
         *,
-        id_or_name: str | UUID,
+        id_or_slug: str | UUID,
         project_id: str | None,
         recipe_id: UUID | None = None,
     ) -> None:
         self._runtimes = runtimes
         self._project_id = project_id
-        self._raw = id_or_name
+        self._raw = id_or_slug
         self._resolved_id: str | None = None
         self._recipe_id: UUID | None = recipe_id
 
-        if isinstance(id_or_name, UUID):
-            self._resolved_id = str(id_or_name)
-        elif isinstance(id_or_name, str) and _looks_like_uuid(id_or_name):
-            self._resolved_id = id_or_name
+        if isinstance(id_or_slug, UUID):
+            self._resolved_id = str(id_or_slug)
+        elif isinstance(id_or_slug, str) and _looks_like_uuid(id_or_slug):
+            self._resolved_id = id_or_slug
 
     async def _resolve(self) -> str:
         if self._resolved_id is not None:
             return self._resolved_id
-        runtime = await self._runtimes.resolve_by_name(
+        runtime = await self._runtimes.resolve_by_slug(
             str(self._raw), project_id=self._project_id
         )
         self._resolved_id = str(runtime.id)
@@ -606,12 +606,12 @@ class AsyncRuntimeHandle:
             recipe_uuid = UUID(recipe)
         clone = AsyncRuntimeHandle(
             self._runtimes,
-            id_or_name=self._raw,
+            id_or_slug=self._raw,
             project_id=self._project_id,
             recipe_id=recipe_uuid,
         )
         # Preserve any resolution we've already done so the child
-        # handle doesn't have to re-list by name on first ``.run()``.
+        # handle doesn't have to re-list by slug on first ``.run()``.
         clone._resolved_id = self._resolved_id
         return clone
 

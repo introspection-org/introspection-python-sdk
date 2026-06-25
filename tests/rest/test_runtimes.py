@@ -50,7 +50,7 @@ def test_list_validates_and_drops_none_params(fake_api: FakeAPI):
     params = fake_api.last_request.params
     assert params.get("project_id") == PROJECT_ID
     assert params.get("only_active") == "true"
-    assert "name" not in params  # None filtered out
+    assert "name" not in params  # None slug filtered out
 
 
 def test_iter_follows_pagination(fake_api: FakeAPI):
@@ -127,7 +127,7 @@ def test_handle_with_uuid_skips_name_resolution(fake_api: FakeAPI):
     ]
 
 
-def test_handle_resolves_name_via_list(fake_api: FakeAPI):
+def test_handle_resolves_slug_via_list(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
@@ -139,14 +139,14 @@ def test_handle_resolves_name_via_list(fake_api: FakeAPI):
     assert fake_api.last_request.params.get("name") == "checkout-agent"
 
 
-def test_handle_name_not_found_raises(fake_api: FakeAPI):
+def test_handle_slug_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
     handle = _runtimes(fake_api)("missing")
     with pytest.raises(LookupError, match="No active runtime"):
         _ = handle.runtime_id
 
 
-def test_handle_ambiguous_name_raises(fake_api: FakeAPI):
+def test_handle_ambiguous_slug_raises(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
@@ -157,13 +157,13 @@ def test_handle_ambiguous_name_raises(fake_api: FakeAPI):
         _ = handle.runtime_id
 
 
-def test_resolve_by_name_returns_runtime(fake_api: FakeAPI):
+def test_resolve_by_slug_returns_runtime(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload()]),
     )
-    runtime = _runtimes(fake_api).resolve_by_name(
+    runtime = _runtimes(fake_api).resolve_by_slug(
         "checkout-agent", project_id=PROJECT_ID
     )
     assert str(runtime.id) == RUNTIME_ID
@@ -173,20 +173,20 @@ def test_resolve_by_name_returns_runtime(fake_api: FakeAPI):
     assert params.get("project_id") == PROJECT_ID
 
 
-def test_resolve_by_name_not_found_raises(fake_api: FakeAPI):
+def test_resolve_by_slug_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
     with pytest.raises(LookupError, match="No active runtime"):
-        _runtimes(fake_api).resolve_by_name("missing")
+        _runtimes(fake_api).resolve_by_slug("missing")
 
 
-def test_resolve_by_name_ambiguous_raises(fake_api: FakeAPI):
+def test_resolve_by_slug_ambiguous_raises(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload(), runtime_payload()]),
     )
     with pytest.raises(LookupError, match="Ambiguous"):
-        _runtimes(fake_api).resolve_by_name("dup")
+        _runtimes(fake_api).resolve_by_slug("dup")
 
 
 def test_run_returns_runner_with_context(fake_api: FakeAPI):

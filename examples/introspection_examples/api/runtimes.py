@@ -1,4 +1,4 @@
-"""End-to-end Runner walkthrough — resolve a runtime by name, open a
+"""End-to-end Runner walkthrough — resolve a runtime by slug or id, open a
 Runner against it, spawn a task, stream its run.
 
 Run with:
@@ -7,7 +7,7 @@ Run with:
         uv run python -m introspection_examples.api.runtimes
 
 Optional env:
-    INTROSPECTION_RUNTIME_NAME  - runtime to resolve (default: customer-agent)
+    INTROSPECTION_RUNTIME       - runtime slug or id (default: customer-agent)
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
 """
 
@@ -22,9 +22,9 @@ from introspection_sdk.version import VERSION
 def main() -> None:
     client = IntrospectionClient()
 
-    runtime_name = os.getenv("INTROSPECTION_RUNTIME_NAME", "customer-agent")
+    runtime = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
 
-    runner = client.runtimes(runtime_name).run(
+    runner = client.runtimes(runtime).run(
         identity={"user_id": "u_42"},
         caller={
             "ip": "8.8.8.8",
