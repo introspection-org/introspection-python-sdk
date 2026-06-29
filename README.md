@@ -61,44 +61,24 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-### Resilient streaming (graceful resume)
+### Resilient streaming
 
-`run.stream()` surfaces a mid-turn disconnect — gateway idle-timeout,
-load-balancer recycle, network blip — as a turn failure, losing every event
-between the drop and a manual retry. Opt into `runner.tasks.stream_turn(task_id,
-run_id, resume=True)` (sync and async) for a single gap-free, duplicate-free
-sequence: on a drop it catches the missed output up from the durable transcript
-and re-attaches the live stream, bounded by `max_resumes`/`timeout` so it never
-reconnects forever.
+`run.stream()` **resumes transparently** across a mid-turn disconnect — gateway
+idle-timeout, load-balancer recycle, network blip. On a drop it re-attaches with
+the SSE-standard `Last-Event-ID` so the server replays the frames you missed,
+and the iterator yields one gap-free `AGUIEvent` sequence. There is no
+consumer-visible change: the `async for` above just keeps working, completing
+when the turn finishes and raising only if recovery is exhausted. Keyword args
+tune the recovery bounds:
 
 ```python
-from introspection_sdk import (
-    StreamEvent,
-    TranscriptItem,
-    TurnWaiting,
-    TurnSettled,
-    TurnExhausted,
-)
-
-async for ev in runner.tasks.stream_turn(task_id, run_id, resume=True):
-    if isinstance(ev, StreamEvent):
-        ...  # live AG-UI event in ev.event
-    elif isinstance(ev, TranscriptItem):
-        ...  # durable catch-up item after a drop (deduped by stable id)
-    elif isinstance(ev, TurnWaiting):
-        ...  # run not attachable yet (readiness) — ev.status is the phase
-    elif isinstance(ev, TurnSettled):
-        ...  # turn finished — ev.ok is success vs failure
-    elif isinstance(ev, TurnExhausted):
-        ...  # max_resumes / deadline hit before the turn settled
+async for event in run.stream(max_reconnects=5, timeout=300.0):
+    ...
 ```
 
-Readiness follows the server's phased migration: `stream_turn` sends
-`wait_for_start=1` (the DP long-polls until the run is live) by default. Pass
-`wait_for_start=False` to opt into the target contract, where the DP returns
-`429` + `Retry-After` until the run is attachable and the client backs off
-(surfaced as `TurnWaiting`). Resume is opt-in (`resume` defaults to `False`), so
-existing `stream()` callers are unaffected.
+Readiness folds in the same way: while a run is not yet attachable the server
+answers with `429` + `Retry-After`, which the stream honours as a backoff floor
+and retries — never surfaced to the caller.
 
 A Runner exposes three DP-bound namespaces side by side: `runner.tasks`,
 `runner.files`, and the read-only `runner.conversations`. The conversations

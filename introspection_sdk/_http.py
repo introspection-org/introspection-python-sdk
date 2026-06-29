@@ -99,12 +99,15 @@ class _HttpClient:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Iterator[str]:
-        headers = dict(self._auth_headers)
-        headers["Accept"] = "text/event-stream"
+        req_headers = dict(self._auth_headers)
+        req_headers["Accept"] = "text/event-stream"
+        if headers:
+            req_headers.update(headers)
         try:
             with self._client.stream(
-                "GET", path, params=_clean_params(params), headers=headers
+                "GET", path, params=_clean_params(params), headers=req_headers
             ) as res:
                 if res.status_code >= 400:
                     res.read()
@@ -196,12 +199,15 @@ class _AsyncHttpClient:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[str]:
-        headers = dict(self._auth_headers)
-        headers["Accept"] = "text/event-stream"
+        req_headers = dict(self._auth_headers)
+        req_headers["Accept"] = "text/event-stream"
+        if headers:
+            req_headers.update(headers)
         try:
             async with self._client.stream(
-                "GET", path, params=_clean_params(params), headers=headers
+                "GET", path, params=_clean_params(params), headers=req_headers
             ) as res:
                 if res.status_code >= 400:
                     await res.aread()

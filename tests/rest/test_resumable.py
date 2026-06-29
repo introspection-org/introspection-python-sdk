@@ -1,292 +1,150 @@
-"""Contract tests for graceful stream resume (INT-252).
+"""Contract tests for transparent stream resume (INT-252).
 
-Drives the resumable turn consumer through the same in-process
-``httpx.MockTransport`` route table as the other REST tests
-(see ``conftest.FakeAPI``). The two HTTP surfaces resume composes — the
-run ``/stream`` and the conversation ``/items`` transcript, plus the cheap
-task status read — are scripted with real handlers; a severed stream is
-modelled by a streaming response body that raises mid-iteration. Nothing in
-``introspection_sdk`` is patched.
-
-Covers the six acceptance scenarios from
-``docs/design/sdk-resumable-streams.md`` §7, for both the sync and async
-clients.
+Drives the run stream through the same in-process ``httpx.MockTransport``
+route table as the other REST tests (see ``conftest.FakeAPI``). A severed
+stream is modelled by a streaming response body that raises mid-iteration; a
+not-yet-attachable run by a ``429`` + ``Retry-After``. The stream reconnects
+transparently with ``Last-Event-ID`` and yields one gap-free ``AGUIEvent``
+sequence — nothing in ``introspection_sdk`` is patched.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
-from typing import Any
+from collections.abc import AsyncIterator, Iterator
 
 import httpx
+import pytest
 
-from introspection_sdk.resumable import (
-    StreamEvent,
-    TranscriptItem,
-    TurnExhausted,
-    TurnSettled,
-    TurnWaiting,
-)
+from introspection_sdk._errors import IntrospectionAPIError
 from introspection_sdk.runner_resources.tasks import AsyncTasks, Tasks
 
 from .conftest import TASK_ID, FakeAPI
 
 RUN_ID = "run-1"
 STREAM_PATH = f"/v1/tasks/{TASK_ID}/runs/{RUN_ID}/stream"
-STATUS_PATH = f"/v1/tasks/{TASK_ID}"
-ITEMS_PATH = f"/v1/conversations/{TASK_ID}/items"
 
-_RUN_FINISHED = (
-    'event: ag_ui\ndata: {"type":"RUN_FINISHED",'
+
+class _SeveredStream(httpx.SyncByteStream, httpx.AsyncByteStream):
+    """A response body that yields `body` then errors — modelling a connection
+    severed mid-turn. Implements both the sync and async byte-stream protocols
+    so the one ``MockTransport`` route backs both clients."""
+
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    def __iter__(self) -> Iterator[bytes]:
+        if self._body:
+            yield self._body
+        raise httpx.ReadError("connection reset")
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        if self._body:
+            yield self._body
+        raise httpx.ReadError("connection reset")
+
+
+def _content(seq: str, delta: str) -> str:
+    return (
+        f"id: {seq}\nevent: ag_ui\n"
+        f'data: {{"type":"TEXT_MESSAGE_CONTENT","messageId":"m","delta":"{delta}"}}\n\n'
+    )
+
+
+_FINISH = (
+    'id: c-0\nevent: ag_ui\ndata: {"type":"RUN_FINISHED",'
     '"threadId":"t","runId":"run-1"}\n\n'
 )
-_RUN_STARTED = (
-    'event: ag_ui\ndata: {"type":"RUN_STARTED",'
-    '"threadId":"t","runId":"run-1"}\n\n'
-)
 
 
-# --- handler builders ------------------------------------------------
+class _StreamHandler:
+    """A scripted ``/stream`` responder. One entry per attach: ``("clean",
+    body)`` ends cleanly; ``("severed", body)`` raises mid-read; ``("429", "")``
+    refuses with Retry-After. Records the ``Last-Event-ID`` header per call in
+    ``seen``."""
 
+    def __init__(self, script: list[tuple[str, str]]) -> None:
+        self._script = script
+        self._n = 0
+        self.seen: list[str | None] = []
 
-def _stream_handler(
-    script: list[tuple[str, str]],
-) -> Callable[[httpx.Request], httpx.Response]:
-    """One entry per ``/stream`` attempt.
-
-    Entry is ``(kind, payload)``: ``("clean", frames)`` /
-    ``("severed", frames)`` / ``("429", phase)`` — the last models the DP
-    readiness contract (not attachable yet) with ``Retry-After`` + a
-    ``{status}`` body. The script clamps at its last entry so a long 429 run
-    can be expressed with a single trailing ``"429"`` entry.
-    """
-    calls = {"n": 0}
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        idx = min(calls["n"], len(script) - 1)
-        calls["n"] += 1
-        kind, payload = script[idx]
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        self.seen.append(request.headers.get("last-event-id"))
+        kind, body = self._script[min(self._n, len(self._script) - 1)]
+        self._n += 1
         if kind == "clean":
-            return httpx.Response(200, content=payload.encode())
+            return httpx.Response(200, content=body.encode())
         if kind == "429":
             return httpx.Response(
                 429,
                 headers={"Retry-After": "0"},
-                json={"status": payload or "provisioning"},
+                json={"status": "provisioning"},
             )
-
-        def body() -> Iterator[bytes]:
-            if payload:
-                yield payload.encode()
-            raise httpx.ReadError("connection reset")
-
-        return httpx.Response(200, content=body())
-
-    return handler
+        return httpx.Response(200, stream=_SeveredStream(body.encode()))
 
 
-def _items_handler(
-    landed: Callable[[], list[str]],
-) -> Callable[[httpx.Request], httpx.Response]:
-    """Serve the transcript items strictly after ``?after`` from ``landed()``."""
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        after = request.url.params.get("after")
-        ids = landed()
-        if after is not None and after in ids:
-            ids = ids[ids.index(after) + 1 :]
-        data = [
-            {
-                "object": "conversation.item",
-                "id": i,
-                "type": "span",
-                "trace_id": "t",
-                "span_id": i,
-                "created_at": "2025-01-01T00:00:00Z",
-                "span_name": "x",
-                "span_kind": "INTERNAL",
-                "node_type": "span",
-            }
-            for i in ids
-        ]
-        return httpx.Response(
-            200,
-            json={
-                "object": "list",
-                "data": data,
-                "first_id": data[0]["id"] if data else None,
-                "last_id": data[-1]["id"] if data else None,
-                "has_more": False,
-            },
-        )
-
-    return handler
+def _stream_handler(script: list[tuple[str, str]]) -> _StreamHandler:
+    return _StreamHandler(script)
 
 
-def _status_response(status: str) -> dict[str, Any]:
-    return {
-        "id": TASK_ID,
-        "org_id": "00000000-0000-0000-0000-0000000000aa",
-        "project_id": "00000000-0000-0000-0000-0000000000bb",
-        "created_at": "2025-01-01T00:00:00Z",
-        "updated_at": "2025-01-01T00:00:00Z",
-        "mode": "agent",
-        "status": status,
-        "is_archived": False,
-    }
-
-
-def _transcript_ids(events: list) -> list[str]:
-    return [e.item.id for e in events if isinstance(e, TranscriptItem)]
-
-
-def _waiting_statuses(events: list) -> list[str | None]:
-    return [e.status for e in events if isinstance(e, TurnWaiting)]
-
-
-def _opts() -> dict:
-    # Tight grace window / poll so the ingest-lag loop stays fast in tests.
-    return {"resume": True, "grace_window": 0.2, "poll": 0.001}
+def _deltas(events: list) -> list[str]:
+    return [
+        e.delta
+        for e in events
+        if getattr(e, "type", None) == "TEXT_MESSAGE_CONTENT"
+    ]
 
 
 # --- sync ------------------------------------------------------------
 
 
-def test_clean_completion_one_tail_zero_resumes(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET", STREAM_PATH, _stream_handler([("clean", _RUN_FINISHED)])
-    )
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: ["a", "b"]))
-    tasks = Tasks(fake_api.client())
-
-    events = list(tasks.stream_turn(TASK_ID, RUN_ID, **_opts()))
-
-    # Exactly one /stream attempt (zero resumes), no status read on clean close.
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 1
-    assert all(r.path != STATUS_PATH for r in fake_api.requests)
-    assert _transcript_ids(events) == ["a", "b"]
-    assert events[-1] == TurnSettled(ok=True, status="completed")
-
-
-def test_mid_turn_drop_still_running(fake_api: FakeAPI):
+def test_clean_completion_single_attach(fake_api: FakeAPI):
     fake_api.add_handler(
         "GET",
         STREAM_PATH,
-        _stream_handler([("severed", _RUN_STARTED), ("clean", _RUN_FINISHED)]),
-    )
-    fake_api.add("GET", STATUS_PATH, json_body=_status_response("running"))
-    fake_api.add_handler(
-        "GET", ITEMS_PATH, _items_handler(lambda: ["a", "b", "c"])
+        _stream_handler(
+            [("clean", _content("1", "a") + _content("2", "b") + _FINISH)]
+        ),
     )
     tasks = Tasks(fake_api.client())
 
-    events = list(tasks.stream_turn(TASK_ID, RUN_ID, **_opts()))
+    events = list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
 
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 2
-    assert sum(1 for r in fake_api.requests if r.path == STATUS_PATH) == 1
-    # No missed items, no duplicates across the two catch-ups.
-    assert _transcript_ids(events) == ["a", "b", "c"]
-    assert events[-1] == TurnSettled(ok=True, status="completed")
-
-
-def test_drop_at_completion_status_settled(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET", STREAM_PATH, _stream_handler([("severed", "")])
-    )
-    fake_api.add("GET", STATUS_PATH, json_body=_status_response("completed"))
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: ["a"]))
-    tasks = Tasks(fake_api.client())
-
-    events = list(tasks.stream_turn(TASK_ID, RUN_ID, **_opts()))
-
+    assert _deltas(events) == ["a", "b"]
     assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 1
-    assert _transcript_ids(events) == ["a"]
-    assert events[-1] == TurnSettled(ok=True, status="completed")
 
 
-def test_ingest_lag_grace_window(fake_api: FakeAPI):
-    calls = {"n": 0}
-
-    def landed() -> list[str]:
-        calls["n"] += 1
-        return ["late"] if calls["n"] >= 3 else []
-
-    fake_api.add_handler(
-        "GET", STREAM_PATH, _stream_handler([("clean", _RUN_FINISHED)])
+def test_mid_turn_drop_reattaches_with_last_event_id(fake_api: FakeAPI):
+    handler = _stream_handler(
+        [
+            ("severed", _content("1", "a") + _content("2", "b")),
+            ("clean", _content("3", "c") + _FINISH),
+        ]
     )
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(landed))
+    fake_api.add_handler("GET", STREAM_PATH, handler)
     tasks = Tasks(fake_api.client())
 
-    events = list(
-        tasks.stream_turn(
-            TASK_ID, RUN_ID, resume=True, grace_window=2.0, poll=0.001
-        )
+    events = list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
+
+    assert _deltas(events) == ["a", "b", "c"]  # gap-free
+    # Reconnect resumes from the last numeric content-frame id seen.
+    assert handler.seen == [None, "2"]
+
+
+def test_resume_cursor_ignores_control_ids(fake_api: FakeAPI):
+    heartbeat = 'id: c-9\nevent: heartbeat\ndata: {"runId":"run-1"}\n\n'
+    handler = _stream_handler(
+        [
+            ("severed", _content("5", "a") + heartbeat),
+            ("clean", _content("6", "b") + _FINISH),
+        ]
     )
-
-    assert _transcript_ids(events) == ["late"]
-    assert calls["n"] >= 3
-    assert events[-1] == TurnSettled(ok=True, status="completed")
-
-
-def test_exhausted_max_resumes(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET",
-        STREAM_PATH,
-        _stream_handler([("severed", "")] * 4),
-    )
-    fake_api.add("GET", STATUS_PATH, json_body=_status_response("running"))
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: []))
+    fake_api.add_handler("GET", STREAM_PATH, handler)
     tasks = Tasks(fake_api.client())
 
-    events = list(
-        tasks.stream_turn(
-            TASK_ID,
-            RUN_ID,
-            resume=True,
-            max_resumes=2,
-            grace_window=0.05,
-            poll=0.001,
-        )
-    )
+    events = list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
 
-    # max_resumes + 1 attempts, then stop — no infinite reconnect.
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 3
-    assert events[-1] == TurnExhausted()
-
-
-def test_failed_mid_turn_settles_not_ok(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET",
-        STREAM_PATH,
-        _stream_handler([("severed", ""), ("severed", "")]),
-    )
-    fake_api.add("GET", STATUS_PATH, json_body=_status_response("failed"))
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: ["a"]))
-    tasks = Tasks(fake_api.client())
-
-    events = list(tasks.stream_turn(TASK_ID, RUN_ID, **_opts()))
-
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 1
-    assert events[-1] == TurnSettled(ok=False, status="failed")
-
-
-def test_resume_off_is_passthrough(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET", STREAM_PATH, _stream_handler([("clean", _RUN_FINISHED)])
-    )
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: ["a"]))
-    tasks = Tasks(fake_api.client())
-
-    events = list(tasks.stream_turn(TASK_ID, RUN_ID, resume=False))
-
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 1
-    # No transcript or status reads when opted out.
-    assert all(
-        r.path not in (ITEMS_PATH, STATUS_PATH) for r in fake_api.requests
-    )
-    assert _transcript_ids(events) == []
-    assert isinstance(events[0], StreamEvent)
-    assert events[-1] == TurnSettled(ok=True, status="completed")
+    assert _deltas(events) == ["a", "b"]
+    assert handler.seen == [None, "5"]  # "c-9" is not a cursor
 
 
 def test_429_readiness_backs_off_then_attaches(fake_api: FakeAPI):
@@ -294,107 +152,72 @@ def test_429_readiness_backs_off_then_attaches(fake_api: FakeAPI):
         "GET",
         STREAM_PATH,
         _stream_handler(
+            [("429", ""), ("429", ""), ("clean", _content("1", "a") + _FINISH)]
+        ),
+    )
+    tasks = Tasks(fake_api.client())
+
+    events = list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
+
+    assert _deltas(events) == ["a"]  # 429 never surfaced
+    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 3
+
+
+def test_exhausts_reconnects_raises(fake_api: FakeAPI):
+    fake_api.add_handler(
+        "GET", STREAM_PATH, _stream_handler([("severed", "")])
+    )
+    tasks = Tasks(fake_api.client())
+
+    with pytest.raises(IntrospectionAPIError):
+        list(
+            tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001, max_reconnects=2)
+        )
+    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 3
+
+
+def test_forward_progress_resets_budget(fake_api: FakeAPI):
+    fake_api.add_handler(
+        "GET",
+        STREAM_PATH,
+        _stream_handler(
             [
-                ("429", "provisioning"),
-                ("429", "starting"),
-                ("clean", _RUN_FINISHED),
+                ("severed", _content("1", "a")),
+                ("severed", _content("2", "b")),
+                ("severed", _content("3", "c")),
+                ("clean", _content("4", "d") + _FINISH),
             ]
         ),
     )
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: ["a"]))
     tasks = Tasks(fake_api.client())
 
     events = list(
-        tasks.stream_turn(
-            TASK_ID,
-            RUN_ID,
-            resume=True,
-            wait_for_start=False,  # opt into the 429 readiness contract
-            retry_backoff=0.001,
-            grace_window=0.05,
-            poll=0.001,
-            max_resumes=0,  # 429 retries must NOT consume the resume budget
-        )
+        tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001, max_reconnects=1)
     )
 
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 3
-    # 429 is readiness, never a settle check.
-    assert all(r.path != STATUS_PATH for r in fake_api.requests)
-    assert _waiting_statuses(events) == ["provisioning", "starting"]
-    assert _transcript_ids(events) == ["a"]
-    assert events[-1] == TurnSettled(ok=True, status="completed")
-
-
-def test_429_forever_bounded_by_deadline(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET", STREAM_PATH, _stream_handler([("429", "provisioning")])
-    )
-    tasks = Tasks(fake_api.client())
-
-    events = list(
-        tasks.stream_turn(
-            TASK_ID,
-            RUN_ID,
-            resume=True,
-            wait_for_start=False,
-            retry_backoff=0.001,
-            timeout=0.05,  # overall deadline bounds the readiness wait
-        )
-    )
-
-    assert events[-1] == TurnExhausted()
-    assert len(_waiting_statuses(events)) > 0
+    assert _deltas(events) == ["a", "b", "c", "d"]
 
 
 # --- async -----------------------------------------------------------
 
 
 async def _collect_async(agen) -> list:
-    out = []
-    async for ev in agen:
-        out.append(ev)
-    return out
+    return [ev async for ev in agen]
 
 
-async def test_async_mid_turn_drop_still_running(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET",
-        STREAM_PATH,
-        _stream_handler([("severed", _RUN_STARTED), ("clean", _RUN_FINISHED)]),
+async def test_async_mid_turn_drop_reattaches(fake_api: FakeAPI):
+    handler = _stream_handler(
+        [
+            ("severed", _content("1", "a") + _content("2", "b")),
+            ("clean", _content("3", "c") + _FINISH),
+        ]
     )
-    fake_api.add("GET", STATUS_PATH, json_body=_status_response("running"))
-    fake_api.add_handler(
-        "GET", ITEMS_PATH, _items_handler(lambda: ["a", "b", "c"])
-    )
+    fake_api.add_handler("GET", STREAM_PATH, handler)
     tasks = AsyncTasks(fake_api.async_client())
 
     events = await _collect_async(
-        tasks.stream_turn(TASK_ID, RUN_ID, **_opts())
+        tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001)
     )
 
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 2
-    assert _transcript_ids(events) == ["a", "b", "c"]
-    assert events[-1] == TurnSettled(ok=True, status="completed")
-
-
-async def test_async_exhausted_max_resumes(fake_api: FakeAPI):
-    fake_api.add_handler(
-        "GET", STREAM_PATH, _stream_handler([("severed", "")] * 4)
-    )
-    fake_api.add("GET", STATUS_PATH, json_body=_status_response("running"))
-    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: []))
-    tasks = AsyncTasks(fake_api.async_client())
-
-    events = await _collect_async(
-        tasks.stream_turn(
-            TASK_ID,
-            RUN_ID,
-            resume=True,
-            max_resumes=1,
-            grace_window=0.05,
-            poll=0.001,
-        )
-    )
-
-    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 2
-    assert events[-1] == TurnExhausted()
+    assert _deltas(events) == ["a", "b", "c"]
+    assert handler.seen == [None, "2"]
