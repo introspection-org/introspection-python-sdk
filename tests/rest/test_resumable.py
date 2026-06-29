@@ -25,6 +25,7 @@ from introspection_sdk.resumable import (
     TranscriptItem,
     TurnExhausted,
     TurnSettled,
+    TurnWaiting,
 )
 from introspection_sdk.runner_resources.tasks import AsyncTasks, Tasks
 
@@ -51,19 +52,32 @@ _RUN_STARTED = (
 def _stream_handler(
     script: list[tuple[str, str]],
 ) -> Callable[[httpx.Request], httpx.Response]:
-    """One entry per ``/stream`` attempt: ``("clean"|"severed", frames)``."""
+    """One entry per ``/stream`` attempt.
+
+    Entry is ``(kind, payload)``: ``("clean", frames)`` /
+    ``("severed", frames)`` / ``("429", phase)`` — the last models the DP
+    readiness contract (not attachable yet) with ``Retry-After`` + a
+    ``{status}`` body. The script clamps at its last entry so a long 429 run
+    can be expressed with a single trailing ``"429"`` entry.
+    """
     calls = {"n": 0}
 
     def handler(_request: httpx.Request) -> httpx.Response:
-        idx = calls["n"]
+        idx = min(calls["n"], len(script) - 1)
         calls["n"] += 1
-        kind, frames = script[idx]
+        kind, payload = script[idx]
         if kind == "clean":
-            return httpx.Response(200, content=frames.encode())
+            return httpx.Response(200, content=payload.encode())
+        if kind == "429":
+            return httpx.Response(
+                429,
+                headers={"Retry-After": "0"},
+                json={"status": payload or "provisioning"},
+            )
 
         def body() -> Iterator[bytes]:
-            if frames:
-                yield frames.encode()
+            if payload:
+                yield payload.encode()
             raise httpx.ReadError("connection reset")
 
         return httpx.Response(200, content=body())
@@ -124,6 +138,10 @@ def _status_response(status: str) -> dict[str, Any]:
 
 def _transcript_ids(events: list) -> list[str]:
     return [e.item.id for e in events if isinstance(e, TranscriptItem)]
+
+
+def _waiting_statuses(events: list) -> list[str | None]:
+    return [e.status for e in events if isinstance(e, TurnWaiting)]
 
 
 def _opts() -> dict:
@@ -269,6 +287,63 @@ def test_resume_off_is_passthrough(fake_api: FakeAPI):
     assert _transcript_ids(events) == []
     assert isinstance(events[0], StreamEvent)
     assert events[-1] == TurnSettled(ok=True, status="completed")
+
+
+def test_429_readiness_backs_off_then_attaches(fake_api: FakeAPI):
+    fake_api.add_handler(
+        "GET",
+        STREAM_PATH,
+        _stream_handler(
+            [
+                ("429", "provisioning"),
+                ("429", "starting"),
+                ("clean", _RUN_FINISHED),
+            ]
+        ),
+    )
+    fake_api.add_handler("GET", ITEMS_PATH, _items_handler(lambda: ["a"]))
+    tasks = Tasks(fake_api.client())
+
+    events = list(
+        tasks.stream_turn(
+            TASK_ID,
+            RUN_ID,
+            resume=True,
+            wait_for_start=False,  # opt into the 429 readiness contract
+            retry_backoff=0.001,
+            grace_window=0.05,
+            poll=0.001,
+            max_resumes=0,  # 429 retries must NOT consume the resume budget
+        )
+    )
+
+    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 3
+    # 429 is readiness, never a settle check.
+    assert all(r.path != STATUS_PATH for r in fake_api.requests)
+    assert _waiting_statuses(events) == ["provisioning", "starting"]
+    assert _transcript_ids(events) == ["a"]
+    assert events[-1] == TurnSettled(ok=True, status="completed")
+
+
+def test_429_forever_bounded_by_deadline(fake_api: FakeAPI):
+    fake_api.add_handler(
+        "GET", STREAM_PATH, _stream_handler([("429", "provisioning")])
+    )
+    tasks = Tasks(fake_api.client())
+
+    events = list(
+        tasks.stream_turn(
+            TASK_ID,
+            RUN_ID,
+            resume=True,
+            wait_for_start=False,
+            retry_backoff=0.001,
+            timeout=0.05,  # overall deadline bounds the readiness wait
+        )
+    )
+
+    assert events[-1] == TurnExhausted()
+    assert len(_waiting_statuses(events)) > 0
 
 
 # --- async -----------------------------------------------------------
