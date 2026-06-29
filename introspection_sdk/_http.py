@@ -94,11 +94,18 @@ class _HttpClient:
         except httpx.HTTPError as exc:
             raise NetworkError(str(exc)) from exc
 
-    def stream_sse_lines(self, path: str) -> Iterator[str]:
+    def stream_sse_lines(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None = None,
+    ) -> Iterator[str]:
         headers = dict(self._auth_headers)
         headers["Accept"] = "text/event-stream"
         try:
-            with self._client.stream("GET", path, headers=headers) as res:
+            with self._client.stream(
+                "GET", path, params=_clean_params(params), headers=headers
+            ) as res:
                 if res.status_code >= 400:
                     res.read()
                     raise error_from_response(res)
@@ -184,12 +191,17 @@ class _AsyncHttpClient:
         except httpx.HTTPError as exc:
             raise NetworkError(str(exc)) from exc
 
-    async def stream_sse_lines(self, path: str) -> AsyncIterator[str]:
+    async def stream_sse_lines(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None = None,
+    ) -> AsyncIterator[str]:
         headers = dict(self._auth_headers)
         headers["Accept"] = "text/event-stream"
         try:
             async with self._client.stream(
-                "GET", path, headers=headers
+                "GET", path, params=_clean_params(params), headers=headers
             ) as res:
                 if res.status_code >= 400:
                     await res.aread()

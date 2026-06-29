@@ -18,6 +18,11 @@ from introspection_sdk.pagination import (
     async_cursor_paginate,
     cursor_paginate,
 )
+from introspection_sdk.resumable import (
+    ResumableTurnEvent,
+    stream_turn_resumable,
+    stream_turn_resumable_async,
+)
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
     ResumeEntry,
@@ -74,6 +79,35 @@ class RunHandle:
 
     def stream(self) -> Iterator[AGUIEvent]:
         return self._runs.stream(str(self.run.task_id), self.run.id)
+
+    def stream_turn(
+        self,
+        *,
+        resume: bool = False,
+        conversation_id: str | None = None,
+        max_resumes: int = 3,
+        grace_window: float = 5.0,
+        poll: float = 0.5,
+        page_limit: int = 200,
+        after_id: str | None = None,
+        timeout: float = 300.0,
+    ) -> Iterator[ResumableTurnEvent]:
+        """Consume this run as a resilient turn (see
+        :meth:`TaskRuns.stream_turn`). With ``resume=True`` a mid-turn
+        disconnect is recovered transparently from the durable transcript.
+        """
+        return self._runs.stream_turn(
+            str(self.run.task_id),
+            self.run.id,
+            resume=resume,
+            conversation_id=conversation_id,
+            max_resumes=max_resumes,
+            grace_window=grace_window,
+            poll=poll,
+            page_limit=page_limit,
+            after_id=after_id,
+            timeout=timeout,
+        )
 
     def cancel(self) -> TaskCancelResponse:
         return self._runs.cancel(str(self.run.task_id), self.run.id)
@@ -149,6 +183,46 @@ class TaskRuns:
             f"/v1/tasks/{task_id}/runs/{run_id}/stream"
         )
         yield from parse_ag_ui_events(lines)
+
+    def stream_turn(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        resume: bool = False,
+        conversation_id: str | None = None,
+        max_resumes: int = 3,
+        grace_window: float = 5.0,
+        poll: float = 0.5,
+        page_limit: int = 200,
+        after_id: str | None = None,
+        timeout: float = 300.0,
+    ) -> Iterator[ResumableTurnEvent]:
+        """Consume a run as a resilient turn with graceful resume (INT-252).
+
+        The plain :meth:`stream` surfaces a mid-turn disconnect as a turn
+        failure and loses every event between the drop and a manual retry.
+        With ``resume=True`` this transparently catches the missed output up
+        from the durable transcript and re-attaches the live stream, yielding a
+        single gap-free, duplicate-free sequence of :class:`ResumableTurnEvent`
+        — bounded by ``max_resumes`` / ``timeout`` so it never reconnects
+        forever. Resume is opt-in (``resume`` defaults to ``False``); the
+        default behaviour is a single streamed turn, unchanged from
+        :meth:`stream`.
+        """
+        return stream_turn_resumable(
+            self._http,
+            task_id,
+            run_id,
+            resume=resume,
+            conversation_id=conversation_id,
+            max_resumes=max_resumes,
+            grace_window=grace_window,
+            poll=poll,
+            page_limit=page_limit,
+            after_id=after_id,
+            timeout=timeout,
+        )
 
 
 class Tasks:
@@ -258,6 +332,38 @@ class Tasks:
             "POST", f"/v1/tasks/{task_id}/unarchive", expect="empty"
         )
 
+    def stream_turn(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        resume: bool = False,
+        conversation_id: str | None = None,
+        max_resumes: int = 3,
+        grace_window: float = 5.0,
+        poll: float = 0.5,
+        page_limit: int = 200,
+        after_id: str | None = None,
+        timeout: float = 300.0,
+    ) -> Iterator[ResumableTurnEvent]:
+        """Consume a run as a resilient turn — sugar for
+        :meth:`TaskRuns.stream_turn`. With ``resume=True`` a mid-turn
+        disconnect is recovered transparently from the durable transcript;
+        resume is opt-in and defaults off.
+        """
+        return self.runs.stream_turn(
+            task_id,
+            run_id,
+            resume=resume,
+            conversation_id=conversation_id,
+            max_resumes=max_resumes,
+            grace_window=grace_window,
+            poll=poll,
+            page_limit=page_limit,
+            after_id=after_id,
+            timeout=timeout,
+        )
+
     def start(
         self,
         *,
@@ -308,6 +414,35 @@ class AsyncRunHandle:
 
     def stream(self) -> AsyncIterator[AGUIEvent]:
         return self._runs.stream(str(self.run.task_id), self.run.id)
+
+    def stream_turn(
+        self,
+        *,
+        resume: bool = False,
+        conversation_id: str | None = None,
+        max_resumes: int = 3,
+        grace_window: float = 5.0,
+        poll: float = 0.5,
+        page_limit: int = 200,
+        after_id: str | None = None,
+        timeout: float = 300.0,
+    ) -> AsyncIterator[ResumableTurnEvent]:
+        """Consume this run as a resilient turn (see
+        :meth:`AsyncTaskRuns.stream_turn`). With ``resume=True`` a mid-turn
+        disconnect is recovered transparently from the durable transcript.
+        """
+        return self._runs.stream_turn(
+            str(self.run.task_id),
+            self.run.id,
+            resume=resume,
+            conversation_id=conversation_id,
+            max_resumes=max_resumes,
+            grace_window=grace_window,
+            poll=poll,
+            page_limit=page_limit,
+            after_id=after_id,
+            timeout=timeout,
+        )
 
     async def cancel(self) -> TaskCancelResponse:
         return await self._runs.cancel(str(self.run.task_id), self.run.id)
@@ -386,6 +521,35 @@ class AsyncTaskRuns:
         )
         async for event in parse_ag_ui_events_async(lines):
             yield event
+
+    def stream_turn(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        resume: bool = False,
+        conversation_id: str | None = None,
+        max_resumes: int = 3,
+        grace_window: float = 5.0,
+        poll: float = 0.5,
+        page_limit: int = 200,
+        after_id: str | None = None,
+        timeout: float = 300.0,
+    ) -> AsyncIterator[ResumableTurnEvent]:
+        """Async twin of :meth:`TaskRuns.stream_turn`."""
+        return stream_turn_resumable_async(
+            self._http,
+            task_id,
+            run_id,
+            resume=resume,
+            conversation_id=conversation_id,
+            max_resumes=max_resumes,
+            grace_window=grace_window,
+            poll=poll,
+            page_limit=page_limit,
+            after_id=after_id,
+            timeout=timeout,
+        )
 
 
 class AsyncTasks:
@@ -497,6 +661,36 @@ class AsyncTasks:
     async def unarchive(self, task_id: str) -> None:
         await self._http.request(
             "POST", f"/v1/tasks/{task_id}/unarchive", expect="empty"
+        )
+
+    def stream_turn(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        resume: bool = False,
+        conversation_id: str | None = None,
+        max_resumes: int = 3,
+        grace_window: float = 5.0,
+        poll: float = 0.5,
+        page_limit: int = 200,
+        after_id: str | None = None,
+        timeout: float = 300.0,
+    ) -> AsyncIterator[ResumableTurnEvent]:
+        """Consume a run as a resilient turn — sugar for
+        :meth:`AsyncTaskRuns.stream_turn`. Resume is opt-in and defaults off.
+        """
+        return self.runs.stream_turn(
+            task_id,
+            run_id,
+            resume=resume,
+            conversation_id=conversation_id,
+            max_resumes=max_resumes,
+            grace_window=grace_window,
+            poll=poll,
+            page_limit=page_limit,
+            after_id=after_id,
+            timeout=timeout,
         )
 
     async def start(
