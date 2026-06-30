@@ -23,6 +23,7 @@ from introspection_sdk._errors import (
     _parse_retry_after,
     error_from_response,
 )
+from introspection_sdk._retry import backoff_delay
 
 #: Default automatic retries on a ``429 Too Many Requests`` for unary REST
 #: calls (honouring ``Retry-After``). ``0`` disables retrying. Streaming has
@@ -30,19 +31,9 @@ from introspection_sdk._errors import (
 DEFAULT_MAX_RETRIES = 2
 #: Default base step (seconds) of the capped-exponential ``429`` retry backoff.
 DEFAULT_RETRY_BASE = 0.5
-#: Cap on the retry backoff (seconds).
-_MAX_RETRY_BACKOFF = 10.0
 
 #: Transient gateway/upstream statuses retried only for idempotent (GET) calls.
 _IDEMPOTENT_RETRY_STATUSES = frozenset({502, 503, 504})
-
-
-def _retry_delay(
-    attempt: int, retry_after: float | None, base: float
-) -> float:
-    """``Retry-After`` as the floor of a capped-exponential step (``base * 2^n``)."""
-    exp = min(base * (2**attempt), _MAX_RETRY_BACKOFF)
-    return max(retry_after or 0.0, exp)
 
 
 def _should_retry(status: int, method: str) -> bool:
@@ -127,7 +118,7 @@ class _HttpClient:
             except httpx.HTTPError as exc:
                 raise NetworkError(str(exc)) from exc
             if _should_retry(res.status_code, method) and attempt < retries:
-                delay = _retry_delay(
+                delay = backoff_delay(
                     attempt,
                     _parse_retry_after(res.headers.get("retry-after")),
                     self._retry_base,
@@ -245,7 +236,7 @@ class _AsyncHttpClient:
             except httpx.HTTPError as exc:
                 raise NetworkError(str(exc)) from exc
             if _should_retry(res.status_code, method) and attempt < retries:
-                delay = _retry_delay(
+                delay = backoff_delay(
                     attempt,
                     _parse_retry_after(res.headers.get("retry-after")),
                     self._retry_base,

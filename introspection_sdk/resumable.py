@@ -26,13 +26,13 @@ from collections.abc import AsyncIterator, Iterator
 
 from introspection_sdk._errors import RateLimitError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._retry import backoff_delay
 from introspection_sdk.schemas.agui import AGUIEvent, validate_ag_ui_event
 from introspection_sdk.streaming import _parse_sse, _parse_sse_async
 
 # Defaults match the other SDKs.
 _DEFAULT_MAX_RECONNECTS = 5
 _DEFAULT_BACKOFF = 0.5
-_MAX_BACKOFF = 10.0
 _DEFAULT_TIMEOUT = 300.0
 
 
@@ -42,12 +42,6 @@ def _stream_path(task_id: str, run_id: str) -> str:
 
 def _resume_headers(last_event_id: str | None) -> dict[str, str] | None:
     return {"Last-Event-ID": last_event_id} if last_event_id else None
-
-
-def _backoff(n: int, retry_after: float | None, base: float) -> float:
-    """``Retry-After`` as the floor of a capped-exponential step (``base * 2^n``)."""
-    exp = min(base * (2**n), _MAX_BACKOFF)
-    return max(retry_after or 0.0, exp)
 
 
 def stream_resumable(
@@ -90,7 +84,10 @@ def stream_resumable(
             if remaining <= 0:
                 raise
             time.sleep(
-                min(_backoff(reconnects, exc.retry_after, backoff), remaining)
+                min(
+                    backoff_delay(reconnects, exc.retry_after, backoff),
+                    remaining,
+                )
             )
         except Exception:
             # Severed mid-read. Forward progress resets the budget; a reconnect
@@ -99,7 +96,9 @@ def stream_resumable(
             remaining = deadline - time.monotonic()
             if reconnects > max_reconnects or remaining <= 0:
                 raise
-            time.sleep(min(_backoff(reconnects, None, backoff), remaining))
+            time.sleep(
+                min(backoff_delay(reconnects, None, backoff), remaining)
+            )
 
 
 async def stream_resumable_async(
@@ -136,7 +135,10 @@ async def stream_resumable_async(
             if remaining <= 0:
                 raise
             await asyncio.sleep(
-                min(_backoff(reconnects, exc.retry_after, backoff), remaining)
+                min(
+                    backoff_delay(reconnects, exc.retry_after, backoff),
+                    remaining,
+                )
             )
         except Exception:
             reconnects = 0 if progressed else reconnects + 1
@@ -144,5 +146,5 @@ async def stream_resumable_async(
             if reconnects > max_reconnects or remaining <= 0:
                 raise
             await asyncio.sleep(
-                min(_backoff(reconnects, None, backoff), remaining)
+                min(backoff_delay(reconnects, None, backoff), remaining)
             )
