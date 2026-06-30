@@ -9,10 +9,32 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from introspection_sdk._errors import NetworkError, NotFoundError
+from introspection_sdk._errors import (
+    NetworkError,
+    NotFoundError,
+    RateLimitError,
+)
 from introspection_sdk._http import _clean_params
 
 from .conftest import FakeAPI
+
+
+def _rate_limited_then(ok_body: dict, *, fail_times: int):
+    """Stateful handler: ``429`` for the first ``fail_times`` calls, then
+    ``200`` with ``ok_body``."""
+    calls = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] <= fail_times:
+            return httpx.Response(
+                429,
+                headers={"retry-after": "0"},
+                json={"detail": "rate limited"},
+            )
+        return httpx.Response(200, json=ok_body)
+
+    return handler
 
 
 def test_request_returns_parsed_json(fake_api: FakeAPI):
@@ -128,3 +150,41 @@ def test_close_is_idempotent(fake_api: FakeAPI):
 
 def test_clean_params_returns_none_for_none():
     assert _clean_params(None) is None
+
+
+def test_request_retries_on_429_then_succeeds(fake_api: FakeAPI):
+    fake_api.add_handler(
+        "GET", "/v1/tasks/abc", _rate_limited_then({"ok": True}, fail_times=1)
+    )
+    http = fake_api.client(retry_base=0.0)
+    assert http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    # Initial 429 + the retry that succeeded.
+    assert len(fake_api.requests) == 2
+
+
+def test_request_surfaces_rate_limit_after_exhausting(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/tasks/def",
+        status=429,
+        headers={"retry-after": "0"},
+        json_body={"detail": "rate limited"},
+    )
+    http = fake_api.client(max_retries=1, retry_base=0.0)
+    with pytest.raises(RateLimitError):
+        http.request("GET", "/v1/tasks/def")
+    assert len(fake_api.requests) == 2  # initial + 1 retry
+
+
+def test_request_does_not_retry_when_disabled(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/tasks/ghi",
+        status=429,
+        headers={"retry-after": "0"},
+        json_body={"detail": "rate limited"},
+    )
+    http = fake_api.client(max_retries=0)
+    with pytest.raises(RateLimitError):
+        http.request("GET", "/v1/tasks/ghi")
+    assert len(fake_api.requests) == 1  # no retry

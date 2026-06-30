@@ -361,3 +361,42 @@ async def test_experiment_lifecycle(fake_api: FakeAPI):
     ended = await handle.end(notes="done")
     assert ended.status == "concluded"
     assert fake_api.last_request.json()["notes"] == "done"
+
+
+async def test_async_request_retries_on_429_then_succeeds(fake_api: FakeAPI):
+    calls = {"n": 0}
+
+    def handler(_request):
+        import httpx
+
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(
+                429,
+                headers={"retry-after": "0"},
+                json={"detail": "rate limited"},
+            )
+        return httpx.Response(200, json={"ok": True})
+
+    fake_api.add_handler("GET", "/v1/tasks/abc", handler)
+    http = fake_api.async_client(retry_base=0.0)
+    assert await http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 429 + successful retry
+
+
+async def test_async_request_surfaces_rate_limit_after_exhausting(
+    fake_api: FakeAPI,
+):
+    from introspection_sdk._errors import RateLimitError
+
+    fake_api.add(
+        "GET",
+        "/v1/tasks/def",
+        status=429,
+        headers={"retry-after": "0"},
+        json_body={"detail": "rate limited"},
+    )
+    http = fake_api.async_client(max_retries=1, retry_base=0.0)
+    with pytest.raises(RateLimitError):
+        await http.request("GET", "/v1/tasks/def")
+    assert len(fake_api.requests) == 2  # initial + 1 retry

@@ -18,6 +18,10 @@ from introspection_sdk.pagination import (
     async_cursor_paginate,
     cursor_paginate,
 )
+from introspection_sdk.resumable import (
+    stream_resumable,
+    stream_resumable_async,
+)
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
     ResumeEntry,
@@ -34,10 +38,6 @@ from introspection_sdk.schemas.tasks import (
     TaskRun,
     TaskRunKind,
     TaskRunResponse,
-)
-from introspection_sdk.streaming import (
-    parse_ag_ui_events,
-    parse_ag_ui_events_async,
 )
 
 
@@ -72,8 +72,20 @@ class RunHandle:
         self.run = run
         self._runs = runs
 
-    def stream(self) -> Iterator[AGUIEvent]:
-        return self._runs.stream(str(self.run.task_id), self.run.id)
+    def stream(
+        self,
+        *,
+        max_reconnects: int = 5,
+        backoff: float = 0.5,
+        timeout: float = 300.0,
+    ) -> Iterator[AGUIEvent]:
+        return self._runs.stream(
+            str(self.run.task_id),
+            self.run.id,
+            max_reconnects=max_reconnects,
+            backoff=backoff,
+            timeout=timeout,
+        )
 
     def cancel(self) -> TaskCancelResponse:
         return self._runs.cancel(str(self.run.task_id), self.run.id)
@@ -144,11 +156,33 @@ class TaskRuns:
         )
         return TaskCancelResponse.model_validate(payload)
 
-    def stream(self, task_id: str, run_id: str) -> Iterator[AGUIEvent]:
-        lines = self._http.stream_sse_lines(
-            f"/v1/tasks/{task_id}/runs/{run_id}/stream"
+    def stream(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        max_reconnects: int = 5,
+        backoff: float = 0.5,
+        timeout: float = 300.0,
+    ) -> Iterator[AGUIEvent]:
+        """Stream a run's AG-UI events.
+
+        The stream resumes **transparently** across a mid-turn disconnect
+        (gateway idle-timeout, load-balancer recycle, network blip): it
+        re-attaches with the SSE-standard ``Last-Event-ID`` so the server
+        replays the frames the client missed, yielding a single gap-free
+        ``AGUIEvent`` sequence (INT-252). It completes when the turn finishes
+        and raises only once recovery is exhausted — no consumer-visible change
+        from a plain stream. The keyword args tune the recovery bounds.
+        """
+        return stream_resumable(
+            self._http,
+            task_id,
+            run_id,
+            max_reconnects=max_reconnects,
+            backoff=backoff,
+            timeout=timeout,
         )
-        yield from parse_ag_ui_events(lines)
 
 
 class Tasks:
@@ -306,8 +340,20 @@ class AsyncRunHandle:
         self.run = run
         self._runs = runs
 
-    def stream(self) -> AsyncIterator[AGUIEvent]:
-        return self._runs.stream(str(self.run.task_id), self.run.id)
+    def stream(
+        self,
+        *,
+        max_reconnects: int = 5,
+        backoff: float = 0.5,
+        timeout: float = 300.0,
+    ) -> AsyncIterator[AGUIEvent]:
+        return self._runs.stream(
+            str(self.run.task_id),
+            self.run.id,
+            max_reconnects=max_reconnects,
+            backoff=backoff,
+            timeout=timeout,
+        )
 
     async def cancel(self) -> TaskCancelResponse:
         return await self._runs.cancel(str(self.run.task_id), self.run.id)
@@ -378,14 +424,25 @@ class AsyncTaskRuns:
         )
         return TaskCancelResponse.model_validate(payload)
 
-    async def stream(
-        self, task_id: str, run_id: str
+    def stream(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        max_reconnects: int = 5,
+        backoff: float = 0.5,
+        timeout: float = 300.0,
     ) -> AsyncIterator[AGUIEvent]:
-        lines = self._http.stream_sse_lines(
-            f"/v1/tasks/{task_id}/runs/{run_id}/stream"
+        """Stream a run's AG-UI events with transparent resume — async twin of
+        :meth:`TaskRuns.stream`."""
+        return stream_resumable_async(
+            self._http,
+            task_id,
+            run_id,
+            max_reconnects=max_reconnects,
+            backoff=backoff,
+            timeout=timeout,
         )
-        async for event in parse_ag_ui_events_async(lines):
-            yield event
 
 
 class AsyncTasks:

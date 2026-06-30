@@ -61,6 +61,36 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
+### Resilient streaming
+
+`run.stream()` **resumes transparently** across a mid-turn disconnect — gateway
+idle-timeout, load-balancer recycle, network blip. On a drop it re-attaches with
+the SSE-standard `Last-Event-ID` so the server replays the frames you missed,
+and the iterator yields one gap-free `AGUIEvent` sequence. There is no
+consumer-visible change: the `async for` above just keeps working, completing
+when the turn finishes and raising only if recovery is exhausted. Keyword args
+tune the recovery bounds:
+
+```python
+async for event in run.stream(max_reconnects=5, timeout=300.0):
+    ...
+```
+
+Readiness folds in the same way: while a run is not yet attachable the server
+answers with `429` + `Retry-After`, which the stream honours as a backoff floor
+and retries — never surfaced to the caller.
+
+### Rate limits (429)
+
+The unary calls — `tasks.get` (status polling), lists, create, cancel, delete,
+file metadata/content — **auto-retry on `429 Too Many Requests`**, honouring the
+server's `Retry-After` as the floor of a capped-exponential backoff. A status
+poller that trips the limit slows down and keeps working instead of raising.
+Retries are bounded (`max_retries`, default 2; `0` disables) and once the budget
+is spent the `429` surfaces as a `RateLimitError` (with `retry_after`) so you can
+back off further. The same applies to the async client. Streaming has its own
+resume budget (above); multipart uploads are not auto-retried.
+
 A Runner exposes three DP-bound namespaces side by side: `runner.tasks`,
 `runner.files`, and the read-only `runner.conversations`. The conversations
 namespace lists conversation summaries (`runner.conversations.list()`), loads
