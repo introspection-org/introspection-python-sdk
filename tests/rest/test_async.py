@@ -400,3 +400,32 @@ async def test_async_request_surfaces_rate_limit_after_exhausting(
     with pytest.raises(RateLimitError):
         await http.request("GET", "/v1/tasks/def")
     assert len(fake_api.requests) == 2  # initial + 1 retry
+
+
+async def test_async_get_retries_on_503_then_succeeds(fake_api: FakeAPI):
+    import httpx
+
+    calls = {"n": 0}
+
+    def handler(_request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(503, json={"detail": "sandbox unavailable"})
+        return httpx.Response(200, json={"ok": True})
+
+    fake_api.add_handler("GET", "/v1/tasks/abc", handler)
+    http = fake_api.async_client(retry_base=0.0)
+    assert await http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 503 + successful retry
+
+
+async def test_async_write_does_not_retry_on_503(fake_api: FakeAPI):
+    from introspection_sdk._errors import SandboxUnavailableError
+
+    fake_api.add(
+        "POST", "/v1/tasks", status=503, json_body={"detail": "unavailable"}
+    )
+    http = fake_api.async_client(retry_base=0.0)
+    with pytest.raises(SandboxUnavailableError):
+        await http.request("POST", "/v1/tasks", json={})
+    assert len(fake_api.requests) == 1  # write not retried on 5xx

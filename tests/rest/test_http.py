@@ -13,6 +13,7 @@ from introspection_sdk._errors import (
     NetworkError,
     NotFoundError,
     RateLimitError,
+    SandboxUnavailableError,
 )
 from introspection_sdk._http import _clean_params
 
@@ -188,3 +189,31 @@ def test_request_does_not_retry_when_disabled(fake_api: FakeAPI):
     with pytest.raises(RateLimitError):
         http.request("GET", "/v1/tasks/ghi")
     assert len(fake_api.requests) == 1  # no retry
+
+
+def test_get_retries_on_503_then_succeeds(fake_api: FakeAPI):
+    # A transient 503 on a GET (idempotent) is retried — note the response
+    # carries no Retry-After, so the retry rides the plain exponential backoff.
+    calls = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(503, json={"detail": "sandbox unavailable"})
+        return httpx.Response(200, json={"ok": True})
+
+    fake_api.add_handler("GET", "/v1/tasks/abc", handler)
+    http = fake_api.client(retry_base=0.0)
+    assert http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 503 + successful retry
+
+
+def test_write_does_not_retry_on_503(fake_api: FakeAPI):
+    # A 503 on a non-idempotent write is surfaced immediately, never re-sent.
+    fake_api.add(
+        "POST", "/v1/tasks", status=503, json_body={"detail": "unavailable"}
+    )
+    http = fake_api.client(retry_base=0.0)
+    with pytest.raises(SandboxUnavailableError):
+        http.request("POST", "/v1/tasks", json={})
+    assert len(fake_api.requests) == 1  # write not retried on 5xx

@@ -30,8 +30,11 @@ from introspection_sdk._errors import (
 DEFAULT_MAX_RETRIES = 2
 #: Default base step (seconds) of the capped-exponential ``429`` retry backoff.
 DEFAULT_RETRY_BASE = 0.5
-#: Cap on the ``429`` retry backoff (seconds).
+#: Cap on the retry backoff (seconds).
 _MAX_RETRY_BACKOFF = 10.0
+
+#: Transient gateway/upstream statuses retried only for idempotent (GET) calls.
+_IDEMPOTENT_RETRY_STATUSES = frozenset({502, 503, 504})
 
 
 def _retry_delay(
@@ -40,6 +43,21 @@ def _retry_delay(
     """``Retry-After`` as the floor of a capped-exponential step (``base * 2^n``)."""
     exp = min(base * (2**attempt), _MAX_RETRY_BACKOFF)
     return max(retry_after or 0.0, exp)
+
+
+def _should_retry(status: int, method: str) -> bool:
+    """Whether a non-2xx status is worth retrying.
+
+    ``429`` is retried for any method (the request was rejected and never
+    processed, so re-sending is side-effect-safe even for writes); transient
+    gateway/upstream errors (``502``/``503``/``504``) are retried only for
+    idempotent ``GET`` requests.
+    """
+    if status == 429:
+        return True
+    if status in _IDEMPOTENT_RETRY_STATUSES:
+        return method.upper() == "GET"
+    return False
 
 
 class _HttpClient:
@@ -89,10 +107,10 @@ class _HttpClient:
         expect: str = "json",
     ) -> Any:
         headers = dict(self._auth_headers)
-        # Auto-retry on a ``429``, honouring ``Retry-After`` as a backoff floor,
-        # so a spammed status poll slows down instead of raising. A ``429`` means
-        # the request was rejected and never processed, so retrying is
-        # side-effect-safe for writes too. Multipart uploads aren't retried.
+        # Auto-retry transient statuses, honouring ``Retry-After`` as a backoff
+        # floor: ``429`` for any method (rejected, not processed), and
+        # ``502``/``503``/``504`` for idempotent GETs only (see
+        # ``_should_retry``). Multipart uploads aren't retried.
         retries = 0 if files is not None else self._max_retries
         attempt = 0
         while True:
@@ -108,7 +126,7 @@ class _HttpClient:
                 )
             except httpx.HTTPError as exc:
                 raise NetworkError(str(exc)) from exc
-            if res.status_code == 429 and attempt < retries:
+            if _should_retry(res.status_code, method) and attempt < retries:
                 delay = _retry_delay(
                     attempt,
                     _parse_retry_after(res.headers.get("retry-after")),
@@ -208,7 +226,8 @@ class _AsyncHttpClient:
         expect: str = "json",
     ) -> Any:
         headers = dict(self._auth_headers)
-        # See the sync twin: transparent ``429`` retry honouring ``Retry-After``;
+        # See the sync twin: transparent retry of ``429`` (any method) and
+        # ``502``/``503``/``504`` (GET only), honouring ``Retry-After``;
         # multipart uploads are excluded.
         retries = 0 if files is not None else self._max_retries
         attempt = 0
@@ -225,7 +244,7 @@ class _AsyncHttpClient:
                 )
             except httpx.HTTPError as exc:
                 raise NetworkError(str(exc)) from exc
-            if res.status_code == 429 and attempt < retries:
+            if _should_retry(res.status_code, method) and attempt < retries:
                 delay = _retry_delay(
                     attempt,
                     _parse_retry_after(res.headers.get("retry-after")),
