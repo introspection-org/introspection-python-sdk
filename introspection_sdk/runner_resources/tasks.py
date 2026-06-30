@@ -59,7 +59,8 @@ class RunHandle:
 
     Mirrors the Cursor SDK shape: ``handle.stream()`` to iterate validated
     AG-UI events, ``handle.text()`` to collect text deltas into a string,
-    ``handle.cancel()`` to cancel the run.
+    ``handle.abort()`` to stop the current turn, and ``handle.cancel()`` to
+    cancel the run.
     """
 
     def __init__(
@@ -77,6 +78,9 @@ class RunHandle:
 
     def cancel(self) -> TaskCancelResponse:
         return self._runs.cancel(str(self.run.task_id), self.run.id)
+
+    def abort(self) -> TaskCancelResponse:
+        return self._runs.abort(str(self.run.task_id), self.run.id)
 
     def text(self) -> str:
         out: list[str] = []
@@ -141,6 +145,12 @@ class TaskRuns:
     def cancel(self, task_id: str, run_id: str) -> TaskCancelResponse:
         payload = self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
+        )
+        return TaskCancelResponse.model_validate(payload)
+
+    def abort(self, task_id: str, run_id: str) -> TaskCancelResponse:
+        payload = self._http.request(
+            "POST", f"/v1/tasks/{task_id}/runs/{run_id}/abort"
         )
         return TaskCancelResponse.model_validate(payload)
 
@@ -293,7 +303,8 @@ class AsyncRunHandle:
     Returned by ``AsyncTasks.start(...)`` and ``AsyncTaskRuns.create(...)``.
     ``await handle.stream()`` is replaced by ``async for ev in
     handle.stream()`` to iterate AG-UI events; ``await handle.text()``
-    collects text frames; ``await handle.cancel()`` cancels the run.
+    collects text frames; ``await handle.abort()`` stops the current turn and
+    ``await handle.cancel()`` cancels the run.
     """
 
     def __init__(
@@ -311,6 +322,9 @@ class AsyncRunHandle:
 
     async def cancel(self) -> TaskCancelResponse:
         return await self._runs.cancel(str(self.run.task_id), self.run.id)
+
+    async def abort(self) -> TaskCancelResponse:
+        return await self._runs.abort(str(self.run.task_id), self.run.id)
 
     async def text(self) -> str:
         out: list[str] = []
@@ -375,6 +389,12 @@ class AsyncTaskRuns:
     async def cancel(self, task_id: str, run_id: str) -> TaskCancelResponse:
         payload = await self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
+        )
+        return TaskCancelResponse.model_validate(payload)
+
+    async def abort(self, task_id: str, run_id: str) -> TaskCancelResponse:
+        payload = await self._http.request(
+            "POST", f"/v1/tasks/{task_id}/runs/{run_id}/abort"
         )
         return TaskCancelResponse.model_validate(payload)
 

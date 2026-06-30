@@ -231,6 +231,22 @@ async def test_run_handle_cancel(fake_api: FakeAPI):
     assert cancelled.id == "run-1"
 
 
+async def test_run_handle_abort(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs/run-1/abort",
+        json_body=task_cancel_response("run-1"),
+    )
+    handle = await AsyncTasks(fake_api.async_client()).runs.create(
+        TASK_ID, message="x"
+    )
+    aborted = await handle.abort()
+    assert aborted.id == "run-1"
+
+
 # --- AsyncFiles ------------------------------------------------------
 
 
