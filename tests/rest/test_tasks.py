@@ -213,6 +213,21 @@ def test_run_handle_cancel(fake_api: FakeAPI):
     assert handle.cancel().id == "run-1"
 
 
+def test_run_handle_abort(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs/run-1/abort",
+        json_body=task_cancel_response("run-1"),
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs",
+        json_body=task_run_response(),
+    )
+    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+    assert handle.abort().id == "run-1"
+
+
 def test_run_handle_stream_and_text(fake_api: FakeAPI):
     sse = (
         'event: ag_ui\ndata: {"type":"TEXT_MESSAGE_CONTENT",'
