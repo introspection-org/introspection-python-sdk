@@ -23,7 +23,7 @@ jobs:
           owner: introspection-org
           repositories: introspection-python-sdk
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
 
