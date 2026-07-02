@@ -33,6 +33,10 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.trace import Span, SpanKind, StatusCode
 
+from introspection_sdk.otel._termination import (
+    CANCELLATION_EXCEPTIONS,
+    mark_span_cancelled,
+)
 from introspection_sdk.schemas.genai import (
     InputMessage,
     MessagePart,
@@ -288,6 +292,9 @@ def traced_messages_create(
         response = client.messages.create(**kwargs)
         _set_response_attrs(span, response)
         return response
+    except CANCELLATION_EXCEPTIONS:
+        mark_span_cancelled(span)
+        raise
     except Exception as e:
         span.set_status(StatusCode.ERROR, str(e))
         raise
@@ -344,6 +351,9 @@ class AnthropicInstrumentor:
                 response = orig_create(self_messages, **kwargs)
                 _set_response_attrs(span, response)
                 return response
+            except CANCELLATION_EXCEPTIONS:
+                mark_span_cancelled(span)
+                raise
             except Exception as e:
                 span.set_status(StatusCode.ERROR, str(e))
                 raise
@@ -404,6 +414,11 @@ def _patched_stream_via_create(
     try:
         stream = original_create(self_messages, **kwargs)
         return _StreamWrapper(stream, span, tok)
+    except CANCELLATION_EXCEPTIONS:
+        mark_span_cancelled(span)
+        otel_context.detach(tok)  # type: ignore[arg-type]
+        span.end()
+        raise
     except Exception as e:
         span.set_status(StatusCode.ERROR, str(e))
         otel_context.detach(tok)  # type: ignore[arg-type]
@@ -442,6 +457,9 @@ class _StreamWrapper:
             return event
         except StopIteration:
             self._finalize()
+            raise
+        except CANCELLATION_EXCEPTIONS:
+            self._finalize_cancelled()
             raise
 
     def __enter__(self) -> Any:
@@ -555,6 +573,16 @@ class _StreamWrapper:
         otel_context.detach(self._ctx_token)  # type: ignore[arg-type]
         self._span.end()
 
+    def _finalize_cancelled(self) -> None:
+        """Terminal path when the caller aborted mid-stream: annotate the span
+        as cancelled (Unset), don't set OK."""
+        if self._finalized:
+            return
+        self._finalized = True
+        mark_span_cancelled(self._span)
+        otel_context.detach(self._ctx_token)  # type: ignore[arg-type]
+        self._span.end()
+
     # Proxy common stream attributes
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
@@ -612,15 +640,22 @@ class _TracedMessageStream:
         return ctx
 
     def __exit__(self, *args: Any) -> None:
+        exc_type = args[0] if args else None
+        cancelled = exc_type is not None and issubclass(
+            exc_type, CANCELLATION_EXCEPTIONS
+        )
         if self._inner is not None:
-            # Capture final message before closing
-            msg = getattr(self._inner, "get_final_message", lambda: None)()
-            if msg and self._span:
-                _set_response_attrs(self._span, msg)
+            if not cancelled:
+                # Capture final message before closing
+                msg = getattr(self._inner, "get_final_message", lambda: None)()
+                if msg and self._span:
+                    _set_response_attrs(self._span, msg)
             self._inner.__exit__(*args)
         if self._span:
             if not self._span.is_recording():
                 pass
+            elif cancelled:
+                mark_span_cancelled(self._span)
             else:
                 self._span.set_status(StatusCode.OK)
             self._span.end()
