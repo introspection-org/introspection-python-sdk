@@ -45,6 +45,10 @@ from opentelemetry.sdk.trace.export import (
 )
 
 from introspection_sdk.config import AdvancedOptions
+from introspection_sdk.otel._termination import (
+    CANCELLATION_EXCEPTIONS,
+    mark_span_cancelled,
+)
 from introspection_sdk.schemas.genai import (
     InputMessage,
     MessagePart,
@@ -471,11 +475,14 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         self._llm_inputs.pop(str(run_id), None)
         if span is None:
             return
-        span.record_exception(error)
-        span.set_status(
-            otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
-        )
-        span.set_attribute("exception.message", str(error))
+        if isinstance(error, CANCELLATION_EXCEPTIONS):
+            mark_span_cancelled(span)
+        else:
+            span.record_exception(error)
+            span.set_status(
+                otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
+            )
+            span.set_attribute("exception.message", str(error))
         span.end()
         self._end_root_if_complete(run_id)
 
@@ -531,11 +538,14 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         span = self._spans.pop(str(run_id), None)
         if span is None:
             return
-        span.record_exception(error)
-        span.set_status(
-            otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
-        )
-        span.set_attribute("exception.message", str(error))
+        if isinstance(error, CANCELLATION_EXCEPTIONS):
+            mark_span_cancelled(span)
+        else:
+            span.record_exception(error)
+            span.set_status(
+                otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
+            )
+            span.set_attribute("exception.message", str(error))
         span.end()
         self._end_root_if_complete(run_id)
 
@@ -607,11 +617,14 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
         span = self._spans.pop(str(run_id), None)
         if span is None:
             return
-        span.record_exception(error)
-        span.set_status(
-            otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
-        )
-        span.set_attribute("exception.message", str(error))
+        if isinstance(error, CANCELLATION_EXCEPTIONS):
+            mark_span_cancelled(span)
+        else:
+            span.record_exception(error)
+            span.set_status(
+                otel_trace.Status(otel_trace.StatusCode.ERROR, str(error))
+            )
+            span.set_attribute("exception.message", str(error))
         span.end()
         self._end_root_if_complete(run_id)
 
