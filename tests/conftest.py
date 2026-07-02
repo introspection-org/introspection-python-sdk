@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -37,28 +38,50 @@ class CaptureTracingProcessor:
     processor: IntrospectionTracingProcessor
 
 
+# Kept in sync with the JS SDK's cassette scrubbing (introspection-js-sdk
+# ``tests/polly-setup.ts`` SENSITIVE_HEADERS) so both SDKs redact the same
+# credential headers from recordings.
 SENSITIVE_HEADERS = {
     "authorization",
     "api-key",
     "api_key",
     "x-api-key",
     "x-bt-api-key",
+    "x-stainless-api-key",
+    "anthropic-api-key",
+    "anthropic-organization-id",
     "x-goog-api-key",
+    "x-goog-user-project",
     "x-langfuse-public-key",
     "space_id",
     "cookie",
     "set-cookie",
     "openai-organization",
     "openai-project",
-    "anthropic-organization-id",
 }
+
+# Belt-and-suspenders over the explicit set (mirrors the JS
+# ``SENSITIVE_HEADER_PATTERN``): any header whose name *looks* like a credential
+# is redacted too, so a new provider's auth header can never slip into a
+# recording just because it wasn't enumerated above.
+SENSITIVE_HEADER_RE = re.compile(
+    r"(authorization|api[-_]?key|access[-_]?token|refresh[-_]?token|\btoken\b"
+    r"|secret|password|credential|cookie|x-goog-user-project|session)",
+    re.IGNORECASE,
+)
+
+
+def _is_sensitive_header(name: str) -> bool:
+    return name.lower() in SENSITIVE_HEADERS or bool(
+        SENSITIVE_HEADER_RE.search(name)
+    )
 
 
 def _scrub_response(response):
     """Remove sensitive headers and scrub secrets from VCR response recordings."""
     headers = response.get("headers", {})
     for key in list(headers):
-        if key.lower() in SENSITIVE_HEADERS:
+        if _is_sensitive_header(key):
             del headers[key]
     # Scrub secrets from response body (e.g. Braintrust eval traces embed env vars)
     body = response.get("body", {})
@@ -72,7 +95,11 @@ def _scrub_response(response):
 
 
 def _scrub_request(request):
-    """Scrub secrets from VCR request bodies and URIs."""
+    """Scrub secrets from VCR request headers, bodies, and URIs."""
+    if hasattr(request, "headers") and request.headers:
+        for key in list(request.headers):
+            if _is_sensitive_header(key):
+                del request.headers[key]
     if hasattr(request, "body") and isinstance(request.body, (str, bytes)):
         body = (
             request.body
