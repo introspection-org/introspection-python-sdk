@@ -51,6 +51,10 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.trace import Span, SpanKind, StatusCode
 
+from introspection_sdk.otel._termination import (
+    CANCELLATION_EXCEPTIONS,
+    mark_span_cancelled,
+)
 from introspection_sdk.otel.anthropic import REDACTED_THINKING_CONTENT
 from introspection_sdk.schemas.genai import (
     InputMessage,
@@ -397,6 +401,9 @@ def traced_generate_content(
         response = client.models.generate_content(**kwargs)
         _set_response_attrs(span, response)
         return response
+    except CANCELLATION_EXCEPTIONS:
+        mark_span_cancelled(span)
+        raise
     except Exception as e:
         span.set_status(StatusCode.ERROR, str(e))
         raise
@@ -503,6 +510,16 @@ class _StreamAccumulator:
         otel_context.detach(self._ctx_token)  # type: ignore[arg-type]
         self._span.end()
 
+    def _finalize_cancelled(self) -> None:
+        """Terminal path when the caller aborted mid-stream: annotate the span
+        as cancelled (Unset), don't set OK."""
+        if self._finalized:
+            return
+        self._finalized = True
+        mark_span_cancelled(self._span)
+        otel_context.detach(self._ctx_token)  # type: ignore[arg-type]
+        self._span.end()
+
 
 class _SyncStreamWrapper(_StreamAccumulator):
     """Wraps a sync ``generate_content_stream`` iterator."""
@@ -516,6 +533,12 @@ class _SyncStreamWrapper(_StreamAccumulator):
             for chunk in self._inner:
                 self._process_chunk(chunk)
                 yield chunk
+        except CANCELLATION_EXCEPTIONS:
+            # Caller aborted (task cancel / Ctrl-C / early break closes the
+            # generator): annotate as cancelled, not OK. ``_finalize`` in the
+            # ``finally`` then no-ops because we've flipped ``_finalized``.
+            self._finalize_cancelled()
+            raise
         finally:
             self._finalize()
 
@@ -538,6 +561,12 @@ class _AsyncStreamWrapper(_StreamAccumulator):
             async for chunk in self._inner:
                 self._process_chunk(chunk)
                 yield chunk
+        except CANCELLATION_EXCEPTIONS:
+            # Caller aborted (task cancel / Ctrl-C / early break closes the
+            # generator): annotate as cancelled, not OK. ``_finalize`` in the
+            # ``finally`` then no-ops because we've flipped ``_finalized``.
+            self._finalize_cancelled()
+            raise
         finally:
             self._finalize()
 
