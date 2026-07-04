@@ -80,16 +80,21 @@ Readiness folds in the same way: while a run is not yet attachable the server
 answers with `429` + `Retry-After`, which the stream honours as a backoff floor
 and retries — never surfaced to the caller.
 
-### Rate limits (429)
+### Retries (429 / 502 / 503 / 504)
 
 The unary calls — `tasks.get` (status polling), lists, create, cancel, delete,
-file metadata/content — **auto-retry on `429 Too Many Requests`**, honouring the
-server's `Retry-After` as the floor of a capped-exponential backoff. A status
-poller that trips the limit slows down and keeps working instead of raising.
-Retries are bounded (`max_retries`, default 2; `0` disables) and once the budget
-is spent the `429` surfaces as a `RateLimitError` (with `retry_after`) so you can
-back off further. The same applies to the async client. Streaming has its own
-resume budget (above); multipart uploads are not auto-retried.
+file metadata/content — **auto-retry on `429 Too Many Requests`** for every
+method, and on `502`/`503`/`504` for idempotent `GET` calls only. A `429` means
+the request was rejected before it was processed, so re-sending is safe even
+for writes; a `502`/`503`/`504` may have been processed upstream, so only reads
+are retried. When the server sends `Retry-After` it is honoured as the floor of
+a capped-exponential backoff, but it is not required — the retry decision is
+status-based. Retries are bounded (`max_retries`, default 2; `0` disables) and
+once the budget is spent the error surfaces as usual (a `429` as a
+`RateLimitError` with `retry_after`, a `503`/`504` as a
+`SandboxUnavailableError`) so you can back off further. The same applies to the
+async client. Streaming has its own resume budget (above); multipart uploads
+are not auto-retried.
 
 A Runner exposes three DP-bound namespaces side by side: `runner.tasks`,
 `runner.files`, and the read-only `runner.conversations`. The conversations

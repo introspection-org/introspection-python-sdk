@@ -400,3 +400,52 @@ async def test_async_request_surfaces_rate_limit_after_exhausting(
     with pytest.raises(RateLimitError):
         await http.request("GET", "/v1/tasks/def")
     assert len(fake_api.requests) == 2  # initial + 1 retry
+
+
+async def test_async_get_retries_on_503_without_retry_after(
+    fake_api: FakeAPI,
+):
+    # No ``Retry-After`` header: the retry decision is status-based.
+    calls = {"n": 0}
+
+    def handler(_request):
+        import httpx
+
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(503, json={"detail": "down"})
+        return httpx.Response(200, json={"ok": True})
+
+    fake_api.add_handler("GET", "/v1/tasks/abc", handler)
+    http = fake_api.async_client(retry_base=0.0)
+    assert await http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 503 + successful retry
+
+
+async def test_async_get_retries_on_504(fake_api: FakeAPI):
+    calls = {"n": 0}
+
+    def handler(_request):
+        import httpx
+
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(504, json={"detail": "timeout"})
+        return httpx.Response(200, json={"ok": True})
+
+    fake_api.add_handler("GET", "/v1/tasks/abc", handler)
+    http = fake_api.async_client(retry_base=0.0)
+    assert await http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 504 + successful retry
+
+
+async def test_async_post_503_surfaces_immediately(fake_api: FakeAPI):
+    from introspection_sdk._errors import SandboxUnavailableError
+
+    fake_api.add(
+        "POST", "/v1/things", status=503, json_body={"detail": "down"}
+    )
+    http = fake_api.async_client(retry_base=0.0)
+    with pytest.raises(SandboxUnavailableError):
+        await http.request("POST", "/v1/things", json={"name": "widget"})
+    assert len(fake_api.requests) == 1  # never retried

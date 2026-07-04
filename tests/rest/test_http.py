@@ -9,18 +9,26 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from introspection_sdk._backoff import _is_retryable_status
 from introspection_sdk._errors import (
     NetworkError,
     NotFoundError,
     RateLimitError,
+    SandboxUnavailableError,
 )
 from introspection_sdk._http import _clean_params
 
 from .conftest import FakeAPI
 
 
-def _rate_limited_then(ok_body: dict, *, fail_times: int):
-    """Stateful handler: ``429`` for the first ``fail_times`` calls, then
+def _fails_then(
+    status: int,
+    ok_body: dict,
+    *,
+    fail_times: int,
+    fail_headers: dict[str, str] | None = None,
+):
+    """Stateful handler: ``status`` for the first ``fail_times`` calls, then
     ``200`` with ``ok_body``."""
     calls = {"n": 0}
 
@@ -28,13 +36,24 @@ def _rate_limited_then(ok_body: dict, *, fail_times: int):
         calls["n"] += 1
         if calls["n"] <= fail_times:
             return httpx.Response(
-                429,
-                headers={"retry-after": "0"},
-                json={"detail": "rate limited"},
+                status,
+                headers=fail_headers,
+                json={"detail": f"transient {status}"},
             )
         return httpx.Response(200, json=ok_body)
 
     return handler
+
+
+def _rate_limited_then(ok_body: dict, *, fail_times: int):
+    """Stateful handler: ``429`` for the first ``fail_times`` calls, then
+    ``200`` with ``ok_body``."""
+    return _fails_then(
+        429,
+        ok_body,
+        fail_times=fail_times,
+        fail_headers={"retry-after": "0"},
+    )
 
 
 def test_request_returns_parsed_json(fake_api: FakeAPI):
@@ -188,3 +207,81 @@ def test_request_does_not_retry_when_disabled(fake_api: FakeAPI):
     with pytest.raises(RateLimitError):
         http.request("GET", "/v1/tasks/ghi")
     assert len(fake_api.requests) == 1  # no retry
+
+
+def test_get_retries_on_503_without_retry_after(fake_api: FakeAPI):
+    # No ``Retry-After`` header on the 503: the retry decision is
+    # status-based, the header only ever raises the backoff floor.
+    fake_api.add_handler(
+        "GET", "/v1/tasks/abc", _fails_then(503, {"ok": True}, fail_times=1)
+    )
+    http = fake_api.client(retry_base=0.0)
+    assert http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 503 + successful retry
+
+
+def test_get_retries_on_504(fake_api: FakeAPI):
+    fake_api.add_handler(
+        "GET", "/v1/tasks/abc", _fails_then(504, {"ok": True}, fail_times=1)
+    )
+    http = fake_api.client(retry_base=0.0)
+    assert http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 504 + successful retry
+
+
+def test_get_retries_on_502(fake_api: FakeAPI):
+    fake_api.add_handler(
+        "GET", "/v1/tasks/abc", _fails_then(502, {"ok": True}, fail_times=1)
+    )
+    http = fake_api.client(retry_base=0.0)
+    assert http.request("GET", "/v1/tasks/abc") == {"ok": True}
+    assert len(fake_api.requests) == 2  # initial 502 + successful retry
+
+
+def test_post_503_surfaces_immediately(fake_api: FakeAPI):
+    # A POST may have been processed by the upstream before the gateway
+    # answered 503, so it is never retried — exactly one request goes out.
+    fake_api.add(
+        "POST", "/v1/things", status=503, json_body={"detail": "down"}
+    )
+    http = fake_api.client(retry_base=0.0)
+    with pytest.raises(SandboxUnavailableError):
+        http.request("POST", "/v1/things", json={"name": "widget"})
+    assert len(fake_api.requests) == 1
+
+
+def test_get_surfaces_503_after_exhausting_retries(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/tasks/abc", status=503, json_body={})
+    http = fake_api.client(max_retries=1, retry_base=0.0)
+    with pytest.raises(SandboxUnavailableError):
+        http.request("GET", "/v1/tasks/abc")
+    assert len(fake_api.requests) == 2  # initial + 1 retry
+
+
+@pytest.mark.parametrize(
+    ("status", "idempotent", "retryable"),
+    [
+        # 429: request was rejected before processing → every method.
+        (429, True, True),
+        (429, False, True),
+        # 502/503/504: transient gateway/upstream → GET only.
+        (502, True, True),
+        (502, False, False),
+        (503, True, True),
+        (503, False, False),
+        (504, True, True),
+        (504, False, False),
+        # Everything else surfaces immediately.
+        (500, True, False),
+        (500, False, False),
+        (501, True, False),
+        (400, True, False),
+        (404, True, False),
+        (409, False, False),
+        (200, True, False),
+    ],
+)
+def test_retryable_status_policy(
+    status: int, idempotent: bool, retryable: bool
+):
+    assert _is_retryable_status(status, idempotent) is retryable
