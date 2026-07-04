@@ -55,6 +55,10 @@ from introspection_sdk.otel._termination import (
     CANCELLATION_EXCEPTIONS,
     mark_span_cancelled,
 )
+from introspection_sdk.otel._usage import (
+    set_usage_cost_attributes,
+    usage_cost_attributes,
+)
 from introspection_sdk.otel.anthropic import REDACTED_THINKING_CONTENT
 from introspection_sdk.schemas.genai import (
     InputMessage,
@@ -358,6 +362,7 @@ def _set_response_attrs(span: Span, response: Any) -> None:
         total_out = ct + tt
         if total_out:
             span.set_attribute("gen_ai.usage.output_tokens", total_out)
+        set_usage_cost_attributes(span, usage)
 
     span.set_status(StatusCode.OK)
 
@@ -429,6 +434,7 @@ class _StreamAccumulator:
         self._response_model: str | None = None
         self._input_tokens: int = 0
         self._output_tokens: int = 0
+        self._cost_attrs: dict[str, float | int] = {}
         self._finish_reason: str | None = None
 
     def _process_chunk(self, chunk: Any) -> None:
@@ -448,6 +454,7 @@ class _StreamAccumulator:
             total_out = ct + tt
             if total_out:
                 self._output_tokens = total_out
+            self._cost_attrs.update(usage_cost_attributes(usage))
         for cand in _get(chunk, "candidates") or []:
             idx = _get(cand, "index", 0) or 0
             content = _get(cand, "content")
@@ -506,6 +513,8 @@ class _StreamAccumulator:
             self._span.set_attribute(
                 "gen_ai.usage.output_tokens", self._output_tokens
             )
+        for key, value in self._cost_attrs.items():
+            self._span.set_attribute(key, value)
         self._span.set_status(StatusCode.OK)
         otel_context.detach(self._ctx_token)  # type: ignore[arg-type]
         self._span.end()

@@ -106,6 +106,78 @@ def test_chat_model_start_and_end(handler, exporter):
     assert attrs["gen_ai.response.id"] == "resp_1"
 
 
+def test_openrouter_usage_cost_attributes(handler, exporter):
+    """OpenRouter-style usage.cost fields land as span attributes."""
+    run_id = uuid.uuid4()
+    handler.on_chat_model_start(
+        {"id": ["langchain", "chat_models", "openai", "ChatOpenAI"]},
+        [[HumanMessage(content="Hi")]],
+        run_id=run_id,
+        kwargs={},
+        invocation_params={"model": "openrouter/model"},
+    )
+    handler.on_llm_end(
+        LLMResult(
+            generations=[[ChatGeneration(message=AIMessage(content="Hey"))]],
+            llm_output={
+                "model_name": "openrouter/model",
+                "id": "resp_cost",
+                "token_usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 2,
+                    "cost": 0.95,
+                    "cost_details": {"upstream_inference_cost": 0.5},
+                    "completion_tokens_details": {"reasoning_tokens": 128},
+                },
+            },
+        ),
+        run_id=run_id,
+    )
+
+    (span,) = _spans(exporter)
+    attrs = _attrs(span)
+    assert attrs["gen_ai.usage.input_tokens"] == 5
+    assert attrs["gen_ai.usage.output_tokens"] == 2
+    assert attrs["introspection.llm.cost_usd"] == 0.95
+    assert attrs["introspection.llm.upstream_cost_usd"] == 0.5
+    assert attrs["gen_ai.usage.reasoning_tokens"] == 128
+
+
+def test_usage_without_cost_emits_no_cost_attributes(handler, exporter):
+    """Absent or malformed cost fields emit no cost attributes."""
+    run_id = uuid.uuid4()
+    handler.on_chat_model_start(
+        {"id": ["langchain", "chat_models", "openai", "ChatOpenAI"]},
+        [[HumanMessage(content="Hi")]],
+        run_id=run_id,
+        kwargs={},
+        invocation_params={"model": "gpt-4o"},
+    )
+    handler.on_llm_end(
+        LLMResult(
+            generations=[[ChatGeneration(message=AIMessage(content="Hey"))]],
+            llm_output={
+                "model_name": "gpt-4o",
+                "id": "resp_nocost",
+                "token_usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 2,
+                    # Malformed: non-numeric cost must be skipped, not raised.
+                    "cost": "not-a-number",
+                    "completion_tokens_details": {"reasoning_tokens": "many"},
+                },
+            },
+        ),
+        run_id=run_id,
+    )
+
+    (span,) = _spans(exporter)
+    attrs = _attrs(span)
+    assert "introspection.llm.cost_usd" not in attrs
+    assert "introspection.llm.upstream_cost_usd" not in attrs
+    assert "gen_ai.usage.reasoning_tokens" not in attrs
+
+
 def test_chat_with_tools_and_temperature(handler, exporter):
     run_id = uuid.uuid4()
     tool_def = {

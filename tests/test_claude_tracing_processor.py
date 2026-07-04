@@ -539,6 +539,74 @@ class TestClaudeTracingProcessorSpans:
             ]
         )
 
+    async def test_result_message_total_cost_usd(self):
+        """ResultMessage.total_cost_usd -> introspection.llm.cost_usd."""
+        spans = await _run_client(
+            messages=[
+                AssistantMessage(
+                    content=[TextBlock(text="Hi!")], model="claude-test"
+                ),
+                ResultMessage(
+                    session_id="sess-cost",
+                    total_cost_usd=0.0123,
+                    usage={"input_tokens": 10, "output_tokens": 5},
+                ),
+            ],
+            prompt="Hello",
+        )
+        (span,) = spans
+        assert span["attributes"]["introspection.llm.cost_usd"] == 0.0123
+        assert "introspection.llm.upstream_cost_usd" not in span["attributes"]
+
+    async def test_result_message_usage_cost_takes_precedence(self):
+        """usage.cost wins over total_cost_usd; cost_details flows through."""
+        spans = await _run_client(
+            messages=[
+                AssistantMessage(
+                    content=[TextBlock(text="Hi!")], model="claude-test"
+                ),
+                ResultMessage(
+                    session_id="sess-cost-2",
+                    total_cost_usd=0.5,
+                    usage={
+                        "input_tokens": 10,
+                        "output_tokens": 5,
+                        "cost": 0.95,
+                        "cost_details": {"upstream_inference_cost": 0.8},
+                    },
+                ),
+            ],
+            prompt="Hello",
+        )
+        (span,) = spans
+        assert span["attributes"]["introspection.llm.cost_usd"] == 0.95
+        assert span["attributes"]["introspection.llm.upstream_cost_usd"] == 0.8
+
+    async def test_result_message_malformed_cost_is_skipped(self):
+        """Non-numeric cost values emit no cost attributes."""
+        spans = await _run_client(
+            messages=[
+                AssistantMessage(
+                    content=[TextBlock(text="Hi!")], model="claude-test"
+                ),
+                ResultMessage(
+                    session_id="sess-cost-3",
+                    total_cost_usd="free",  # type: ignore[arg-type]
+                    usage={
+                        "input_tokens": 10,
+                        "output_tokens": 5,
+                        "cost": "0.95",
+                        "cost_details": {"upstream_inference_cost": None},
+                    },
+                ),
+            ],
+            prompt="Hello",
+        )
+        (span,) = spans
+        assert "introspection.llm.cost_usd" not in span["attributes"]
+        assert "introspection.llm.upstream_cost_usd" not in span["attributes"]
+        assert span["attributes"]["gen_ai.usage.input_tokens"] == 10
+
     async def test_stream_event_captures_uuid_and_session(self):
         """StreamEvent.uuid -> gen_ai.response.id, session_id -> gen_ai.conversation.id."""
         spans = await _run_client(

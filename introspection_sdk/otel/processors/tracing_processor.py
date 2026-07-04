@@ -31,6 +31,7 @@ from introspection_sdk.converters.openai import (
     convert_responses_inputs_to_semconv,
     convert_responses_outputs_to_semconv,
 )
+from introspection_sdk.otel._usage import set_usage_cost_attributes
 from introspection_sdk.otel.conversation import resolve_conversation_id
 from introspection_sdk.schemas.genai import (
     SystemInstruction,
@@ -485,6 +486,7 @@ class IntrospectionTracingProcessor(TracingProcessor):
                 otel_span.set_attribute(
                     "gen_ai.usage.output_tokens", response.usage.output_tokens
                 )
+            set_usage_cost_attributes(otel_span, response.usage)
 
         # Model info
         if response.model:
@@ -559,6 +561,7 @@ class IntrospectionTracingProcessor(TracingProcessor):
                     otel_span.set_attribute(
                         "gen_ai.usage.output_tokens", usage["output_tokens"]
                     )
+            set_usage_cost_attributes(otel_span, usage)
 
         if span_data.input:
             otel_span.set_attribute(
