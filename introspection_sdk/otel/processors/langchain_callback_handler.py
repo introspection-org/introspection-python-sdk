@@ -49,6 +49,7 @@ from introspection_sdk.otel._termination import (
     CANCELLATION_EXCEPTIONS,
     mark_span_cancelled,
 )
+from introspection_sdk.otel._usage import set_usage_cost_attributes
 from introspection_sdk.schemas.genai import (
     InputMessage,
     MessagePart,
@@ -447,6 +448,7 @@ class IntrospectionCallbackHandler(BaseCallbackHandler):
             span.set_attribute("gen_ai.usage.input_tokens", input_tokens)
         if isinstance(output_tokens, int):
             span.set_attribute("gen_ai.usage.output_tokens", output_tokens)
+        set_usage_cost_attributes(span, token_usage)
 
         model = llm_output.get("model") or llm_output.get("model_name")
         if isinstance(model, str):

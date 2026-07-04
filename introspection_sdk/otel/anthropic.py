@@ -37,6 +37,10 @@ from introspection_sdk.otel._termination import (
     CANCELLATION_EXCEPTIONS,
     mark_span_cancelled,
 )
+from introspection_sdk.otel._usage import (
+    set_usage_cost_attributes,
+    usage_cost_attributes,
+)
 from introspection_sdk.schemas.genai import (
     InputMessage,
     MessagePart,
@@ -251,6 +255,7 @@ def _set_response_attrs(span: Span, response: Any) -> None:
         span.set_attribute(
             "gen_ai.usage.output_tokens", response.usage.output_tokens
         )
+        set_usage_cost_attributes(span, response.usage)
     span.set_status(StatusCode.OK)
 
 
@@ -446,6 +451,7 @@ class _StreamWrapper:
         self._response_model: str | None = None
         self._input_tokens: int = 0
         self._output_tokens: int = 0
+        self._cost_attrs: dict[str, float | int] = {}
 
     def __iter__(self) -> Any:
         return self
@@ -484,6 +490,7 @@ class _StreamWrapper:
                 usage = getattr(msg, "usage", None)
                 if usage:
                     self._input_tokens = getattr(usage, "input_tokens", 0)
+                    self._cost_attrs.update(usage_cost_attributes(usage))
 
         elif etype == "content_block_start":
             cb = getattr(event, "content_block", None)
@@ -540,6 +547,7 @@ class _StreamWrapper:
             usage = getattr(event, "usage", None)
             if usage:
                 self._output_tokens = getattr(usage, "output_tokens", 0)
+                self._cost_attrs.update(usage_cost_attributes(usage))
 
     def _finalize(self) -> None:
         if self._finalized:
@@ -569,6 +577,8 @@ class _StreamWrapper:
             self._span.set_attribute(
                 "gen_ai.usage.output_tokens", self._output_tokens
             )
+        for key, value in self._cost_attrs.items():
+            self._span.set_attribute(key, value)
         self._span.set_status(StatusCode.OK)
         otel_context.detach(self._ctx_token)  # type: ignore[arg-type]
         self._span.end()

@@ -34,6 +34,11 @@ from opentelemetry.sdk.trace.export import (
 )
 
 from introspection_sdk.config import AdvancedOptions
+from introspection_sdk.otel._usage import (
+    UsageCostAttr,
+    as_cost_float,
+    usage_cost_attributes,
+)
 from introspection_sdk.schemas.genai import (
     InputMessage,
     MessagePart,
@@ -273,7 +278,8 @@ class ClaudeTracingProcessor:
       streaming text deltas for gen_ai.output.messages
     - AssistantMessage: gen_ai.output.messages, gen_ai.request.model
     - UserMessage: tool results added to conversation history
-    - ResultMessage: gen_ai.usage.input/output_tokens, gen_ai.conversation.id
+    - ResultMessage: gen_ai.usage.input/output_tokens, gen_ai.conversation.id,
+      introspection.llm.cost_usd (from usage.cost or total_cost_usd)
 
     For best tracing granularity, set ``include_partial_messages=True`` on
     ``ClaudeAgentOptions``.  This enables ``StreamEvent`` messages which carry
@@ -657,6 +663,21 @@ class ClaudeTracingProcessor:
                                         "gen_ai.usage.output_tokens",
                                         output_tokens,
                                     )
+
+                            # Provider-reported cost: prefer the usage
+                            # block's cost fields, falling back to the
+                            # SDK-level total_cost_usd on the result.
+                            cost_attrs = usage_cost_attributes(usage)
+                            if UsageCostAttr.COST_USD not in cost_attrs:
+                                total_cost_usd = as_cost_float(
+                                    getattr(msg, "total_cost_usd", None)
+                                )
+                                if total_cost_usd is not None:
+                                    cost_attrs[UsageCostAttr.COST_USD] = (
+                                        total_cost_usd
+                                    )
+                            for cost_key, cost_value in cost_attrs.items():
+                                span.set_attribute(cost_key, cost_value)
 
                             # session_id is the conversation identifier
                             session_id = getattr(msg, "session_id", None)
