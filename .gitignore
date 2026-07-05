@@ -14,3 +14,6 @@ wheels/
 # Claude Code
 .claude/
 .coverage
+
+# macOS
+.DS_Store
