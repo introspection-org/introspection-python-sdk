@@ -8,7 +8,7 @@
   </a>
 </div>
 
-<h4 align="center">Build frontier AI systems that self-improve.</h4>
+<h4 align="center">Deploy vertical agents that improve in production.</h4>
 
 <div align="center">
   <a href="https://introspection.dev"><img src="https://img.shields.io/badge/website-introspection.dev-blue" alt="Website"></a>
@@ -19,7 +19,17 @@
 
 <br>
 
-[Introspection](https://introspection.dev) continuously improves your AI systems with production feedback and frontier practices. This is the Python SDK.
+[Introspection](https://introspection.dev) is the managed cloud for vertical
+agents, powered by Pi. Define an agent as a recipe, deploy it to a
+commit-pinned runtime, and improve it in production with conversations,
+patterns, judges, and experiments.
+
+This is the Python platform SDK. Use it to open a runner against a deployed
+runtime, start and stream tasks, and manage files, conversations, recipes,
+experiments, and shares. It provides both an async-first client and a matching
+synchronous client. See the [SDK overview](https://docs.introspection.dev/sdk)
+and [Python guide](https://docs.introspection.dev/sdk/python) for the product
+workflow.
 
 ## Install
 
@@ -201,13 +211,11 @@ pip install 'introspection-sdk[otel]'
 ```
 
 - **Analytics events** — `track` / `feedback` / `identify` via `IntrospectionLogs`.
-- **Traces** — auto-instrument Anthropic, Gemini, OpenAI Agents, Claude Agent,
-  LangChain, and Logfire with a single `introspection_sdk.init()`.
+- **Traces** — export OpenTelemetry spans with `IntrospectionSpanProcessor`.
 
-Both are documented in [**`docs/otel.md`**](docs/otel.md); advanced/manual
-wiring lives in [`docs/advanced.md`](docs/advanced.md). For complete
-integration patterns (including dual-export with Arize, Langfuse, Braintrust,
-and LangSmith) see [`examples/`](./examples/).
+Both are documented in [**`docs/otel.md`**](docs/otel.md).
+
+Support for other LLM frameworks is experimental.
 
 ## Environment variables
 

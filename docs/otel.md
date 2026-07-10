@@ -10,8 +10,7 @@ pip install 'introspection-sdk[otel]'
 ```
 
 1. **Analytics events** (`track` / `feedback` / `identify`) via `IntrospectionLogs`.
-2. **Traces** (span processors + LLM-framework instrumentors) via
-   `introspection_sdk.init()` and the individual processors.
+2. **Traces** via `IntrospectionSpanProcessor`.
 
 They are independent of each other and of the Introspection API — construct
 only what you need.
@@ -59,57 +58,25 @@ logs.shutdown()
 
 ---
 
-## 2. Traces (span processors + instrumentors) with `IntrospectionSpanProcessor`
+## 2. Traces with `IntrospectionSpanProcessor`
 
-Install the `[otel]` extra plus your framework extras of choice (or `[all]`):
+Install the `[otel]` extra:
 
 ```shell
-pip install 'introspection-sdk[otel,anthropic,gemini,openai-agents,claude-agent,langchain]'
+pip install 'introspection-sdk[otel]'
 ```
 
-### Auto-wired via `init()` — recommended
-
-`introspection.init()` detects every supported LLM framework you have installed
-and wires them all into a single trace pipeline:
+Construct the processor directly when you own the provider:
 
 ```python
-import introspection_sdk as introspection
+from opentelemetry.sdk.trace import TracerProvider
+from introspection_sdk import IntrospectionSpanProcessor
 
-introspection.init()  # token from INTROSPECTION_TOKEN
-
-# ...use Anthropic, Gemini, OpenAI Agents, Claude Agent, Logfire as usual —
-# their calls are now traced automatically.
+provider = TracerProvider()
+provider.add_span_processor(IntrospectionSpanProcessor())
 ```
 
-Auto-detected frameworks: Anthropic SDK, Google Gemini (`google-genai`), OpenAI
-Agents SDK, Claude Agent SDK, Logfire / OpenInference (configure Logfire before
-`init()`), and LangChain / LangGraph (attach `get_handler()` — see below).
-
-LangChain callbacks are per-invoke, so `init()` prepares the handler and you
-attach it:
-
-```python
-import introspection_sdk as introspection
-from introspection_sdk.integrations.langchain import get_handler
-
-introspection.init()
-response = model.invoke("Hello!", config={"callbacks": [get_handler()]})
-```
-
-After `init()`, the module-level `introspection.track()` /
-`introspection.feedback()` / `introspection.identify()` shortcuts proxy to the
-global `IntrospectionLogs`.
-
-### Manual / advanced setup
-
-`init()` is the recommended entry point, but the individual processors and
-instrumentors remain fully supported for custom wiring (sharing a
-`TracerProvider`, dual-export, testing). See [`advanced.md`](advanced.md) for
-opting out of auto-discovery, passing your own provider, standalone processor
-construction, and testing with an in-memory exporter.
-
-> See [`examples/`](../examples/) for complete integration patterns including
-> dual-export with Arize, Langfuse, Braintrust, and LangSmith.
+Framework-specific instrumentors are experimental.
 
 ## Environment variables (OTel)
 

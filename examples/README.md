@@ -15,13 +15,9 @@ uv run python -m introspection_examples.api.runtimes                 # Runner: t
 uv run python -m introspection_examples.api.async_runtimes           # AsyncRunner: same flow on asyncio
 ```
 
-## One-liner: `introspection.init()`
+## Experimental support for other frameworks
 
-A single `introspection.init()` auto-detects the installed LLM frameworks and
-wires them in. The dual-export examples below also send traces to a third-party
-backend *and* Introspection at once — by putting the backend's exporter on the
-global `TracerProvider` before calling `init()`, which then attaches
-Introspection's pipeline to the same provider:
+These framework examples are experimental.
 
 ```bash
 uv run -m introspection_examples.otel.anthropic_sdk.anthropic_langfuse_init    # Anthropic + Langfuse
@@ -31,7 +27,7 @@ uv run -m introspection_examples.otel.openai_agents.agents_braintrust_init     #
 uv run -m introspection_examples.otel.gemini_sdk.gemini_init                   # Gemini only (no dual export)
 ```
 
-## First-Party Integrations
+## Experimental framework examples
 
 ### OpenAI Agents SDK
 

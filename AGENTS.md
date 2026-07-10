@@ -98,6 +98,9 @@ targets above are guidance for which files to prioritise.
 
 ## When you add a new integration
 
+The existing LLM-framework integrations are experimental. Pi is the supported
+agent framework and is instrumented by the JavaScript SDK.
+
 Adding a new framework or observability backend? Land all of these in the
 same PR:
 
