@@ -1,9 +1,10 @@
 # Advanced setup
 
-`introspection.init()` covers most cases. This page documents the lower-level
-API for custom wiring. All of it remains supported alongside `init()`.
+> **Experimental support for other frameworks.**
 
-## Opting out of auto-discovery
+This page documents experimental framework-specific APIs.
+
+## Controlling auto-discovery
 
 Install only specific integrations, or none:
 
