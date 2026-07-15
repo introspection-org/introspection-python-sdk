@@ -10,6 +10,7 @@ from introspection_sdk.schemas.conversations import (
     ConversationItem,
     ConversationItemList,
     ConversationResponse,
+    ConversationSortField,
     ConversationSummary,
 )
 from introspection_sdk.schemas.genai import (
@@ -28,6 +29,7 @@ __all__ = [
     "ConversationItem",
     "ConversationItemList",
     "ConversationResponse",
+    "ConversationSortField",
     "ConversationSummary",
     "EventType",
     "Interrupt",

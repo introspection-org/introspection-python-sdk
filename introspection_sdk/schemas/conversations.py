@@ -37,6 +37,7 @@ __all__ = [
     "ConversationItemList",
     "ConversationItemNodeType",
     "ConversationResponse",
+    "ConversationSortField",
     "ConversationSummary",
     "IntrospectionMetadata",
     "SpanEvent",
@@ -61,6 +62,11 @@ SpanKind = Literal[
 
 ConversationItemNodeType = Literal["agent", "assistant", "tool_call", "span"]
 """Lightweight node type for conversation item trees."""
+
+ConversationSortField = Literal[
+    "created", "duration", "turns", "tokens", "cost"
+]
+"""Allow-listed summary fields for ``GET /v1/conversations`` sorting."""
 
 ConversationItemInclude = Literal[
     "gen_ai.input.messages",
@@ -180,17 +186,23 @@ class ConversationSummary(_ApiModel):
     end_time: datetime | None = None
     duration_ms: float
     service_name: str | None = None
+    environment: str | None = None
+    runtime_id: UUID | None = None
+    runtime_group_id: UUID | None = None
+    experiment_id: UUID | None = None
+    recipe_git_commit_sha: str | None = None
     model: str | None = None
-    response_model: str | None = None
     agent_name: str | None = None
-    operation_name: str | None = None
     total_input_tokens: int
     total_output_tokens: int
+    total_tokens: int
+    total_cost_usd: float
+    tool_use_count: int
+    failed_tool_use_count: int
     trace_count: int
     span_count: int
     status: SpanStatus
     has_errors: bool
-    signal_categories: list[str] = Field(default_factory=list)
     input_messages: list[InputMessage] = Field(default_factory=list)
     output_messages: list[OutputMessage] = Field(default_factory=list)
     introspection: IntrospectionMetadata | None = None

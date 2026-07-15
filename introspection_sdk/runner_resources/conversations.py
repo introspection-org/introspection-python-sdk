@@ -16,7 +16,8 @@ Two distinct paging protocols live side by side here:
 from __future__ import annotations
 
 import builtins
-from typing import Any
+from typing import Any, Literal
+from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
@@ -32,7 +33,9 @@ from introspection_sdk.schemas.conversations import (
     ConversationItemInclude,
     ConversationItemList,
     ConversationResponse,
+    ConversationSortField,
     ConversationSummary,
+    SpanStatus,
 )
 from introspection_sdk.schemas.pagination import Paginated
 
@@ -207,11 +210,19 @@ class Conversations:
         limit: int = 100,
         next: str | None = None,
         include_total: bool = False,
+        conversation_id: str | None = None,
+        sort: ConversationSortField | None = None,
+        direction: Literal["asc", "desc"] | None = None,
         model: str | None = None,
         agent_name: str | None = None,
-        status: str | None = None,
+        status: SpanStatus | None = None,
         service_name: str | None = None,
         service_names: builtins.list[str] | None = None,
+        environment: str | None = None,
+        runtime_id: UUID | None = None,
+        runtime_group_id: UUID | None = None,
+        experiment_id: UUID | None = None,
+        recipe_git_commit_sha: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
     ) -> Pager[ConversationSummary, Paginated[ConversationSummary]]:
@@ -224,11 +235,19 @@ class Conversations:
                 "limit": limit,
                 "next": cursor,
                 "include_total": include_total,
+                "conversation_id": conversation_id,
+                "sort": sort,
+                "direction": direction,
                 "model": model,
                 "agent_name": agent_name,
                 "status": status,
                 "service_name": service_name,
                 "service_names": service_names,
+                "environment": environment,
+                "runtime_id": runtime_id,
+                "runtime_group_id": runtime_group_id,
+                "experiment_id": experiment_id,
+                "recipe_git_commit_sha": recipe_git_commit_sha,
                 "start_date": start_date,
                 "end_date": end_date,
             }
@@ -405,11 +424,19 @@ class AsyncConversations:
         limit: int = 100,
         next: str | None = None,
         include_total: bool = False,
+        conversation_id: str | None = None,
+        sort: ConversationSortField | None = None,
+        direction: Literal["asc", "desc"] | None = None,
         model: str | None = None,
         agent_name: str | None = None,
-        status: str | None = None,
+        status: SpanStatus | None = None,
         service_name: str | None = None,
         service_names: builtins.list[str] | None = None,
+        environment: str | None = None,
+        runtime_id: UUID | None = None,
+        runtime_group_id: UUID | None = None,
+        experiment_id: UUID | None = None,
+        recipe_git_commit_sha: str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
     ) -> AsyncPager[ConversationSummary, Paginated[ConversationSummary]]:
@@ -424,11 +451,19 @@ class AsyncConversations:
                 "limit": limit,
                 "next": cursor,
                 "include_total": include_total,
+                "conversation_id": conversation_id,
+                "sort": sort,
+                "direction": direction,
                 "model": model,
                 "agent_name": agent_name,
                 "status": status,
                 "service_name": service_name,
                 "service_names": service_names,
+                "environment": environment,
+                "runtime_id": runtime_id,
+                "runtime_group_id": runtime_group_id,
+                "experiment_id": experiment_id,
+                "recipe_git_commit_sha": recipe_git_commit_sha,
                 "start_date": start_date,
                 "end_date": end_date,
             }
