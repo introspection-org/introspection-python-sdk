@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.7.0...v0.7.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* align conversations API with server contract ([#78](https://github.com/introspection-org/introspection-python-sdk/issues/78)) ([6dbba77](https://github.com/introspection-org/introspection-python-sdk/commit/6dbba77a8a846942c73619ceac80b38fd31a26b2))
+
 ## [0.7.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.6.5...v0.7.0) (2026-07-05)
 
 
