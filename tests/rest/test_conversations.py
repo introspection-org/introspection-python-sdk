@@ -12,17 +12,26 @@ Driven through the offline :class:`FakeAPI` transport from
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 import httpx
 import pytest
 
-from introspection_sdk.runner_resources import Conversations
+from introspection_sdk.runner_resources import (
+    AsyncConversations,
+    Conversations,
+)
+from introspection_sdk.schemas.conversations import ConversationSummary
 from introspection_sdk.schemas.genai import (
     TextPart,
     ToolCallResponsePart,
 )
 
 from .conftest import ORG_ID, PROJECT_ID, FakeAPI
+
+RUNTIME_ID = "11111111-1111-1111-1111-111111111111"
+RUNTIME_GROUP_ID = "22222222-2222-2222-2222-222222222222"
+EXPERIMENT_ID = "33333333-3333-3333-3333-333333333333"
 
 # --- Wire fixtures (raw dicts, as the DP returns them) --------------
 
@@ -34,13 +43,24 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     "start_time": "2025-01-01T00:00:00Z",
     "end_time": "2025-01-01T00:00:05Z",
     "duration_ms": 5000,
+    "service_name": "agent-runtime",
+    "environment": "production",
+    "runtime_id": RUNTIME_ID,
+    "runtime_group_id": RUNTIME_GROUP_ID,
+    "experiment_id": EXPERIMENT_ID,
+    "recipe_git_commit_sha": "abc123",
+    "model": "claude-x",
+    "agent_name": "agent",
     "total_input_tokens": 10,
     "total_output_tokens": 20,
+    "total_tokens": 30,
+    "total_cost_usd": 0.01,
+    "tool_use_count": 2,
+    "failed_tool_use_count": 1,
     "trace_count": 1,
     "span_count": 3,
     "status": "Ok",
     "has_errors": False,
-    "signal_categories": [],
     "input_messages": [],
     "output_messages": [],
 }
@@ -113,13 +133,94 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    page = convos.list(limit=10, status="Error")
+    page = convos.list(
+        limit=10,
+        conversation_id="conv-1",
+        sort="tokens",
+        direction="asc",
+        model="claude-x",
+        agent_name="agent",
+        status="Error",
+        service_name="agent-runtime",
+        service_names=["agent-runtime", "worker"],
+        environment="production",
+        runtime_id=UUID(RUNTIME_ID),
+        runtime_group_id=UUID(RUNTIME_GROUP_ID),
+        experiment_id=UUID(EXPERIMENT_ID),
+        recipe_git_commit_sha="abc123",
+        start_date="2026-07-01T00:00:00Z",
+        end_date="2026-07-02T00:00:00Z",
+    )
 
     assert len(page.records) == 1
     req = fake_api.last_request
     assert req.path == "/v1/conversations"
     assert req.params.get("limit") == "10"
+    assert req.params.get("conversation_id") == "conv-1"
+    assert req.params.get("sort") == "tokens"
+    assert req.params.get("direction") == "asc"
+    assert req.params.get("model") == "claude-x"
+    assert req.params.get("agent_name") == "agent"
     assert req.params.get("status") == "Error"
+    assert req.params.get("environment") == "production"
+    assert req.params.get("runtime_id") == RUNTIME_ID
+    assert req.params.get("runtime_group_id") == RUNTIME_GROUP_ID
+    assert req.params.get("experiment_id") == EXPERIMENT_ID
+    assert req.params.get("recipe_git_commit_sha") == "abc123"
+    assert req.params.get("start_date") == "2026-07-01T00:00:00Z"
+    assert req.params.get("end_date") == "2026-07-02T00:00:00Z"
+    assert req.url.params.get_list("service_names") == [
+        "agent-runtime",
+        "worker",
+    ]
+
+    summary = page.records[0]
+    assert summary.model == "claude-x"
+    assert summary.agent_name == "agent"
+    assert summary.total_tokens == 30
+    assert summary.total_cost_usd == 0.01
+    assert summary.tool_use_count == 2
+    assert summary.failed_tool_use_count == 1
+
+
+def test_conversation_summary_omits_non_summary_fields():
+    fields = ConversationSummary.model_fields
+    assert "response_model" not in fields
+    assert "operation_name" not in fields
+    assert "signal_categories" not in fields
+
+
+async def test_async_list_uses_matching_filters(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations",
+        json_body=cursor_page([SUMMARY_FIXTURE], None),
+    )
+    convos = AsyncConversations(fake_api.async_client())
+
+    page = await convos.list(
+        conversation_id="conv-1",
+        sort="cost",
+        direction="desc",
+        model="claude-x",
+        environment="production",
+        runtime_id=UUID(RUNTIME_ID),
+        runtime_group_id=UUID(RUNTIME_GROUP_ID),
+        experiment_id=UUID(EXPERIMENT_ID),
+        recipe_git_commit_sha="abc123",
+    )
+
+    assert page.records[0].model == "claude-x"
+    req = fake_api.last_request
+    assert req.params.get("conversation_id") == "conv-1"
+    assert req.params.get("sort") == "cost"
+    assert req.params.get("direction") == "desc"
+    assert req.params.get("model") == "claude-x"
+    assert req.params.get("environment") == "production"
+    assert req.params.get("runtime_id") == RUNTIME_ID
+    assert req.params.get("runtime_group_id") == RUNTIME_GROUP_ID
+    assert req.params.get("experiment_id") == EXPERIMENT_ID
+    assert req.params.get("recipe_git_commit_sha") == "abc123"
 
 
 def test_iter_drives_cursor_next_until_exhausted(fake_api: FakeAPI):
