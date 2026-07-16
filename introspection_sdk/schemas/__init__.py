@@ -13,6 +13,15 @@ from introspection_sdk.schemas.conversations import (
     ConversationSortField,
     ConversationSummary,
 )
+from introspection_sdk.schemas.events import (
+    EventGrain,
+    EventInclude,
+    EventRecord,
+    EventSortField,
+    LensObservation,
+    PatternGrainEvent,
+    RawEvent,
+)
 from introspection_sdk.schemas.genai import (
     InputMessage,
     InputMessages,
@@ -23,6 +32,16 @@ from introspection_sdk.schemas.genai import (
     ToolCallRequestPart,
     ToolCallResponsePart,
 )
+from introspection_sdk.schemas.metrics import (
+    MetricDimension,
+    MetricFilter,
+    MetricQueryRequest,
+    MetricQueryResponse,
+    MetricResultRow,
+    MetricSpec,
+    MetricTimeDimension,
+    MetricView,
+)
 
 __all__ = [
     "AGUIEvent",
@@ -31,8 +50,23 @@ __all__ = [
     "ConversationResponse",
     "ConversationSortField",
     "ConversationSummary",
+    "EventGrain",
+    "EventInclude",
+    "EventRecord",
+    "EventSortField",
     "EventType",
     "Interrupt",
+    "LensObservation",
+    "MetricDimension",
+    "MetricFilter",
+    "MetricQueryRequest",
+    "MetricQueryResponse",
+    "MetricResultRow",
+    "MetricSpec",
+    "MetricTimeDimension",
+    "MetricView",
+    "PatternGrainEvent",
+    "RawEvent",
     "ResumeEntry",
     "TextPart",
     "ToolCallRequestPart",

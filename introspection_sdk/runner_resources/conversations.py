@@ -16,10 +16,12 @@ Two distinct paging protocols live side by side here:
 from __future__ import annotations
 
 import builtins
+from collections.abc import AsyncIterator, Iterator
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._http import RawResponse, _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
     Pager,
@@ -27,6 +29,12 @@ from introspection_sdk.pagination import (
     async_after_paginate,
     async_cursor_paginate,
     cursor_paginate,
+)
+from introspection_sdk.runner_resources._reads import (
+    ARROW_ACCEPT_HEADERS,
+    ReadFormat,
+    decode_arrow_page,
+    resolve_window,
 )
 from introspection_sdk.schemas.conversations import (
     ConversationItem,
@@ -223,12 +231,30 @@ class Conversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+        order: Literal["asc", "desc"] | None = None,
+        start: str | datetime | None = None,
+        end: str | datetime | None = None,
+        lookback: str | None = None,
+        format: ReadFormat = "json",
     ) -> Pager[ConversationSummary, Paginated[ConversationSummary]]:
         """List conversation summaries (cursor envelope). Iterate the
         returned :class:`Pager` to stream every summary across pages, or
-        call ``.page()`` for the first page only."""
+        call ``.page()`` for the first page only.
+
+        ``order`` is an alias for ``direction``; ``start`` / ``end`` for
+        ``start_date`` / ``end_date``; ``lookback`` (e.g. ``"24h"``) sets
+        ``start_date = now - lookback`` and is mutually exclusive with
+        ``start`` / ``end``. ``format="arrow"`` negotiates the columnar Arrow
+        stream, decoded back into the same envelope."""
+        resolved_start, resolved_end = resolve_window(
+            start=start,
+            end=end,
+            lookback=lookback,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
         def fetch(cursor: str | None) -> Paginated[ConversationSummary]:
             params: dict[str, Any] = {
@@ -237,7 +263,7 @@ class Conversations:
                 "include_total": include_total,
                 "conversation_id": conversation_id,
                 "sort": sort,
-                "direction": direction,
+                "direction": direction or order,
                 "model": model,
                 "agent_name": agent_name,
                 "status": status,
@@ -248,15 +274,45 @@ class Conversations:
                 "runtime_group_id": runtime_group_id,
                 "experiment_id": experiment_id,
                 "recipe_git_commit_sha": recipe_git_commit_sha,
-                "start_date": start_date,
-                "end_date": end_date,
+                "start_date": resolved_start,
+                "end_date": resolved_end,
             }
+            if format == "arrow":
+                raw = self._http.request(
+                    "GET",
+                    "/v1/conversations",
+                    params=params,
+                    headers=ARROW_ACCEPT_HEADERS,
+                    expect="raw",
+                )
+                assert isinstance(raw, RawResponse)
+                return decode_arrow_page(
+                    raw, ConversationSummary.model_validate
+                )
             payload = self._http.request(
                 "GET", "/v1/conversations", params=params
             )
             return Paginated[ConversationSummary].model_validate(payload)
 
         return cursor_paginate(fetch, start=next)
+
+    def iterate(
+        self,
+        *,
+        max_items: int | None = None,
+        **kwargs: Any,
+    ) -> Iterator[ConversationSummary]:
+        """Cursor generator: page through :meth:`list` to exhaustion, yielding
+        every summary. ``max_items`` bounds the total yielded (``None`` = no
+        bound). All other keyword args are forwarded to :meth:`list`."""
+        if max_items is not None and max_items <= 0:
+            return
+        yielded = 0
+        for record in self.list(**kwargs):
+            yield record
+            yielded += 1
+            if max_items is not None and yielded >= max_items:
+                return
 
     def retrieve(
         self, conversation_id: str, item_id: str | None = None
@@ -437,12 +493,25 @@ class AsyncConversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+        order: Literal["asc", "desc"] | None = None,
+        start: str | datetime | None = None,
+        end: str | datetime | None = None,
+        lookback: str | None = None,
+        format: ReadFormat = "json",
     ) -> AsyncPager[ConversationSummary, Paginated[ConversationSummary]]:
         """List conversation summaries (cursor envelope). ``await`` the
         returned :class:`AsyncPager` for the first page, or ``async for`` it
-        to stream every summary across pages."""
+        to stream every summary across pages. See
+        :meth:`Conversations.list` for the param semantics."""
+        resolved_start, resolved_end = resolve_window(
+            start=start,
+            end=end,
+            lookback=lookback,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
         async def fetch(
             cursor: str | None,
@@ -453,7 +522,7 @@ class AsyncConversations:
                 "include_total": include_total,
                 "conversation_id": conversation_id,
                 "sort": sort,
-                "direction": direction,
+                "direction": direction or order,
                 "model": model,
                 "agent_name": agent_name,
                 "status": status,
@@ -464,15 +533,45 @@ class AsyncConversations:
                 "runtime_group_id": runtime_group_id,
                 "experiment_id": experiment_id,
                 "recipe_git_commit_sha": recipe_git_commit_sha,
-                "start_date": start_date,
-                "end_date": end_date,
+                "start_date": resolved_start,
+                "end_date": resolved_end,
             }
+            if format == "arrow":
+                raw = await self._http.request(
+                    "GET",
+                    "/v1/conversations",
+                    params=params,
+                    headers=ARROW_ACCEPT_HEADERS,
+                    expect="raw",
+                )
+                assert isinstance(raw, RawResponse)
+                return decode_arrow_page(
+                    raw, ConversationSummary.model_validate
+                )
             payload = await self._http.request(
                 "GET", "/v1/conversations", params=params
             )
             return Paginated[ConversationSummary].model_validate(payload)
 
         return async_cursor_paginate(fetch, start=next)
+
+    async def iterate(
+        self,
+        *,
+        max_items: int | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[ConversationSummary]:
+        """Cursor generator: page through :meth:`list` to exhaustion, yielding
+        every summary. ``max_items`` bounds the total yielded (``None`` = no
+        bound). All other keyword args are forwarded to :meth:`list`."""
+        if max_items is not None and max_items <= 0:
+            return
+        yielded = 0
+        async for record in self.list(**kwargs):
+            yield record
+            yielded += 1
+            if max_items is not None and yielded >= max_items:
+                return
 
     async def retrieve(
         self, conversation_id: str, item_id: str | None = None
