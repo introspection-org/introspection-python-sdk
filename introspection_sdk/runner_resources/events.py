@@ -29,6 +29,7 @@ family doesn't break older SDKs.
 from __future__ import annotations
 
 import builtins
+import json
 import logging
 from collections.abc import AsyncIterator, Iterator
 from datetime import datetime
@@ -86,6 +87,26 @@ class UnknownEventCounter:
 #: Process-wide skip counter for unknown-family rows (observability hook).
 UNKNOWN_EVENT_SKIPS = UnknownEventCounter()
 
+EVENT_PAYLOAD_JSON_FIELDS = frozenset({"metadata", "params", "properties"})
+
+
+def normalize_event_arrow_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Restore dict fields that the server JSON-encodes inside Arrow structs."""
+    payload = row.get("payload")
+    if not isinstance(payload, dict):
+        return row
+    for field in EVENT_PAYLOAD_JSON_FIELDS:
+        value = payload.get(field)
+        if not isinstance(value, str):
+            continue
+        try:
+            payload[field] = json.loads(value)
+        except json.JSONDecodeError:
+            # Keep the original value so the typed model reports the same
+            # malformed-field error instead of hiding server drift.
+            pass
+    return row
+
 
 def validate_event_row(row: dict[str, Any]) -> Event | None:
     """Validate one wire row into the discriminated :data:`Event` union.
@@ -94,6 +115,7 @@ def validate_event_row(row: dict[str, Any]) -> Event | None:
     skipped (``None``) rather than raised — the closed set may grow
     server-side before this SDK learns the new member.
     """
+    row = normalize_event_arrow_row(row)
     if row.get("event_name") not in KNOWN_EVENT_NAMES:
         UNKNOWN_EVENT_SKIPS.increment(row.get("event_name"))
         return None

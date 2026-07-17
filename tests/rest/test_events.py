@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import builtins
 import io
+import json
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -452,9 +454,50 @@ def test_iterate_bounds_max_items(fake_api: FakeAPI):
 
 
 def _arrow_stream(rows: list[dict[str, Any]]) -> bytes:
-    """Encode rows the way the server does: envelope columns + a nested
-    ``payload`` struct column (``from_pylist`` infers the struct type)."""
+    """Encode a compact inferred fixture with a nested payload struct.
+
+    Open dict fields need the server's fixed JSON-string schema and are covered
+    separately by :func:`_server_feedback_arrow_stream`.
+    """
     table = pa.Table.from_pylist(rows)
+    sink = io.BytesIO()
+    with pa.ipc.new_stream(sink, table.schema) as writer:
+        writer.write_table(table)
+    return sink.getvalue()
+
+
+def _server_feedback_arrow_stream() -> bytes:
+    """Match the server's fixed schema for an open dict payload field."""
+    payload_type = pa.struct(
+        [
+            pa.field("name", pa.string(), nullable=False),
+            pa.field("properties", pa.string()),
+        ]
+    )
+    schema = pa.schema(
+        [
+            pa.field("id", pa.string(), nullable=False),
+            pa.field(
+                "timestamp", pa.timestamp("us", tz="UTC"), nullable=False
+            ),
+            pa.field("event_name", pa.string(), nullable=False),
+            pa.field("payload", payload_type, nullable=False),
+        ]
+    )
+    table = pa.Table.from_pylist(
+        [
+            {
+                "id": "evt-feedback",
+                "timestamp": datetime(2026, 7, 17, tzinfo=UTC),
+                "event_name": "introspection.feedback",
+                "payload": {
+                    "name": "thumbs_up",
+                    "properties": json.dumps({"surface": "chat"}),
+                },
+            }
+        ],
+        schema=schema,
+    )
     sink = io.BytesIO()
     with pa.ipc.new_stream(sink, table.schema) as writer:
         writer.write_table(table)
@@ -488,11 +531,34 @@ def test_list_arrow_decodes_payload_struct_and_headers(fake_api: FakeAPI):
     )
     assert [r.id for r in page.records] == ["evt-1", "evt-2"]
     assert all(isinstance(r, ObservationEvent) for r in page.records)
-    assert page.records[0].payload.observation_id == UUID(OBSERVATION_ID)
-    assert page.records[0].payload.pattern_id == PATTERN_ID
+    first = page.records[0]
+    assert isinstance(first, ObservationEvent)
+    assert first.payload.observation_id == UUID(OBSERVATION_ID)
+    assert first.payload.pattern_id == PATTERN_ID
     assert page.next == "cursor-2"
     assert page.count == 2
     assert page.total_count == 9
+
+
+def test_list_arrow_decodes_server_json_string_payload_fields(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET",
+        "/v1/events",
+        content=_server_feedback_arrow_stream(),
+        headers={"X-Result-Count": "1"},
+    )
+
+    page = (
+        Events(fake_api.client())
+        .list(IntrospectionEventName.FEEDBACK, format="arrow")
+        .page()
+    )
+
+    record = page.records[0]
+    assert isinstance(record, FeedbackEvent)
+    assert record.payload.properties == {"surface": "chat"}
 
 
 def test_list_arrow_empty_page_decodes_zero_records(fake_api: FakeAPI):
