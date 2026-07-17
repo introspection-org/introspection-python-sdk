@@ -11,16 +11,19 @@ Driven through the offline :class:`FakeAPI` transport from
 
 from __future__ import annotations
 
+import io
 from typing import Any
 from uuid import UUID
 
 import httpx
+import pyarrow as pa
 import pytest
 
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     Conversations,
 )
+from introspection_sdk.runner_resources._reads import ARROW_STREAM_MEDIA_TYPE
 from introspection_sdk.schemas.conversations import ConversationSummary
 from introspection_sdk.schemas.genai import (
     TextPart,
@@ -244,6 +247,69 @@ def test_iter_drives_cursor_next_until_exhausted(fake_api: FakeAPI):
     assert summaries[1].trace_id == "trace-2"
     assert len(fake_api.requests) == 2
     assert fake_api.requests[1].params.get("next") == "cursor-2"
+
+
+# --- Arrow decode path ----------------------------------------------
+
+
+def _arrow_stream(rows: list[dict[str, Any]]) -> bytes:
+    table = pa.Table.from_pylist(rows)
+    sink = io.BytesIO()
+    with pa.ipc.new_stream(sink, table.schema) as writer:
+        writer.write_table(table)
+    return sink.getvalue()
+
+
+def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
+    body = _arrow_stream(
+        [SUMMARY_FIXTURE, {**SUMMARY_FIXTURE, "trace_id": "trace-2"}]
+    )
+    fake_api.add(
+        "GET",
+        "/v1/conversations",
+        content=body,
+        headers={
+            "X-Next-Cursor": "cursor-2",
+            "X-Result-Count": "2",
+            "X-Total-Count": "9",
+            "X-Truncated": "true",
+        },
+    )
+    convos = _conversations(fake_api)
+
+    page = convos.list(format="arrow").page()
+
+    # Accept header negotiated the Arrow stream.
+    assert (
+        fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
+    )
+    assert [s.trace_id for s in page.records] == ["trace-1", "trace-2"]
+    assert isinstance(page.records[0], ConversationSummary)
+    assert page.records[0].total_tokens == 30
+    assert page.next == "cursor-2"
+    assert page.count == 2
+    assert page.total_count == 9
+
+
+async def test_async_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
+    body = _arrow_stream([SUMMARY_FIXTURE])
+    fake_api.add(
+        "GET",
+        "/v1/conversations",
+        content=body,
+        headers={"X-Result-Count": "1", "X-Total-Count": "1"},
+    )
+    convos = AsyncConversations(fake_api.async_client())
+
+    page = await convos.list(format="arrow").page()
+
+    assert (
+        fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
+    )
+    assert [s.trace_id for s in page.records] == ["trace-1"]
+    assert page.count == 1
+    assert page.total_count == 1
+    assert page.next is None
 
 
 # --- items.list()/iter() (after/has_more paging) -------------------

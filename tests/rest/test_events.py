@@ -11,6 +11,7 @@ nothing in ``introspection_sdk`` is patched.
 
 from __future__ import annotations
 
+import builtins
 import io
 from typing import Any
 from uuid import UUID
@@ -263,6 +264,50 @@ def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
     assert page.total_count == 9
 
 
+def test_list_arrow_empty_page_decodes_zero_records(fake_api: FakeAPI):
+    # An empty page has no body at all, exercising the ``if raw.content:``
+    # guard in ``decode_arrow_page`` — no reader is opened.
+    fake_api.add(
+        "GET",
+        "/v1/events",
+        content=b"",
+        headers={"X-Result-Count": "0", "X-Total-Count": "0"},
+    )
+    events = _events(fake_api)
+
+    page = events.list(format="arrow").page()
+
+    assert (
+        fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
+    )
+    assert page.records == []
+    assert page.count == 0
+    assert page.total_count == 0
+    assert page.next is None
+
+
+def test_arrow_decode_without_pyarrow_raises_extra_hint(monkeypatch):
+    # Simulate the ``[arrow]`` extra not being installed: force the local
+    # ``import pyarrow`` in ``decode_arrow_page`` to fail and assert the
+    # error steers the caller at the extra.
+    from introspection_sdk._http import RawResponse
+    from introspection_sdk.runner_resources._reads import decode_arrow_page
+
+    real_import = builtins.__import__
+
+    def _no_pyarrow(name: str, *args: Any, **kwargs: Any):
+        if name == "pyarrow" or name.startswith("pyarrow."):
+            raise ModuleNotFoundError("No module named 'pyarrow'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _no_pyarrow)
+
+    raw = RawResponse(content=b"anything", headers=httpx.Headers())
+    with pytest.raises(ImportError, match=r"introspection-sdk\[arrow\]"):
+        # The import guard fires before ``validate`` is ever called.
+        decode_arrow_page(raw, lambda row: raw_event(**row))
+
+
 def test_iter_arrow_pages_via_next_header(fake_api: FakeAPI):
     page1 = _arrow_stream([raw_event(id="evt-1")])
     page2 = _arrow_stream([raw_event(id="evt-2")])
@@ -284,6 +329,31 @@ def test_iter_arrow_pages_via_next_header(fake_api: FakeAPI):
 
 
 # --- async twin -----------------------------------------------------
+
+
+async def test_async_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
+    body = _arrow_stream([raw_event(id="evt-1"), raw_event(id="evt-2")])
+    fake_api.add(
+        "GET",
+        "/v1/events",
+        content=body,
+        headers={
+            "X-Next-Cursor": "cursor-2",
+            "X-Result-Count": "2",
+            "X-Total-Count": "9",
+        },
+    )
+    events = AsyncEvents(fake_api.async_client())
+
+    page = await events.list(format="arrow").page()
+
+    assert (
+        fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
+    )
+    assert _ids(page.records) == ["evt-1", "evt-2"]
+    assert page.next == "cursor-2"
+    assert page.count == 2
+    assert page.total_count == 9
 
 
 async def test_async_list_and_iterate(fake_api: FakeAPI):
