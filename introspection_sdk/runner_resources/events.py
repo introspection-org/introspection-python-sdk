@@ -49,11 +49,11 @@ from introspection_sdk.schemas.pagination import Paginated
 # One adapter validates a decoded row into the right grain model. The three
 # grain models have disjoint required fields (``timestamp`` / ``observed_at`` /
 # ``pattern_id``), so the union routes each homogeneous page unambiguously.
-_EVENT_RECORD_ADAPTER: TypeAdapter[EventRecord] = TypeAdapter(EventRecord)
+EVENT_RECORD_ADAPTER: TypeAdapter[EventRecord] = TypeAdapter(EventRecord)
 
 
 def _validate_event(row: dict[str, Any]) -> EventRecord:
-    return _EVENT_RECORD_ADAPTER.validate_python(row)
+    return EVENT_RECORD_ADAPTER.validate_python(row)
 
 
 class Events:

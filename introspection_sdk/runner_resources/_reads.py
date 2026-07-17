@@ -44,14 +44,14 @@ ARROW_STREAM_MEDIA_TYPE = "application/vnd.apache.arrow.stream"
 #: Accept header injected on the Arrow path.
 ARROW_ACCEPT_HEADERS: dict[str, str] = {"Accept": ARROW_STREAM_MEDIA_TYPE}
 
-_LOOKBACK_UNITS: dict[str, int] = {
+LOOKBACK_UNITS: dict[str, int] = {
     "s": 1,
     "m": 60,
     "h": 3600,
     "d": 86400,
     "w": 604800,
 }
-_LOOKBACK_RE = re.compile(r"^\s*(\d+)\s*([smhdw])\s*$")
+LOOKBACK_RE = re.compile(r"^\s*(\d+)\s*([smhdw])\s*$")
 
 
 def parse_lookback(lookback: str) -> timedelta:
@@ -61,7 +61,7 @@ def parse_lookback(lookback: str) -> timedelta:
     (minutes), ``h`` (hours), ``d`` (days), or ``w`` (weeks). Raises
     ``ValueError`` on anything else.
     """
-    match = _LOOKBACK_RE.match(lookback)
+    match = LOOKBACK_RE.match(lookback)
     if match is None:
         raise ValueError(
             f"invalid lookback {lookback!r}; expected e.g. '24h', '7d', '30m'"
@@ -69,7 +69,7 @@ def parse_lookback(lookback: str) -> timedelta:
     amount = int(match.group(1))
     if amount <= 0:
         raise ValueError(f"lookback must be positive, got {lookback!r}")
-    return timedelta(seconds=amount * _LOOKBACK_UNITS[match.group(2)])
+    return timedelta(seconds=amount * LOOKBACK_UNITS[match.group(2)])
 
 
 def resolve_window(
