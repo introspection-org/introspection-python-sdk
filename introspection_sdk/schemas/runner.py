@@ -75,7 +75,9 @@ class RunRequest(_ApiModel):
 
     identity: RunnerIdentity | None = None
     caller: RunCaller | None = None
+    agent_name: str | None = None
     ttl_seconds: int | None = None
+    scope: str | None = None
     recipe_id: UUID | None = None
 
 
@@ -92,10 +94,15 @@ class RunnerRecipeSummary(_ApiModel):
 
 class RunnerContext(_ApiModel):
     runtime_id: UUID | None = None
+    runtime_group_id: UUID | None = None
     experiment_id: UUID | None = None
     recipe_id: UUID | None = None
+    recipe_repository_id: UUID | None = None
+    recipe_git_ref: str | None = None
+    recipe_git_commit_sha: str | None = None
     recipe: RunnerRecipeSummary | None = None
     arm_label: str | None = None
+    agent_name: str | None = None
     identity: RunnerIdentity | None = None
     # Echoed from the request body when supplied.
     caller: RunCaller | None = None

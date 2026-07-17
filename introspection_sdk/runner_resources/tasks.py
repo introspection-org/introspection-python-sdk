@@ -31,6 +31,7 @@ from introspection_sdk.schemas.agui import (
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.tasks import (
     Task,
+    TaskCancelRequest,
     TaskCancelResponse,
     TaskCreateResponse,
     TaskMode,
@@ -59,7 +60,8 @@ class RunHandle:
 
     Mirrors the Cursor SDK shape: ``handle.stream()`` to iterate validated
     AG-UI events, ``handle.text()`` to collect text deltas into a string,
-    ``handle.cancel()`` to cancel the run.
+    ``handle.cancel()`` for the default abort behavior, with typed options for
+    explicit abort or drain cancellation.
     """
 
     def __init__(
@@ -87,8 +89,13 @@ class RunHandle:
             timeout=timeout,
         )
 
-    def cancel(self) -> TaskCancelResponse:
-        return self._runs.cancel(str(self.run.task_id), self.run.id)
+    def cancel(
+        self,
+        options: TaskCancelRequest | dict[str, Any] | None = None,
+    ) -> TaskCancelResponse:
+        return self._runs.cancel(
+            str(self.run.task_id), self.run.id, options=options
+        )
 
     def text(self) -> str:
         out: list[str] = []
@@ -150,9 +157,31 @@ class TaskRuns:
         )
         return TaskRun.model_validate(payload)
 
-    def cancel(self, task_id: str, run_id: str) -> TaskCancelResponse:
+    def cancel(
+        self,
+        task_id: str,
+        run_id: str,
+        options: TaskCancelRequest | dict[str, Any] | None = None,
+    ) -> TaskCancelResponse:
+        if options is not None:
+            request = (
+                options
+                if isinstance(options, TaskCancelRequest)
+                else TaskCancelRequest.model_validate(options)
+            )
+            return self._cancel_with(task_id, run_id, request)
         payload = self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
+        )
+        return TaskCancelResponse.model_validate(payload)
+
+    def _cancel_with(
+        self, task_id: str, run_id: str, request: TaskCancelRequest
+    ) -> TaskCancelResponse:
+        payload = self._http.request(
+            "POST",
+            f"/v1/tasks/{task_id}/runs/{run_id}/cancel",
+            json=request.model_dump(exclude_none=True, mode="json"),
         )
         return TaskCancelResponse.model_validate(payload)
 
@@ -327,7 +356,8 @@ class AsyncRunHandle:
     Returned by ``AsyncTasks.start(...)`` and ``AsyncTaskRuns.create(...)``.
     ``await handle.stream()`` is replaced by ``async for ev in
     handle.stream()`` to iterate AG-UI events; ``await handle.text()``
-    collects text frames; ``await handle.cancel()`` cancels the run.
+    collects text frames; ``await handle.cancel()`` uses the default abort
+    behavior and accepts typed options for explicit abort or drain cancellation.
     """
 
     def __init__(
@@ -355,8 +385,13 @@ class AsyncRunHandle:
             timeout=timeout,
         )
 
-    async def cancel(self) -> TaskCancelResponse:
-        return await self._runs.cancel(str(self.run.task_id), self.run.id)
+    async def cancel(
+        self,
+        options: TaskCancelRequest | dict[str, Any] | None = None,
+    ) -> TaskCancelResponse:
+        return await self._runs.cancel(
+            str(self.run.task_id), self.run.id, options=options
+        )
 
     async def text(self) -> str:
         out: list[str] = []
@@ -418,9 +453,31 @@ class AsyncTaskRuns:
         )
         return TaskRun.model_validate(payload)
 
-    async def cancel(self, task_id: str, run_id: str) -> TaskCancelResponse:
+    async def cancel(
+        self,
+        task_id: str,
+        run_id: str,
+        options: TaskCancelRequest | dict[str, Any] | None = None,
+    ) -> TaskCancelResponse:
+        if options is not None:
+            request = (
+                options
+                if isinstance(options, TaskCancelRequest)
+                else TaskCancelRequest.model_validate(options)
+            )
+            return await self._cancel_with(task_id, run_id, request)
         payload = await self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
+        )
+        return TaskCancelResponse.model_validate(payload)
+
+    async def _cancel_with(
+        self, task_id: str, run_id: str, request: TaskCancelRequest
+    ) -> TaskCancelResponse:
+        payload = await self._http.request(
+            "POST",
+            f"/v1/tasks/{task_id}/runs/{run_id}/cancel",
+            json=request.model_dump(exclude_none=True, mode="json"),
         )
         return TaskCancelResponse.model_validate(payload)
 

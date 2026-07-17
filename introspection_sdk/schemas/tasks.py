@@ -70,6 +70,7 @@ class Task(_ApiModel):
     last_user_message_at: datetime | None = None
     metadata: dict[str, Any] | None = None
     agent: AgentInfo | None = None
+    identity_key: str | None = None
 
 
 class TaskCreateRequest(_ApiModel):
@@ -146,3 +147,13 @@ class TaskRunResponse(_ApiModel):
 
 class TaskCancelResponse(_ApiModel):
     id: str
+
+
+class TaskCancelMode(StrEnum):
+    ABORT = "abort"
+    DRAIN = "drain"
+
+
+class TaskCancelRequest(_ApiModel):
+    mode: TaskCancelMode = TaskCancelMode.ABORT
+    drain_within_seconds: int | None = Field(default=None, ge=0)

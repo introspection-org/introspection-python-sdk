@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _ApiModel(BaseModel):
@@ -31,13 +31,13 @@ class ResourceShare(_ApiModel):
     resource_type: ShareResourceType
     resource_id: str
     granted_member_id: UUID | None = None
-    """Member-targeted grant; ``None`` means a project-wide grant (everyone)."""
+    """Member target; ``None`` also covers identity/project-wide grants."""
+    granted_identity_key: str | None = None
     created_by_member_id: UUID
     """Grantor (always a member) — the revoke gate."""
-    url: str
-    """Fully-qualified GET URL for the shared resource, carrying the ``?share_id``
-    capability (e.g. ``…/v1/files/{id}?share_id=…``). Always present on
-    ``/v1/shares`` reads."""
+    created_by_identity_key: str | None = None
+    url: str | None = None
+    """Canonical resource URL, populated by the API on share reads."""
 
 
 class ShareCreateRequest(_ApiModel):
@@ -47,3 +47,17 @@ class ShareCreateRequest(_ApiModel):
     resource_type: ShareResourceType
     resource_id: str
     granted_member_id: UUID | None = None
+    granted_identity_key: str | None = Field(
+        default=None, min_length=1, max_length=320
+    )
+
+    @model_validator(mode="after")
+    def _one_target(self) -> ShareCreateRequest:
+        if (
+            self.granted_member_id is not None
+            and self.granted_identity_key is not None
+        ):
+            raise ValueError(
+                "a grant targets a member or an identity, not both"
+            )
+        return self

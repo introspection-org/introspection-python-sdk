@@ -252,7 +252,9 @@ class RuntimeHandle:
         *,
         identity: RunnerIdentity | dict[str, Any] | None = None,
         caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
         ttl_seconds: int | None = 3600,
+        scope: str | None = None,
     ) -> Runner:
         ident: RunnerIdentity | None
         if identity is None:
@@ -271,7 +273,9 @@ class RuntimeHandle:
         options = RunRequest(
             identity=ident,
             caller=call,
+            agent_name=agent_name,
             ttl_seconds=ttl_seconds,
+            scope=scope,
             recipe_id=self._recipe_id,
         )
         rid = self._resolve()
@@ -532,7 +536,9 @@ class AsyncRuntimeHandle:
         *,
         identity: RunnerIdentity | dict[str, Any] | None = None,
         caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
         ttl_seconds: int | None = 3600,
+        scope: str | None = None,
     ) -> AsyncRunner:
         ident: RunnerIdentity | None
         if identity is None:
@@ -551,7 +557,9 @@ class AsyncRuntimeHandle:
         options = RunRequest(
             identity=ident,
             caller=call,
+            agent_name=agent_name,
             ttl_seconds=ttl_seconds,
+            scope=scope,
             recipe_id=self._recipe_id,
         )
         rid = await self._resolve()
