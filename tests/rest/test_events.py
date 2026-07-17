@@ -34,6 +34,7 @@ from introspection_sdk.schemas.events import (
     IntrospectionEventName,
     JudgementEvent,
     ObservationEvent,
+    PatternAssignmentEvent,
     PatternEvent,
 )
 
@@ -94,10 +95,24 @@ def feedback_event(**overrides: Any) -> dict[str, Any]:
         "value": 1.0,
         "user_id": "user-1",
         "sentiment": "positive",
+        "previous_response_id": "resp-1",
+        "agent_name": "checkout-agent",
+        "agent_id": "agent-9",
         "properties": {"surface": "chat"},
     }
     payload.update(overrides.pop("payload", {}))
     return envelope("introspection.feedback", payload, **overrides)
+
+
+def pattern_assignment_event(**overrides: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "observation_id": OBSERVATION_ID,
+        "pattern_id": PATTERN_ID,
+        "method": "hdbscan",
+        "score": 0.87,
+    }
+    payload.update(overrides.pop("payload", {}))
+    return envelope("introspection.pattern.assignment", payload, **overrides)
 
 
 def judgement_event(**overrides: Any) -> dict[str, Any]:
@@ -286,11 +301,45 @@ def test_list_feedback_family_typed_payload(fake_api: FakeAPI):
     assert record.payload.value == 1.0
     assert record.payload.user_id == "user-1"
     assert record.payload.sentiment == "positive"
+    assert record.payload.previous_response_id == "resp-1"
+    assert record.payload.agent_name == "checkout-agent"
+    assert record.payload.agent_id == "agent-9"
     assert record.payload.properties == {"surface": "chat"}
     assert (
         fake_api.last_request.params.get("event_name")
         == "introspection.feedback"
     )
+
+
+def test_list_pattern_assignment_unassignment_null_pattern_id(
+    fake_api: FakeAPI,
+):
+    # An explicit unassignment carries pattern_id = null — it must
+    # validate, not raise (observation_id alone is the identity).
+    fake_api.add(
+        "GET",
+        "/v1/events",
+        json_body=cursor_page(
+            [
+                pattern_assignment_event(),
+                pattern_assignment_event(
+                    id="evt-2", payload={"pattern_id": None, "score": None}
+                ),
+            ],
+            None,
+        ),
+    )
+    events = _events(fake_api)
+
+    page = events.list(IntrospectionEventName.PATTERN_ASSIGNMENT).page()
+
+    assert len(page.records) == 2
+    assigned, unassigned = page.records
+    assert isinstance(assigned, PatternAssignmentEvent)
+    assert assigned.payload.pattern_id == PATTERN_ID
+    assert isinstance(unassigned, PatternAssignmentEvent)
+    assert unassigned.payload.observation_id == UUID(OBSERVATION_ID)
+    assert unassigned.payload.pattern_id is None
 
 
 def test_list_judgement_family_typed_payload(fake_api: FakeAPI):

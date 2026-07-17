@@ -168,10 +168,14 @@ class PatternPayload(_ApiModel):
 
 
 class PatternAssignmentPayload(_ApiModel):
-    """One observation-to-pattern assignment event."""
+    """One observation-to-pattern assignment event.
+
+    ``pattern_id`` is ``None`` when the observation was explicitly
+    unassigned; ``observation_id`` alone is the row identity.
+    """
 
     observation_id: UUID
-    pattern_id: str
+    pattern_id: str | None = None
     method: str | None = None
     run_id: str | None = None
     score: float | None = None
@@ -202,6 +206,10 @@ class FeedbackPayload(_ApiModel):
     user_id: str | None = None
     anonymous_id: str | None = None
     sentiment: str | None = None
+    #: gen_ai.request.previous_response_id — response the feedback anchors to.
+    previous_response_id: str | None = None
+    agent_name: str | None = None  #: gen_ai.agent.name
+    agent_id: str | None = None  #: gen_ai.agent.id
     properties: dict[str, Any] | None = None
 
 
