@@ -7,13 +7,20 @@ process environment variables (not to stub any SDK behaviour).
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import pytest
 
 from introspection_sdk.client import (
     AsyncIntrospectionClient,
     IntrospectionClient,
 )
-from introspection_sdk.resources import Experiments, Recipes, Runtimes
+from introspection_sdk.resources import (
+    AsyncExperimentHandle,
+    AsyncRuntimeHandle,
+    ExperimentHandle,
+    RuntimeHandle,
+)
 
 
 class _RaisingHttp:
@@ -32,16 +39,30 @@ class _RaisingHttp:
         raise RuntimeError("aclose boom")
 
 
-def test_explicit_args_wire_up_namespaces():
+def test_explicit_args_expose_only_runner_openers():
     client = IntrospectionClient(
         token="tok",
         base_api_url="https://api.example.test",
     )
-    assert isinstance(client.runtimes, Runtimes)
-    assert isinstance(client.experiments, Experiments)
-    assert isinstance(client.recipes, Recipes)
+    assert isinstance(client.runtime("agent"), RuntimeHandle)
+    assert isinstance(client.experiment(UUID(int=1)), ExperimentHandle)
+    assert not hasattr(client, "runtimes")
+    assert not hasattr(client, "experiments")
+    assert not hasattr(client, "recipes")
     assert client._token == "tok"
     assert client._base_api_url == "https://api.example.test"
+
+
+def test_async_client_exposes_only_runner_openers():
+    client = AsyncIntrospectionClient(token="tok")
+    assert isinstance(client.runtime("agent"), AsyncRuntimeHandle)
+    assert isinstance(
+        client.experiment(UUID(int=1)),
+        AsyncExperimentHandle,
+    )
+    assert not hasattr(client, "runtimes")
+    assert not hasattr(client, "experiments")
+    assert not hasattr(client, "recipes")
 
 
 def test_defaults_come_from_environment(monkeypatch: pytest.MonkeyPatch):

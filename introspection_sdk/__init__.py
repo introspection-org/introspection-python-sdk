@@ -1,7 +1,7 @@
 """Introspection Python SDK.
 
 Default install ships REST-only — :class:`IntrospectionClient`
-exposes ``.runtimes`` / ``.experiments`` plus the
+exposes ``.runtime(...)`` / ``.experiment(...)`` plus the
 :class:`~introspection_sdk.runner.Runner` flow for tasks and files.
 
 Install the ``[otel]`` extra (``pip install introspection-sdk[otel]``)

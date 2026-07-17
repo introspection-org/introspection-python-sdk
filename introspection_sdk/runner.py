@@ -1,5 +1,5 @@
-"""DP-facing :class:`Runner` returned by ``runtimes(...).run()`` and
-``experiments(...).run()``.
+"""DP-facing :class:`Runner` returned by ``runtime(...).run()`` and
+``experiment(...).run()``.
 
 The Runner is an agent-session with a runtime context attached. It
 owns the DP endpoint + session-locator JWT minted by the CP
@@ -45,8 +45,8 @@ from introspection_sdk.schemas.runner import (
 class Runner:
     """Handle for talking to a running runtime/experiment on the DP.
 
-    Constructed indirectly by ``client.runtimes(...).run()`` /
-    ``client.experiments(...).run()``. Holds a private HTTP client
+    Constructed indirectly by ``client.runtime(...).run()`` /
+    ``client.experiment(...).run()``. Holds a private HTTP client
     pointed at ``spec.deployment.endpoint`` with the bearer JWT
     picked from ``spec.session_token``.
     """
@@ -86,7 +86,7 @@ class Runner:
         if self._closed:
             raise RunnerExpiredError(
                 "Runner has been closed; create a new one via "
-                "client.runtimes(...).run() or client.experiments(...).run().",
+                "client.runtime(...).run() or client.experiment(...).run().",
                 status_code=0,
             )
 
@@ -202,8 +202,8 @@ class Runner:
 class AsyncRunner:
     """Async twin of :class:`Runner`.
 
-    Constructed indirectly by ``client.runtimes(...).run()`` /
-    ``client.experiments(...).run()`` on an ``AsyncIntrospectionClient``.
+    Constructed indirectly by ``client.runtime(...).run()`` /
+    ``client.experiment(...).run()`` on an ``AsyncIntrospectionClient``.
     Holds a private ``httpx.AsyncClient``-backed HTTP client pointed at
     ``spec.deployment.endpoint`` with the bearer JWT picked from
     ``spec.session_token``. Awaitable lifecycle: ``await runner.close()``,
@@ -245,7 +245,7 @@ class AsyncRunner:
         if self._closed:
             raise RunnerExpiredError(
                 "Runner has been closed; create a new one via "
-                "client.runtimes(...).run() or client.experiments(...).run().",
+                "client.runtime(...).run() or client.experiment(...).run().",
                 status_code=0,
             )
 

@@ -8,12 +8,12 @@ stay server-side, and you re-mint when the token expires.
 Two ways to use it, both shown below:
 
 1. ``IntrospectionClient.from_service_account(...)`` — mint and construct
-   a ready client in one call. The usual ``client.runtimes(slug).run()``
+   a ready client in one call. The usual ``client.runtime(slug).run()``
    flow then works unchanged.
 2. ``service_account_token(...)`` directly — when you also need the
    resolved ``dp_url`` (the Data Plane endpoint the CP picked for the
-   project) and the ``runtime_id``, e.g. a broker that hands a browser
-   client ``{ token, runtime_id, dp_url }`` so the SPA talks only to the
+   project), e.g. a broker that hands a browser client
+   ``{ token, dp_url }`` so the SPA talks only to the
    Data Plane and never resolves runtimes itself.
 
 Run with:
@@ -56,19 +56,16 @@ def main() -> None:
     )
 
     # (2) Broker path: mint the token explicitly to also read `dp_url`
-    # (resolved server-side by the CP), and resolve the runtime slug to a
-    # concrete `runtime_id`. A web broker returns these three to a browser
-    # client — `{ token, runtime_id, dp_url }` — so the SPA connects to the
-    # Data Plane directly without hardcoding the DP URL.
+    # (resolved server-side by the CP). Runtime selection stays in the
+    # operator-facing configuration path rather than the application SDK.
     token = service_account_token(
         client_id=client_id,
         client_secret=client_secret,
         project=project,
     )
-    resolved_runtime = client.runtimes.resolve(runtime, project=project)
-    print(f"runtime_id={resolved_runtime.id}, dp_url={token.dp_url}")
+    print(f"dp_url={token.dp_url}")
 
-    runner = client.runtimes(runtime).run()
+    runner = client.runtime(runtime).run()
     try:
         run = runner.tasks.start(prompt="Say hello in one sentence.")
         for event in run.stream():

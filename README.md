@@ -24,9 +24,9 @@ agents, powered by Pi. Define an agent as a recipe, deploy it to a
 commit-pinned runtime, and improve it in production with conversations,
 patterns, judges, and experiments.
 
-This is the Python platform SDK. Use it to open a runner against a deployed
-runtime, start and stream tasks, and manage files, conversations, recipes,
-experiments, and shares. It provides both an async-first client and a matching
+This is the Python execution SDK. Use it to open a runner against a configured
+runtime or experiment, start and stream tasks, and work with files,
+conversations, events, metrics, and shares. It provides both an async-first client and a matching
 synchronous client. See the [SDK overview](https://docs.introspection.dev/sdk)
 and [Python guide](https://docs.introspection.dev/sdk/python) for the product
 workflow.
@@ -59,7 +59,10 @@ from introspection_sdk import AsyncIntrospectionClient
 
 async def main() -> None:
     async with AsyncIntrospectionClient() as client:  # token from INTROSPECTION_TOKEN
-        runner = await client.runtimes("customer-agent").run()
+        runner = await client.runtime("customer-agent").run(
+            agent_name="agent",
+            scope="tasks:read tasks:write files:read files:write events:read metrics:read",
+        )
 
         async with runner:
             run = await runner.tasks.start(prompt="Say hello in one sentence.")
@@ -150,7 +153,7 @@ client = IntrospectionClient.from_service_account(
     client_secret="intro_sk_…",   # minted once, kept server-side
     project="my-project",         # slug or UUID; the token is project-scoped
 )
-runner = client.runtimes("customer-agent").run()
+runner = client.runtime("customer-agent").run()
 ```
 
 The token is not auto-refreshed — re-mint once it expires
@@ -158,21 +161,18 @@ The token is not auto-refreshed — re-mint once it expires
 
 When you're a **server broker** handing credentials to a browser client, mint
 the token directly to also read `dp_url` (the Data Plane endpoint the Control
-Plane resolved for the project) and resolve the runtime slug to a concrete
-`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser SDK talks
-to the Data Plane without a hardcoded URL:
+Plane resolved for the project). Runtime configuration and selection remain in
+the operator-facing CLI/frontend rather than this application SDK:
 
 ```python
-from introspection_sdk import IntrospectionClient, service_account_token
+from introspection_sdk import service_account_token
 
 token = service_account_token(
     client_id="intro_app_…",
     client_secret="intro_sk_…",
     project="my-project",
 )
-client = IntrospectionClient(token=token.access_token)
-runtime = client.runtimes.resolve("customer-agent")
-# -> hand { token.access_token, runtime.id, token.dp_url } to the browser
+# -> hand { token.access_token, token.dp_url } to the browser
 ```
 
 `token_exchange` (RFC 8693 partner-IdP federation) and
@@ -191,7 +191,7 @@ identical surface — drop the `await`s, use `for` instead of `async for`, and
 from introspection_sdk import IntrospectionClient
 
 client = IntrospectionClient()  # token from INTROSPECTION_TOKEN
-runner = client.runtimes("customer-agent").run()
+runner = client.runtime("customer-agent").run()
 
 run = runner.tasks.start(prompt="Say hello in one sentence.")
 for event in run.stream():

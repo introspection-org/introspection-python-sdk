@@ -35,16 +35,14 @@ import pytest
 from pydantic import BaseModel
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
-from introspection_sdk.schemas.experiments import Experiment
 from introspection_sdk.schemas.files import File, FileType
 from introspection_sdk.schemas.pagination import Paginated
-from introspection_sdk.schemas.recipes import Recipe
 from introspection_sdk.schemas.runner import (
     RunnerContext,
     RunnerDeployment,
+    RunnerIdentity,
     RunnerSpec,
 )
-from introspection_sdk.schemas.runtimes import Runtime
 from introspection_sdk.schemas.tasks import (
     Task,
     TaskCancelResponse,
@@ -199,7 +197,7 @@ def to_jsonable(obj: Any) -> Any:
     return obj
 
 
-def runtime_payload(**over: Any) -> Runtime:
+def runtime_payload(**over: Any) -> dict[str, Any]:
     defaults: dict[str, Any] = {
         "id": RUNTIME_ID,
         "org_id": ORG_ID,
@@ -210,37 +208,7 @@ def runtime_payload(**over: Any) -> Runtime:
         "is_active": True,
     }
     defaults.update(over)
-    return Runtime(**defaults)
-
-
-def experiment_payload(**over: Any) -> Experiment:
-    defaults: dict[str, Any] = {
-        "id": EXPERIMENT_ID,
-        "org_id": ORG_ID,
-        "project_id": PROJECT_ID,
-        "name": "prompt-bake-off",
-        "status": "running",
-    }
-    defaults.update(over)
-    return Experiment(**defaults)
-
-
-def recipe_payload(**over: Any) -> Recipe:
-    defaults: dict[str, Any] = {
-        "id": RECIPE_ID,
-        "org_id": ORG_ID,
-        "project_id": PROJECT_ID,
-        "repository_id": REPOSITORY_ID,
-        "name": "default",
-        "slug": "default",
-        "git_ref": "main",
-        "git_commit_sha": "abc123",
-        "created_by_member_id": MEMBER_ID,
-        "created_at": _NOW_DT,
-        "updated_at": _NOW_DT,
-    }
-    defaults.update(over)
-    return Recipe(**defaults)
+    return defaults
 
 
 def runner_spec_payload(**over: Any) -> RunnerSpec:
@@ -254,7 +222,15 @@ def runner_spec_payload(**over: Any) -> RunnerSpec:
         "session_token": "runner-jwt",
         "expires_at": _NOW_DT,
         "runtime_context": RunnerContext(
-            runtime_id=UUID(RUNTIME_ID), arm_label="control"
+            runtime_id=UUID(RUNTIME_ID),
+            runtime_group_id=UUID("33333333-3333-3333-3333-333333333333"),
+            recipe_id=UUID(RECIPE_ID),
+            recipe_repository_id=UUID(REPOSITORY_ID),
+            recipe_git_ref="main",
+            recipe_git_commit_sha="abc123",
+            arm_label="control",
+            agent_name="agent",
+            identity=RunnerIdentity(),
         ),
     }
     defaults.update(over)
@@ -315,7 +291,7 @@ def file_payload(**over: Any) -> File:
 
 
 def paginated(
-    records: list[BaseModel],
+    records: list[Any],
     *,
     next: str | None = None,
     total_count: int | None = None,

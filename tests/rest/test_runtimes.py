@@ -1,252 +1,85 @@
-"""Tests for ``client.runtimes`` (:mod:`introspection_sdk.resources.runtimes`).
-
-All HTTP is served by the in-process transport in ``conftest.py``.
-"""
+"""Runtime runner creation contract tests."""
 
 from __future__ import annotations
 
 from uuid import UUID
 
-import httpx
 import pytest
 
-from introspection_sdk.resources.runtimes import Runtimes
+from introspection_sdk.client import IntrospectionClient
 from introspection_sdk.runner import Runner
-from introspection_sdk.schemas.recipes import Recipe
-from introspection_sdk.schemas.runtimes import RuntimeCreate
 
 from .conftest import (
-    PROJECT_ID,
-    RECIPE_ID,
     RUNTIME_ID,
     FakeAPI,
     paginated,
-    recipe_payload,
     runner_spec_payload,
     runtime_payload,
-    to_jsonable,
 )
 
 
-def _runtimes(fake_api: FakeAPI) -> Runtimes:
-    return Runtimes(fake_api.client())
+def _client(fake_api: FakeAPI) -> IntrospectionClient:
+    client = IntrospectionClient(token="test", base_api_url="https://api.test")
+    client._http.close()
+    client._http = fake_api.client()
+    client._runtimes._http = client._http
+    client._experiments._http = client._http
+    return client
 
 
-def test_list_validates_and_drops_none_params(fake_api: FakeAPI):
-    fake_api.add(
-        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
-    )
-    page = _runtimes(fake_api).list(project=PROJECT_ID, only_active=True)
-    assert page.count == 1
-    assert str(page.records[0].id) == RUNTIME_ID
-    params = fake_api.last_request.params
-    assert params.get("project") == PROJECT_ID
-    assert params.get("only_active") == "true"
-    assert "name" not in params
-    assert "runtime" not in params
-
-
-def test_iter_follows_pagination(fake_api: FakeAPI):
-    pages = iter(
-        [
-            paginated([runtime_payload(name="a")], next="cursor-2"),
-            paginated([runtime_payload(name="b")]),
-        ]
-    )
-    seen_next: list[str | None] = []
-
-    def _handler(req: httpx.Request) -> httpx.Response:
-        seen_next.append(req.url.params.get("next"))
-        return httpx.Response(200, json=to_jsonable(next(pages)))
-
-    fake_api.add_handler("GET", "/v1/runtimes", _handler)
-    names = [r.name for r in _runtimes(fake_api).list(project=PROJECT_ID)]
-    assert names == ["a", "b"]
-    # The cursor from page 1 must be sent on the page-2 request; without
-    # this a client that never forwarded ``next`` would still pass.
-    assert seen_next == [None, "cursor-2"]
-
-
-def test_get_includes_project_param(fake_api: FakeAPI):
-    fake_api.add(
-        "GET", f"/v1/runtimes/{RUNTIME_ID}", json_body=runtime_payload()
-    )
-    rt = _runtimes(fake_api).get(UUID(RUNTIME_ID), project=PROJECT_ID)
-    assert str(rt.id) == RUNTIME_ID
-    assert fake_api.last_request.params.get("project") == PROJECT_ID
-
-
-def test_create_from_model_excludes_none(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/runtimes", json_body=runtime_payload())
-    _runtimes(fake_api).create(
-        RuntimeCreate(project="main", name="checkout-agent")
-    )
-    body = fake_api.last_request.json()
-    assert body["name"] == "checkout-agent"
-    assert body["project"] == "main"
-    assert "description" not in body  # exclude_none
-
-
-def test_create_from_dict_drops_none(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/runtimes", json_body=runtime_payload())
-    _runtimes(fake_api).create(
-        {"project": PROJECT_ID, "name": "x", "description": None}
-    )
-    assert "description" not in fake_api.last_request.json()
-
-
-def test_update_patches(fake_api: FakeAPI):
-    fake_api.add(
-        "PATCH",
-        f"/v1/runtimes/{RUNTIME_ID}",
-        json_body=runtime_payload(name="renamed"),
-    )
-    rt = _runtimes(fake_api).update(UUID(RUNTIME_ID), {"name": "renamed"})
-    assert rt.name == "renamed"
-    assert fake_api.last_request.method == "PATCH"
-
-
-def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):
+def test_runtime_run_resolves_then_forwards_current_contract(
+    fake_api: FakeAPI,
+):
     runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
     fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
     )
     fake_api.add(
         "POST",
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runtimes = _runtimes(fake_api)
-    runner = runtimes(runtime_group_id).run()
+
+    runner = (
+        _client(fake_api)
+        .runtime(runtime_group_id)
+        .run(
+            identity={"user_id": "u1"},
+            caller={"locale": "en-US"},
+            agent_name="support",
+            ttl_seconds=900,
+            scope="tasks:read tasks:write",
+        )
+    )
+
     assert isinstance(runner, Runner)
-    # User-facing runtime UUIDs are runtime group IDs, so the handle resolves
-    # them before opening a runner against the returned concrete runtime row.
-    assert [r.path for r in fake_api.requests] == [
+    assert [request.path for request in fake_api.requests] == [
         "/v1/runtimes",
         f"/v1/runtimes/{RUNTIME_ID}/run",
     ]
     assert fake_api.requests[0].params.get("runtime") == str(runtime_group_id)
+    assert "only_active" not in fake_api.requests[0].params
+    assert fake_api.last_request.json() == {
+        "identity": {"user_id": "u1"},
+        "caller": {"locale": "en-US"},
+        "agent_name": "support",
+        "ttl_seconds": 900,
+        "scope": "tasks:read tasks:write",
+    }
+    assert runner.context.runtime_group_id is not None
+    assert runner.context.recipe_repository_id is not None
+    assert runner.context.agent_name == "agent"
 
 
-def test_handle_resolves_runtime_via_list(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    runtimes = _runtimes(fake_api)
-    handle = runtimes("checkout-agent")
-    assert handle.runtime_id == UUID(RUNTIME_ID)
-    assert fake_api.last_request.params.get("runtime") == "checkout-agent"
-
-
-def test_handle_runtime_not_found_raises(fake_api: FakeAPI):
+def test_runtime_not_found_and_ambiguous(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
-    handle = _runtimes(fake_api)("missing")
-    with pytest.raises(LookupError, match="No active runtime"):
-        _ = handle.runtime_id
+    with pytest.raises(LookupError, match="No runtime"):
+        _client(fake_api).runtime("missing").run()
 
-
-def test_handle_ambiguous_runtime_raises(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload(), runtime_payload()]),
     )
-    handle = _runtimes(fake_api)("dup")
-    with pytest.raises(LookupError, match="Ambiguous"):
-        _ = handle.runtime_id
-
-
-def test_resolve_returns_runtime(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    runtime = _runtimes(fake_api).resolve("checkout-agent", project=PROJECT_ID)
-    assert str(runtime.id) == RUNTIME_ID
-    params = fake_api.last_request.params
-    assert params.get("runtime") == "checkout-agent"
-    assert params.get("only_active") == "true"
-    assert params.get("project") == PROJECT_ID
-
-
-def test_resolve_not_found_raises(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
-    with pytest.raises(LookupError, match="No active runtime"):
-        _runtimes(fake_api).resolve("missing")
-
-
-def test_resolve_ambiguous_raises(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload(), runtime_payload()]),
-    )
-    with pytest.raises(LookupError, match="Ambiguous"):
-        _runtimes(fake_api).resolve("dup")
-
-
-def test_run_returns_runner_with_context(fake_api: FakeAPI):
-    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
-        json_body=runner_spec_payload(),
-    )
-    runtimes = _runtimes(fake_api)
-    runner = runtimes(runtime_group_id).run(
-        identity={"user_id": "u1"}, caller={"locale": "en"}
-    )
-    assert runner.session_id == "sess-1"
-    assert runner.dp_endpoint == "https://dp.test"
-    body = fake_api.last_request.json()
-    assert body["identity"]["user_id"] == "u1"
-    assert body["caller"]["locale"] == "en"
-    assert body["ttl_seconds"] == 3600
-
-
-def test_pin_injects_recipe_id_on_run(fake_api: FakeAPI):
-    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
-        json_body=runner_spec_payload(),
-    )
-    recipe = Recipe.model_validate(recipe_payload())
-    runtimes = _runtimes(fake_api)
-    runtimes(runtime_group_id).pin(recipe).run()
-    assert fake_api.last_request.json()["recipe_id"] == RECIPE_ID
-
-
-def test_activate(fake_api: FakeAPI):
-    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/activate",
-        json_body=runtime_payload(is_active=True),
-    )
-    runtimes = _runtimes(fake_api)
-    # No client-level default project: the per-call override is the only way
-    # to scope activate to a specific project.
-    rt = runtimes(runtime_group_id).activate(project=PROJECT_ID)
-    assert rt.is_active is True
-    assert fake_api.last_request.json()["project"] == PROJECT_ID
+    with pytest.raises(LookupError, match="Ambiguous runtime"):
+        _client(fake_api).runtime("duplicate").run()

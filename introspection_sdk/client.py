@@ -1,10 +1,8 @@
 """REST-only Introspection client.
 
-This module exposes the CP REST surface
-(:class:`~introspection_sdk.resources.Runtimes`,
-:class:`~introspection_sdk.resources.Experiments`) plus the DP
-:class:`~introspection_sdk.runner.Runner` flow, **without** importing
-OpenTelemetry.
+This module opens runners for configured runtimes and experiments, then
+exposes the DP :class:`~introspection_sdk.runner.Runner` flow, **without**
+importing OpenTelemetry.
 
 For OpenTelemetry-based emission of ``track`` / ``feedback`` /
 ``identify`` events, install the ``[otel]`` extra and use
@@ -18,6 +16,7 @@ from __future__ import annotations
 __all__ = ["AsyncIntrospectionClient", "IntrospectionClient"]
 
 import os
+from uuid import UUID
 
 import httpx
 
@@ -26,22 +25,24 @@ from introspection_sdk.auth import (
     async_service_account_token,
     service_account_token,
 )
-from introspection_sdk.resources import (
-    AsyncExperiments,
-    AsyncRecipes,
-    AsyncRuntimes,
-    Experiments,
-    Recipes,
-    Runtimes,
+from introspection_sdk.resources.experiments import (
+    AsyncExperimentHandle,
+    ExperimentHandle,
+    _AsyncExperiments,
+    _Experiments,
+)
+from introspection_sdk.resources.runtimes import (
+    AsyncRuntimeHandle,
+    RuntimeHandle,
+    _AsyncRuntimes,
+    _Runtimes,
 )
 
 
 class IntrospectionClient:
     """REST-only Introspection client (no OpenTelemetry).
 
-    Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``client.runtimes(slug).run()`` and
-    ``client.experiments(id).run()`` mint a
+    ``client.runtime(ref).run()`` and ``client.experiment(id).run()`` mint a
     :class:`~introspection_sdk.runner.Runner` for DP traffic
     (``runner.tasks`` / ``runner.files``).
 
@@ -49,10 +50,6 @@ class IntrospectionClient:
     surface, see :class:`introspection_sdk.IntrospectionLogs` (requires
     the ``[otel]`` extra).
     """
-
-    runtimes: Runtimes
-    experiments: Experiments
-    recipes: Recipes
 
     def __init__(
         self,
@@ -72,18 +69,22 @@ class IntrospectionClient:
             token=self._token,
             additional_headers=self._additional_headers,
         )
-        self.runtimes = Runtimes(
+        self._runtimes = _Runtimes(
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.experiments = Experiments(
+        self._experiments = _Experiments(
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.recipes = Recipes(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
+
+    def runtime(self, ref: str | UUID) -> RuntimeHandle:
+        """Open a runner from a configured runtime group slug or id."""
+        return self._runtimes.handle(ref)
+
+    def experiment(self, experiment_id: UUID) -> ExperimentHandle:
+        """Open a runner from an existing experiment id."""
+        return self._experiments.handle(experiment_id)
 
     @classmethod
     def from_service_account(
@@ -111,7 +112,7 @@ class IntrospectionClient:
                 client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
                 project=os.environ["INTRO_PROJECT"],
             )
-            runner = client.runtimes("customer-agent").run()
+            runner = client.runtime("customer-agent").run()
 
         The token is not auto-refreshed: it lives for ``expires_in``
         seconds, so re-mint (call this again) for long-lived processes
@@ -145,9 +146,8 @@ class IntrospectionClient:
 class AsyncIntrospectionClient:
     """Async twin of :class:`IntrospectionClient` (no OpenTelemetry).
 
-    Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``await client.runtimes(slug).run()`` and
-    ``await client.experiments(id).run()`` mint an
+    ``await client.runtime(ref).run()`` and
+    ``await client.experiment(id).run()`` mint an
     :class:`~introspection_sdk.runner.AsyncRunner` for DP traffic
     (``await runner.tasks...`` / ``await runner.files...``).
 
@@ -158,10 +158,6 @@ class AsyncIntrospectionClient:
     surface, see :class:`introspection_sdk.IntrospectionLogs` (requires
     the ``[otel]`` extra).
     """
-
-    runtimes: AsyncRuntimes
-    experiments: AsyncExperiments
-    recipes: AsyncRecipes
 
     def __init__(
         self,
@@ -181,18 +177,22 @@ class AsyncIntrospectionClient:
             token=self._token,
             additional_headers=self._additional_headers,
         )
-        self.runtimes = AsyncRuntimes(
+        self._runtimes = _AsyncRuntimes(
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.experiments = AsyncExperiments(
+        self._experiments = _AsyncExperiments(
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.recipes = AsyncRecipes(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
+
+    def runtime(self, ref: str | UUID) -> AsyncRuntimeHandle:
+        """Open a runner from a configured runtime group slug or id."""
+        return self._runtimes.handle(ref)
+
+    def experiment(self, experiment_id: UUID) -> AsyncExperimentHandle:
+        """Open a runner from an existing experiment id."""
+        return self._experiments.handle(experiment_id)
 
     @classmethod
     async def from_service_account(
@@ -219,7 +219,7 @@ class AsyncIntrospectionClient:
                 client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
                 project=os.environ["INTRO_PROJECT"],
             )
-            runner = await client.runtimes("customer-agent").run()
+            runner = await client.runtime("customer-agent").run()
         """
         token = await async_service_account_token(
             client_id=client_id,

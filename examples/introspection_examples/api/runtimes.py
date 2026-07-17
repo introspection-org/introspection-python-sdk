@@ -24,7 +24,7 @@ def main() -> None:
 
     runtime = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
 
-    runner = client.runtimes(runtime).run(
+    runner = client.runtime(runtime).run(
         identity={"user_id": "u_42"},
         caller={
             "ip": "8.8.8.8",

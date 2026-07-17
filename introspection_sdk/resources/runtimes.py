@@ -1,12 +1,4 @@
-"""``client.runtimes`` — CP CRUD + ``.run()`` returning a :class:`Runner`.
-
-``client.runtimes`` is the :class:`Runtimes` instance; calling
-``client.runtimes(runtime)`` returns a :class:`RuntimeHandle`
-which exposes ``.run()`` and ``.activate()``. When called with a
-runtime slug or UUID, the handle resolves it on the caller's project
-on first use. UUID selectors are runtime group IDs; concrete runtime
-row IDs are used only by explicit ``*_id`` methods.
-"""
+"""Runtime runner creation. Runtime management belongs to the CLI/frontend."""
 
 from __future__ import annotations
 
@@ -14,36 +6,25 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
+from pydantic import BaseModel, ConfigDict
+
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
-from introspection_sdk.pagination import (
-    AsyncPager,
-    Pager,
-    async_cursor_paginate,
-    cursor_paginate,
-)
 from introspection_sdk.runner import AsyncRunner, Runner
-from introspection_sdk.schemas.pagination import Paginated
-from introspection_sdk.schemas.recipes import Recipe
 from introspection_sdk.schemas.runner import (
     RunCaller,
     RunnerIdentity,
     RunnerSpec,
     RunRequest,
 )
-from introspection_sdk.schemas.runtimes import (
-    Runtime,
-    RuntimeCreate,
-    RuntimeUpdate,
-)
 
 
-class Runtimes:
-    """CP ``/v1/runtimes`` namespace.
+class _ResolvedRuntime(BaseModel):
+    model_config = ConfigDict(extra="ignore")
 
-    Also callable: ``client.runtimes("runtime")`` returns a
-    :class:`RuntimeHandle` for that runtime.
-    """
+    id: UUID
 
+
+class _Runtimes:
     def __init__(
         self,
         http: _HttpClient,
@@ -53,198 +34,44 @@ class Runtimes:
         self._http = http
         self._additional_headers = additional_headers
 
-    def __call__(
-        self, runtime: str | UUID, *, project: str | None = None
-    ) -> RuntimeHandle:
-        # The project is scoped by the API key server-side; `project` is an
-        # explicit per-call override only — there is no client-level default.
-        return RuntimeHandle(
-            self,
-            runtime=runtime,
-            project=project,
-        )
+    def handle(self, runtime: str | UUID) -> RuntimeHandle:
+        return RuntimeHandle(self, runtime=runtime)
 
-    # --- CRUD --------------------------------------------------------
-
-    def list(
-        self,
-        *,
-        project: str | None = None,
-        runtime: str | None = None,
-        recipe_id: UUID | None = None,
-        only_active: bool | None = None,
-        environment: str | None = None,
-        exclude_yanked: bool | None = None,
-        limit: int = 100,
-        next: str | None = None,
-    ) -> Pager[Runtime, Paginated[Runtime]]:
-        """List runtimes. Iterate the returned :class:`Pager` to stream
-        every runtime across pages, or call ``.page()`` for the first page
-        only.
-
-        Pass ``environment`` to restrict to runtimes serving that lane and
-        ``exclude_yanked=True`` to omit withdrawn runtimes (mirrors the
-        server-side active resolution)."""
-
-        def fetch(cursor: str | None) -> Paginated[Runtime]:
-            params: dict[str, Any] = {
-                "project": project,
-                "runtime": runtime,
-                "recipe_id": recipe_id,
-                "only_active": only_active,
-                "environment": environment,
-                "exclude_yanked": exclude_yanked,
-                "limit": limit,
-                "next": cursor,
-            }
-            payload = self._http.request("GET", "/v1/runtimes", params=params)
-            return Paginated[Runtime].model_validate(payload)
-
-        return cursor_paginate(fetch, start=next)
-
-    def get(self, runtime_id: UUID, *, project: str) -> Runtime:
+    def _resolve(self, runtime: str | UUID) -> UUID:
         payload = self._http.request(
             "GET",
-            f"/v1/runtimes/{runtime_id}",
-            params={"project": project},
+            "/v1/runtimes",
+            params={"runtime": str(runtime), "limit": 2},
         )
-        return Runtime.model_validate(payload)
-
-    def resolve(
-        self, runtime: str | UUID, *, project: str | None = None
-    ) -> Runtime:
-        """Resolve an active runtime by slug or runtime group id.
-
-        The standalone form of ``client.runtimes(runtime)`` resolution —
-        handy for a server broker that resolves a concrete ``runtime_id`` to hand
-        to a browser client (which talks only to the Data Plane and never
-        resolves runtimes itself). The project is scoped by the token
-        server-side; pass ``project`` only to override it.
-
-        Raises ``LookupError`` if no active runtime matches the slug or
-        runtime group id, or if the selector is ambiguous (more than one active
-        match).
-        """
-        page = self.list(
-            runtime=str(runtime),
-            only_active=True,
-            limit=2,
-            project=project,
-        ).page()
-        if not page.records:
-            raise LookupError(f"No active runtime {runtime!r}")
-        if len(page.records) > 1:
+        records = payload.get("records", [])
+        if not records:
+            raise LookupError(f"No runtime {runtime!r}")
+        if len(records) > 1:
             raise LookupError(
-                f"Ambiguous runtime {runtime!r}: "
-                f"{len(page.records)} active matches"
+                f"Ambiguous runtime {runtime!r}: {len(records)} matches"
             )
-        return page.records[0]
+        return _ResolvedRuntime.model_validate(records[0]).id
 
-    def create(self, input: RuntimeCreate | dict[str, Any]) -> Runtime:
-        body = (
-            input.model_dump(exclude_none=True, mode="json")
-            if isinstance(input, RuntimeCreate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
-        payload = self._http.request("POST", "/v1/runtimes", json=body)
-        return Runtime.model_validate(payload)
-
-    def update(
-        self,
-        runtime_id: UUID,
-        input: RuntimeUpdate | dict[str, Any],
-    ) -> Runtime:
-        body = (
-            input.model_dump(exclude_none=True, mode="json")
-            if isinstance(input, RuntimeUpdate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
+    def _post_run(self, runtime_id: UUID, options: RunRequest) -> RunnerSpec:
         payload = self._http.request(
-            "PATCH", f"/v1/runtimes/{runtime_id}", json=body
-        )
-        return Runtime.model_validate(payload)
-
-    def yank(self, runtime_id: UUID, *, reason: str | None = None) -> Runtime:
-        """Withdraw a runtime so it stops resolving as the active runtime for
-        its environment. In-flight sticky runs keep using it; new runs fall
-        back to the previous active runtime (or "none active" until a
-        replacement is promoted)."""
-        body: dict[str, Any] = {"yanked": True}
-        if reason is not None:
-            body["yanked_reason"] = reason
-        payload = self._http.request(
-            "PATCH", f"/v1/runtimes/{runtime_id}", json=body
-        )
-        return Runtime.model_validate(payload)
-
-    def unyank(self, runtime_id: UUID) -> Runtime:
-        """Reverse a :meth:`yank`, making the runtime eligible to resolve
-        again."""
-        payload = self._http.request(
-            "PATCH", f"/v1/runtimes/{runtime_id}", json={"yanked": False}
-        )
-        return Runtime.model_validate(payload)
-
-    # --- /run --------------------------------------------------------
-
-    def _post_run(
-        self,
-        runtime_id: UUID,
-        options: RunRequest,
-    ) -> RunnerSpec:
-        body: dict[str, Any] = options.model_dump(
-            exclude_none=True, mode="json"
-        )
-        payload = self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/run", json=body
+            "POST",
+            f"/v1/runtimes/{runtime_id}/run",
+            json=options.model_dump(exclude_none=True, mode="json"),
         )
         return RunnerSpec.model_validate(payload)
 
-    def _activate(
-        self,
-        runtime_id: UUID,
-        *,
-        project: str | None,
-    ) -> Runtime:
-        body: dict[str, Any] = {}
-        if project:
-            body["project"] = project
-        payload = self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/activate", json=body
-        )
-        return Runtime.model_validate(payload)
-
 
 class RuntimeHandle:
-    """Handle for a specific runtime slug or runtime group id.
+    """Open runners for one configured runtime group slug or id."""
 
-    Resolves the selector lazily on first use by listing on the caller's
-    project. Built by ``client.runtimes(runtime)``.
-    """
-
-    def __init__(
-        self,
-        runtimes: Runtimes,
-        *,
-        runtime: str | UUID,
-        project: str | None,
-        recipe_id: UUID | None = None,
-    ) -> None:
+    def __init__(self, runtimes: _Runtimes, *, runtime: str | UUID) -> None:
         self._runtimes = runtimes
-        self._project = project
-        self._raw = runtime
+        self._runtime = runtime
         self._resolved_id: UUID | None = None
-        self._recipe_id: UUID | None = recipe_id
-
-    @property
-    def runtime_id(self) -> UUID:
-        return self._resolve()
 
     def _resolve(self) -> UUID:
-        if self._resolved_id is not None:
-            return self._resolved_id
-        runtime = self._runtimes.resolve(str(self._raw), project=self._project)
-        self._resolved_id = runtime.id
+        if self._resolved_id is None:
+            self._resolved_id = self._runtimes._resolve(self._runtime)
         return self._resolved_id
 
     def run(
@@ -252,81 +79,38 @@ class RuntimeHandle:
         *,
         identity: RunnerIdentity | dict[str, Any] | None = None,
         caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
         ttl_seconds: int | None = 3600,
+        scope: str | None = None,
     ) -> Runner:
-        ident: RunnerIdentity | None
-        if identity is None:
-            ident = None
-        elif isinstance(identity, RunnerIdentity):
-            ident = identity
-        else:
-            ident = RunnerIdentity.model_validate(identity)
-        call: RunCaller | None
-        if caller is None:
-            call = None
-        elif isinstance(caller, RunCaller):
-            call = caller
-        else:
-            call = RunCaller.model_validate(caller)
         options = RunRequest(
-            identity=ident,
-            caller=call,
+            identity=(
+                identity
+                if isinstance(identity, RunnerIdentity) or identity is None
+                else RunnerIdentity.model_validate(identity)
+            ),
+            caller=(
+                caller
+                if isinstance(caller, RunCaller) or caller is None
+                else RunCaller.model_validate(caller)
+            ),
+            agent_name=agent_name,
             ttl_seconds=ttl_seconds,
-            recipe_id=self._recipe_id,
+            scope=scope,
         )
-        rid = self._resolve()
+        runtime_id = self._resolve()
 
         def refresher() -> RunnerSpec:
-            return self._runtimes._post_run(rid, options)
+            return self._runtimes._post_run(runtime_id, options)
 
-        spec = refresher()
         return Runner(
-            spec,
+            refresher(),
             refresher=refresher,
             additional_headers=self._runtimes._additional_headers,
         )
 
-    def pin(self, recipe: Recipe | UUID | str) -> RuntimeHandle:
-        """Pin this handle to a specific recipe.
 
-        Returns a shallow-cloned :class:`RuntimeHandle` that captures
-        the recipe id; subsequent ``.run()`` injects ``recipe_id`` into
-        the ``RunRequest`` body. CP resolves the matching runtime row
-        server-side (the row in this runtime whose ``recipe_id``
-        matches the pin).
-
-        Accepts a :class:`Recipe` (uses its ``.id``), a ``UUID``, or a
-        ``str`` parsed as a UUID.
-        """
-        if isinstance(recipe, Recipe):
-            recipe_uuid = recipe.id
-        elif isinstance(recipe, UUID):
-            recipe_uuid = recipe
-        else:
-            recipe_uuid = UUID(recipe)
-        clone = RuntimeHandle(
-            self._runtimes,
-            runtime=self._raw,
-            project=self._project,
-            recipe_id=recipe_uuid,
-        )
-        # Preserve any resolution we've already done so the child
-        # handle doesn't have to re-list on first ``.run()``.
-        clone._resolved_id = self._resolved_id
-        return clone
-
-    def activate(self, *, project: str | None = None) -> Runtime:
-        rid = self._resolve()
-        return self._runtimes._activate(rid, project=project or self._project)
-
-
-class AsyncRuntimes:
-    """Async twin of :class:`Runtimes` (CP ``/v1/runtimes``).
-
-    Also callable: ``client.runtimes("runtime")`` returns an
-    :class:`AsyncRuntimeHandle` for that runtime.
-    """
-
+class _AsyncRuntimes:
     def __init__(
         self,
         http: _AsyncHttpClient,
@@ -336,195 +120,48 @@ class AsyncRuntimes:
         self._http = http
         self._additional_headers = additional_headers
 
-    def __call__(
-        self, runtime: str | UUID, *, project: str | None = None
-    ) -> AsyncRuntimeHandle:
-        # The project is scoped by the API key server-side; `project` is an
-        # explicit per-call override only — there is no client-level default.
-        return AsyncRuntimeHandle(
-            self,
-            runtime=runtime,
-            project=project,
-        )
+    def handle(self, runtime: str | UUID) -> AsyncRuntimeHandle:
+        return AsyncRuntimeHandle(self, runtime=runtime)
 
-    # --- CRUD --------------------------------------------------------
-
-    def list(
-        self,
-        *,
-        project: str | None = None,
-        runtime: str | None = None,
-        recipe_id: UUID | None = None,
-        only_active: bool | None = None,
-        environment: str | None = None,
-        exclude_yanked: bool | None = None,
-        limit: int = 100,
-        next: str | None = None,
-    ) -> AsyncPager[Runtime, Paginated[Runtime]]:
-        """List runtimes. ``await`` the returned :class:`AsyncPager` for the
-        first page, or ``async for`` it to stream every runtime across
-        pages.
-
-        Pass ``environment`` to restrict to runtimes serving that lane and
-        ``exclude_yanked=True`` to omit withdrawn runtimes (mirrors the
-        server-side active resolution)."""
-
-        async def fetch(cursor: str | None) -> Paginated[Runtime]:
-            params: dict[str, Any] = {
-                "project": project,
-                "runtime": runtime,
-                "recipe_id": recipe_id,
-                "only_active": only_active,
-                "environment": environment,
-                "exclude_yanked": exclude_yanked,
-                "limit": limit,
-                "next": cursor,
-            }
-            payload = await self._http.request(
-                "GET", "/v1/runtimes", params=params
-            )
-            return Paginated[Runtime].model_validate(payload)
-
-        return async_cursor_paginate(fetch, start=next)
-
-    async def get(self, runtime_id: UUID, *, project: str) -> Runtime:
+    async def _resolve(self, runtime: str | UUID) -> UUID:
         payload = await self._http.request(
             "GET",
-            f"/v1/runtimes/{runtime_id}",
-            params={"project": project},
+            "/v1/runtimes",
+            params={"runtime": str(runtime), "limit": 2},
         )
-        return Runtime.model_validate(payload)
-
-    async def resolve(
-        self, runtime: str | UUID, *, project: str | None = None
-    ) -> Runtime:
-        """Async twin of :meth:`Runtimes.resolve`.
-
-        Resolve an active runtime by slug or runtime group id on the caller's project — the
-        standalone form of ``client.runtimes(runtime)`` resolution, handy
-        for a server broker that resolves a concrete ``runtime_id`` to hand to a
-        browser client. Raises ``LookupError`` if no active runtime
-        matches, or if the selector is ambiguous.
-        """
-        page = await self.list(
-            runtime=str(runtime),
-            only_active=True,
-            limit=2,
-            project=project,
-        ).page()
-        if not page.records:
-            raise LookupError(f"No active runtime {runtime!r}")
-        if len(page.records) > 1:
+        records = payload.get("records", [])
+        if not records:
+            raise LookupError(f"No runtime {runtime!r}")
+        if len(records) > 1:
             raise LookupError(
-                f"Ambiguous runtime {runtime!r}: "
-                f"{len(page.records)} active matches"
+                f"Ambiguous runtime {runtime!r}: {len(records)} matches"
             )
-        return page.records[0]
-
-    async def create(self, input: RuntimeCreate | dict[str, Any]) -> Runtime:
-        body = (
-            input.model_dump(exclude_none=True, mode="json")
-            if isinstance(input, RuntimeCreate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
-        payload = await self._http.request("POST", "/v1/runtimes", json=body)
-        return Runtime.model_validate(payload)
-
-    async def update(
-        self,
-        runtime_id: UUID,
-        input: RuntimeUpdate | dict[str, Any],
-    ) -> Runtime:
-        body = (
-            input.model_dump(exclude_none=True, mode="json")
-            if isinstance(input, RuntimeUpdate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
-        payload = await self._http.request(
-            "PATCH", f"/v1/runtimes/{runtime_id}", json=body
-        )
-        return Runtime.model_validate(payload)
-
-    async def yank(
-        self, runtime_id: UUID, *, reason: str | None = None
-    ) -> Runtime:
-        """Async twin of :meth:`Runtimes.yank`. Withdraw a runtime so it stops
-        resolving as the active runtime for its environment; in-flight sticky
-        runs keep using it."""
-        body: dict[str, Any] = {"yanked": True}
-        if reason is not None:
-            body["yanked_reason"] = reason
-        payload = await self._http.request(
-            "PATCH", f"/v1/runtimes/{runtime_id}", json=body
-        )
-        return Runtime.model_validate(payload)
-
-    async def unyank(self, runtime_id: UUID) -> Runtime:
-        """Reverse a :meth:`yank`, making the runtime eligible to resolve
-        again."""
-        payload = await self._http.request(
-            "PATCH", f"/v1/runtimes/{runtime_id}", json={"yanked": False}
-        )
-        return Runtime.model_validate(payload)
-
-    # --- /run --------------------------------------------------------
+        return _ResolvedRuntime.model_validate(records[0]).id
 
     async def _post_run(
-        self,
-        runtime_id: UUID,
-        options: RunRequest,
+        self, runtime_id: UUID, options: RunRequest
     ) -> RunnerSpec:
-        body: dict[str, Any] = options.model_dump(
-            exclude_none=True, mode="json"
-        )
         payload = await self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/run", json=body
+            "POST",
+            f"/v1/runtimes/{runtime_id}/run",
+            json=options.model_dump(exclude_none=True, mode="json"),
         )
         return RunnerSpec.model_validate(payload)
 
-    async def _activate(
-        self,
-        runtime_id: UUID,
-        *,
-        project: str | None,
-    ) -> Runtime:
-        body: dict[str, Any] = {}
-        if project:
-            body["project"] = project
-        payload = await self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/activate", json=body
-        )
-        return Runtime.model_validate(payload)
-
 
 class AsyncRuntimeHandle:
-    """Async twin of :class:`RuntimeHandle`.
-
-    Resolves the selector lazily on first use by listing on the caller's
-    project. Built by ``client.runtimes(runtime)``.
-    """
+    """Async runtime runner opener."""
 
     def __init__(
-        self,
-        runtimes: AsyncRuntimes,
-        *,
-        runtime: str | UUID,
-        project: str | None,
-        recipe_id: UUID | None = None,
+        self, runtimes: _AsyncRuntimes, *, runtime: str | UUID
     ) -> None:
         self._runtimes = runtimes
-        self._project = project
-        self._raw = runtime
+        self._runtime = runtime
         self._resolved_id: UUID | None = None
-        self._recipe_id: UUID | None = recipe_id
 
     async def _resolve(self) -> UUID:
-        if self._resolved_id is not None:
-            return self._resolved_id
-        runtime = await self._runtimes.resolve(
-            str(self._raw), project=self._project
-        )
-        self._resolved_id = runtime.id
+        if self._resolved_id is None:
+            self._resolved_id = await self._runtimes._resolve(self._runtime)
         return self._resolved_id
 
     async def run(
@@ -532,75 +169,35 @@ class AsyncRuntimeHandle:
         *,
         identity: RunnerIdentity | dict[str, Any] | None = None,
         caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
         ttl_seconds: int | None = 3600,
+        scope: str | None = None,
     ) -> AsyncRunner:
-        ident: RunnerIdentity | None
-        if identity is None:
-            ident = None
-        elif isinstance(identity, RunnerIdentity):
-            ident = identity
-        else:
-            ident = RunnerIdentity.model_validate(identity)
-        call: RunCaller | None
-        if caller is None:
-            call = None
-        elif isinstance(caller, RunCaller):
-            call = caller
-        else:
-            call = RunCaller.model_validate(caller)
         options = RunRequest(
-            identity=ident,
-            caller=call,
+            identity=(
+                identity
+                if isinstance(identity, RunnerIdentity) or identity is None
+                else RunnerIdentity.model_validate(identity)
+            ),
+            caller=(
+                caller
+                if isinstance(caller, RunCaller) or caller is None
+                else RunCaller.model_validate(caller)
+            ),
+            agent_name=agent_name,
             ttl_seconds=ttl_seconds,
-            recipe_id=self._recipe_id,
+            scope=scope,
         )
-        rid = await self._resolve()
+        runtime_id = await self._resolve()
 
         async def refresher() -> RunnerSpec:
-            return await self._runtimes._post_run(rid, options)
+            return await self._runtimes._post_run(runtime_id, options)
 
-        spec = await refresher()
         return AsyncRunner(
-            spec,
+            await refresher(),
             refresher=refresher,
             additional_headers=self._runtimes._additional_headers,
         )
 
-    def pin(self, recipe: Recipe | UUID | str) -> AsyncRuntimeHandle:
-        """Pin this handle to a specific recipe.
 
-        Returns a shallow-cloned :class:`AsyncRuntimeHandle` that captures
-        the recipe id; subsequent ``.run()`` injects ``recipe_id`` into
-        the ``RunRequest`` body. Accepts a :class:`Recipe` (uses its
-        ``.id``), a ``UUID``, or a ``str`` parsed as a UUID.
-        """
-        if isinstance(recipe, Recipe):
-            recipe_uuid = recipe.id
-        elif isinstance(recipe, UUID):
-            recipe_uuid = recipe
-        else:
-            recipe_uuid = UUID(recipe)
-        clone = AsyncRuntimeHandle(
-            self._runtimes,
-            runtime=self._raw,
-            project=self._project,
-            recipe_id=recipe_uuid,
-        )
-        # Preserve any resolution we've already done so the child
-        # handle doesn't have to re-list on first ``.run()``.
-        clone._resolved_id = self._resolved_id
-        return clone
-
-    async def activate(self, *, project: str | None = None) -> Runtime:
-        rid = await self._resolve()
-        return await self._runtimes._activate(
-            rid, project=project or self._project
-        )
-
-
-__all__ = [
-    "AsyncRuntimeHandle",
-    "AsyncRuntimes",
-    "RuntimeHandle",
-    "Runtimes",
-]
+__all__ = ["AsyncRuntimeHandle", "RuntimeHandle"]

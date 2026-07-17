@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import builtins
 from collections.abc import AsyncIterator, Iterator
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -31,9 +32,10 @@ from introspection_sdk.schemas.agui import (
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.tasks import (
     Task,
+    TaskCancelMode,
+    TaskCancelRequest,
     TaskCancelResponse,
     TaskCreateResponse,
-    TaskMode,
     TaskPrompt,
     TaskRun,
     TaskRunKind,
@@ -59,7 +61,7 @@ class RunHandle:
 
     Mirrors the Cursor SDK shape: ``handle.stream()`` to iterate validated
     AG-UI events, ``handle.text()`` to collect text deltas into a string,
-    ``handle.cancel()`` to cancel the run.
+    ``handle.abort()`` to stop the active turn.
     """
 
     def __init__(
@@ -87,8 +89,15 @@ class RunHandle:
             timeout=timeout,
         )
 
-    def cancel(self) -> TaskCancelResponse:
-        return self._runs.cancel(str(self.run.task_id), self.run.id)
+    def abort(self) -> TaskCancelResponse:
+        return self._runs.abort(str(self.run.task_id), self.run.id)
+
+    def drain(
+        self, *, within_seconds: int | None = None
+    ) -> TaskCancelResponse:
+        return self._runs.drain(
+            str(self.run.task_id), self.run.id, within_seconds=within_seconds
+        )
 
     def text(self) -> str:
         out: list[str] = []
@@ -150,11 +159,38 @@ class TaskRuns:
         )
         return TaskRun.model_validate(payload)
 
-    def cancel(self, task_id: str, run_id: str) -> TaskCancelResponse:
+    def _cancel(
+        self, task_id: str, run_id: str, *, request: TaskCancelRequest
+    ) -> TaskCancelResponse:
         payload = self._http.request(
-            "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
+            "POST",
+            f"/v1/tasks/{task_id}/runs/{run_id}/cancel",
+            json=request.model_dump(exclude_none=True, mode="json"),
         )
         return TaskCancelResponse.model_validate(payload)
+
+    def abort(self, task_id: str, run_id: str) -> TaskCancelResponse:
+        return self._cancel(
+            task_id,
+            run_id,
+            request=TaskCancelRequest(mode=TaskCancelMode.ABORT),
+        )
+
+    def drain(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        within_seconds: int | None = None,
+    ) -> TaskCancelResponse:
+        return self._cancel(
+            task_id,
+            run_id,
+            request=TaskCancelRequest(
+                mode=TaskCancelMode.DRAIN,
+                drain_within_seconds=within_seconds,
+            ),
+        )
 
     def stream(
         self,
@@ -197,8 +233,10 @@ class Tasks:
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        modes: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
+        runtime_id: UUID | None = None,
+        runtime_ids: builtins.list[UUID] | None = None,
+        updated_after: datetime | None = None,
     ) -> Pager[Task, Paginated[Task]]:
         """List tasks. Iterate the returned :class:`Pager` to stream every
         task across pages, or call ``.page()`` for the first page only."""
@@ -211,10 +249,14 @@ class Tasks:
             }
             if statuses:
                 params["statuses"] = statuses
-            if modes:
-                params["modes"] = modes
             if require_automation_id is not None:
                 params["require_automation_id"] = require_automation_id
+            if runtime_id is not None:
+                params["runtime_id"] = str(runtime_id)
+            if runtime_ids:
+                params["runtime_ids"] = [str(value) for value in runtime_ids]
+            if updated_after is not None:
+                params["updated_after"] = updated_after.isoformat()
             payload = self._http.request("GET", "/v1/tasks", params=params)
             return Paginated[Task].model_validate(payload)
 
@@ -225,8 +267,6 @@ class Tasks:
         *,
         title: str | None = None,
         prompt: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -235,8 +275,6 @@ class Tasks:
         body: dict[str, Any] = {
             "title": title,
             "prompt": prompt,
-            "mode": mode.value if isinstance(mode, TaskMode) else mode,
-            "system_id": system_id,
             "repository_id": (
                 str(repository_id) if repository_id is not None else None
             ),
@@ -297,8 +335,6 @@ class Tasks:
         *,
         prompt: str,
         title: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -312,8 +348,6 @@ class Tasks:
         res = self.create(
             title=title,
             prompt=prompt,
-            mode=mode,
-            system_id=system_id,
             repository_id=repository_id,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
@@ -327,7 +361,7 @@ class AsyncRunHandle:
     Returned by ``AsyncTasks.start(...)`` and ``AsyncTaskRuns.create(...)``.
     ``await handle.stream()`` is replaced by ``async for ev in
     handle.stream()`` to iterate AG-UI events; ``await handle.text()``
-    collects text frames; ``await handle.cancel()`` cancels the run.
+    collects text frames; ``await handle.abort()`` stops the active turn.
     """
 
     def __init__(
@@ -355,8 +389,15 @@ class AsyncRunHandle:
             timeout=timeout,
         )
 
-    async def cancel(self) -> TaskCancelResponse:
-        return await self._runs.cancel(str(self.run.task_id), self.run.id)
+    async def abort(self) -> TaskCancelResponse:
+        return await self._runs.abort(str(self.run.task_id), self.run.id)
+
+    async def drain(
+        self, *, within_seconds: int | None = None
+    ) -> TaskCancelResponse:
+        return await self._runs.drain(
+            str(self.run.task_id), self.run.id, within_seconds=within_seconds
+        )
 
     async def text(self) -> str:
         out: list[str] = []
@@ -418,11 +459,38 @@ class AsyncTaskRuns:
         )
         return TaskRun.model_validate(payload)
 
-    async def cancel(self, task_id: str, run_id: str) -> TaskCancelResponse:
+    async def _cancel(
+        self, task_id: str, run_id: str, *, request: TaskCancelRequest
+    ) -> TaskCancelResponse:
         payload = await self._http.request(
-            "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
+            "POST",
+            f"/v1/tasks/{task_id}/runs/{run_id}/cancel",
+            json=request.model_dump(exclude_none=True, mode="json"),
         )
         return TaskCancelResponse.model_validate(payload)
+
+    async def abort(self, task_id: str, run_id: str) -> TaskCancelResponse:
+        return await self._cancel(
+            task_id,
+            run_id,
+            request=TaskCancelRequest(mode=TaskCancelMode.ABORT),
+        )
+
+    async def drain(
+        self,
+        task_id: str,
+        run_id: str,
+        *,
+        within_seconds: int | None = None,
+    ) -> TaskCancelResponse:
+        return await self._cancel(
+            task_id,
+            run_id,
+            request=TaskCancelRequest(
+                mode=TaskCancelMode.DRAIN,
+                drain_within_seconds=within_seconds,
+            ),
+        )
 
     def stream(
         self,
@@ -457,8 +525,10 @@ class AsyncTasks:
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        modes: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
+        runtime_id: UUID | None = None,
+        runtime_ids: builtins.list[UUID] | None = None,
+        updated_after: datetime | None = None,
     ) -> AsyncPager[Task, Paginated[Task]]:
         """List tasks. ``await`` the returned :class:`AsyncPager` for the
         first page, or ``async for`` it to stream every task across pages."""
@@ -471,10 +541,14 @@ class AsyncTasks:
             }
             if statuses:
                 params["statuses"] = statuses
-            if modes:
-                params["modes"] = modes
             if require_automation_id is not None:
                 params["require_automation_id"] = require_automation_id
+            if runtime_id is not None:
+                params["runtime_id"] = str(runtime_id)
+            if runtime_ids:
+                params["runtime_ids"] = [str(value) for value in runtime_ids]
+            if updated_after is not None:
+                params["updated_after"] = updated_after.isoformat()
             payload = await self._http.request(
                 "GET", "/v1/tasks", params=params
             )
@@ -487,8 +561,6 @@ class AsyncTasks:
         *,
         title: str | None = None,
         prompt: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -497,8 +569,6 @@ class AsyncTasks:
         body: dict[str, Any] = {
             "title": title,
             "prompt": prompt,
-            "mode": mode.value if isinstance(mode, TaskMode) else mode,
-            "system_id": system_id,
             "repository_id": (
                 str(repository_id) if repository_id is not None else None
             ),
@@ -561,8 +631,6 @@ class AsyncTasks:
         *,
         prompt: str,
         title: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -577,8 +645,6 @@ class AsyncTasks:
         res = await self.create(
             title=title,
             prompt=prompt,
-            mode=mode,
-            system_id=system_id,
             repository_id=repository_id,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,

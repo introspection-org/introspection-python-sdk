@@ -29,7 +29,7 @@ async def main() -> None:
 
     # ``async with`` tears the client's HTTP pool down deterministically.
     async with AsyncIntrospectionClient() as client:
-        runner = await client.runtimes(runtime).run(
+        runner = await client.runtime(runtime).run(
             identity={"user_id": "u_42"},
             caller={
                 "ip": "8.8.8.8",

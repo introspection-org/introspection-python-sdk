@@ -68,35 +68,27 @@ class RunCaller(_ApiModel):
 class RunRequest(_ApiModel):
     """Body of ``POST /v1/{runtimes|experiments}/{id}/run``.
 
-    Stashed on a Runner for ``refresh()``. Renamed from
-    ``RuntimeContext`` — that's still importable as a deprecation
-    alias for one release.
+    Stashed on a Runner for ``refresh()``.
     """
 
     identity: RunnerIdentity | None = None
     caller: RunCaller | None = None
+    agent_name: str | None = None
     ttl_seconds: int | None = None
-    recipe_id: UUID | None = None
-
-
-# Deprecated aliases — kept for one release. Prefer :class:`RunRequest`.
-RunOptions = RunRequest
-RuntimeContext = RunRequest
-
-
-class RunnerRecipeSummary(_ApiModel):
-    repository_id: UUID | None = None
-    git_ref: str | None = None
-    git_commit_sha: str | None = None
+    scope: str | None = None
 
 
 class RunnerContext(_ApiModel):
     runtime_id: UUID | None = None
+    runtime_group_id: UUID | None = None
     experiment_id: UUID | None = None
     recipe_id: UUID | None = None
-    recipe: RunnerRecipeSummary | None = None
+    recipe_repository_id: UUID | None = None
+    recipe_git_ref: str | None = None
+    recipe_git_commit_sha: str | None = None
     arm_label: str | None = None
-    identity: RunnerIdentity | None = None
+    agent_name: str | None = None
+    identity: RunnerIdentity
     # Echoed from the request body when supplied.
     caller: RunCaller | None = None
 
@@ -138,12 +130,9 @@ __all__ = [
     "RunCaller",
     "RunCallerLibrary",
     "RunCallerPage",
-    "RunOptions",  # deprecated alias for RunRequest
     "RunRequest",
     "RunnerContext",
     "RunnerDeployment",
     "RunnerIdentity",
-    "RunnerRecipeSummary",
     "RunnerSpec",
-    "RuntimeContext",  # deprecated alias for RunRequest
 ]

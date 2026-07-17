@@ -1,138 +1,37 @@
-"""Tests for ``client.experiments``
-(:mod:`introspection_sdk.resources.experiments`).
-"""
+"""Experiment runner creation contract tests."""
 
 from __future__ import annotations
 
 from uuid import UUID
 
-from introspection_sdk.resources.experiments import Experiments
+from introspection_sdk.client import IntrospectionClient
 from introspection_sdk.runner import Runner
-from introspection_sdk.schemas.experiments import ExperimentCreate
 
-from .conftest import (
-    EXPERIMENT_ID,
-    PROJECT_ID,
-    FakeAPI,
-    experiment_payload,
-    paginated,
-    runner_spec_payload,
-)
+from .conftest import EXPERIMENT_ID, FakeAPI, runner_spec_payload
 
 
-def _experiments(fake_api: FakeAPI) -> Experiments:
-    return Experiments(fake_api.client())
-
-
-def test_list(fake_api: FakeAPI):
-    fake_api.add(
-        "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
-    )
-    page = _experiments(fake_api).list(project=PROJECT_ID, status="running")
-    assert page.records[0].name == "prompt-bake-off"
-    assert fake_api.last_request.params.get("status") == "running"
-
-
-def test_iter_stops_when_no_next(fake_api: FakeAPI):
-    fake_api.add(
-        "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
-    )
-    records = list(_experiments(fake_api).list(project=PROJECT_ID))
-    assert len(records) == 1
-
-
-def test_get_without_project_sends_no_params(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        f"/v1/experiments/{EXPERIMENT_ID}",
-        json_body=experiment_payload(),
-    )
-    _experiments(fake_api).get(UUID(EXPERIMENT_ID))
-    assert list(fake_api.last_request.params.keys()) == []
-
-
-def test_get_with_project(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        f"/v1/experiments/{EXPERIMENT_ID}",
-        json_body=experiment_payload(),
-    )
-    _experiments(fake_api).get(UUID(EXPERIMENT_ID), project=PROJECT_ID)
-    assert fake_api.last_request.params.get("project") == PROJECT_ID
-
-
-def test_create_from_model(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
-    _experiments(fake_api).create(
-        ExperimentCreate(project=PROJECT_ID, name="prompt-bake-off")
-    )
-    assert fake_api.last_request.json()["name"] == "prompt-bake-off"
-
-
-def test_create_from_dict(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
-    _experiments(fake_api).create(
-        {"project": PROJECT_ID, "name": "x", "description": None}
-    )
-    assert "description" not in fake_api.last_request.json()
-
-
-def test_update(fake_api: FakeAPI):
-    fake_api.add(
-        "PATCH",
-        f"/v1/experiments/{EXPERIMENT_ID}",
-        json_body=experiment_payload(name="renamed"),
-    )
-    exp = _experiments(fake_api).update(
-        UUID(EXPERIMENT_ID), {"name": "renamed"}
-    )
-    assert exp.name == "renamed"
-
-
-def test_delete_expects_empty(fake_api: FakeAPI):
-    fake_api.add("DELETE", f"/v1/experiments/{EXPERIMENT_ID}", status=204)
-    assert _experiments(fake_api).delete(UUID(EXPERIMENT_ID)) is None
-
-
-def test_handle_run(fake_api: FakeAPI):
+def test_experiment_run_forwards_current_contract(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/experiments/{EXPERIMENT_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runner = _experiments(fake_api)(UUID(EXPERIMENT_ID)).run(ttl_seconds=60)
+    client = IntrospectionClient(token="test", base_api_url="https://api.test")
+    client._http.close()
+    client._http = fake_api.client()
+    client._experiments._http = client._http
+
+    runner = client.experiment(UUID(EXPERIMENT_ID)).run(
+        identity={"user_id": "u2"},
+        agent_name="researcher",
+        scope="tasks:read tasks:write",
+    )
+
     assert isinstance(runner, Runner)
-    assert fake_api.last_request.json()["ttl_seconds"] == 60
-
-
-def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
-    fake_api.add(
-        "POST",
-        f"/v1/experiments/{EXPERIMENT_ID}/start",
-        json_body=experiment_payload(status="running"),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/experiments/{EXPERIMENT_ID}/end",
-        json_body=experiment_payload(status="concluded"),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/experiments/{EXPERIMENT_ID}/cancel",
-        json_body=experiment_payload(status="cancelled"),
-    )
-    handle = _experiments(fake_api)(UUID(EXPERIMENT_ID))
-
-    assert handle.start().status.value == "running"
-
-    ended = handle.end(winning_arm_label="treatment", notes="ship it")
-    assert ended.status.value == "concluded"
-    end_body = fake_api.requests[-1].json()
-    assert end_body == {"winning_arm_label": "treatment", "notes": "ship it"}
-
-    assert handle.cancel().status.value == "cancelled"
-
-
-def test_handle_experiment_id_property(fake_api: FakeAPI):
-    handle = _experiments(fake_api)(UUID(EXPERIMENT_ID))
-    assert handle.experiment_id == UUID(EXPERIMENT_ID)
+    assert fake_api.last_request.path == f"/v1/experiments/{EXPERIMENT_ID}/run"
+    assert fake_api.last_request.json() == {
+        "identity": {"user_id": "u2"},
+        "agent_name": "researcher",
+        "ttl_seconds": 3600,
+        "scope": "tasks:read tasks:write",
+    }

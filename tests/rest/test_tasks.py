@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
+import pytest
+from pydantic import ValidationError
+
 from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
 from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
-    TaskMode,
+    Task,
     TaskPrompt,
     TaskRunKind,
 )
@@ -28,11 +33,22 @@ def _tasks(fake_api: FakeAPI) -> Tasks:
 
 def test_list_with_filters(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/tasks", json_body=paginated([task_payload()]))
-    page = _tasks(fake_api).list(statuses=["pending"], modes=["agent"])
+    page = _tasks(fake_api).list(
+        statuses=["pending"],
+        updated_after=datetime(2026, 1, 1, tzinfo=UTC),
+    )
     assert str(page.records[0].id) == TASK_ID
     params = fake_api.last_request.params
     assert params.get_list("statuses") == ["pending"]
-    assert params.get("modes") == "agent"
+    assert params.get("updated_after") == "2026-01-01T00:00:00+00:00"
+
+
+def test_task_response_does_not_surface_internal_kind():
+    payload = task_payload().model_dump(mode="json")
+    payload["kind"] = "process"
+    task = Task.model_validate(payload)
+    assert not hasattr(task, "kind")
+    assert "kind" not in task.model_dump()
 
 
 def test_iter(fake_api: FakeAPI):
@@ -40,14 +56,14 @@ def test_iter(fake_api: FakeAPI):
     assert len(list(_tasks(fake_api).list())) == 1
 
 
-def test_create_serialises_mode_enum(fake_api: FakeAPI):
+def test_create_omits_internal_task_fields(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
-    res = _tasks(fake_api).create(
-        prompt="hello", mode=TaskMode.INTROSPECT, metadata=None
-    )
+    res = _tasks(fake_api).create(prompt="hello", metadata=None)
     assert str(res.task.id) == TASK_ID
     body = fake_api.last_request.json()
-    assert body["mode"] == "introspect"
+    assert "mode" not in body
+    assert "kind" not in body
+    assert "system_id" not in body
     assert "metadata" not in body  # None dropped
 
 
@@ -198,7 +214,7 @@ def test_runs_get(fake_api: FakeAPI):
     assert run.status.value == "completed"
 
 
-def test_run_handle_cancel(fake_api: FakeAPI):
+def test_run_handle_abort_and_drain(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs/run-1/cancel",
@@ -210,7 +226,15 @@ def test_run_handle_cancel(fake_api: FakeAPI):
         json_body=task_run_response(),
     )
     handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
-    assert handle.cancel().id == "run-1"
+    assert handle.abort().id == "run-1"
+    assert fake_api.last_request.json() == {"mode": "abort"}
+    assert handle.drain(within_seconds=60).id == "run-1"
+    assert fake_api.last_request.json() == {
+        "mode": "drain",
+        "drain_within_seconds": 60,
+    }
+    with pytest.raises(ValidationError, match="greater than or equal to 0"):
+        handle.drain(within_seconds=-1)
 
 
 def test_run_handle_stream_and_text(fake_api: FakeAPI):

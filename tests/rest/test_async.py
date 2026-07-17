@@ -14,9 +14,8 @@ from uuid import UUID
 import pytest
 
 from introspection_sdk._errors import IntrospectionAPIError
+from introspection_sdk.client import AsyncIntrospectionClient
 from introspection_sdk.pagination import AsyncPager
-from introspection_sdk.resources.experiments import AsyncExperiments
-from introspection_sdk.resources.runtimes import AsyncRuntimes
 from introspection_sdk.runner import AsyncRunner
 from introspection_sdk.runner_resources import (
     AsyncFiles,
@@ -34,7 +33,6 @@ from .conftest import (
     RUNTIME_ID,
     TASK_ID,
     FakeAPI,
-    experiment_payload,
     file_payload,
     paginated,
     runner_spec_payload,
@@ -215,7 +213,7 @@ async def test_runs_resume_posts_ag_ui_resume_entries(fake_api: FakeAPI):
     }
 
 
-async def test_run_handle_cancel(fake_api: FakeAPI):
+async def test_run_handle_abort_and_drain(fake_api: FakeAPI):
     fake_api.add(
         "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
     )
@@ -227,8 +225,15 @@ async def test_run_handle_cancel(fake_api: FakeAPI):
     handle = await AsyncTasks(fake_api.async_client()).runs.create(
         TASK_ID, message="x"
     )
-    cancelled = await handle.cancel()
-    assert cancelled.id == "run-1"
+    aborted = await handle.abort()
+    assert aborted.id == "run-1"
+    assert fake_api.last_request.json() == {"mode": "abort"}
+    drained = await handle.drain(within_seconds=60)
+    assert drained.id == "run-1"
+    assert fake_api.last_request.json() == {
+        "mode": "drain",
+        "drain_within_seconds": 60,
+    }
 
 
 # --- AsyncFiles ------------------------------------------------------
@@ -293,7 +298,7 @@ async def test_runner_close_blocks_use_and_aenter():
         _ = runner.tasks
 
 
-# --- AsyncRuntimes / AsyncExperiments .run() -> AsyncRunner ----------
+# --- Async runtime / experiment openers -> AsyncRunner ---------------
 
 
 async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
@@ -306,8 +311,13 @@ async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runtimes = AsyncRuntimes(fake_api.async_client())
-    runner = await runtimes(runtime_group_id).run(identity={"user_id": "u1"})
+    client = AsyncIntrospectionClient(token="test")
+    await client._http.aclose()
+    client._http = fake_api.async_client()
+    client._runtimes._http = client._http
+    runner = await client.runtime(runtime_group_id).run(
+        identity={"user_id": "u1"}, agent_name="support", scope="tasks:read"
+    )
     assert isinstance(runner, AsyncRunner)
     assert runner.dp_endpoint == "https://dp.test"
     assert fake_api.requests[0].params.get("runtime") == runtime_group_id
@@ -323,8 +333,11 @@ async def test_runtime_handle_resolves_slug(fake_api: FakeAPI):
         f"/v1/runtimes/{RUNTIME_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runtimes = AsyncRuntimes(fake_api.async_client())
-    runner = await runtimes("checkout-agent").run()
+    client = AsyncIntrospectionClient(token="test")
+    await client._http.aclose()
+    client._http = fake_api.async_client()
+    client._runtimes._http = client._http
+    runner = await client.runtime("checkout-agent").run()
     assert isinstance(runner, AsyncRunner)
     # First call lists by slug, second posts /run.
     assert fake_api.requests[0].path == "/v1/runtimes"
@@ -338,29 +351,13 @@ async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/run",
         json_body=runner_spec_payload(),
     )
-    experiments = AsyncExperiments(fake_api.async_client())
-    runner = await experiments(UUID(EXPERIMENT_ID)).run()
+    client = AsyncIntrospectionClient(token="test")
+    await client._http.aclose()
+    client._http = fake_api.async_client()
+    client._experiments._http = client._http
+    runner = await client.experiment(UUID(EXPERIMENT_ID)).run()
     assert isinstance(runner, AsyncRunner)
     await runner.close()
-
-
-async def test_experiment_lifecycle(fake_api: FakeAPI):
-    fake_api.add(
-        "POST",
-        f"/v1/experiments/{EXPERIMENT_ID}/start",
-        json_body=experiment_payload(status="running"),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/experiments/{EXPERIMENT_ID}/end",
-        json_body=experiment_payload(status="concluded"),
-    )
-    handle = AsyncExperiments(fake_api.async_client())(UUID(EXPERIMENT_ID))
-    started = await handle.start()
-    assert started.status == "running"
-    ended = await handle.end(notes="done")
-    assert ended.status == "concluded"
-    assert fake_api.last_request.json()["notes"] == "done"
 
 
 async def test_async_request_retries_on_429_then_succeeds(fake_api: FakeAPI):

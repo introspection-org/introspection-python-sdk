@@ -1,9 +1,9 @@
 # OpenTelemetry: analytics events & tracing
 
 The Introspection API (`IntrospectionClient` / `AsyncIntrospectionClient` —
-runtimes, tasks, files, conversations) is the SDK's primary surface and needs
-no OpenTelemetry. This page covers the two **optional** OTel-based surfaces,
-both behind the `[otel]` extra:
+runtime and experiment runners, tasks, files, conversations, events, metrics,
+and shares) is the SDK's primary surface and needs no OpenTelemetry. This page
+covers the two **optional** OTel-based surfaces, both behind the `[otel]` extra:
 
 ```shell
 pip install 'introspection-sdk[otel]'

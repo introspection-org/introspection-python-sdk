@@ -24,7 +24,7 @@ arrow = ["pyarrow>=14.0.0"]
 # OpenTelemetry exporter, the span / tracing processors, the LLM SDK
 # instrumentors (Anthropic / Gemini / Claude / LangChain), and the
 # IntrospectionLogs (track / feedback / identify) surface. Default
-# install is REST-only (client.runtimes / client.experiments / Runner
+# install is REST-only (client.runtime / client.experiment / Runner
 # / tasks / files).
 otel = [
     "opentelemetry-sdk >= 1.39.0, < 1.43.0",
