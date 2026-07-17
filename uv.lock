@@ -1760,7 +1760,6 @@ source = { editable = "." }
 dependencies = [
     { name = "ag-ui-protocol" },
     { name = "httpx" },
-    { name = "pyarrow" },
     { name = "pydantic" },
 ]
 
@@ -1885,7 +1884,6 @@ requires-dist = [
     { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.39.0,<1.43.0" },
     { name = "posthog", marker = "extra == 'test'", specifier = ">=7.9.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
-    { name = "pyarrow", specifier = ">=14.0.0" },
     { name = "pyarrow", marker = "extra == 'arrow'", specifier = ">=14.0.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pydantic", marker = "extra == 'test'", specifier = ">=2.12.0" },
