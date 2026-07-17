@@ -21,11 +21,8 @@ dependencies = [
 # path never imports pyarrow. Install with `pip install introspection-sdk[arrow]`.
 arrow = ["pyarrow>=14.0.0"]
 # Install with `pip install introspection-sdk[otel]` to enable the
-# OpenTelemetry exporter, the span / tracing processors, the LLM SDK
-# instrumentors (Anthropic / Gemini / Claude / LangChain), and the
-# IntrospectionLogs (track / feedback / identify) surface. Default
-# install is REST-only (client.runtime / client.experiment / Runner
-# / tasks / files).
+# Optional OTLP logs and traces. The default install is the REST-only runner
+# execution surface.
 otel = [
     "opentelemetry-sdk >= 1.39.0, < 1.43.0",
     "opentelemetry-exporter-otlp-proto-http>=1.39.0,<1.43.0",
@@ -53,8 +50,7 @@ test = [
     "openinference-instrumentation-anthropic>=0.1.0",
     "openinference-instrumentation-openai-agents>=0.1.0",
 ]
-# Per-framework convenience installs. init() auto-detects frameworks
-# regardless of how they were installed; these extras are a one-command setup.
+# Legacy experimental compatibility extras retained for existing users.
 openai = ["openai>=2.0.0"]
 anthropic = ["anthropic>=0.85.0"]
 gemini = ["google-genai>=1.0.0"]
@@ -69,7 +65,7 @@ langfuse = ["langfuse>=3.0.0"]
 arize = ["arize-phoenix>=8.0.0", "openinference-instrumentation-openai>=0.1.0"]
 braintrust = ["braintrust[otel]>=0.1.0"]
 
-# Convenience bundle for greenfield projects / CI smoke tests.
+# Compatibility test bundle.
 all = [
     "openai>=2.0.0",
     "anthropic>=0.85.0",

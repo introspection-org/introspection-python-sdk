@@ -4,11 +4,8 @@ This module opens runners for configured runtimes and experiments, then
 exposes the DP :class:`~introspection_sdk.runner.Runner` flow, **without**
 importing OpenTelemetry.
 
-For OpenTelemetry-based emission of ``track`` / ``feedback`` /
-``identify`` events, install the ``[otel]`` extra and use
-:class:`introspection_sdk.IntrospectionLogs`. For trace export
-(span / tracing processors, LLM SDK instrumentors), pick the relevant
-processors from :mod:`introspection_sdk.otel`.
+Optional OTLP logs and traces are available through the ``[otel]`` extra and
+remain independent of this execution client.
 """
 
 from __future__ import annotations

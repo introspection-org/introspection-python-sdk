@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "introspection-examples"
 version = "0.1.0"
-description = "Examples demonstrating Introspection SDK integrations"
+description = "Examples for the Introspection runner execution SDK"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"

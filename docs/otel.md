@@ -58,7 +58,7 @@ logs.shutdown()
 
 ---
 
-## 2. Traces with `IntrospectionSpanProcessor`
+## 2. Traces over OTLP
 
 Install the `[otel]` extra:
 
@@ -76,7 +76,8 @@ provider = TracerProvider()
 provider.add_span_processor(IntrospectionSpanProcessor())
 ```
 
-Framework-specific instrumentors are experimental.
+This telemetry surface is independent of runner execution and accepts standard
+OpenTelemetry spans.
 
 ## Environment variables (OTel)
 

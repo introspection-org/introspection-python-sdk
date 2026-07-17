@@ -2,24 +2,12 @@
 
 Default install ships REST-only — :class:`IntrospectionClient`
 exposes ``.runtime(...)`` / ``.experiment(...)`` plus the
-:class:`~introspection_sdk.runner.Runner` flow for tasks and files.
+:class:`~introspection_sdk.runner.Runner` execution flow for tasks, files,
+shares, conversations, events, and metrics.
 
 Install the ``[otel]`` extra (``pip install introspection-sdk[otel]``)
-to add the OpenTelemetry surface:
-
-* :class:`IntrospectionLogs` — ``track`` / ``feedback`` / ``identify``
-  emitted as OTLP log records.
-* :class:`IntrospectionSpanProcessor` /
-  :class:`IntrospectionTracingProcessor` /
-  :class:`ClaudeTracingProcessor` — attach to your TracerProvider.
-* :class:`AnthropicInstrumentor` / :class:`GeminiInstrumentor` —
-  auto-instrumentation for LLM SDKs.
-* :class:`IntrospectionCallbackHandler` — LangChain integration.
-* :class:`IntrospectionConversationsSession` — OpenAI Agents
-  conversation session helper.
-
-The three surfaces (REST client, logs, traces) are independent —
-construct only what you need.
+to add optional OTLP logs and traces. Runner execution, logs, and traces are
+independent; construct only what you need.
 """
 
 from __future__ import annotations
@@ -235,7 +223,7 @@ __all__ = [
     "authorization_code_token",
     "service_account_token",
     "token_exchange",
-    # OTel-only (lazy-loaded; require `[otel]` extra)
+    # Optional telemetry and legacy compatibility exports (`[otel]` extra).
     "AdvancedOptions",
     "AnthropicInstrumentor",
     "Attr",

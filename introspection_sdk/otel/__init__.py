@@ -4,22 +4,7 @@ Requires the ``[otel]`` install extra::
 
     pip install introspection-sdk[otel]
 
-Exports the independent telemetry surfaces:
-
-* :class:`IntrospectionLogs` — OTLP logs emitter for
-  ``track`` / ``feedback`` / ``identify``.
-* :class:`IntrospectionSpanProcessor` / :class:`IntrospectionTracingProcessor` /
-  :class:`ClaudeTracingProcessor` — span/trace processors that
-  forward to the Introspection backend.
-* :class:`AnthropicInstrumentor` / :class:`GeminiInstrumentor` —
-  auto-instrumentation for popular LLM SDKs.
-* :class:`IntrospectionCallbackHandler` — LangChain callback handler.
-* :class:`IntrospectionConversationsSession` — OpenAI Agents
-  conversation session helper.
-
-Also exposes the one-liner ``init()`` entry point that auto-discovers
-installed LLM frameworks and wires them into a shared
-:class:`~opentelemetry.sdk.trace.TracerProvider`.
+Provides independent OTLP log and trace export.
 """
 
 from __future__ import annotations
@@ -109,10 +94,10 @@ def init(
     auto_discover: bool = True,
     advanced: AdvancedOptions | None = None,
 ) -> TracerProvider:
-    """Detect installed LLM frameworks and wire them into one shared provider.
+    """Configure the optional OTLP telemetry provider and logs client.
 
     Idempotent: repeated calls return the already-configured provider without
-    re-installing integrations.
+    reconfiguring telemetry.
 
     Args:
         token: Auth token. Falls back to ``INTROSPECTION_TOKEN``.
@@ -120,9 +105,8 @@ def init(
             ``INTROSPECTION_SERVICE_NAME``, then ``"introspection"``.
         base_url: API base URL. Falls back to ``INTROSPECTION_BASE_OTEL_URL``.
         tracer_provider: Use this provider instead of creating/finding one.
-        integrations: Extra integrations to install beyond auto-discovery.
-        auto_discover: Install every importable built-in integration
-            (default True). Set False to install only ``integrations``.
+        integrations: Experimental compatibility overrides.
+        auto_discover: Enable experimental compatibility discovery.
         advanced: Advanced configuration (custom exporter, headers, etc.).
     """
     if _state["provider"] is not None:

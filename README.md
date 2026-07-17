@@ -8,7 +8,7 @@
   </a>
 </div>
 
-<h4 align="center">Deploy vertical agents that improve in production.</h4>
+<h4 align="center">Run vertical agents and learn from production feedback.</h4>
 
 <div align="center">
   <a href="https://introspection.dev"><img src="https://img.shields.io/badge/website-introspection.dev-blue" alt="Website"></a>
@@ -20,15 +20,14 @@
 <br>
 
 [Introspection](https://introspection.dev) is the managed cloud for vertical
-agents, powered by Pi. Define an agent as a recipe, deploy it to a
-commit-pinned runtime, and improve it in production with conversations,
-patterns, judges, and experiments.
+agents, powered by Pi.
 
 This is the Python execution SDK. Use it to open a runner against a configured
 runtime or experiment, start and stream tasks, and work with files,
-conversations, events, metrics, and shares. It provides both an async-first client and a matching
-synchronous client. See the [SDK overview](https://docs.introspection.dev/sdk)
-and [Python guide](https://docs.introspection.dev/sdk/python) for the product
+conversations, events, metrics, and shares. It provides both an async-first
+client and a matching synchronous client. See the
+[SDK overview](https://docs.introspection.dev/sdk) and
+[Python guide](https://docs.introspection.dev/sdk/python) for the product
 workflow.
 
 ## Install
@@ -39,17 +38,18 @@ uv add introspection-sdk
 pip install introspection-sdk
 ```
 
-The default install is everything you need for the Introspection API
-(runtimes, tasks, files, conversations) — no OpenTelemetry pulled in. To also
-emit analytics events and export traces, add the `[otel]` extra; see
-[**OpenTelemetry**](#opentelemetry-analytics--tracing) below.
+The default install contains the runner execution API — no OpenTelemetry is
+pulled in. To also emit analytics events and export traces over OTLP, add the
+`[otel]` extra; see
+[**OpenTelemetry**](#opentelemetry-optional-otlp-logs-and-traces) below.
 
-## Introspection API (runtimes, tasks, files)
+## Runner execution API
 
-The main Introspection API. Open a `Runner` against a runtime, spawn tasks, and
-stream their output; manage `files` and read `conversations` on the same Runner.
-`AsyncIntrospectionClient` is the recommended entry point — everything that
-touches the network is awaitable, and run output streams with `async for`:
+Open a `Runner` against a configured runtime or experiment, spawn tasks, and
+stream their output. The same Runner provides tasks, files, shares,
+conversations, events, and metrics. `AsyncIntrospectionClient` is the
+recommended entry point — everything that touches the network is awaitable,
+and run output streams with `async for`:
 
 ```python
 import asyncio
@@ -109,10 +109,11 @@ once the budget is spent the error surfaces as usual (a `429` as a
 async client. Streaming has its own resume budget (above); multipart uploads
 are not auto-retried.
 
-A Runner exposes three DP-bound namespaces side by side: `runner.tasks`,
-`runner.files`, and the read-only `runner.conversations`. The conversations
-namespace lists conversation summaries (`runner.conversations.list()`), loads
-the latest LLM turn of a conversation as a Responses-API-style view
+A Runner exposes six DP-bound namespaces side by side: `runner.tasks`,
+`runner.files`, `runner.shares`, `runner.conversations`, `runner.events`, and
+`runner.metrics`. Conversations, events, and metrics are read-only. The
+conversations namespace lists summaries (`runner.conversations.list()`), loads
+the latest LLM turn as a Responses-API-style view
 (`await runner.conversations.retrieve(conversation_id)`), and walks a
 conversation's per-turn items (`runner.conversations.items.list(...)`).
 
@@ -201,21 +202,19 @@ runner.close()
 client.shutdown()
 ```
 
-## OpenTelemetry (analytics & tracing)
+## OpenTelemetry (optional OTLP logs and traces)
 
 Two optional OTel-based surfaces live behind the `[otel]` extra, independent of
-the Introspection API above:
+the runner execution API above:
 
 ```shell
 pip install 'introspection-sdk[otel]'
 ```
 
 - **Analytics events** — `track` / `feedback` / `identify` via `IntrospectionLogs`.
-- **Traces** — export OpenTelemetry spans with `IntrospectionSpanProcessor`.
+- **Traces** — export OpenTelemetry spans over OTLP.
 
 Both are documented in [**`docs/otel.md`**](docs/otel.md).
-
-Support for other LLM frameworks is experimental.
 
 ## Environment variables
 
@@ -226,7 +225,7 @@ export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
 # The project is scoped by the API key. Pass project per call only to override
 # it with a slug or UUID.
 
-# OTel (IntrospectionLogs + span processors + instrumentors) — see docs/otel.md
+# Optional OTLP logs and traces — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional
 export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
 ```
