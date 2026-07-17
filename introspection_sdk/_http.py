@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import AsyncIterator, Iterator, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -34,6 +35,20 @@ from introspection_sdk._errors import (
 DEFAULT_MAX_RETRIES = 2
 #: Default base step (seconds) of the capped-exponential retry backoff.
 DEFAULT_RETRY_BASE = 0.5
+
+
+@dataclass(frozen=True)
+class RawResponse:
+    """A raw response body plus headers, returned by ``request(expect="raw")``.
+
+    Used by the Arrow list-read path, where the row values arrive in the
+    columnar body and pagination metadata (``X-Next-Cursor`` /
+    ``X-Result-Count`` / ``X-Truncated`` / ``X-Total-Count``) moves to
+    response headers. Keeps ``httpx`` off the resource layer's surface.
+    """
+
+    content: bytes
+    headers: Mapping[str, str]
 
 
 class _HttpClient:
@@ -80,9 +95,13 @@ class _HttpClient:
         json: Any = None,
         files: Mapping[str, Any] | None = None,
         data: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
         expect: str = "json",
     ) -> Any:
-        headers = dict(self._auth_headers)
+        req_headers = dict(self._auth_headers)
+        if headers:
+            req_headers.update(headers)
+        headers = req_headers
         # Auto-retry retryable statuses, honouring ``Retry-After`` as a
         # backoff floor when present: ``429`` on any method (the request was
         # rejected and never processed, so retrying is side-effect-safe for
@@ -122,6 +141,8 @@ class _HttpClient:
                 return None
             if expect == "bytes":
                 return res.content
+            if expect == "raw":
+                return RawResponse(content=res.content, headers=res.headers)
             return res.json()
 
     def stream_bytes(self, path: str) -> Iterator[bytes]:
@@ -204,9 +225,13 @@ class _AsyncHttpClient:
         json: Any = None,
         files: Mapping[str, Any] | None = None,
         data: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
         expect: str = "json",
     ) -> Any:
-        headers = dict(self._auth_headers)
+        req_headers = dict(self._auth_headers)
+        if headers:
+            req_headers.update(headers)
+        headers = req_headers
         # See the sync twin: transparent retry on ``429`` (any method) and
         # ``502``/``503``/``504`` (``GET`` only), honouring ``Retry-After``
         # as a backoff floor; multipart uploads are excluded.
@@ -244,6 +269,8 @@ class _AsyncHttpClient:
                 return None
             if expect == "bytes":
                 return res.content
+            if expect == "raw":
+                return RawResponse(content=res.content, headers=res.headers)
             return res.json()
 
     async def stream_bytes(self, path: str) -> AsyncIterator[bytes]:

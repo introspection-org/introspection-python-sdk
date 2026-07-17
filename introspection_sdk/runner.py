@@ -23,11 +23,15 @@ from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.runner_resources import (
     AsyncConversations,
+    AsyncEvents,
     AsyncFiles,
+    AsyncMetrics,
     AsyncShares,
     AsyncTasks,
     Conversations,
+    Events,
     Files,
+    Metrics,
     Shares,
     Tasks,
 )
@@ -66,6 +70,8 @@ class Runner:
         self._tasks = Tasks(self._http)
         self._files = Files(self._http)
         self._conversations = Conversations(self._http)
+        self._events = Events(self._http)
+        self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _HttpClient:
@@ -101,6 +107,18 @@ class Runner:
         """Read-only DP ``/v1/conversations`` namespace bound to this Runner."""
         self._check_open()
         return self._conversations
+
+    @property
+    def events(self) -> Events:
+        """Read-only DP ``/v1/events`` namespace bound to this Runner."""
+        self._check_open()
+        return self._events
+
+    @property
+    def metrics(self) -> Metrics:
+        """Read-only DP ``/v1/metrics`` namespace bound to this Runner."""
+        self._check_open()
+        return self._metrics
 
     @property
     def shares(self) -> Shares:
@@ -153,6 +171,8 @@ class Runner:
         self._tasks = Tasks(self._http)
         self._files = Files(self._http)
         self._conversations = Conversations(self._http)
+        self._events = Events(self._http)
+        self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
         try:
             old_http.close()
@@ -209,6 +229,8 @@ class AsyncRunner:
         self._tasks = AsyncTasks(self._http)
         self._files = AsyncFiles(self._http)
         self._conversations = AsyncConversations(self._http)
+        self._events = AsyncEvents(self._http)
+        self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
@@ -245,6 +267,18 @@ class AsyncRunner:
         Runner."""
         self._check_open()
         return self._conversations
+
+    @property
+    def events(self) -> AsyncEvents:
+        """Read-only DP ``/v1/events`` namespace bound to this Runner."""
+        self._check_open()
+        return self._events
+
+    @property
+    def metrics(self) -> AsyncMetrics:
+        """Read-only DP ``/v1/metrics`` namespace bound to this Runner."""
+        self._check_open()
+        return self._metrics
 
     @property
     def shares(self) -> AsyncShares:
@@ -297,6 +331,8 @@ class AsyncRunner:
         self._tasks = AsyncTasks(self._http)
         self._files = AsyncFiles(self._http)
         self._conversations = AsyncConversations(self._http)
+        self._events = AsyncEvents(self._http)
+        self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
         try:
             await old_http.aclose()

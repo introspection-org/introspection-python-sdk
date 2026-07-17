@@ -79,7 +79,7 @@ def test_shutdown_is_safe_to_call_twice():
 def test_shutdown_swallows_close_errors():
     client = IntrospectionClient(token="t")
     raising = _RaisingHttp()
-    client._http = raising  # type: ignore[assignment]
+    client._http = raising
     client.shutdown()  # best-effort: the close error is swallowed
     assert raising.closed
 
@@ -88,7 +88,7 @@ def test_shutdown_swallows_close_errors():
 async def test_async_shutdown_swallows_close_errors():
     client = AsyncIntrospectionClient(token="t")
     raising = _RaisingHttp()
-    client._http = raising  # type: ignore[assignment]
+    client._http = raising
     await client.shutdown()  # best-effort: the aclose error is swallowed
     assert raising.closed
 
@@ -97,5 +97,5 @@ async def test_async_shutdown_swallows_close_errors():
 async def test_async_context_manager_shuts_down_on_exit():
     async with AsyncIntrospectionClient(token="t") as client:
         assert isinstance(client, AsyncIntrospectionClient)
-        client._http = _RaisingHttp()  # type: ignore[assignment]
+        client._http = _RaisingHttp()
     # Exiting the block calls shutdown(); the close error is swallowed.

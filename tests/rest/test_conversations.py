@@ -11,16 +11,19 @@ Driven through the offline :class:`FakeAPI` transport from
 
 from __future__ import annotations
 
+import io
 from typing import Any
 from uuid import UUID
 
 import httpx
+import pyarrow as pa
 import pytest
 
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     Conversations,
 )
+from introspection_sdk.runner_resources._reads import ARROW_STREAM_MEDIA_TYPE
 from introspection_sdk.schemas.conversations import ConversationSummary
 from introspection_sdk.schemas.genai import (
     TextPart,
@@ -244,6 +247,145 @@ def test_iter_drives_cursor_next_until_exhausted(fake_api: FakeAPI):
     assert summaries[1].trace_id == "trace-2"
     assert len(fake_api.requests) == 2
     assert fake_api.requests[1].params.get("next") == "cursor-2"
+
+
+# --- Arrow decode path ----------------------------------------------
+
+
+def _arrow_stream(rows: list[dict[str, Any]]) -> bytes:
+    table = pa.Table.from_pylist(rows)
+    sink = io.BytesIO()
+    with pa.ipc.new_stream(sink, table.schema) as writer:
+        writer.write_table(table)
+    return sink.getvalue()
+
+
+def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
+    body = _arrow_stream(
+        [SUMMARY_FIXTURE, {**SUMMARY_FIXTURE, "trace_id": "trace-2"}]
+    )
+    fake_api.add(
+        "GET",
+        "/v1/conversations",
+        content=body,
+        headers={
+            "X-Next-Cursor": "cursor-2",
+            "X-Result-Count": "2",
+            "X-Total-Count": "9",
+            "X-Truncated": "true",
+        },
+    )
+    convos = _conversations(fake_api)
+
+    page = convos.list(format="arrow").page()
+
+    # Accept header negotiated the Arrow stream.
+    assert (
+        fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
+    )
+    assert [s.trace_id for s in page.records] == ["trace-1", "trace-2"]
+    assert isinstance(page.records[0], ConversationSummary)
+    assert page.records[0].total_tokens == 30
+    assert page.next == "cursor-2"
+    assert page.count == 2
+    assert page.total_count == 9
+
+
+async def test_async_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
+    body = _arrow_stream([SUMMARY_FIXTURE])
+    fake_api.add(
+        "GET",
+        "/v1/conversations",
+        content=body,
+        headers={"X-Result-Count": "1", "X-Total-Count": "1"},
+    )
+    convos = AsyncConversations(fake_api.async_client())
+
+    page = await convos.list(format="arrow").page()
+
+    assert (
+        fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
+    )
+    assert [s.trace_id for s in page.records] == ["trace-1"]
+    assert page.count == 1
+    assert page.total_count == 1
+    assert page.next is None
+
+
+# --- columnar .arrow() accessor -------------------------------------
+
+
+def test_arrow_accessor_yields_tables_per_page(fake_api: FakeAPI):
+    page1 = _arrow_stream(
+        [SUMMARY_FIXTURE, {**SUMMARY_FIXTURE, "trace_id": "trace-2"}]
+    )
+    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "trace_id": "trace-3"}])
+    responses = iter(
+        [
+            httpx.Response(
+                200, content=page1, headers={"X-Next-Cursor": "cursor-2"}
+            ),
+            httpx.Response(200, content=page2, headers={}),
+        ]
+    )
+    fake_api.add_handler(
+        "GET", "/v1/conversations", lambda _req: next(responses)
+    )
+    convos = _conversations(fake_api)
+
+    tables = list(convos.arrow(limit=2, environment="production"))
+
+    assert [t.num_rows for t in tables] == [2, 1]
+    assert all(isinstance(t, pa.Table) for t in tables)
+    req = fake_api.requests[0]
+    assert req.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
+    assert req.params.get("environment") == "production"
+    assert fake_api.requests[1].params.get("next") == "cursor-2"
+
+
+def test_arrow_accessor_read_all_concatenates(fake_api: FakeAPI):
+    page1 = _arrow_stream([SUMMARY_FIXTURE])
+    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "trace_id": "trace-2"}])
+    responses = iter(
+        [
+            httpx.Response(
+                200, content=page1, headers={"X-Next-Cursor": "cursor-2"}
+            ),
+            httpx.Response(200, content=page2, headers={}),
+        ]
+    )
+    fake_api.add_handler(
+        "GET", "/v1/conversations", lambda _req: next(responses)
+    )
+    convos = _conversations(fake_api)
+
+    table = convos.arrow().read_all()
+
+    assert isinstance(table, pa.Table)
+    assert table.num_rows == 2
+    assert table.column("trace_id").to_pylist() == ["trace-1", "trace-2"]
+
+
+async def test_async_arrow_accessor_read_all(fake_api: FakeAPI):
+    page1 = _arrow_stream([SUMMARY_FIXTURE])
+    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "trace_id": "trace-2"}])
+    responses = iter(
+        [
+            httpx.Response(
+                200, content=page1, headers={"X-Next-Cursor": "cursor-2"}
+            ),
+            httpx.Response(200, content=page2, headers={}),
+        ]
+    )
+    fake_api.add_handler(
+        "GET", "/v1/conversations", lambda _req: next(responses)
+    )
+    convos = AsyncConversations(fake_api.async_client())
+
+    table = await convos.arrow().read_all()
+
+    assert table.num_rows == 2
+    assert table.column("trace_id").to_pylist() == ["trace-1", "trace-2"]
 
 
 # --- items.list()/iter() (after/has_more paging) -------------------

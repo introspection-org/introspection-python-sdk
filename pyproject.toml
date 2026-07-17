@@ -16,6 +16,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Opt-in dependency for the Arrow list-read decode path (`format="arrow"`).
+# Kept out of the core deps so the default REST install stays light; the JSON
+# path never imports pyarrow. Install with `pip install introspection-sdk[arrow]`.
+arrow = ["pyarrow>=14.0.0"]
 # Install with `pip install introspection-sdk[otel]` to enable the
 # OpenTelemetry exporter, the span / tracing processors, the LLM SDK
 # instrumentors (Anthropic / Gemini / Claude / LangChain), and the
