@@ -198,7 +198,9 @@ class ExperimentHandle:
         *,
         identity: RunnerIdentity | dict[str, Any] | None = None,
         caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
         ttl_seconds: int | None = 3600,
+        scope: str | None = None,
     ) -> Runner:
         ident: RunnerIdentity | None
         if identity is None:
@@ -215,7 +217,11 @@ class ExperimentHandle:
         else:
             call = RunCaller.model_validate(caller)
         options = RunRequest(
-            identity=ident, caller=call, ttl_seconds=ttl_seconds
+            identity=ident,
+            caller=call,
+            agent_name=agent_name,
+            ttl_seconds=ttl_seconds,
+            scope=scope,
         )
         eid = self._experiment_id
 
@@ -416,7 +422,9 @@ class AsyncExperimentHandle:
         *,
         identity: RunnerIdentity | dict[str, Any] | None = None,
         caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
         ttl_seconds: int | None = 3600,
+        scope: str | None = None,
     ) -> AsyncRunner:
         ident: RunnerIdentity | None
         if identity is None:
@@ -433,7 +441,11 @@ class AsyncExperimentHandle:
         else:
             call = RunCaller.model_validate(caller)
         options = RunRequest(
-            identity=ident, caller=call, ttl_seconds=ttl_seconds
+            identity=ident,
+            caller=call,
+            agent_name=agent_name,
+            ttl_seconds=ttl_seconds,
+            scope=scope,
         )
         eid = self._experiment_id
 

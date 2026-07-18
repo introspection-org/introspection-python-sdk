@@ -18,6 +18,7 @@ from introspection_sdk.schemas.runtimes import RuntimeCreate
 from .conftest import (
     PROJECT_ID,
     RECIPE_ID,
+    REPOSITORY_ID,
     RUNTIME_ID,
     FakeAPI,
     paginated,
@@ -204,14 +205,28 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
     )
     runtimes = _runtimes(fake_api)
     runner = runtimes(runtime_group_id).run(
-        identity={"user_id": "u1"}, caller={"locale": "en"}
+        identity={"user_id": "u1"},
+        caller={"locale": "en"},
+        agent_name="support",
+        scope="tasks:read tasks:write",
     )
     assert runner.session_id == "sess-1"
     assert runner.dp_endpoint == "https://dp.test"
     body = fake_api.last_request.json()
     assert body["identity"]["user_id"] == "u1"
     assert body["caller"]["locale"] == "en"
+    assert body["agent_name"] == "support"
     assert body["ttl_seconds"] == 3600
+    assert body["scope"] == "tasks:read tasks:write"
+    assert str(runner.context.runtime_group_id) == (
+        "88888888-8888-8888-8888-888888888888"
+    )
+    assert str(runner.context.recipe_repository_id) == REPOSITORY_ID
+    assert runner.context.recipe_git_commit_sha == "abc123"
+    assert runner.context.agent_name == "agent"
+    # The pre-flat nested summary remains available for compatibility.
+    assert runner.context.recipe is not None
+    assert runner.context.recipe.git_ref == "main"
 
 
 def test_pin_injects_recipe_id_on_run(fake_api: FakeAPI):

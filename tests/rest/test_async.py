@@ -144,6 +144,7 @@ async def test_tasks_create_and_get(fake_api: FakeAPI):
     assert str(res.task.id) == TASK_ID
     got = await tasks.get(TASK_ID)
     assert got.title == "Summarize repo"
+    assert got.identity_key == "user:u-1"
 
 
 async def test_tasks_start_returns_async_handle(fake_api: FakeAPI):
@@ -229,6 +230,35 @@ async def test_run_handle_cancel(fake_api: FakeAPI):
     )
     cancelled = await handle.cancel()
     assert cancelled.id == "run-1"
+    assert fake_api.last_request.json() is None
+
+
+async def test_run_handle_abort_and_drain(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs/run-1/cancel",
+        json_body=task_cancel_response("run-1"),
+    )
+    handle = await AsyncTasks(fake_api.async_client()).runs.create(
+        TASK_ID, message="x"
+    )
+
+    assert (await handle.cancel({"mode": "drain"})).id == "run-1"
+    assert fake_api.last_request.json() == {"mode": "drain"}
+
+    assert (await handle.cancel({"mode": "abort"})).id == "run-1"
+    assert fake_api.last_request.json() == {"mode": "abort"}
+
+    assert (
+        await handle.cancel({"mode": "drain", "drain_within_seconds": 60})
+    ).id == "run-1"
+    assert fake_api.last_request.json() == {
+        "mode": "drain",
+        "drain_within_seconds": 60,
+    }
 
 
 # --- AsyncFiles ------------------------------------------------------
@@ -307,10 +337,16 @@ async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
         json_body=runner_spec_payload(),
     )
     runtimes = AsyncRuntimes(fake_api.async_client())
-    runner = await runtimes(runtime_group_id).run(identity={"user_id": "u1"})
+    runner = await runtimes(runtime_group_id).run(
+        identity={"user_id": "u1"},
+        agent_name="support",
+        scope="tasks:read",
+    )
     assert isinstance(runner, AsyncRunner)
     assert runner.dp_endpoint == "https://dp.test"
     assert fake_api.requests[0].params.get("runtime") == runtime_group_id
+    assert fake_api.last_request.json()["agent_name"] == "support"
+    assert fake_api.last_request.json()["scope"] == "tasks:read"
     await runner.close()
 
 
@@ -339,8 +375,12 @@ async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
         json_body=runner_spec_payload(),
     )
     experiments = AsyncExperiments(fake_api.async_client())
-    runner = await experiments(UUID(EXPERIMENT_ID)).run()
+    runner = await experiments(UUID(EXPERIMENT_ID)).run(
+        agent_name="researcher", scope="tasks:read"
+    )
     assert isinstance(runner, AsyncRunner)
+    assert fake_api.last_request.json()["agent_name"] == "researcher"
+    assert fake_api.last_request.json()["scope"] == "tasks:read"
     await runner.close()
 
 

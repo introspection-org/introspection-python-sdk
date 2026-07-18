@@ -42,6 +42,7 @@ from introspection_sdk.schemas.recipes import Recipe
 from introspection_sdk.schemas.runner import (
     RunnerContext,
     RunnerDeployment,
+    RunnerRecipeSummary,
     RunnerSpec,
 )
 from introspection_sdk.schemas.runtimes import Runtime
@@ -254,7 +255,19 @@ def runner_spec_payload(**over: Any) -> RunnerSpec:
         "session_token": "runner-jwt",
         "expires_at": _NOW_DT,
         "runtime_context": RunnerContext(
-            runtime_id=UUID(RUNTIME_ID), arm_label="control"
+            runtime_id=UUID(RUNTIME_ID),
+            runtime_group_id=UUID("88888888-8888-8888-8888-888888888888"),
+            recipe_id=UUID(RECIPE_ID),
+            recipe_repository_id=UUID(REPOSITORY_ID),
+            recipe_git_ref="main",
+            recipe_git_commit_sha="abc123",
+            recipe=RunnerRecipeSummary(
+                repository_id=UUID(REPOSITORY_ID),
+                git_ref="main",
+                git_commit_sha="abc123",
+            ),
+            arm_label="control",
+            agent_name="agent",
         ),
     }
     defaults.update(over)
@@ -270,6 +283,7 @@ def task_payload(**over: Any) -> Task:
         "updated_at": _NOW_DT,
         "title": "Summarize repo",
         "status": TaskStatus.PENDING,
+        "identity_key": "user:u-1",
     }
     defaults.update(over)
     return Task(**defaults)

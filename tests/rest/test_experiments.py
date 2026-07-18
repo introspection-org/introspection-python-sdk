@@ -100,9 +100,17 @@ def test_handle_run(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runner = _experiments(fake_api)(UUID(EXPERIMENT_ID)).run(ttl_seconds=60)
+    runner = _experiments(fake_api)(UUID(EXPERIMENT_ID)).run(
+        agent_name="researcher",
+        ttl_seconds=60,
+        scope="tasks:read",
+    )
     assert isinstance(runner, Runner)
-    assert fake_api.last_request.json()["ttl_seconds"] == 60
+    assert fake_api.last_request.json() == {
+        "agent_name": "researcher",
+        "ttl_seconds": 60,
+        "scope": "tasks:read",
+    }
 
 
 def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):

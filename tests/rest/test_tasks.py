@@ -46,6 +46,7 @@ def test_create_serialises_mode_enum(fake_api: FakeAPI):
         prompt="hello", mode=TaskMode.INTROSPECT, metadata=None
     )
     assert str(res.task.id) == TASK_ID
+    assert res.task.identity_key == "user:u-1"
     body = fake_api.last_request.json()
     assert body["mode"] == "introspect"
     assert "metadata" not in body  # None dropped
@@ -73,7 +74,9 @@ def test_start_forwards_idle_timeout(fake_api: FakeAPI):
 
 def test_get(fake_api: FakeAPI):
     fake_api.add("GET", f"/v1/tasks/{TASK_ID}", json_body=task_payload())
-    assert _tasks(fake_api).get(TASK_ID).title == "Summarize repo"
+    task = _tasks(fake_api).get(TASK_ID)
+    assert task.title == "Summarize repo"
+    assert task.identity_key == "user:u-1"
 
 
 def test_update(fake_api: FakeAPI):
@@ -211,6 +214,36 @@ def test_run_handle_cancel(fake_api: FakeAPI):
     )
     handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
     assert handle.cancel().id == "run-1"
+    assert fake_api.last_request.json() is None
+
+
+def test_run_handle_abort_and_drain(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs/run-1/cancel",
+        json_body=task_cancel_response("run-1"),
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs",
+        json_body=task_run_response(),
+    )
+    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+
+    assert handle.cancel({"mode": "drain"}).id == "run-1"
+    assert fake_api.last_request.json() == {"mode": "drain"}
+
+    assert handle.cancel({"mode": "abort"}).id == "run-1"
+    assert fake_api.last_request.json() == {"mode": "abort"}
+
+    assert (
+        handle.cancel({"mode": "drain", "drain_within_seconds": 60}).id
+        == "run-1"
+    )
+    assert fake_api.last_request.json() == {
+        "mode": "drain",
+        "drain_within_seconds": 60,
+    }
 
 
 def test_run_handle_stream_and_text(fake_api: FakeAPI):

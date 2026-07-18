@@ -54,14 +54,17 @@ def _create_body(
     resource_type: ShareResourceType | str,
     resource_id: str,
     granted_member_id: str | None,
+    granted_identity_key: str | None,
 ) -> dict[str, Any]:
     # Loose public inputs (plain str / enum) are coerced by validation:
-    # str -> ShareResourceType, str -> UUID for granted_member_id.
+    # str -> ShareResourceType, str -> UUID for granted_member_id. The typed
+    # request also enforces that member and identity targets are exclusive.
     return ShareCreateRequest.model_validate(
         {
             "resource_type": resource_type,
             "resource_id": resource_id,
             "granted_member_id": granted_member_id,
+            "granted_identity_key": granted_identity_key,
         }
     ).model_dump(mode="json", exclude_none=True)
 
@@ -107,6 +110,7 @@ class Shares:
         resource_type: ShareResourceType | str,
         resource_id: str,
         granted_member_id: str | None = None,
+        granted_identity_key: str | None = None,
     ) -> ResourceShare:
         """Create a grant. The caller must own the target resource."""
         payload = self._http.request(
@@ -116,6 +120,7 @@ class Shares:
                 resource_type=resource_type,
                 resource_id=resource_id,
                 granted_member_id=granted_member_id,
+                granted_identity_key=granted_identity_key,
             ),
         )
         return ResourceShare.model_validate(payload)
@@ -169,6 +174,7 @@ class AsyncShares:
         resource_type: ShareResourceType | str,
         resource_id: str,
         granted_member_id: str | None = None,
+        granted_identity_key: str | None = None,
     ) -> ResourceShare:
         """Create a grant. The caller must own the target resource."""
         payload = await self._http.request(
@@ -178,6 +184,7 @@ class AsyncShares:
                 resource_type=resource_type,
                 resource_id=resource_id,
                 granted_member_id=granted_member_id,
+                granted_identity_key=granted_identity_key,
             ),
         )
         return ResourceShare.model_validate(payload)

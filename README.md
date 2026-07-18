@@ -59,7 +59,10 @@ from introspection_sdk import AsyncIntrospectionClient
 
 async def main() -> None:
     async with AsyncIntrospectionClient() as client:  # token from INTROSPECTION_TOKEN
-        runner = await client.runtimes("customer-agent").run()
+        runner = await client.runtimes("customer-agent").run(
+            agent_name="support-agent",
+            scope="tasks:read tasks:write",
+        )
 
         async with runner:
             run = await runner.tasks.start(prompt="Say hello in one sentence.")
@@ -70,6 +73,16 @@ async def main() -> None:
 
 asyncio.run(main())
 ```
+
+Runner creation also accepts `identity`, `caller`, and `ttl_seconds`. The
+resolved `runner.context` includes the runtime or experiment selection,
+runtime group, flat recipe revision fields, agent name, identity, and caller.
+
+Existing bodyless `await run.cancel()` remains supported and aborts
+immediately. Pass `{"mode": "abort"}` to make that explicit, or
+`{"mode": "drain", "drain_within_seconds": 60}` for graceful teardown.
+Interrupted runs resume through
+`await runner.tasks.runs.resume(task_id, resume=entries)`.
 
 ### Resilient streaming
 
