@@ -368,6 +368,17 @@ async def test_runtime_handle_resolves_slug(fake_api: FakeAPI):
     await runner.close()
 
 
+async def test_async_runtime_surface_excludes_operator_controls(
+    fake_api: FakeAPI,
+):
+    runtimes = AsyncRuntimes(fake_api.async_client())
+    handle = runtimes("checkout-agent")
+    for method in ("create", "update", "yank", "unyank"):
+        assert not hasattr(runtimes, method)
+    for method in ("pin", "activate"):
+        assert not hasattr(handle, method)
+
+
 async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
     fake_api.add(
         "POST",

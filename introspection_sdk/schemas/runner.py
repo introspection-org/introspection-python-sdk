@@ -78,7 +78,6 @@ class RunRequest(_ApiModel):
     agent_name: str | None = None
     ttl_seconds: int | None = None
     scope: str | None = None
-    recipe_id: UUID | None = None
 
 
 # Deprecated aliases — kept for one release. Prefer :class:`RunRequest`.

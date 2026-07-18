@@ -69,30 +69,8 @@ class Runtime(_ApiModel):
     yanked_reason: str | None = None
 
 
-class RuntimeCreate(_ApiModel):
-    project: str | UUID
-    name: str
-    slug: str | None = None
-    recipe_id: UUID | None = None
-    description: str | None = None
-    metadata: dict[str, Any] | None = None
-    is_active: bool | None = None
-    llm_mode: RuntimeLlmMode = RuntimeLlmMode.MANAGED
-
-
-class RuntimeUpdate(_ApiModel):
-    name: str | None = None
-    recipe_id: UUID | None = None
-    description: str | None = None
-    metadata: dict[str, Any] | None = None
-    is_active: bool | None = None
-    llm_mode: RuntimeLlmMode | None = None
-
-
 __all__ = [
     "Runtime",
-    "RuntimeCreate",
     "RuntimeLlmMode",
     "RuntimeResolutionMode",
-    "RuntimeUpdate",
 ]
