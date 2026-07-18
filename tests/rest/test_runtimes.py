@@ -12,17 +12,13 @@ import pytest
 
 from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner import Runner
-from introspection_sdk.schemas.recipes import Recipe
-from introspection_sdk.schemas.runtimes import RuntimeCreate
 
 from .conftest import (
     PROJECT_ID,
-    RECIPE_ID,
     REPOSITORY_ID,
     RUNTIME_ID,
     FakeAPI,
     paginated,
-    recipe_payload,
     runner_spec_payload,
     runtime_payload,
     to_jsonable,
@@ -75,36 +71,6 @@ def test_get_includes_project_param(fake_api: FakeAPI):
     rt = _runtimes(fake_api).get(UUID(RUNTIME_ID), project=PROJECT_ID)
     assert str(rt.id) == RUNTIME_ID
     assert fake_api.last_request.params.get("project") == PROJECT_ID
-
-
-def test_create_from_model_excludes_none(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/runtimes", json_body=runtime_payload())
-    _runtimes(fake_api).create(
-        RuntimeCreate(project="main", name="checkout-agent")
-    )
-    body = fake_api.last_request.json()
-    assert body["name"] == "checkout-agent"
-    assert body["project"] == "main"
-    assert "description" not in body  # exclude_none
-
-
-def test_create_from_dict_drops_none(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/runtimes", json_body=runtime_payload())
-    _runtimes(fake_api).create(
-        {"project": PROJECT_ID, "name": "x", "description": None}
-    )
-    assert "description" not in fake_api.last_request.json()
-
-
-def test_update_patches(fake_api: FakeAPI):
-    fake_api.add(
-        "PATCH",
-        f"/v1/runtimes/{RUNTIME_ID}",
-        json_body=runtime_payload(name="renamed"),
-    )
-    rt = _runtimes(fake_api).update(UUID(RUNTIME_ID), {"name": "renamed"})
-    assert rt.name == "renamed"
-    assert fake_api.last_request.method == "PATCH"
 
 
 def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):
@@ -229,39 +195,10 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
     assert runner.context.recipe.git_ref == "main"
 
 
-def test_pin_injects_recipe_id_on_run(fake_api: FakeAPI):
-    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
-        json_body=runner_spec_payload(),
-    )
-    recipe = Recipe.model_validate(recipe_payload())
+def test_runtime_surface_excludes_operator_controls(fake_api: FakeAPI):
     runtimes = _runtimes(fake_api)
-    runtimes(runtime_group_id).pin(recipe).run()
-    assert fake_api.last_request.json()["recipe_id"] == RECIPE_ID
-
-
-def test_activate(fake_api: FakeAPI):
-    runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
-        "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/activate",
-        json_body=runtime_payload(is_active=True),
-    )
-    runtimes = _runtimes(fake_api)
-    # No client-level default project: the per-call override is the only way
-    # to scope activate to a specific project.
-    rt = runtimes(runtime_group_id).activate(project=PROJECT_ID)
-    assert rt.is_active is True
-    assert fake_api.last_request.json()["project"] == PROJECT_ID
+    handle = runtimes("checkout-agent")
+    for method in ("create", "update", "yank", "unyank"):
+        assert not hasattr(runtimes, method)
+    for method in ("pin", "activate"):
+        assert not hasattr(handle, method)
