@@ -148,22 +148,10 @@ class Experiments:
         )
         return Experiment.model_validate(payload)
 
-    def _end(
-        self,
-        experiment_id: UUID,
-        *,
-        winning_arm_label: str | None = None,
-        notes: str | None = None,
-    ) -> Experiment:
-        body: dict[str, Any] = {}
-        if winning_arm_label is not None:
-            body["winning_arm_label"] = winning_arm_label
-        if notes is not None:
-            body["notes"] = notes
+    def _end(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST",
             f"/v1/experiments/{experiment_id}/end",
-            json=body,
         )
         return Experiment.model_validate(payload)
 
@@ -238,17 +226,8 @@ class ExperimentHandle:
     def start(self) -> Experiment:
         return self._experiments._start(self._experiment_id)
 
-    def end(
-        self,
-        *,
-        winning_arm_label: str | None = None,
-        notes: str | None = None,
-    ) -> Experiment:
-        return self._experiments._end(
-            self._experiment_id,
-            winning_arm_label=winning_arm_label,
-            notes=notes,
-        )
+    def end(self) -> Experiment:
+        return self._experiments._end(self._experiment_id)
 
     def cancel(self) -> Experiment:
         return self._experiments._cancel(self._experiment_id)
@@ -372,22 +351,10 @@ class AsyncExperiments:
         )
         return Experiment.model_validate(payload)
 
-    async def _end(
-        self,
-        experiment_id: UUID,
-        *,
-        winning_arm_label: str | None = None,
-        notes: str | None = None,
-    ) -> Experiment:
-        body: dict[str, Any] = {}
-        if winning_arm_label is not None:
-            body["winning_arm_label"] = winning_arm_label
-        if notes is not None:
-            body["notes"] = notes
+    async def _end(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST",
             f"/v1/experiments/{experiment_id}/end",
-            json=body,
         )
         return Experiment.model_validate(payload)
 
@@ -462,17 +429,8 @@ class AsyncExperimentHandle:
     async def start(self) -> Experiment:
         return await self._experiments._start(self._experiment_id)
 
-    async def end(
-        self,
-        *,
-        winning_arm_label: str | None = None,
-        notes: str | None = None,
-    ) -> Experiment:
-        return await self._experiments._end(
-            self._experiment_id,
-            winning_arm_label=winning_arm_label,
-            notes=notes,
-        )
+    async def end(self) -> Experiment:
+        return await self._experiments._end(self._experiment_id)
 
     async def cancel(self) -> Experiment:
         return await self._experiments._cancel(self._experiment_id)
