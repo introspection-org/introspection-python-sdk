@@ -20,6 +20,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from introspection_sdk.schemas.runner import RunCaller, RunnerIdentity
+from introspection_sdk.schemas.runtimes import RuntimeEnvironment
+
 
 class _ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -30,6 +33,10 @@ class ExperimentStatus(StrEnum):
     RUNNING = "running"
     ENDED = "ended"
     CANCELLED = "cancelled"
+
+
+class ExperimentRoutingStrategy(StrEnum):
+    BETA_SAMPLE = "beta_sample"
 
 
 class ExperimentGoalDirection(StrEnum):
@@ -95,9 +102,11 @@ class ExperimentArmCreate(_ApiModel):
 class ExperimentArm(_ApiModel):
     """One arm as returned on the experiment row."""
 
+    id: UUID
     runtime_id: UUID
     arm_label: str
     agent_overrides: dict[str, str] | None = None
+    initial_weight: int
 
 
 class Experiment(_ApiModel):
@@ -105,15 +114,23 @@ class Experiment(_ApiModel):
     org_id: UUID
     project_id: UUID
     name: str
-    runtime_group_id: UUID | None = None
-    environment: str | None = None
+    runtime_group_id: UUID
+    environment: RuntimeEnvironment = "production"
     status: ExperimentStatus = ExperimentStatus.DRAFT
-    routing_strategy: str | None = None
+    routing_strategy: ExperimentRoutingStrategy = (
+        ExperimentRoutingStrategy.BETA_SAMPLE
+    )
     arms: list[ExperimentArm] = Field(default_factory=list)
-    goal_json: ExperimentGoal | None = None
-    scoring_interval_seconds: int | None = None
-    hash_key_fields: list[str] | None = None
-    sample_rate: float | None = None
+    goal_json: ExperimentGoal
+    scoring_interval_seconds: int = 300
+    hash_key_fields: list[str] = Field(
+        default_factory=lambda: [
+            "user.id",
+            "anonymous.id",
+            "conversation.id",
+        ]
+    )
+    sample_rate: float = 1.0
     description: str | None = None
     posterior_json: dict[str, Any] | None = None
     weights_json: dict[str, int] | None = None
@@ -121,8 +138,10 @@ class Experiment(_ApiModel):
     ended_at: datetime | None = None
     halted_at: datetime | None = None
     halted_reason: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_by_member_id: UUID
+    archived_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class ExperimentCreate(_ApiModel):
@@ -130,11 +149,11 @@ class ExperimentCreate(_ApiModel):
 
     project: str | UUID
     name: str
-    runtime_group_id: UUID
+    runtime: str | UUID
     arms: list[ExperimentArmCreate] = Field(min_length=2, max_length=20)
     goal_json: ExperimentGoal
     description: str | None = None
-    environment: str | None = None
+    environment: RuntimeEnvironment | None = None
     scoring_interval_seconds: int | None = None
     hash_key_fields: list[str] | None = None
     sample_rate: float | None = None
@@ -142,7 +161,7 @@ class ExperimentCreate(_ApiModel):
 
 class ExperimentUpdate(_ApiModel):
     """PATCH /v1/experiments/{id}. Status transitions use start/end/cancel;
-    runtime_group_id and arms are immutable once running."""
+    The selected Runtime and arms are immutable once running."""
 
     name: str | None = None
     description: str | None = None
@@ -150,6 +169,22 @@ class ExperimentUpdate(_ApiModel):
     scoring_interval_seconds: int | None = None
     hash_key_fields: list[str] | None = None
     sample_rate: float | None = None
+
+
+class ExperimentRunRequest(_ApiModel):
+    """Options accepted by ``POST /v1/experiments/{id}/run``.
+
+    The Experiment owns its environment, so no environment selector is
+    accepted. ``project`` is serialized as the route query parameter.
+    """
+
+    project: str | UUID | None = None
+    identity: RunnerIdentity | None = None
+    caller: RunCaller | None = None
+    agent_name: str | None = None
+    ttl_seconds: int | None = None
+    scope: str | None = None
+    bindings_required: bool | None = None
 
 
 __all__ = [
@@ -161,6 +196,8 @@ __all__ = [
     "ExperimentGoalComponent",
     "ExperimentGoalDirection",
     "ExperimentGoalGuard",
+    "ExperimentRoutingStrategy",
+    "ExperimentRunRequest",
     "ExperimentStatus",
     "ExperimentUpdate",
     "JudgeGoalComponent",

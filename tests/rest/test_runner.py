@@ -1,8 +1,7 @@
 """Tests for :class:`introspection_sdk.runner.Runner`.
 
-The Runner owns its own HTTP client; these tests exercise its
-lifecycle and accessors without issuing requests (construction and
-``refresh`` build httpx clients lazily but make no network calls).
+The Runner owns its own HTTP client; these tests exercise its lifecycle and
+accessors without issuing requests.
 """
 
 from __future__ import annotations
@@ -24,8 +23,7 @@ def _spec(**over: Any) -> RunnerSpec:
 
 
 def _runner() -> Runner:
-    spec = _spec()
-    return Runner(spec, refresher=lambda: spec)
+    return Runner(_spec())
 
 
 def test_accessors_reflect_spec():
@@ -42,18 +40,12 @@ def test_tasks_and_files_namespaces():
     runner = _runner()
     assert isinstance(runner.tasks, Tasks)
     assert isinstance(runner.files, Files)
-
-
-def test_refresh_swaps_in_new_spec():
-    specs = iter([_spec(session_id="old"), _spec(session_id="new")])
-    first = next(specs)
-    runner = Runner(first, refresher=lambda: next(specs))
-    assert runner.session_id == "old"
-    old_tasks = runner.tasks
-    runner.refresh()
-    assert runner.session_id == "new"
-    # Namespaces are rebuilt against the fresh HTTP client.
-    assert runner.tasks is not old_tasks
+    assert runner.tasks is runner.tasks
+    assert runner.files is runner.files
+    assert runner.conversations is runner.conversations
+    assert runner.events is runner.events
+    assert runner.metrics is runner.metrics
+    assert runner.shares is runner.shares
 
 
 def test_close_blocks_further_use():
@@ -65,16 +57,9 @@ def test_close_blocks_further_use():
         _ = runner.files
 
 
-def test_refresh_after_close_raises():
-    runner = _runner()
-    runner.close()
-    with pytest.raises(IntrospectionAPIError):
-        runner.refresh()
-
-
 def test_context_manager_closes_on_exit():
     spec = _spec()
-    with Runner(spec, refresher=lambda: spec) as runner:
+    with Runner(spec) as runner:
         assert runner.session_id == "sess-1"
     with pytest.raises(IntrospectionAPIError):
         _ = runner.tasks
@@ -83,7 +68,7 @@ def test_context_manager_closes_on_exit():
 def test_additional_headers_are_copied():
     spec = _spec()
     headers = {"x-trace": "1"}
-    runner = Runner(spec, refresher=lambda: spec, additional_headers=headers)
+    runner = Runner(spec, additional_headers=headers)
     headers["x-trace"] = "mutated"
     # Runner copied the mapping; the later mutation must not leak in.
     assert runner._additional_headers == {"x-trace": "1"}

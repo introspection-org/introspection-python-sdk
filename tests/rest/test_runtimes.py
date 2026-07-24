@@ -8,7 +8,6 @@ from __future__ import annotations
 from uuid import UUID
 
 import httpx
-import pytest
 
 from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner import Runner
@@ -33,12 +32,12 @@ def test_list_validates_and_drops_none_params(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
     )
-    page = _runtimes(fake_api).list(project=PROJECT_ID, only_active=True)
+    page = _runtimes(fake_api).list(project=PROJECT_ID)
     assert page.count == 1
     assert str(page.records[0].id) == RUNTIME_ID
     params = fake_api.last_request.params
     assert params.get("project") == PROJECT_ID
-    assert params.get("only_active") == "true"
+    assert "only_active" not in params
     assert "name" not in params
     assert "runtime" not in params
 
@@ -73,104 +72,58 @@ def test_get_includes_project_param(fake_api: FakeAPI):
     assert fake_api.last_request.params.get("project") == PROJECT_ID
 
 
-def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):
+def test_handle_with_uuid_sends_stable_runtime_group(fake_api: FakeAPI):
     runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
     fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
         "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
+        "/v1/runtimes/run",
         json_body=runner_spec_payload(),
     )
     runtimes = _runtimes(fake_api)
-    runner = runtimes(runtime_group_id).run()
+    runner = runtimes.run(runtime=runtime_group_id)
     assert isinstance(runner, Runner)
-    # User-facing runtime UUIDs are runtime group IDs, so the handle resolves
-    # them before opening a runner against the returned concrete runtime row.
-    assert [r.path for r in fake_api.requests] == [
-        "/v1/runtimes",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
-    ]
-    assert fake_api.requests[0].params.get("runtime") == str(runtime_group_id)
+    assert [r.path for r in fake_api.requests] == ["/v1/runtimes/run"]
+    assert fake_api.requests[0].json()["runtime"] == str(runtime_group_id)
 
 
-def test_handle_resolves_runtime_via_list(fake_api: FakeAPI):
+def test_handle_sends_slug_directly(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/runtimes/run",
+        json_body=runner_spec_payload(),
+    )
+    _runtimes(fake_api).run(runtime="checkout-agent", project=PROJECT_ID)
+    assert fake_api.last_request.json()["runtime"] == "checkout-agent"
+    assert fake_api.last_request.json()["project"] == PROJECT_ID
+
+
+def test_list_versions_filters_by_stable_runtime(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload()]),
     )
-    runtimes = _runtimes(fake_api)
-    handle = runtimes("checkout-agent")
-    assert handle.runtime_id == UUID(RUNTIME_ID)
-    assert fake_api.last_request.params.get("runtime") == "checkout-agent"
-
-
-def test_handle_runtime_not_found_raises(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
-    handle = _runtimes(fake_api)("missing")
-    with pytest.raises(LookupError, match="No active runtime"):
-        _ = handle.runtime_id
-
-
-def test_handle_ambiguous_runtime_raises(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload(), runtime_payload()]),
+    runtime = (
+        _runtimes(fake_api)
+        .list(runtime="checkout-agent", project=PROJECT_ID)
+        .page()
+        .records[0]
     )
-    handle = _runtimes(fake_api)("dup")
-    with pytest.raises(LookupError, match="Ambiguous"):
-        _ = handle.runtime_id
-
-
-def test_resolve_returns_runtime(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    runtime = _runtimes(fake_api).resolve("checkout-agent", project=PROJECT_ID)
     assert str(runtime.id) == RUNTIME_ID
-    params = fake_api.last_request.params
-    assert params.get("runtime") == "checkout-agent"
-    assert params.get("only_active") == "true"
-    assert params.get("project") == PROJECT_ID
-
-
-def test_resolve_not_found_raises(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
-    with pytest.raises(LookupError, match="No active runtime"):
-        _runtimes(fake_api).resolve("missing")
-
-
-def test_resolve_ambiguous_raises(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload(), runtime_payload()]),
-    )
-    with pytest.raises(LookupError, match="Ambiguous"):
-        _runtimes(fake_api).resolve("dup")
+    assert fake_api.last_request.params.get("runtime") == "checkout-agent"
+    assert fake_api.last_request.params.get("project") == PROJECT_ID
 
 
 def test_run_returns_runner_with_context(fake_api: FakeAPI):
     runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
     fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
         "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
+        "/v1/runtimes/run",
         json_body=runner_spec_payload(),
     )
     runtimes = _runtimes(fake_api)
-    runner = runtimes(runtime_group_id).run(
+    runner = runtimes.run(
+        runtime=runtime_group_id,
         identity={"user_id": "u1"},
         caller={"locale": "en"},
         agent_name="support",
@@ -182,23 +135,71 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
     assert body["identity"]["user_id"] == "u1"
     assert body["caller"]["locale"] == "en"
     assert body["agent_name"] == "support"
-    assert body["ttl_seconds"] == 3600
+    assert "ttl_seconds" not in body
     assert body["scope"] == "tasks:read tasks:write"
+    assert body["runtime"] == str(runtime_group_id)
     assert str(runner.context.runtime_group_id) == (
         "88888888-8888-8888-8888-888888888888"
     )
     assert str(runner.context.recipe_repository_id) == REPOSITORY_ID
+
+
+def test_run_uses_runtime_id_field(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/runtimes/run", json_body=runner_spec_payload())
+    runner = _runtimes(fake_api).run(
+        runtime_id=UUID(RUNTIME_ID),
+        project=PROJECT_ID,
+        environment="staging",
+    )
+    assert isinstance(runner, Runner)
+    assert fake_api.last_request.json()["runtime_id"] == RUNTIME_ID
+    assert fake_api.last_request.json()["environment"] == "staging"
     assert runner.context.recipe_git_commit_sha == "abc123"
     assert runner.context.agent_name == "agent"
-    # The pre-flat nested summary remains available for compatibility.
-    assert runner.context.recipe is not None
-    assert runner.context.recipe.git_ref == "main"
+
+
+def test_runtime_version_matches_public_cloud_shape():
+    runtime = runtime_payload(
+        description="Published support agent",
+        kind="byoh",
+        llm_mode="byok",
+        config_json={"timeout": 60},
+        recipe_kind="preview",
+        recipe_ref="pr/42",
+        environments=["development", "staging"],
+        image_tag="sha-abc123",
+        image_status="ready",
+        environment_ref={"development": "main", "staging": "pr/42"},
+    )
+    payload = runtime.model_dump(mode="json")
+
+    assert payload["created_by_member_id"]
+    assert payload["kind"] == "byoh"
+    assert payload["llm_mode"] == "byok"
+    assert payload["recipe_kind"] == "preview"
+    assert payload["environments"] == ["development", "staging"]
+    assert payload["environment_ref"] == {
+        "development": "main",
+        "staging": "pr/42",
+    }
+    assert "metadata" not in payload
+
+
+def test_direct_stable_run_matches_handle(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/runtimes/run", json_body=runner_spec_payload())
+    runner = _runtimes(fake_api).run(
+        runtime="checkout-agent",
+        project=PROJECT_ID,
+        environment="production",
+    )
+    assert isinstance(runner, Runner)
+    assert fake_api.last_request.json()["runtime"] == "checkout-agent"
+    assert fake_api.last_request.json()["project"] == PROJECT_ID
 
 
 def test_runtime_surface_excludes_operator_controls(fake_api: FakeAPI):
     runtimes = _runtimes(fake_api)
-    handle = runtimes("checkout-agent")
     for method in ("create", "update", "yank", "unyank"):
         assert not hasattr(runtimes, method)
     for method in ("pin", "activate"):
-        assert not hasattr(handle, method)
+        assert not hasattr(runtimes, method)

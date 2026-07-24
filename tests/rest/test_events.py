@@ -806,7 +806,7 @@ def test_runner_exposes_events_and_metrics():
     from .conftest import runner_spec_payload
 
     spec = runner_spec_payload()
-    runner = Runner(spec, refresher=lambda: spec)
+    runner = Runner(spec)
     assert isinstance(runner.events, Events)
     assert isinstance(runner.metrics, Metrics)
     runner.close()

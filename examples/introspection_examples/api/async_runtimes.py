@@ -1,8 +1,8 @@
 """End-to-end async Runner walkthrough — the async twin of
 ``introspection_examples.api.runtimes``.
 
-Resolve a runtime by slug or id, open an :class:`AsyncRunner` against it, spawn
-a task, and stream its run — all on :mod:`asyncio` with non-blocking IO,
+Run a stable Runtime selected by slug or group ID, spawn a task, and stream its
+run through an :class:`AsyncRunner` — all on :mod:`asyncio` with non-blocking IO,
 mirroring the TypeScript SDK's async-by-default Runner.
 
 Run with:
@@ -11,7 +11,7 @@ Run with:
         uv run python -m introspection_examples.api.async_runtimes
 
 Optional env:
-    INTROSPECTION_RUNTIME       - runtime slug or id (default: customer-agent)
+    INTROSPECTION_RUNTIME       - runtime slug or group ID (default: customer-agent)
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
 """
 
@@ -29,7 +29,8 @@ async def main() -> None:
 
     # ``async with`` tears the client's HTTP pool down deterministically.
     async with AsyncIntrospectionClient() as client:
-        runner = await client.runtimes(runtime).run(
+        runner = await client.runtimes.run(
+            runtime=runtime,
             identity={"user_id": "u_42"},
             caller={
                 "ip": "8.8.8.8",

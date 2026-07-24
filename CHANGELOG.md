@@ -5,7 +5,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* **experiments:** ExperimentCreate requires runtime_group_id, arms, and goal_json; ExperimentHandle.end()/AsyncExperimentHandle.end() no longer accept winning_arm_label/notes.
+* **experiments:** ExperimentCreate requires a stable runtime selector, arms, and goal_json; ExperimentHandle.end()/AsyncExperimentHandle.end() no longer accept winning_arm_label/notes.
 * RuntimeResolutionMode is removed from introspection_sdk.schemas.
 
 ### Features

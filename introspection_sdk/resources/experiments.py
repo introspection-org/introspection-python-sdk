@@ -1,9 +1,7 @@
 """``client.experiments`` — CP CRUD + lifecycle + ``.run()`` returning a
 :class:`Runner`.
 
-``client.experiments`` is the :class:`Experiments` instance; calling
-``client.experiments(id)`` returns an :class:`ExperimentHandle` with
-``.run()``, ``.start()``, ``.end(...)``, and ``.cancel()``.
+Execution and lifecycle methods accept the Experiment ID explicitly.
 """
 
 from __future__ import annotations
@@ -23,6 +21,8 @@ from introspection_sdk.runner import AsyncRunner, Runner
 from introspection_sdk.schemas.experiments import (
     Experiment,
     ExperimentCreate,
+    ExperimentRunRequest,
+    ExperimentStatus,
     ExperimentUpdate,
 )
 from introspection_sdk.schemas.pagination import Paginated
@@ -30,16 +30,12 @@ from introspection_sdk.schemas.runner import (
     RunCaller,
     RunnerIdentity,
     RunnerSpec,
-    RunRequest,
 )
+from introspection_sdk.schemas.runtimes import RuntimeEnvironment
 
 
 class Experiments:
-    """CP ``/v1/experiments`` namespace.
-
-    Also callable: ``client.experiments(id)`` returns an
-    :class:`ExperimentHandle`.
-    """
+    """CP ``/v1/experiments`` namespace."""
 
     def __init__(
         self,
@@ -50,17 +46,15 @@ class Experiments:
         self._http = http
         self._additional_headers = additional_headers
 
-    def __call__(self, experiment_id: UUID) -> ExperimentHandle:
-        return ExperimentHandle(self, experiment_id=experiment_id)
-
     # --- CRUD --------------------------------------------------------
 
     def list(
         self,
         *,
-        project: str | UUID,
-        name: str | None = None,
-        status: str | None = None,
+        project: str | UUID | None = None,
+        runtime: str | UUID | None = None,
+        environment: RuntimeEnvironment | None = None,
+        status: ExperimentStatus | str | None = None,
         limit: int = 100,
         next: str | None = None,
     ) -> Pager[Experiment, Paginated[Experiment]]:
@@ -70,8 +64,9 @@ class Experiments:
 
         def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project": str(project),
-                "name": name,
+                "project": str(project) if project is not None else None,
+                "runtime": str(runtime) if runtime is not None else None,
+                "environment": environment,
                 "status": status,
                 "limit": limit,
                 "next": cursor,
@@ -132,113 +127,69 @@ class Experiments:
     def _post_run(
         self,
         experiment_id: UUID,
-        options: RunRequest,
+        options: ExperimentRunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
             exclude_none=True, mode="json"
         )
+        project = body.pop("project", None)
         payload = self._http.request(
-            "POST", f"/v1/experiments/{experiment_id}/run", json=body
+            "POST",
+            f"/v1/experiments/{experiment_id}/run",
+            params={"project": project} if project is not None else None,
+            json=body,
         )
         return RunnerSpec.model_validate(payload)
 
-    def _start(self, experiment_id: UUID) -> Experiment:
+    def run(
+        self,
+        experiment_id: UUID,
+        *,
+        identity: RunnerIdentity | dict[str, Any] | None = None,
+        caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
+        ttl_seconds: int | None = None,
+        scope: str | None = None,
+        project: str | UUID | None = None,
+        bindings_required: bool | None = None,
+    ) -> Runner:
+        options = _experiment_run_request(
+            project=project,
+            identity=identity,
+            caller=caller,
+            agent_name=agent_name,
+            ttl_seconds=ttl_seconds,
+            scope=scope,
+            bindings_required=bindings_required,
+        )
+
+        return Runner(
+            self._post_run(experiment_id, options),
+            additional_headers=self._additional_headers,
+        )
+
+    def start(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/start"
         )
         return Experiment.model_validate(payload)
 
-    def _end(self, experiment_id: UUID) -> Experiment:
+    def end(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST",
             f"/v1/experiments/{experiment_id}/end",
         )
         return Experiment.model_validate(payload)
 
-    def _cancel(self, experiment_id: UUID) -> Experiment:
+    def cancel(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/cancel"
         )
         return Experiment.model_validate(payload)
 
 
-class ExperimentHandle:
-    """Handle for a specific experiment.
-
-    Built by ``client.experiments(id)``.
-    """
-
-    def __init__(
-        self,
-        experiments: Experiments,
-        *,
-        experiment_id: UUID,
-    ) -> None:
-        self._experiments = experiments
-        self._experiment_id = experiment_id
-
-    @property
-    def experiment_id(self) -> UUID:
-        return self._experiment_id
-
-    def run(
-        self,
-        *,
-        identity: RunnerIdentity | dict[str, Any] | None = None,
-        caller: RunCaller | dict[str, Any] | None = None,
-        agent_name: str | None = None,
-        ttl_seconds: int | None = 3600,
-        scope: str | None = None,
-    ) -> Runner:
-        ident: RunnerIdentity | None
-        if identity is None:
-            ident = None
-        elif isinstance(identity, RunnerIdentity):
-            ident = identity
-        else:
-            ident = RunnerIdentity.model_validate(identity)
-        call: RunCaller | None
-        if caller is None:
-            call = None
-        elif isinstance(caller, RunCaller):
-            call = caller
-        else:
-            call = RunCaller.model_validate(caller)
-        options = RunRequest(
-            identity=ident,
-            caller=call,
-            agent_name=agent_name,
-            ttl_seconds=ttl_seconds,
-            scope=scope,
-        )
-        eid = self._experiment_id
-
-        def refresher() -> RunnerSpec:
-            return self._experiments._post_run(eid, options)
-
-        spec = refresher()
-        return Runner(
-            spec,
-            refresher=refresher,
-            additional_headers=self._experiments._additional_headers,
-        )
-
-    def start(self) -> Experiment:
-        return self._experiments._start(self._experiment_id)
-
-    def end(self) -> Experiment:
-        return self._experiments._end(self._experiment_id)
-
-    def cancel(self) -> Experiment:
-        return self._experiments._cancel(self._experiment_id)
-
-
 class AsyncExperiments:
-    """Async twin of :class:`Experiments` (CP ``/v1/experiments``).
-
-    Also callable: ``client.experiments(id)`` returns an
-    :class:`AsyncExperimentHandle`.
-    """
+    """Async twin of :class:`Experiments` (CP ``/v1/experiments``)."""
 
     def __init__(
         self,
@@ -249,17 +200,15 @@ class AsyncExperiments:
         self._http = http
         self._additional_headers = additional_headers
 
-    def __call__(self, experiment_id: UUID) -> AsyncExperimentHandle:
-        return AsyncExperimentHandle(self, experiment_id=experiment_id)
-
     # --- CRUD --------------------------------------------------------
 
     def list(
         self,
         *,
-        project: str | UUID,
-        name: str | None = None,
-        status: str | None = None,
+        project: str | UUID | None = None,
+        runtime: str | UUID | None = None,
+        environment: RuntimeEnvironment | None = None,
+        status: ExperimentStatus | str | None = None,
         limit: int = 100,
         next: str | None = None,
     ) -> AsyncPager[Experiment, Paginated[Experiment]]:
@@ -269,8 +218,9 @@ class AsyncExperiments:
 
         async def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project": str(project),
-                "name": name,
+                "project": str(project) if project is not None else None,
+                "runtime": str(runtime) if runtime is not None else None,
+                "environment": environment,
                 "status": status,
                 "limit": limit,
                 "next": cursor,
@@ -335,110 +285,96 @@ class AsyncExperiments:
     async def _post_run(
         self,
         experiment_id: UUID,
-        options: RunRequest,
+        options: ExperimentRunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
             exclude_none=True, mode="json"
         )
+        project = body.pop("project", None)
         payload = await self._http.request(
-            "POST", f"/v1/experiments/{experiment_id}/run", json=body
+            "POST",
+            f"/v1/experiments/{experiment_id}/run",
+            params={"project": project} if project is not None else None,
+            json=body,
         )
         return RunnerSpec.model_validate(payload)
 
-    async def _start(self, experiment_id: UUID) -> Experiment:
+    async def run(
+        self,
+        experiment_id: UUID,
+        *,
+        identity: RunnerIdentity | dict[str, Any] | None = None,
+        caller: RunCaller | dict[str, Any] | None = None,
+        agent_name: str | None = None,
+        ttl_seconds: int | None = None,
+        scope: str | None = None,
+        project: str | UUID | None = None,
+        bindings_required: bool | None = None,
+    ) -> AsyncRunner:
+        options = _experiment_run_request(
+            project=project,
+            identity=identity,
+            caller=caller,
+            agent_name=agent_name,
+            ttl_seconds=ttl_seconds,
+            scope=scope,
+            bindings_required=bindings_required,
+        )
+
+        return AsyncRunner(
+            await self._post_run(experiment_id, options),
+            additional_headers=self._additional_headers,
+        )
+
+    async def start(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/start"
         )
         return Experiment.model_validate(payload)
 
-    async def _end(self, experiment_id: UUID) -> Experiment:
+    async def end(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST",
             f"/v1/experiments/{experiment_id}/end",
         )
         return Experiment.model_validate(payload)
 
-    async def _cancel(self, experiment_id: UUID) -> Experiment:
+    async def cancel(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/cancel"
         )
         return Experiment.model_validate(payload)
 
 
-class AsyncExperimentHandle:
-    """Async twin of :class:`ExperimentHandle`.
-
-    Built by ``client.experiments(id)``.
-    """
-
-    def __init__(
-        self,
-        experiments: AsyncExperiments,
-        *,
-        experiment_id: UUID,
-    ) -> None:
-        self._experiments = experiments
-        self._experiment_id = experiment_id
-
-    @property
-    def experiment_id(self) -> UUID:
-        return self._experiment_id
-
-    async def run(
-        self,
-        *,
-        identity: RunnerIdentity | dict[str, Any] | None = None,
-        caller: RunCaller | dict[str, Any] | None = None,
-        agent_name: str | None = None,
-        ttl_seconds: int | None = 3600,
-        scope: str | None = None,
-    ) -> AsyncRunner:
-        ident: RunnerIdentity | None
-        if identity is None:
-            ident = None
-        elif isinstance(identity, RunnerIdentity):
-            ident = identity
-        else:
-            ident = RunnerIdentity.model_validate(identity)
-        call: RunCaller | None
-        if caller is None:
-            call = None
-        elif isinstance(caller, RunCaller):
-            call = caller
-        else:
-            call = RunCaller.model_validate(caller)
-        options = RunRequest(
-            identity=ident,
-            caller=call,
-            agent_name=agent_name,
-            ttl_seconds=ttl_seconds,
-            scope=scope,
-        )
-        eid = self._experiment_id
-
-        async def refresher() -> RunnerSpec:
-            return await self._experiments._post_run(eid, options)
-
-        spec = await refresher()
-        return AsyncRunner(
-            spec,
-            refresher=refresher,
-            additional_headers=self._experiments._additional_headers,
-        )
-
-    async def start(self) -> Experiment:
-        return await self._experiments._start(self._experiment_id)
-
-    async def end(self) -> Experiment:
-        return await self._experiments._end(self._experiment_id)
-
-    async def cancel(self) -> Experiment:
-        return await self._experiments._cancel(self._experiment_id)
+def _experiment_run_request(
+    *,
+    project: str | UUID | None,
+    identity: RunnerIdentity | dict[str, Any] | None,
+    caller: RunCaller | dict[str, Any] | None,
+    agent_name: str | None,
+    ttl_seconds: int | None,
+    scope: str | None,
+    bindings_required: bool | None,
+) -> ExperimentRunRequest:
+    ident = (
+        identity
+        if identity is None or isinstance(identity, RunnerIdentity)
+        else RunnerIdentity.model_validate(identity)
+    )
+    call = (
+        caller
+        if caller is None or isinstance(caller, RunCaller)
+        else RunCaller.model_validate(caller)
+    )
+    return ExperimentRunRequest(
+        project=project,
+        identity=ident,
+        caller=call,
+        agent_name=agent_name,
+        ttl_seconds=ttl_seconds,
+        scope=scope,
+        bindings_required=bindings_required,
+    )
 
 
-__all__ = [
-    "AsyncExperimentHandle",
-    "AsyncExperiments",
-    "ExperimentHandle",
-    "Experiments",
-]
+__all__ = ["AsyncExperiments", "Experiments"]

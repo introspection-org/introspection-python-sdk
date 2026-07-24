@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class _ApiModel(BaseModel):
@@ -32,29 +32,65 @@ class RuntimeLlmMode(StrEnum):
     BYOK = "byok"
 
 
-class Runtime(_ApiModel):
+RuntimeEnvironment = Literal["development", "staging", "production"]
+
+
+class RuntimeKind(StrEnum):
+    BYOR = "byor"
+    BYOH = "byoh"
+
+
+class RuntimeRecipeKind(StrEnum):
+    PREVIEW = "preview"
+    PRODUCTION = "production"
+
+
+class RuntimeImageStatus(StrEnum):
+    PENDING = "pending"
+    QUEUED = "queued"
+    BUILDING = "building"
+    READY = "ready"
+    FAILED = "failed"
+
+
+class RuntimeVersion(_ApiModel):
     id: UUID
     org_id: UUID
-    project_id: UUID
+    created_at: datetime
+    updated_at: datetime
     name: str
-    slug: str
-    recipe_id: UUID | None = None
-    is_active: bool = False
     description: str | None = None
-    metadata: dict[str, Any] | None = None
+    kind: RuntimeKind = RuntimeKind.BYOR
     llm_mode: RuntimeLlmMode = RuntimeLlmMode.MANAGED
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    config_json: dict[str, Any] = Field(default_factory=dict)
+    project_id: UUID
+    recipe_id: UUID
+    runtime_group_id: UUID
+    slug: str
+    recipe_kind: RuntimeRecipeKind = RuntimeRecipeKind.PRODUCTION
+    recipe_ref: str = "main"
+    environments: list[RuntimeEnvironment] = Field(default_factory=list)
+    image_tag: str | None = None
+    image_status: RuntimeImageStatus = RuntimeImageStatus.PENDING
+    image_built_at: datetime | None = None
+    image_build_error: str | None = None
+    image_size_bytes: int | None = None
+    image_build_log_file_id: UUID | None = None
+    created_by_member_id: UUID
     # When set, the runtime has been withdrawn and never resolves as the
     # active runtime for its environment; in-flight sticky runs keep using it.
     yanked_at: datetime | None = None
     yanked_reason: str | None = None
     # Per-environment git ref each lane tracks ({environment: 'main' | 'pr/N' |
     # <sha>}), projected from the runtime group.
-    environment_ref: dict[str, str] | None = None
+    environment_ref: dict[RuntimeEnvironment, str] | None = None
 
 
 __all__ = [
-    "Runtime",
+    "RuntimeEnvironment",
+    "RuntimeImageStatus",
+    "RuntimeKind",
     "RuntimeLlmMode",
+    "RuntimeRecipeKind",
+    "RuntimeVersion",
 ]

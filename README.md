@@ -24,8 +24,8 @@ agents, powered by Pi. Define an agent as a recipe, deploy it to a
 commit-pinned runtime, and improve it in production with conversations,
 patterns, judges, and experiments.
 
-This is the Python platform SDK. Use it to open a runner against a deployed
-runtime, start and stream tasks, and manage files, conversations, recipes,
+This is the Python platform SDK. Use it to run a deployed
+Runtime, start and stream tasks, and manage files, conversations, recipes,
 experiments, and shares. It provides both an async-first client and a matching
 synchronous client. See the [SDK overview](https://docs.introspection.dev/sdk)
 and [Python guide](https://docs.introspection.dev/sdk/python) for the product
@@ -46,8 +46,9 @@ emit analytics events and export traces, add the `[otel]` extra; see
 
 ## Introspection API (runtimes, tasks, files)
 
-The main Introspection API. Open a `Runner` against a runtime, spawn tasks, and
-stream their output; manage `files` and read `conversations` on the same Runner.
+The main Introspection API. Run a deployed Runtime, use the returned `Runner`
+to spawn tasks, and stream their output; manage `files` and read
+`conversations` on the same Runner.
 `AsyncIntrospectionClient` is the recommended entry point — everything that
 touches the network is awaitable, and run output streams with `async for`:
 
@@ -59,7 +60,8 @@ from introspection_sdk import AsyncIntrospectionClient
 
 async def main() -> None:
     async with AsyncIntrospectionClient() as client:  # token from INTROSPECTION_TOKEN
-        runner = await client.runtimes("customer-agent").run(
+        runner = await client.runtimes.run(
+            runtime="customer-agent",
             agent_name="support-agent",
             scope="tasks:read tasks:write",
         )
@@ -163,29 +165,24 @@ client = IntrospectionClient.from_service_account(
     client_secret="intro_sk_…",   # minted once, kept server-side
     project="my-project",         # slug or UUID; the token is project-scoped
 )
-runner = client.runtimes("customer-agent").run()
+runner = client.runtimes.run(runtime="customer-agent")
 ```
 
 The token is not auto-refreshed — re-mint once it expires
 (`AsyncIntrospectionClient.from_service_account` is the awaitable twin).
 
-When you're a **server broker** handing credentials to a browser client, mint
-the token directly to also read `dp_url` (the Data Plane endpoint the Control
-Plane resolved for the project) and resolve the runtime slug to a concrete
-`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser SDK talks
-to the Data Plane without a hardcoded URL:
+Mint the token directly when server code also needs the selected Data Plane
+URL:
 
 ```python
-from introspection_sdk import IntrospectionClient, service_account_token
+from introspection_sdk import service_account_token
 
 token = service_account_token(
     client_id="intro_app_…",
     client_secret="intro_sk_…",
     project="my-project",
 )
-client = IntrospectionClient(token=token.access_token)
-runtime = client.runtimes.resolve("customer-agent")
-# -> hand { token.access_token, runtime.id, token.dp_url } to the browser
+print(token.dp_url)
 ```
 
 `token_exchange` (RFC 8693 partner-IdP federation) and
@@ -204,7 +201,7 @@ identical surface — drop the `await`s, use `for` instead of `async for`, and
 from introspection_sdk import IntrospectionClient
 
 client = IntrospectionClient()  # token from INTROSPECTION_TOKEN
-runner = client.runtimes("customer-agent").run()
+runner = client.runtimes.run(runtime="customer-agent")
 
 run = runner.tasks.start(prompt="Say hello in one sentence.")
 for event in run.stream():

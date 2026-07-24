@@ -40,8 +40,8 @@ class IntrospectionClient:
     """REST-only Introspection client (no OpenTelemetry).
 
     Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``client.runtimes(slug).run()`` and
-    ``client.experiments(id).run()`` mint a
+    surface. ``client.runtimes.run(...)`` and
+    ``client.experiments.run(...)`` mint a
     :class:`~introspection_sdk.runner.Runner` for DP traffic
     (``runner.tasks`` / ``runner.files``).
 
@@ -111,7 +111,7 @@ class IntrospectionClient:
                 client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
                 project=os.environ["INTRO_PROJECT"],
             )
-            runner = client.runtimes("customer-agent").run()
+            runner = client.runtimes.run(runtime="customer-agent")
 
         The token is not auto-refreshed: it lives for ``expires_in``
         seconds, so re-mint (call this again) for long-lived processes
@@ -146,8 +146,8 @@ class AsyncIntrospectionClient:
     """Async twin of :class:`IntrospectionClient` (no OpenTelemetry).
 
     Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``await client.runtimes(slug).run()`` and
-    ``await client.experiments(id).run()`` mint an
+    surface. ``await client.runtimes.run(...)`` and
+    ``await client.experiments.run(...)`` mint an
     :class:`~introspection_sdk.runner.AsyncRunner` for DP traffic
     (``await runner.tasks...`` / ``await runner.files...``).
 
@@ -219,7 +219,7 @@ class AsyncIntrospectionClient:
                 client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
                 project=os.environ["INTRO_PROJECT"],
             )
-            runner = await client.runtimes("customer-agent").run()
+            runner = await client.runtimes.run(runtime="customer-agent")
         """
         token = await async_service_account_token(
             client_id=client_id,

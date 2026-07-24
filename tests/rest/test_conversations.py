@@ -685,7 +685,7 @@ def test_runner_exposes_conversations_namespace():
     from .conftest import runner_spec_payload
 
     spec = runner_spec_payload()
-    runner = Runner(spec, refresher=lambda: spec)
+    runner = Runner(spec)
     assert isinstance(runner.conversations, Conversations)
     runner.close()
     with pytest.raises(RunnerExpiredError):

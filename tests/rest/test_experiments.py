@@ -38,9 +38,17 @@ def test_list(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
     )
-    page = _experiments(fake_api).list(project=PROJECT_ID, status="running")
+    runtime = "support-agent"
+    page = _experiments(fake_api).list(
+        project=PROJECT_ID,
+        runtime=runtime,
+        environment="production",
+        status="running",
+    )
     assert page.records[0].name == "prompt-bake-off"
     assert fake_api.last_request.params.get("status") == "running"
+    assert fake_api.last_request.params.get("runtime") == runtime
+    assert fake_api.last_request.params.get("environment") == "production"
 
 
 def test_iter_stops_when_no_next(fake_api: FakeAPI):
@@ -77,7 +85,7 @@ def test_create_from_model(fake_api: FakeAPI):
         ExperimentCreate(
             project=PROJECT_ID,
             name="prompt-bake-off",
-            runtime_group_id=UUID(RUNTIME_GROUP_ID),
+            runtime=RUNTIME_GROUP_ID,
             arms=[
                 ExperimentArmCreate(
                     runtime_id=UUID(RUNTIME_ID), arm_label="control"
@@ -94,7 +102,7 @@ def test_create_from_model(fake_api: FakeAPI):
     )
     body = fake_api.last_request.json()
     assert body["name"] == "prompt-bake-off"
-    assert body["runtime_group_id"] == RUNTIME_GROUP_ID
+    assert body["runtime"] == RUNTIME_GROUP_ID
     assert [arm["arm_label"] for arm in body["arms"]] == [
         "control",
         "treatment",
@@ -129,13 +137,14 @@ def test_delete_expects_empty(fake_api: FakeAPI):
     assert _experiments(fake_api).delete(UUID(EXPERIMENT_ID)) is None
 
 
-def test_handle_run(fake_api: FakeAPI):
+def test_run(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/experiments/{EXPERIMENT_ID}/run",
         json_body=runner_spec_payload(),
     )
-    runner = _experiments(fake_api)(UUID(EXPERIMENT_ID)).run(
+    runner = _experiments(fake_api).run(
+        UUID(EXPERIMENT_ID),
         agent_name="researcher",
         ttl_seconds=60,
         scope="tasks:read",
@@ -148,7 +157,7 @@ def test_handle_run(fake_api: FakeAPI):
     }
 
 
-def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
+def test_lifecycle_start_end_cancel(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/experiments/{EXPERIMENT_ID}/start",
@@ -164,17 +173,12 @@ def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/cancel",
         json_body=experiment_payload(status="cancelled"),
     )
-    handle = _experiments(fake_api)(UUID(EXPERIMENT_ID))
+    experiments = _experiments(fake_api)
 
-    assert handle.start().status.value == "running"
+    assert experiments.start(UUID(EXPERIMENT_ID)).status.value == "running"
 
-    ended = handle.end()
+    ended = experiments.end(UUID(EXPERIMENT_ID))
     assert ended.status.value == "ended"
     assert fake_api.requests[-1].json() is None
 
-    assert handle.cancel().status.value == "cancelled"
-
-
-def test_handle_experiment_id_property(fake_api: FakeAPI):
-    handle = _experiments(fake_api)(UUID(EXPERIMENT_ID))
-    assert handle.experiment_id == UUID(EXPERIMENT_ID)
+    assert experiments.cancel(UUID(EXPERIMENT_ID)).status.value == "cancelled"

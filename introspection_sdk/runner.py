@@ -1,22 +1,18 @@
-"""DP-facing :class:`Runner` returned by ``runtimes(...).run()`` and
-``experiments(...).run()``.
+"""DP-facing :class:`Runner` returned by ``runtimes.run()`` and
+``experiments.run()``.
 
-The Runner is an agent-session with a runtime context attached. It
-owns the DP endpoint + session-locator JWT minted by the CP
-``/run`` call and exposes ``runner.tasks``, ``runner.files`` and the
-read-only ``runner.conversations`` namespaces that target that
-endpoint. The DP-side agent-session machinery
-materializes the real access token from the session lookup on
-each request, so the SDK does not need to drive refresh itself —
-``runner.refresh()`` stays as a manual escape hatch that re-calls
-CP ``/run``. ``runner.close()`` flips a local ``_closed`` flag
-and tears down the underlying HTTP client; server-side revoke is
-a follow-up.
+The Runner is one agent-session with a runtime context attached. It owns the
+DP endpoint plus the self-contained Runner capability minted by the Runtime or
+Experiment ``/run`` route and exposes runner-bound namespaces targeting that
+endpoint. The target DP validates that capability directly.
+Create a new or newly routed session by calling ``runtimes.run()`` or
+``experiments.run()`` again. ``runner.close()`` tears down the local HTTP
+client; server-side revoke is a follow-up.
 """
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Mapping
 from datetime import datetime
 
 from introspection_sdk._errors import RunnerExpiredError
@@ -45,8 +41,8 @@ from introspection_sdk.schemas.runner import (
 class Runner:
     """Handle for talking to a running runtime/experiment on the DP.
 
-    Constructed indirectly by ``client.runtimes(...).run()`` /
-    ``client.experiments(...).run()``. Holds a private HTTP client
+    Constructed indirectly by ``client.runtimes.run()`` /
+    ``client.experiments.run()``. Holds a private HTTP client
     pointed at ``spec.deployment.endpoint`` with the bearer JWT
     picked from ``spec.session_token``.
     """
@@ -55,12 +51,10 @@ class Runner:
         self,
         spec: RunnerSpec,
         *,
-        refresher: Callable[[], RunnerSpec],
         additional_headers: Mapping[str, str] | None = None,
         timeout: float = 30.0,
     ) -> None:
         self._spec = spec
-        self._refresher = refresher
         self._additional_headers = (
             dict(additional_headers) if additional_headers else None
         )
@@ -86,7 +80,7 @@ class Runner:
         if self._closed:
             raise RunnerExpiredError(
                 "Runner has been closed; create a new one via "
-                "client.runtimes(...).run() or client.experiments(...).run().",
+                "client.runtimes.run() or client.experiments.run().",
                 status_code=0,
             )
 
@@ -153,32 +147,6 @@ class Runner:
     def spec(self) -> RunnerSpec:
         return self._spec
 
-    def refresh(self) -> None:
-        """Manually re-mint the RunnerSpec via CP ``/run``.
-
-        The DP-side agent-session materializer rotates the access
-        token transparently, so callers typically don't need this.
-        It stays as an escape hatch when the caller wants to force
-        a fresh spec (new identity, new TTL, etc.). Swaps in the
-        new spec and rebuilds the underlying HTTP client; the
-        previously rented client is closed best-effort.
-        """
-        self._check_open()
-        new_spec = self._refresher()
-        old_http = self._http
-        self._spec = new_spec
-        self._http = self._build_http(new_spec)
-        self._tasks = Tasks(self._http)
-        self._files = Files(self._http)
-        self._conversations = Conversations(self._http)
-        self._events = Events(self._http)
-        self._metrics = Metrics(self._http)
-        self._shares = Shares(self._http)
-        try:
-            old_http.close()
-        except Exception:  # noqa: BLE001 — best-effort cleanup
-            pass
-
     def close(self) -> None:
         """Mark the Runner closed and tear down its HTTP client.
 
@@ -202,24 +170,22 @@ class Runner:
 class AsyncRunner:
     """Async twin of :class:`Runner`.
 
-    Constructed indirectly by ``client.runtimes(...).run()`` /
-    ``client.experiments(...).run()`` on an ``AsyncIntrospectionClient``.
+    Constructed indirectly by ``client.runtimes.run()`` /
+    ``client.experiments.run()`` on an ``AsyncIntrospectionClient``.
     Holds a private ``httpx.AsyncClient``-backed HTTP client pointed at
     ``spec.deployment.endpoint`` with the bearer JWT picked from
-    ``spec.session_token``. Awaitable lifecycle: ``await runner.close()``,
-    ``await runner.refresh()``, and ``async with`` support.
+    ``spec.session_token``. Supports ``await runner.close()`` and
+    ``async with`` lifecycle management.
     """
 
     def __init__(
         self,
         spec: RunnerSpec,
         *,
-        refresher: Callable[[], Awaitable[RunnerSpec]],
         additional_headers: Mapping[str, str] | None = None,
         timeout: float = 30.0,
     ) -> None:
         self._spec = spec
-        self._refresher = refresher
         self._additional_headers = (
             dict(additional_headers) if additional_headers else None
         )
@@ -245,7 +211,7 @@ class AsyncRunner:
         if self._closed:
             raise RunnerExpiredError(
                 "Runner has been closed; create a new one via "
-                "client.runtimes(...).run() or client.experiments(...).run().",
+                "client.runtimes.run() or client.experiments.run().",
                 status_code=0,
             )
 
@@ -312,32 +278,6 @@ class AsyncRunner:
     @property
     def spec(self) -> RunnerSpec:
         return self._spec
-
-    async def refresh(self) -> None:
-        """Manually re-mint the RunnerSpec via CP ``/run``.
-
-        The DP-side agent-session materializer rotates the access
-        token transparently, so callers typically don't need this.
-        It stays as an escape hatch when the caller wants to force
-        a fresh spec (new identity, new TTL, etc.). Swaps in the
-        new spec and rebuilds the underlying HTTP client; the
-        previously rented client is closed best-effort.
-        """
-        self._check_open()
-        new_spec = await self._refresher()
-        old_http = self._http
-        self._spec = new_spec
-        self._http = self._build_http(new_spec)
-        self._tasks = AsyncTasks(self._http)
-        self._files = AsyncFiles(self._http)
-        self._conversations = AsyncConversations(self._http)
-        self._events = AsyncEvents(self._http)
-        self._metrics = AsyncMetrics(self._http)
-        self._shares = AsyncShares(self._http)
-        try:
-            await old_http.aclose()
-        except Exception:  # noqa: BLE001 — best-effort cleanup
-            pass
 
     async def close(self) -> None:
         """Mark the Runner closed and tear down its HTTP client.

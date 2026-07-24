@@ -42,10 +42,9 @@ from introspection_sdk.schemas.recipes import Recipe
 from introspection_sdk.schemas.runner import (
     RunnerContext,
     RunnerDeployment,
-    RunnerRecipeSummary,
     RunnerSpec,
 )
-from introspection_sdk.schemas.runtimes import Runtime
+from introspection_sdk.schemas.runtimes import RuntimeVersion
 from introspection_sdk.schemas.tasks import (
     Task,
     TaskCancelResponse,
@@ -200,18 +199,22 @@ def to_jsonable(obj: Any) -> Any:
     return obj
 
 
-def runtime_payload(**over: Any) -> Runtime:
+def runtime_payload(**over: Any) -> RuntimeVersion:
     defaults: dict[str, Any] = {
         "id": RUNTIME_ID,
+        "runtime_group_id": "33333333-3333-3333-3333-333333333333",
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
         "name": "Checkout Agent",
         "slug": "checkout-agent",
         "recipe_id": RECIPE_ID,
-        "is_active": True,
+        "created_by_member_id": MEMBER_ID,
+        "created_at": _NOW_DT,
+        "updated_at": _NOW_DT,
+        "environments": ["production"],
     }
     defaults.update(over)
-    return Runtime(**defaults)
+    return RuntimeVersion(**defaults)
 
 
 def experiment_payload(**over: Any) -> Experiment:
@@ -220,7 +223,22 @@ def experiment_payload(**over: Any) -> Experiment:
         "org_id": ORG_ID,
         "project_id": PROJECT_ID,
         "name": "prompt-bake-off",
+        "runtime_group_id": "11111111-1111-1111-1111-111111111112",
+        "environment": "production",
         "status": "running",
+        "routing_strategy": "beta_sample",
+        "goal_json": {
+            "kind": "composite",
+            "components": [
+                {
+                    "source": "judge",
+                    "judge_id": "77777777-7777-7777-7777-777777777777",
+                }
+            ],
+        },
+        "created_by_member_id": MEMBER_ID,
+        "created_at": _NOW_DT,
+        "updated_at": _NOW_DT,
     }
     defaults.update(over)
     return Experiment(**defaults)
@@ -261,11 +279,6 @@ def runner_spec_payload(**over: Any) -> RunnerSpec:
             recipe_repository_id=UUID(REPOSITORY_ID),
             recipe_git_ref="main",
             recipe_git_commit_sha="abc123",
-            recipe=RunnerRecipeSummary(
-                repository_id=UUID(REPOSITORY_ID),
-                git_ref="main",
-                git_commit_sha="abc123",
-            ),
             arm_label="control",
             agent_name="agent",
         ),

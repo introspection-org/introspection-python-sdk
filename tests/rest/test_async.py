@@ -24,21 +24,18 @@ from introspection_sdk.runner_resources import (
     AsyncTasks,
 )
 from introspection_sdk.schemas.agui import ResumeEntry
-from introspection_sdk.schemas.runner import RunnerSpec
 from introspection_sdk.schemas.tasks import TaskRunKind
 from introspection_sdk.streaming import parse_ag_ui_events_async
 
 from .conftest import (
     EXPERIMENT_ID,
     FILE_ID,
-    RUNTIME_ID,
     TASK_ID,
     FakeAPI,
     experiment_payload,
     file_payload,
     paginated,
     runner_spec_payload,
-    runtime_payload,
     task_cancel_response,
     task_create_response,
     task_payload,
@@ -284,12 +281,7 @@ async def test_files_list_async_iter(fake_api: FakeAPI):
 
 
 def _runner() -> AsyncRunner:
-    spec = _spec()
-
-    async def refresher() -> RunnerSpec:
-        return spec
-
-    return AsyncRunner(spec, refresher=refresher)
+    return AsyncRunner(_spec())
 
 
 async def test_runner_accessors_and_namespaces():
@@ -298,21 +290,6 @@ async def test_runner_accessors_and_namespaces():
     assert runner.dp_endpoint == "https://dp.test"
     assert isinstance(runner.tasks, AsyncTasks)
     assert isinstance(runner.files, AsyncFiles)
-    await runner.close()
-
-
-async def test_runner_refresh_swaps_spec():
-    specs = iter([_spec(session_id="old"), _spec(session_id="new")])
-
-    async def refresher() -> RunnerSpec:
-        return next(specs)
-
-    runner = AsyncRunner(next(specs), refresher=refresher)
-    assert runner.session_id == "old"
-    old_tasks = runner.tasks
-    await runner.refresh()
-    assert runner.session_id == "new"
-    assert runner.tasks is not old_tasks
     await runner.close()
 
 
@@ -329,42 +306,36 @@ async def test_runner_close_blocks_use_and_aenter():
 async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
     runtime_group_id = "33333333-3333-3333-3333-333333333333"
     fake_api.add(
-        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
-    )
-    fake_api.add(
         "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
+        "/v1/runtimes/run",
         json_body=runner_spec_payload(),
     )
     runtimes = AsyncRuntimes(fake_api.async_client())
-    runner = await runtimes(runtime_group_id).run(
+    runner = await runtimes.run(
+        runtime=runtime_group_id,
         identity={"user_id": "u1"},
         agent_name="support",
         scope="tasks:read",
     )
     assert isinstance(runner, AsyncRunner)
     assert runner.dp_endpoint == "https://dp.test"
-    assert fake_api.requests[0].params.get("runtime") == runtime_group_id
+    assert fake_api.last_request.json()["runtime"] == runtime_group_id
     assert fake_api.last_request.json()["agent_name"] == "support"
     assert fake_api.last_request.json()["scope"] == "tasks:read"
     await runner.close()
 
 
-async def test_runtime_handle_resolves_slug(fake_api: FakeAPI):
-    fake_api.add(
-        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
-    )
+async def test_runtime_run_sends_stable_slug(fake_api: FakeAPI):
     fake_api.add(
         "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
+        "/v1/runtimes/run",
         json_body=runner_spec_payload(),
     )
     runtimes = AsyncRuntimes(fake_api.async_client())
-    runner = await runtimes("checkout-agent").run()
+    runner = await runtimes.run(runtime="checkout-agent")
     assert isinstance(runner, AsyncRunner)
-    # First call lists by slug, second posts /run.
-    assert fake_api.requests[0].path == "/v1/runtimes"
-    assert fake_api.last_request.path == f"/v1/runtimes/{RUNTIME_ID}/run"
+    assert fake_api.requests[0].path == "/v1/runtimes/run"
+    assert fake_api.last_request.json()["runtime"] == "checkout-agent"
     await runner.close()
 
 
@@ -372,11 +343,10 @@ async def test_async_runtime_surface_excludes_operator_controls(
     fake_api: FakeAPI,
 ):
     runtimes = AsyncRuntimes(fake_api.async_client())
-    handle = runtimes("checkout-agent")
     for method in ("create", "update", "yank", "unyank"):
         assert not hasattr(runtimes, method)
     for method in ("pin", "activate"):
-        assert not hasattr(handle, method)
+        assert not hasattr(runtimes, method)
 
 
 async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
@@ -386,10 +356,11 @@ async def test_experiment_run_mints_async_runner(fake_api: FakeAPI):
         json_body=runner_spec_payload(),
     )
     experiments = AsyncExperiments(fake_api.async_client())
-    runner = await experiments(UUID(EXPERIMENT_ID)).run(
-        agent_name="researcher", scope="tasks:read"
+    runner = await experiments.run(
+        UUID(EXPERIMENT_ID), agent_name="researcher", scope="tasks:read"
     )
     assert isinstance(runner, AsyncRunner)
+    assert fake_api.last_request.path == f"/v1/experiments/{EXPERIMENT_ID}/run"
     assert fake_api.last_request.json()["agent_name"] == "researcher"
     assert fake_api.last_request.json()["scope"] == "tasks:read"
     await runner.close()
@@ -406,10 +377,10 @@ async def test_experiment_lifecycle(fake_api: FakeAPI):
         f"/v1/experiments/{EXPERIMENT_ID}/end",
         json_body=experiment_payload(status="ended"),
     )
-    handle = AsyncExperiments(fake_api.async_client())(UUID(EXPERIMENT_ID))
-    started = await handle.start()
+    experiments = AsyncExperiments(fake_api.async_client())
+    started = await experiments.start(UUID(EXPERIMENT_ID))
     assert started.status == "running"
-    ended = await handle.end()
+    ended = await experiments.end(UUID(EXPERIMENT_ID))
     assert ended.status == "ended"
     assert fake_api.last_request.json() is None
 

@@ -1,5 +1,4 @@
-"""Pydantic mirrors of CP `/v1/runtimes/{id}/run` and
-`/v1/experiments/{id}/run` request/response models.
+"""Pydantic mirrors of CP Runtime and Experiment ``/run`` models.
 
 Wire fields are snake_case verbatim. Unknown fields are tolerated
 via ``extra="allow"``.
@@ -16,7 +15,9 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from introspection_sdk.schemas.runtimes import RuntimeEnvironment
 
 
 class _ApiModel(BaseModel):
@@ -66,29 +67,16 @@ class RunCaller(_ApiModel):
 
 
 class RunRequest(_ApiModel):
-    """Body of ``POST /v1/{runtimes|experiments}/{id}/run``.
+    """Common options for Runtime and Experiment ``/run`` routes."""
 
-    Stashed on a Runner for ``refresh()``. Renamed from
-    ``RuntimeContext`` — that's still importable as a deprecation
-    alias for one release.
-    """
-
+    project: str | UUID | None = None
+    environment: RuntimeEnvironment | None = None
     identity: RunnerIdentity | None = None
     caller: RunCaller | None = None
     agent_name: str | None = None
     ttl_seconds: int | None = None
     scope: str | None = None
-
-
-# Deprecated aliases — kept for one release. Prefer :class:`RunRequest`.
-RunOptions = RunRequest
-RuntimeContext = RunRequest
-
-
-class RunnerRecipeSummary(_ApiModel):
-    repository_id: UUID | None = None
-    git_ref: str | None = None
-    git_commit_sha: str | None = None
+    bindings_required: bool | None = None
 
 
 class RunnerContext(_ApiModel):
@@ -99,10 +87,9 @@ class RunnerContext(_ApiModel):
     recipe_repository_id: UUID | None = None
     recipe_git_ref: str | None = None
     recipe_git_commit_sha: str | None = None
-    recipe: RunnerRecipeSummary | None = None
     arm_label: str | None = None
     agent_name: str | None = None
-    identity: RunnerIdentity | None = None
+    identity: RunnerIdentity = Field(default_factory=RunnerIdentity)
     # Echoed from the request body when supplied.
     caller: RunCaller | None = None
 
@@ -121,16 +108,14 @@ class RunnerDeployment(_ApiModel):
 
 
 class RunnerSpec(_ApiModel):
-    """Response body of CP ``/v1/{runtimes|experiments}/{id}/run`` —
-    the customer wire.
+    """Response body of CP Runtime and Experiment ``/run`` routes.
 
     Sandbox-internal fields (``credentials``, ``bootstrap``, ``limits``,
     ``llm_proxy``) live on ``InternalRunnerSpec`` on the CP→DP internal
     route — never returned to customer callers.
 
-    The customer's only credential is ``session_token`` — an RS256
-    ``session_locator`` JWT. The DP server materializes the real
-    access token from the session lookup on each request.
+    The customer's only credential is ``session_token`` — an RS256 Runner
+    capability JWT that the target DP validates directly.
     """
 
     session_id: str
@@ -144,12 +129,9 @@ __all__ = [
     "RunCaller",
     "RunCallerLibrary",
     "RunCallerPage",
-    "RunOptions",  # deprecated alias for RunRequest
     "RunRequest",
     "RunnerContext",
     "RunnerDeployment",
     "RunnerIdentity",
-    "RunnerRecipeSummary",
     "RunnerSpec",
-    "RuntimeContext",  # deprecated alias for RunRequest
 ]
