@@ -8,16 +8,26 @@ from uuid import UUID
 
 from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.runner import Runner
-from introspection_sdk.schemas.experiments import ExperimentCreate
+from introspection_sdk.schemas.experiments import (
+    ExperimentArmCreate,
+    ExperimentCreate,
+    ExperimentGoal,
+    JudgeGoalComponent,
+)
 
 from .conftest import (
     EXPERIMENT_ID,
     PROJECT_ID,
+    RUNTIME_ID,
     FakeAPI,
     experiment_payload,
     paginated,
     runner_spec_payload,
 )
+
+RUNTIME_GROUP_ID = "88888888-8888-8888-8888-888888888888"
+TREATMENT_RUNTIME_ID = "99999999-9999-9999-9999-999999999999"
+JUDGE_ID = "77777777-7777-7777-7777-777777777777"
 
 
 def _experiments(fake_api: FakeAPI) -> Experiments:
@@ -64,9 +74,34 @@ def test_get_with_project(fake_api: FakeAPI):
 def test_create_from_model(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
     _experiments(fake_api).create(
-        ExperimentCreate(project=PROJECT_ID, name="prompt-bake-off")
+        ExperimentCreate(
+            project=PROJECT_ID,
+            name="prompt-bake-off",
+            runtime_group_id=UUID(RUNTIME_GROUP_ID),
+            arms=[
+                ExperimentArmCreate(
+                    runtime_id=UUID(RUNTIME_ID), arm_label="control"
+                ),
+                ExperimentArmCreate(
+                    runtime_id=UUID(TREATMENT_RUNTIME_ID),
+                    arm_label="treatment",
+                ),
+            ],
+            goal_json=ExperimentGoal(
+                components=[JudgeGoalComponent(judge_id=UUID(JUDGE_ID))]
+            ),
+        )
     )
-    assert fake_api.last_request.json()["name"] == "prompt-bake-off"
+    body = fake_api.last_request.json()
+    assert body["name"] == "prompt-bake-off"
+    assert body["runtime_group_id"] == RUNTIME_GROUP_ID
+    assert [arm["arm_label"] for arm in body["arms"]] == [
+        "control",
+        "treatment",
+    ]
+    goal_component = body["goal_json"]["components"][0]
+    assert goal_component["source"] == "judge"
+    assert goal_component["judge_id"] == JUDGE_ID
 
 
 def test_create_from_dict(fake_api: FakeAPI):
@@ -122,7 +157,7 @@ def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/experiments/{EXPERIMENT_ID}/end",
-        json_body=experiment_payload(status="concluded"),
+        json_body=experiment_payload(status="ended"),
     )
     fake_api.add(
         "POST",
@@ -133,10 +168,9 @@ def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
 
     assert handle.start().status.value == "running"
 
-    ended = handle.end(winning_arm_label="treatment", notes="ship it")
-    assert ended.status.value == "concluded"
-    end_body = fake_api.requests[-1].json()
-    assert end_body == {"winning_arm_label": "treatment", "notes": "ship it"}
+    ended = handle.end()
+    assert ended.status.value == "ended"
+    assert fake_api.requests[-1].json() is None
 
     assert handle.cancel().status.value == "cancelled"
 

@@ -404,14 +404,14 @@ async def test_experiment_lifecycle(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/experiments/{EXPERIMENT_ID}/end",
-        json_body=experiment_payload(status="concluded"),
+        json_body=experiment_payload(status="ended"),
     )
     handle = AsyncExperiments(fake_api.async_client())(UUID(EXPERIMENT_ID))
     started = await handle.start()
     assert started.status == "running"
-    ended = await handle.end(notes="done")
-    assert ended.status == "concluded"
-    assert fake_api.last_request.json()["notes"] == "done"
+    ended = await handle.end()
+    assert ended.status == "ended"
+    assert fake_api.last_request.json() is None
 
 
 async def test_async_request_retries_on_429_then_succeeds(fake_api: FakeAPI):
