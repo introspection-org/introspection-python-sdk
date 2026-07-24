@@ -114,7 +114,6 @@ class TaskPrompt(_ApiModel):
 class TaskRunKind(StrEnum):
     PROMPT = "prompt"
     STEER = "steer"
-    CLEAR = "clear"
 
 
 class TaskRunCreateRequest(_ApiModel):
