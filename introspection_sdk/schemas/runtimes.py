@@ -32,24 +32,6 @@ class RuntimeLlmMode(StrEnum):
     BYOK = "byok"
 
 
-class RuntimeResolutionMode(StrEnum):
-    """How a runtime group resolves which runtime serves a run.
-
-    - ``sticky``: a run pins the runtime that was active when it started and
-      keeps using it for the whole conversation, even after a newer runtime
-      is promoted. The production default.
-    - ``latest``: every run (including restarts of an existing task) resolves
-      the runtime currently active for the environment. The default for
-      non-production environments.
-
-    A per-run override on the run request beats the group's setting; a yanked
-    runtime is never resolved under either mode.
-    """
-
-    STICKY = "sticky"
-    LATEST = "latest"
-
-
 class Runtime(_ApiModel):
     id: UUID
     org_id: UUID
@@ -67,10 +49,12 @@ class Runtime(_ApiModel):
     # active runtime for its environment; in-flight sticky runs keep using it.
     yanked_at: datetime | None = None
     yanked_reason: str | None = None
+    # Per-environment git ref each lane tracks ({environment: 'main' | 'pr/N' |
+    # <sha>}), projected from the runtime group.
+    environment_ref: dict[str, str] | None = None
 
 
 __all__ = [
     "Runtime",
     "RuntimeLlmMode",
-    "RuntimeResolutionMode",
 ]
