@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.9.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.8.0...v0.9.0) (2026-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **experiments:** ExperimentCreate requires runtime_group_id, arms, and goal_json; ExperimentHandle.end()/AsyncExperimentHandle.end() no longer accept winning_arm_label/notes.
+* RuntimeResolutionMode is removed from introspection_sdk.schemas.
+
+### Features
+
+* add environment_ref to Runtime; drop RuntimeResolutionMode ([#88](https://github.com/introspection-org/introspection-python-sdk/issues/88)) ([b3e8d06](https://github.com/introspection-org/introspection-python-sdk/commit/b3e8d061795268cc0155b36dd553ad623b5eb89b))
+
+
+### Bug Fixes
+
+* **experiments:** align the experiments contract with the CP API ([#87](https://github.com/introspection-org/introspection-python-sdk/issues/87)) ([d476b36](https://github.com/introspection-org/introspection-python-sdk/commit/d476b360c93243902e7914f3b8d89da2dbd226f5))
+
 ## [0.8.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.7.1...v0.8.0) (2026-07-18)
 
 
