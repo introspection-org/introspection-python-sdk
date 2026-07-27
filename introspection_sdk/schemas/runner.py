@@ -1,4 +1,4 @@
-"""Pydantic mirrors of CP `/v1/runtimes/{id}/run` and
+"""Pydantic mirrors of CP `/v1/runtimes/run` and
 `/v1/experiments/{id}/run` request/response models.
 
 Wire fields are snake_case verbatim. Unknown fields are tolerated
@@ -66,7 +66,7 @@ class RunCaller(_ApiModel):
 
 
 class RunRequest(_ApiModel):
-    """Body of ``POST /v1/{runtimes|experiments}/{id}/run``.
+    """Per-invocation options for Runtime and Experiment ``/run`` routes.
 
     Stashed on a Runner for ``refresh()``. Renamed from
     ``RuntimeContext`` — that's still importable as a deprecation

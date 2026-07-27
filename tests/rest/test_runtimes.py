@@ -73,28 +73,18 @@ def test_get_includes_project_param(fake_api: FakeAPI):
     assert fake_api.last_request.params.get("project") == PROJECT_ID
 
 
-def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):
+def test_handle_with_uuid_runs_stable_runtime_group(fake_api: FakeAPI):
     runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
     fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
         "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
+        "/v1/runtimes/run",
         json_body=runner_spec_payload(),
     )
     runtimes = _runtimes(fake_api)
     runner = runtimes(runtime_group_id).run()
     assert isinstance(runner, Runner)
-    # User-facing runtime UUIDs are runtime group IDs, so the handle resolves
-    # them before opening a runner against the returned concrete runtime row.
-    assert [r.path for r in fake_api.requests] == [
-        "/v1/runtimes",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
-    ]
-    assert fake_api.requests[0].params.get("runtime") == str(runtime_group_id)
+    assert [r.path for r in fake_api.requests] == ["/v1/runtimes/run"]
+    assert fake_api.last_request.json()["runtime"] == str(runtime_group_id)
 
 
 def test_handle_resolves_runtime_via_list(fake_api: FakeAPI):
@@ -160,17 +150,12 @@ def test_resolve_ambiguous_raises(fake_api: FakeAPI):
 def test_run_returns_runner_with_context(fake_api: FakeAPI):
     runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
     fake_api.add(
-        "GET",
-        "/v1/runtimes",
-        json_body=paginated([runtime_payload()]),
-    )
-    fake_api.add(
         "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
+        "/v1/runtimes/run",
         json_body=runner_spec_payload(),
     )
     runtimes = _runtimes(fake_api)
-    runner = runtimes(runtime_group_id).run(
+    runner = runtimes(runtime_group_id, project=PROJECT_ID).run(
         identity={"user_id": "u1"},
         caller={"locale": "en"},
         agent_name="support",
@@ -184,6 +169,8 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
     assert body["agent_name"] == "support"
     assert body["ttl_seconds"] == 3600
     assert body["scope"] == "tasks:read tasks:write"
+    assert body["runtime"] == str(runtime_group_id)
+    assert body["project"] == PROJECT_ID
     assert str(runner.context.runtime_group_id) == (
         "88888888-8888-8888-8888-888888888888"
     )
@@ -193,6 +180,45 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
     # The pre-flat nested summary remains available for compatibility.
     assert runner.context.recipe is not None
     assert runner.context.recipe.git_ref == "main"
+
+
+def test_refresh_replays_stable_selector_and_rebinds_runner(
+    fake_api: FakeAPI,
+):
+    specs = iter(
+        [
+            runner_spec_payload(session_id="sess-old"),
+            runner_spec_payload(session_id="sess-new"),
+        ]
+    )
+
+    def _handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=to_jsonable(next(specs)))
+
+    fake_api.add_handler("POST", "/v1/runtimes/run", _handler)
+    runner = _runtimes(fake_api)("checkout-agent", project=PROJECT_ID).run()
+    old_tasks = runner.tasks
+
+    runner.refresh()
+
+    assert runner.session_id == "sess-new"
+    assert runner.tasks is not old_tasks
+    assert [request.path for request in fake_api.requests] == [
+        "/v1/runtimes/run",
+        "/v1/runtimes/run",
+    ]
+    assert [request.json() for request in fake_api.requests] == [
+        {
+            "ttl_seconds": 3600,
+            "runtime": "checkout-agent",
+            "project": PROJECT_ID,
+        },
+        {
+            "ttl_seconds": 3600,
+            "runtime": "checkout-agent",
+            "project": PROJECT_ID,
+        },
+    ]
 
 
 def test_runtime_surface_excludes_operator_controls(fake_api: FakeAPI):

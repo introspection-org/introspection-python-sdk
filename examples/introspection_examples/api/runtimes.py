@@ -1,5 +1,5 @@
-"""End-to-end Runner walkthrough — resolve a runtime by slug or id, open a
-Runner against it, spawn a task, stream its run.
+"""End-to-end Runner walkthrough — run a stable Runtime by slug or group ID,
+spawn a task, and stream its run.
 
 Run with:
     INTROSPECTION_TOKEN=intro_xxx

@@ -1,5 +1,5 @@
 """Service-account (machine) auth — mint a token from confidential
-credentials, then resolve a runtime and run a task.
+credentials, then run a stable Runtime.
 
 This is the headless / CI counterpart to a long-lived ``intro_…`` API
 key: the confidential Application's ``client_id`` / ``client_secret``
@@ -12,9 +12,8 @@ Two ways to use it, both shown below:
    flow then works unchanged.
 2. ``service_account_token(...)`` directly — when you also need the
    resolved ``dp_url`` (the Data Plane endpoint the CP picked for the
-   project) and the ``runtime_id``, e.g. a broker that hands a browser
-   client ``{ token, runtime_id, dp_url }`` so the SPA talks only to the
-   Data Plane and never resolves runtimes itself.
+   project), e.g. a broker that hands a browser client ``{ token, dp_url }``.
+   Runtime selection does not belong in the project-wide browser session.
 
 Run with:
     INTRO_SA_CLIENT_ID=intro_app_xxx
@@ -56,19 +55,17 @@ def main() -> None:
     )
 
     # (2) Broker path: mint the token explicitly to also read `dp_url`
-    # (resolved server-side by the CP), and resolve the runtime slug to a
-    # concrete `runtime_id`. A web broker returns these three to a browser
-    # client — `{ token, runtime_id, dp_url }` — so the SPA connects to the
-    # Data Plane directly without hardcoding the DP URL.
+    # (resolved server-side by the CP). A web broker can return
+    # `{ token, dp_url }`; the project-wide browser session is not bound to
+    # a Runtime.
     token = service_account_token(
         client_id=client_id,
         client_secret=client_secret,
         project=project,
     )
-    resolved_runtime = client.runtimes.resolve(runtime, project=project)
-    print(f"runtime_id={resolved_runtime.id}, dp_url={token.dp_url}")
+    print(f"dp_url={token.dp_url}")
 
-    runner = client.runtimes(runtime).run()
+    runner = client.runtimes(runtime, project=project).run()
     try:
         run = runner.tasks.start(prompt="Say hello in one sentence.")
         for event in run.stream():

@@ -2,10 +2,11 @@
 
 ``client.runtimes`` is the :class:`Runtimes` instance; calling
 ``client.runtimes(runtime)`` returns a :class:`RuntimeHandle`
-which exposes ``.run()``. When called with a
-runtime slug or UUID, the handle resolves it on the caller's project
-on first use. UUID selectors are runtime group IDs; concrete runtime
-row IDs are used only by explicit ``*_id`` methods.
+which exposes ``.run()``. The handle sends its stable Runtime slug or
+group ID directly to the server-authoritative ``/v1/runtimes/run``
+operation. ``resolve()`` and ``RuntimeHandle.runtime_id`` remain
+explicit read helpers for callers that need to inspect the currently
+selected Runtime version.
 """
 
 from __future__ import annotations
@@ -111,10 +112,10 @@ class Runtimes:
     ) -> Runtime:
         """Resolve an active runtime by slug or runtime group id.
 
-        The standalone form of ``client.runtimes(runtime)`` resolution —
-        handy for a server broker that resolves a concrete ``runtime_id`` to hand
-        to a browser client (which talks only to the Data Plane and never
-        resolves runtimes itself). The project is scoped by the token
+        This is an explicit read helper for inspecting the Runtime version
+        selected right now. ``client.runtimes(runtime).run()`` does not call
+        it: execution sends the stable selector directly to the Control Plane
+        so routing remains atomic. The project is scoped by the token
         server-side; pass ``project`` only to override it.
 
         Raises ``LookupError`` if no active runtime matches the slug or
@@ -140,23 +141,28 @@ class Runtimes:
 
     def _post_run(
         self,
-        runtime_id: UUID,
+        runtime: str | UUID,
+        *,
+        project: str | None,
         options: RunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
             exclude_none=True, mode="json"
         )
-        payload = self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/run", json=body
-        )
+        body["runtime"] = str(runtime)
+        if project is not None:
+            body["project"] = project
+        payload = self._http.request("POST", "/v1/runtimes/run", json=body)
         return RunnerSpec.model_validate(payload)
 
 
 class RuntimeHandle:
     """Handle for a specific runtime slug or runtime group id.
 
-    Resolves the selector lazily on first use by listing on the caller's
-    project. Built by ``client.runtimes(runtime)``.
+    ``run()`` sends the stable selector directly to the Control Plane so
+    version and Experiment routing remain atomic. ``runtime_id`` retains
+    the existing explicit read behavior for callers that need to inspect
+    the currently selected Runtime version.
     """
 
     def __init__(
@@ -212,10 +218,13 @@ class RuntimeHandle:
             ttl_seconds=ttl_seconds,
             scope=scope,
         )
-        rid = self._resolve()
 
         def refresher() -> RunnerSpec:
-            return self._runtimes._post_run(rid, options)
+            return self._runtimes._post_run(
+                self._raw,
+                project=self._project,
+                options=options,
+            )
 
         spec = refresher()
         return Runner(
@@ -306,11 +315,10 @@ class AsyncRuntimes:
     ) -> Runtime:
         """Async twin of :meth:`Runtimes.resolve`.
 
-        Resolve an active runtime by slug or runtime group id on the caller's project — the
-        standalone form of ``client.runtimes(runtime)`` resolution, handy
-        for a server broker that resolves a concrete ``runtime_id`` to hand to a
-        browser client. Raises ``LookupError`` if no active runtime
-        matches, or if the selector is ambiguous.
+        Resolve an active runtime by slug or runtime group id on the caller's
+        project for inspection. Runtime execution does not pre-resolve this
+        selector. Raises ``LookupError`` if no active runtime matches, or if
+        the selector is ambiguous.
         """
         page = await self.list(
             runtime=str(runtime),
@@ -331,14 +339,19 @@ class AsyncRuntimes:
 
     async def _post_run(
         self,
-        runtime_id: UUID,
+        runtime: str | UUID,
+        *,
+        project: str | None,
         options: RunRequest,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
             exclude_none=True, mode="json"
         )
+        body["runtime"] = str(runtime)
+        if project is not None:
+            body["project"] = project
         payload = await self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/run", json=body
+            "POST", "/v1/runtimes/run", json=body
         )
         return RunnerSpec.model_validate(payload)
 
@@ -346,8 +359,9 @@ class AsyncRuntimes:
 class AsyncRuntimeHandle:
     """Async twin of :class:`RuntimeHandle`.
 
-    Resolves the selector lazily on first use by listing on the caller's
-    project. Built by ``client.runtimes(runtime)``.
+    ``run()`` sends the stable selector directly to the Control Plane.
+    ``_resolve()`` remains solely for the existing explicit inspection
+    behavior.
     """
 
     def __init__(
@@ -401,10 +415,13 @@ class AsyncRuntimeHandle:
             ttl_seconds=ttl_seconds,
             scope=scope,
         )
-        rid = await self._resolve()
 
         async def refresher() -> RunnerSpec:
-            return await self._runtimes._post_run(rid, options)
+            return await self._runtimes._post_run(
+                self._raw,
+                project=self._project,
+                options=options,
+            )
 
         spec = await refresher()
         return AsyncRunner(

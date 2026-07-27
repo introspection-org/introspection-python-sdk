@@ -1,8 +1,8 @@
 """End-to-end async Runner walkthrough — the async twin of
 ``introspection_examples.api.runtimes``.
 
-Resolve a runtime by slug or id, open an :class:`AsyncRunner` against it, spawn
-a task, and stream its run — all on :mod:`asyncio` with non-blocking IO,
+Run a stable Runtime by slug or group ID, spawn a task, and stream its run
+through an :class:`AsyncRunner` — all on :mod:`asyncio` with non-blocking IO,
 mirroring the TypeScript SDK's async-by-default Runner.
 
 Run with:
