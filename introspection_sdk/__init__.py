@@ -12,8 +12,8 @@ to add the OpenTelemetry surface:
 * :class:`IntrospectionSpanProcessor` /
   :class:`IntrospectionTracingProcessor` /
   :class:`ClaudeTracingProcessor` — attach to your TracerProvider.
-* :class:`AnthropicInstrumentor` / :class:`GeminiInstrumentor` —
-  auto-instrumentation for LLM SDKs.
+* :class:`AnthropicInstrumentor` / :class:`GeminiInstrumentor` and the
+  privacy-preserving OpenAI embeddings wrappers — LLM SDK instrumentation.
 * :class:`IntrospectionCallbackHandler` — LangChain integration.
 * :class:`IntrospectionConversationsSession` — OpenAI Agents
   conversation session helper.
@@ -72,6 +72,10 @@ if TYPE_CHECKING:
     )
     from introspection_sdk.otel.gemini import GeminiInstrumentor
     from introspection_sdk.otel.logs import IntrospectionLogs
+    from introspection_sdk.otel.openai import (
+        async_traced_embeddings_create,
+        traced_embeddings_create,
+    )
     from introspection_sdk.otel.processors.claude_tracing_processor import (
         ClaudeTracingProcessor,
     )
@@ -103,6 +107,8 @@ _OTEL_REQUIRED_NAMES = {
     "EventName",
     "FeedbackProperties",
     "GeminiInstrumentor",
+    "async_traced_embeddings_create",
+    "traced_embeddings_create",
     "IntrospectionCallbackHandler",
     "IntrospectionConversationsSession",
     "IntrospectionLogs",
@@ -149,6 +155,19 @@ def __getattr__(name: str) -> object:
                 )
 
                 return GeminiInstrumentor
+            if name in {
+                "async_traced_embeddings_create",
+                "traced_embeddings_create",
+            }:
+                from introspection_sdk.otel.openai import (
+                    async_traced_embeddings_create,
+                    traced_embeddings_create,
+                )
+
+                return {
+                    "async_traced_embeddings_create": async_traced_embeddings_create,
+                    "traced_embeddings_create": traced_embeddings_create,
+                }[name]
             if name in {
                 "Attr",
                 "Baggage",
@@ -244,6 +263,8 @@ __all__ = [
     "EventName",
     "FeedbackProperties",
     "GeminiInstrumentor",
+    "async_traced_embeddings_create",
+    "traced_embeddings_create",
     "IntrospectionCallbackHandler",
     "IntrospectionConversationsSession",
     "IntrospectionLogs",

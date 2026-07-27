@@ -43,6 +43,19 @@ class TestIntrospectionSpanProcessor:
         assert processor is not None
         assert processor.force_flush(1000) is True
 
+    def test_span_processor_applies_max_batch_size(self):
+        """Restate callers can request immediate one-span export batches."""
+        processor = IntrospectionSpanProcessor(
+            advanced=AdvancedOptions(
+                span_exporter=InMemorySpanExporter(),
+                max_batch_size=1,
+            ),
+        )
+
+        batch = processor._span_processor._batch_processor
+        assert batch._max_export_batch_size == 1
+        processor.shutdown()
+
     def test_span_processor_with_in_memory_exporter(self):
         """Test processor with in-memory exporter to validate spans."""
         exporter = InMemorySpanExporter()

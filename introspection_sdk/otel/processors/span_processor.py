@@ -242,11 +242,18 @@ class IntrospectionSpanProcessor(SpanProcessor):
             self._span_processor = SimpleSpanProcessor(span_exporter)
         else:
             # Configure BatchSpanProcessor with shorter timeout for faster sending
+            processor_options: dict[str, int] = {
+                "max_queue_size": 2048,
+                "export_timeout_millis": 30000,
+                "schedule_delay_millis": self._advanced.flush_interval_ms,
+            }
+            if self._advanced.max_batch_size is not None:
+                processor_options["max_export_batch_size"] = (
+                    self._advanced.max_batch_size
+                )
             self._span_processor = BatchSpanProcessor(
                 span_exporter,
-                max_queue_size=2048,
-                export_timeout_millis=30000,
-                schedule_delay_millis=self._advanced.flush_interval_ms,
+                **processor_options,
             )
 
     def on_start(
