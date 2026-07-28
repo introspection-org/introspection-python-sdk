@@ -239,10 +239,38 @@ export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
 # The project is scoped by the API key. Pass project per call only to override
 # it with a slug or UUID.
 
+# Development only: route this process's tasks to your own `introspection dev`
+# server when several developers share one Runtime. `introspection dev` prints
+# the line to copy. No default — see "Sharing a Runtime" below.
+export INTROSPECTION_DEV_TARGET="roland"                            # optional
+
 # OTel (IntrospectionLogs + span processors + instrumentors) — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional
 export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
 ```
+
+### Sharing a Runtime with another developer
+
+When two people run `introspection dev` against one Runtime, a task created by
+a shared application credential carries no developer, so the platform cannot
+tell their machines apart. Name one:
+
+```shell
+# introspection dev prints the line to copy
+export INTROSPECTION_DEV_TARGET="roland"
+```
+
+The SDK reads it and sends it as a request header on every call, so this
+process's tasks reach that dev server — prompts, working tree, and local MCP
+servers. There is no default: a target names *someone else's* machine, and
+guessing it from the local username would be right on a laptop and quietly
+wrong in a shared development deployment. Set it explicitly, or leave it unset
+and keep today's behaviour.
+
+It travels as a header, not on `caller`. `caller` stays what it is documented
+to be: descriptive metadata you attach to a session that the platform never
+acts on. Nothing changes outside the development environment, where the value
+is ignored.
 
 ## Documentation
 
