@@ -27,6 +27,7 @@ from introspection_sdk.converters.openinference import (
     is_openinference_span,
 )
 from introspection_sdk.otel.conversation import resolve_conversation_id
+from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.utils import logger, platform_is_emscripten
 from introspection_sdk.version import VERSION
 
@@ -241,12 +242,14 @@ class IntrospectionSpanProcessor(SpanProcessor):
         if emscripten:  # pragma: no cover
             self._span_processor = SimpleSpanProcessor(span_exporter)
         else:
-            # Configure BatchSpanProcessor with shorter timeout for faster sending
             self._span_processor = BatchSpanProcessor(
                 span_exporter,
-                max_queue_size=2048,
-                export_timeout_millis=30000,
-                schedule_delay_millis=self._advanced.flush_interval_ms,
+                **batch_processor_options(
+                    max_queue_size=self._advanced.max_queue_size,
+                    max_batch_size=self._advanced.max_batch_size,
+                    flush_interval_ms=self._advanced.flush_interval_ms,
+                    export_timeout_ms=self._advanced.export_timeout_ms,
+                ),
             )
 
     def on_start(

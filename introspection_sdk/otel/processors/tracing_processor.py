@@ -33,6 +33,7 @@ from introspection_sdk.converters.openai import (
 )
 from introspection_sdk.otel._usage import set_usage_cost_attributes
 from introspection_sdk.otel.conversation import resolve_conversation_id
+from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.schemas.genai import (
     SystemInstruction,
     ToolDefinition,
@@ -165,26 +166,18 @@ class IntrospectionTracingProcessor(TracingProcessor):
             resource=Resource.create({"service.name": _service_name}),
             id_generator=self._advanced.id_generator,
         )
-        # Sequential export (one span per end()) is required for multi-turn
-        # conversations and forced for emscripten and dev/staging tokens.
-        max_batch = self._advanced.max_batch_size
-        if (
-            max_batch is None
-            and token
-            and (
-                token.startswith("intro_dev")
-                or token.startswith("intro_staging")
-            )
-        ):
-            max_batch = 1
-        if platform_is_emscripten() or max_batch == 1:
+        if platform_is_emscripten():
             provider.add_span_processor(SimpleSpanProcessor(exporter))
         else:
             provider.add_span_processor(
                 BatchSpanProcessor(
                     exporter,
-                    schedule_delay_millis=self._advanced.flush_interval_ms,
-                    max_export_batch_size=max_batch,
+                    **batch_processor_options(
+                        max_queue_size=self._advanced.max_queue_size,
+                        max_batch_size=self._advanced.max_batch_size,
+                        flush_interval_ms=self._advanced.flush_interval_ms,
+                        export_timeout_ms=self._advanced.export_timeout_ms,
+                    ),
                 )
             )
         return provider
