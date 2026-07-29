@@ -18,7 +18,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _ApiModel(BaseModel):
@@ -130,7 +130,8 @@ class ExperimentCreate(_ApiModel):
 
     project: str | UUID
     name: str
-    runtime_group_id: UUID
+    runtime: str | UUID | None = None
+    runtime_group_id: UUID | None = None
     arms: list[ExperimentArmCreate] = Field(min_length=2, max_length=20)
     goal_json: ExperimentGoal
     description: str | None = None
@@ -138,6 +139,14 @@ class ExperimentCreate(_ApiModel):
     scoring_interval_seconds: int | None = None
     hash_key_fields: list[str] | None = None
     sample_rate: float | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_runtime_selector(self) -> ExperimentCreate:
+        if (self.runtime is None) == (self.runtime_group_id is None):
+            raise ValueError(
+                "exactly one of runtime or runtime_group_id is required"
+            )
+        return self
 
 
 class ExperimentUpdate(_ApiModel):
