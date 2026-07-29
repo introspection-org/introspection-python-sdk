@@ -1,7 +1,7 @@
 """Contract tests for the read-only ``runner.conversations`` namespace.
 
-Mirrors the JS SDK's ``tests/api/conversations.test.ts``: the two paging
-protocols (cursor ``next`` vs OpenAI-style ``after``/``has_more``), the
+Mirrors the JS SDK's ``tests/api/conversations.test.ts``: opaque cursor
+pagination across both conversation envelopes, the
 Responses-API-style ``retrieve()`` latest-turn heuristic, and the legacy
 ``tool_call_response`` ``result`` -> ``response`` normalization.
 
@@ -93,6 +93,7 @@ def make_page(data: list[dict[str, Any]], has_more: bool) -> dict[str, Any]:
         "first_id": data[0]["id"] if data else None,
         "last_id": data[-1]["id"] if data else None,
         "has_more": has_more,
+        "next": "cursor-page-2" if has_more else None,
     }
 
 
@@ -388,7 +389,7 @@ async def test_async_arrow_accessor_read_all(fake_api: FakeAPI):
     assert table.column("trace_id").to_pylist() == ["trace-1", "trace-2"]
 
 
-# --- items.list()/iter() (after/has_more paging) -------------------
+# --- items.list()/iter() (opaque next paging) ---------------------
 
 
 def test_items_list_passes_includes(fake_api: FakeAPI):
@@ -410,7 +411,7 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     assert _includes(req) == ["events", "span_attributes"]
 
 
-def test_items_iter_drives_after_while_has_more(fake_api: FakeAPI):
+def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):
     fake_api.add_handler(
         "GET",
         "/v1/conversations/conv-1/items",
@@ -429,8 +430,8 @@ def test_items_iter_drives_after_while_has_more(fake_api: FakeAPI):
 
     assert [i.id for i in items] == ["item-1", "item-2", "item-3"]
     assert len(fake_api.requests) == 2
-    assert fake_api.requests[0].params.get("after") is None
-    assert fake_api.requests[1].params.get("after") == "item-2"
+    assert fake_api.requests[0].params.get("next") is None
+    assert fake_api.requests[1].params.get("next") == "cursor-page-2"
 
 
 def test_items_iter_terminates_on_empty_page(fake_api: FakeAPI):
@@ -443,6 +444,16 @@ def test_items_iter_terminates_on_empty_page(fake_api: FakeAPI):
 
     assert items == []
     assert len(fake_api.requests) == 1
+
+
+def test_items_iter_rejects_has_more_without_next(fake_api: FakeAPI):
+    page = make_page([make_item(id="item-1")], True)
+    page["next"] = None
+    fake_api.add("GET", "/v1/conversations/conv-1/items", json_body=page)
+    convos = _conversations(fake_api)
+
+    with pytest.raises(ValueError, match="has_more without next"):
+        list(convos.items.list("conv-1"))
 
 
 def test_items_iter_walks_ascending_transcript(fake_api: FakeAPI):

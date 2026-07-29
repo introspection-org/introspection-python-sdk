@@ -4,13 +4,9 @@ Bound to a :class:`~introspection_sdk.runner.Runner` — every call targets
 the runner's DP endpoint with its short-lived JWT. The surface is
 read-only and mirrors the shipped JS Runner's ``conversations`` namespace.
 
-Two distinct paging protocols live side by side here:
-
-* :meth:`Conversations.list` / :meth:`Conversations.iter` walk the standard
-  Introspection cursor envelope's opaque ``next`` token.
-* :meth:`ConversationItems.list` / :meth:`ConversationItems.iter` walk an
-  OpenAI-style envelope: drive ``after = last_id`` while ``has_more`` is
-  true (there is no ``next`` token).
+Both conversation summaries and conversation items walk opaque ``next``
+cursors. The item envelope retains OpenAI-style ``first_id`` / ``last_id``
+metadata, but those identifiers do not drive pagination.
 """
 
 from __future__ import annotations
@@ -25,8 +21,6 @@ from introspection_sdk._http import RawResponse, _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
     Pager,
-    after_paginate,
-    async_after_paginate,
     async_cursor_paginate,
     cursor_paginate,
 )
@@ -154,12 +148,17 @@ def _normalize_item_payload(raw: Any) -> Any:
     return out
 
 
+def _conversation_items_next(page: ConversationItemList) -> str | None:
+    if page.has_more and page.next is None:
+        raise ValueError("conversation items page has_more without next")
+    return page.next
+
+
 class ConversationItems:
     """Items of a conversation (``/v1/conversations/{id}/items``). Read-only.
 
-    Paging is OpenAI-style underneath: the envelope has no ``next`` token —
-    the returned :class:`~introspection_sdk.pagination.Pager` drives
-    ``after`` = the previous page's ``last_id`` while ``has_more`` is true.
+    The returned :class:`~introspection_sdk.pagination.Pager` passes each
+    page's opaque ``next`` token back unchanged.
     """
 
     def __init__(self, http: _HttpClient) -> None:
@@ -170,7 +169,7 @@ class ConversationItems:
         conversation_id: str,
         *,
         limit: int = 100,
-        after: str | None = None,
+        next: str | None = None,
         order: str | None = None,
         include: builtins.list[ConversationItemInclude] | None = None,
         agent_name: str | None = None,
@@ -178,8 +177,8 @@ class ConversationItems:
         operation_name: str | None = None,
         has_attribute: str | None = None,
     ) -> Pager[ConversationItem, ConversationItemList]:
-        """List conversation items (OpenAI-style ``after`` / ``has_more``
-        envelope). Iterate the returned :class:`Pager` to stream every item
+        """List conversation items using an opaque ``next`` cursor. Iterate
+        the returned :class:`Pager` to stream every item
         across pages, or call ``.page()`` for the first page only. Pass
         ``order="asc"`` to walk the transcript from the start.
 
@@ -191,7 +190,7 @@ class ConversationItems:
         def fetch(cursor: str | None) -> ConversationItemList:
             params: dict[str, Any] = {
                 "limit": limit,
-                "after": cursor,
+                "next": cursor,
                 "order": order,
                 "include": include,
                 "agent_name": agent_name,
@@ -215,12 +214,11 @@ class ConversationItems:
                 }
             return ConversationItemList.model_validate(payload)
 
-        return after_paginate(
+        return Pager(
             fetch,
             items=lambda page: page.data,
-            last_id=lambda page: page.last_id,
-            has_more=lambda page: page.has_more,
-            start=after,
+            next_cursor=_conversation_items_next,
+            start=next,
         )
 
     def get(
@@ -248,11 +246,8 @@ class Conversations:
     """Read-only Conversations API (``/v1/conversations``).
 
     Both :meth:`list` and :meth:`items.list <ConversationItems.list>`
-    return an auto-paging :class:`~introspection_sdk.pagination.Pager`, but
-    they drive different wire protocols underneath: :meth:`list` walks the
-    standard Introspection cursor envelope's opaque ``next`` token, while
-    ``items.list`` walks an OpenAI-style envelope via ``after`` = the
-    previous page's ``last_id`` while ``has_more`` is true.
+    return an auto-paging :class:`~introspection_sdk.pagination.Pager` and
+    pass each page's opaque ``next`` token back unchanged.
     """
 
     def __init__(self, http: _HttpClient) -> None:
@@ -489,9 +484,8 @@ class Conversations:
 class AsyncConversationItems:
     """Async twin of :class:`ConversationItems`. Read-only.
 
-    Paging is OpenAI-style underneath: the envelope has no ``next`` token —
-    the returned :class:`~introspection_sdk.pagination.AsyncPager` drives
-    ``after`` = the previous page's ``last_id`` while ``has_more`` is true.
+    The returned :class:`~introspection_sdk.pagination.AsyncPager` passes each
+    page's opaque ``next`` token back unchanged.
     """
 
     def __init__(self, http: _AsyncHttpClient) -> None:
@@ -502,7 +496,7 @@ class AsyncConversationItems:
         conversation_id: str,
         *,
         limit: int = 100,
-        after: str | None = None,
+        next: str | None = None,
         order: str | None = None,
         include: builtins.list[ConversationItemInclude] | None = None,
         agent_name: str | None = None,
@@ -510,8 +504,8 @@ class AsyncConversationItems:
         operation_name: str | None = None,
         has_attribute: str | None = None,
     ) -> AsyncPager[ConversationItem, ConversationItemList]:
-        """List conversation items (OpenAI-style ``after`` / ``has_more``
-        envelope). ``await`` the returned :class:`AsyncPager` for the first
+        """List conversation items using an opaque ``next`` cursor. ``await``
+        the returned :class:`AsyncPager` for the first
         page, or ``async for`` it to stream every item across pages. Pass
         ``order="asc"`` to walk the transcript from the start.
 
@@ -523,7 +517,7 @@ class AsyncConversationItems:
         async def fetch(cursor: str | None) -> ConversationItemList:
             params: dict[str, Any] = {
                 "limit": limit,
-                "after": cursor,
+                "next": cursor,
                 "order": order,
                 "include": include,
                 "agent_name": agent_name,
@@ -547,12 +541,11 @@ class AsyncConversationItems:
                 }
             return ConversationItemList.model_validate(payload)
 
-        return async_after_paginate(
+        return AsyncPager(
             fetch,
             items=lambda page: page.data,
-            last_id=lambda page: page.last_id,
-            has_more=lambda page: page.has_more,
-            start=after,
+            next_cursor=_conversation_items_next,
+            start=next,
         )
 
     async def get(
@@ -581,11 +574,8 @@ class AsyncConversations:
     (``/v1/conversations``).
 
     Both :meth:`list` and :meth:`items.list <AsyncConversationItems.list>`
-    return an auto-paging :class:`~introspection_sdk.pagination.AsyncPager`,
-    but they drive different wire protocols underneath: :meth:`list` walks
-    the standard Introspection cursor envelope's opaque ``next`` token,
-    while ``items.list`` walks an OpenAI-style envelope via ``after`` = the
-    previous page's ``last_id`` while ``has_more`` is true.
+    return an auto-paging :class:`~introspection_sdk.pagination.AsyncPager`
+    and pass each page's opaque ``next`` token back unchanged.
     """
 
     def __init__(self, http: _AsyncHttpClient) -> None:
