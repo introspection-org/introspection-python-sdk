@@ -74,6 +74,11 @@ class Task(_ApiModel):
 
 
 class TaskCreateRequest(_ApiModel):
+    # Task creation through a Runner gets its Runtime authority from the
+    # Runner credential. Keep response models forward-compatible, but do not
+    # forward undeclared create fields such as the browser-only `runtime_id`.
+    model_config = ConfigDict(extra="ignore")
+
     title: str | None = None
     prompt: str | None = None
     mode: TaskMode = TaskMode.AGENT
