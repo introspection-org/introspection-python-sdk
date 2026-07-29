@@ -59,6 +59,7 @@ class Experiments:
         self,
         *,
         project: str | UUID,
+        runtime: str | UUID | None = None,
         name: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -71,6 +72,7 @@ class Experiments:
         def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
                 "project": str(project),
+                "runtime": str(runtime) if runtime is not None else None,
                 "name": name,
                 "status": status,
                 "limit": limit,
@@ -98,7 +100,7 @@ class Experiments:
 
     def create(self, input: ExperimentCreate | dict[str, Any]) -> Experiment:
         body = (
-            input.model_dump(exclude_none=True, mode="json")
+            input.model_dump(exclude_none=True, mode="json", by_alias=True)
             if isinstance(input, ExperimentCreate)
             else {k: v for k, v in input.items() if v is not None}
         )
@@ -258,6 +260,7 @@ class AsyncExperiments:
         self,
         *,
         project: str | UUID,
+        runtime: str | UUID | None = None,
         name: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -270,6 +273,7 @@ class AsyncExperiments:
         async def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
                 "project": str(project),
+                "runtime": str(runtime) if runtime is not None else None,
                 "name": name,
                 "status": status,
                 "limit": limit,
@@ -299,7 +303,7 @@ class AsyncExperiments:
         self, input: ExperimentCreate | dict[str, Any]
     ) -> Experiment:
         body = (
-            input.model_dump(exclude_none=True, mode="json")
+            input.model_dump(exclude_none=True, mode="json", by_alias=True)
             if isinstance(input, ExperimentCreate)
             else {k: v for k, v in input.items() if v is not None}
         )

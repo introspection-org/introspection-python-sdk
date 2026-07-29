@@ -38,8 +38,11 @@ def test_list(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/experiments", json_body=paginated([experiment_payload()])
     )
-    page = _experiments(fake_api).list(project=PROJECT_ID, status="running")
+    page = _experiments(fake_api).list(
+        project=PROJECT_ID, runtime="support-agent", status="running"
+    )
     assert page.records[0].name == "prompt-bake-off"
+    assert fake_api.last_request.params.get("runtime") == "support-agent"
     assert fake_api.last_request.params.get("status") == "running"
 
 
@@ -94,7 +97,7 @@ def test_create_from_model(fake_api: FakeAPI):
     )
     body = fake_api.last_request.json()
     assert body["name"] == "prompt-bake-off"
-    assert body["runtime_group_id"] == RUNTIME_GROUP_ID
+    assert body["runtime"] == RUNTIME_GROUP_ID
     assert [arm["arm_label"] for arm in body["arms"]] == [
         "control",
         "treatment",
@@ -102,6 +105,30 @@ def test_create_from_model(fake_api: FakeAPI):
     goal_component = body["goal_json"]["components"][0]
     assert goal_component["source"] == "judge"
     assert goal_component["judge_id"] == JUDGE_ID
+
+
+def test_create_from_model_accepts_runtime_slug(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
+    _experiments(fake_api).create(
+        ExperimentCreate(
+            project=PROJECT_ID,
+            name="prompt-bake-off",
+            runtime="support-agent",
+            arms=[
+                ExperimentArmCreate(
+                    runtime_id=UUID(RUNTIME_ID), arm_label="control"
+                ),
+                ExperimentArmCreate(
+                    runtime_id=UUID(TREATMENT_RUNTIME_ID),
+                    arm_label="treatment",
+                ),
+            ],
+            goal_json=ExperimentGoal(
+                components=[JudgeGoalComponent(judge_id=UUID(JUDGE_ID))]
+            ),
+        )
+    )
+    assert fake_api.last_request.json()["runtime"] == "support-agent"
 
 
 def test_create_from_dict(fake_api: FakeAPI):

@@ -18,7 +18,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class _ApiModel(BaseModel):
@@ -130,7 +130,10 @@ class ExperimentCreate(_ApiModel):
 
     project: str | UUID
     name: str
-    runtime_group_id: UUID
+    runtime_group_id: str | UUID = Field(
+        validation_alias=AliasChoices("runtime", "runtime_group_id"),
+        serialization_alias="runtime",
+    )
     arms: list[ExperimentArmCreate] = Field(min_length=2, max_length=20)
     goal_json: ExperimentGoal
     description: str | None = None
