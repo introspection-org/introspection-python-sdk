@@ -109,7 +109,7 @@ def traced_embeddings_create(
         span.set_status(StatusCode.ERROR, str(exc))
         raise
     finally:
-        otel_context.detach(token)  # type: ignore[arg-type]
+        otel_context.detach(token)
         span.end()
 
 
@@ -139,5 +139,5 @@ async def async_traced_embeddings_create(
         span.set_status(StatusCode.ERROR, str(exc))
         raise
     finally:
-        otel_context.detach(token)  # type: ignore[arg-type]
+        otel_context.detach(token)
         span.end()

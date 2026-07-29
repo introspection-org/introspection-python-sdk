@@ -7,6 +7,7 @@ from dirty_equals import IsStr
 from inline_snapshot import snapshot
 from opentelemetry import baggage, context, trace
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
@@ -52,6 +53,7 @@ class TestIntrospectionSpanProcessor:
             ),
         )
 
+        assert isinstance(processor._span_processor, BatchSpanProcessor)
         batch = processor._span_processor._batch_processor
         assert batch._max_export_batch_size == 1
         processor.shutdown()
