@@ -34,6 +34,21 @@ from introspection_sdk.schemas.runner import (
 )
 
 
+def _experiment_create_body(
+    input: ExperimentCreate | dict[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(input, ExperimentCreate):
+        return {
+            key: value for key, value in input.items() if value is not None
+        }
+    body = input.model_dump(exclude_none=True, mode="json")
+    runtime = body.pop("runtime", None)
+    if runtime is None:
+        runtime = body.pop("runtime_group_id")
+    body["runtime"] = runtime
+    return body
+
+
 class Experiments:
     """CP ``/v1/experiments`` namespace.
 
@@ -99,11 +114,7 @@ class Experiments:
         return Experiment.model_validate(payload)
 
     def create(self, input: ExperimentCreate | dict[str, Any]) -> Experiment:
-        body = (
-            input.model_dump(exclude_none=True, mode="json", by_alias=True)
-            if isinstance(input, ExperimentCreate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
+        body = _experiment_create_body(input)
         payload = self._http.request("POST", "/v1/experiments", json=body)
         return Experiment.model_validate(payload)
 
@@ -302,11 +313,7 @@ class AsyncExperiments:
     async def create(
         self, input: ExperimentCreate | dict[str, Any]
     ) -> Experiment:
-        body = (
-            input.model_dump(exclude_none=True, mode="json", by_alias=True)
-            if isinstance(input, ExperimentCreate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
+        body = _experiment_create_body(input)
         payload = await self._http.request(
             "POST", "/v1/experiments", json=body
         )
