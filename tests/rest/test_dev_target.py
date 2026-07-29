@@ -118,6 +118,28 @@ def test_non_ascii_and_spaced_targets_are_percent_encoded(monkeypatch) -> None:
     assert resolve_dev_target() == "roland"
 
 
+def test_encodes_exactly_as_the_node_and_rust_clients_do(monkeypatch) -> None:
+    """One target must put identical bytes on the wire from any SDK.
+
+    The unreserved set has to survive untouched — an everyday `my-laptop`
+    arriving as `my%2Dlaptop` from one client and not another is a debugging
+    trap, even though the Data Plane decodes before it normalizes and would
+    route either.
+    """
+    for raw, wire in [
+        ("my-laptop", "my-laptop"),
+        ("roland_box", "roland_box"),
+        ("host.local", "host.local"),
+        ("a~b", "a~b"),
+        ("c!d", "c%21d"),
+        ("e(f)", "e%28f%29"),
+        ("andré", "andr%C3%A9"),
+        ("my laptop", "my%20laptop"),
+    ]:
+        monkeypatch.setenv(DEV_TARGET_ENV, raw)
+        assert resolve_dev_target() == wire
+
+
 def test_encoded_target_survives_an_httpx_request(monkeypatch) -> None:
     """The reason the encoding exists, asserted against the client that
     rejected the raw value."""
