@@ -58,6 +58,16 @@ class TestIntrospectionSpanProcessor:
         assert batch._max_export_batch_size == 1
         processor.shutdown()
 
+    def test_span_processor_uses_otel_batch_default_when_unspecified(self):
+        processor = IntrospectionSpanProcessor(
+            advanced=AdvancedOptions(span_exporter=InMemorySpanExporter()),
+        )
+
+        assert isinstance(processor._span_processor, BatchSpanProcessor)
+        batch = processor._span_processor._batch_processor
+        assert batch._max_export_batch_size == 512
+        processor.shutdown()
+
     def test_span_processor_with_in_memory_exporter(self):
         """Test processor with in-memory exporter to validate spans."""
         exporter = InMemorySpanExporter()

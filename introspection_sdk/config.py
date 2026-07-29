@@ -82,10 +82,12 @@ class AdvancedOptions:
     Lower values reduce latency but increase network requests.
     Default: 5000"""
 
-    max_batch_size: int | None = 100
-    """Maximum batch size before auto-flush.
-    ``None`` uses the OTel default and opts dev/staging tokens into sequential
-    export. Default: 100"""
+    max_batch_size: int | None = None
+    """Maximum span batch size before auto-flush.
+
+    ``None`` leaves the OpenTelemetry processor default unchanged. Set to
+    ``1`` only when the caller explicitly wants immediate one-span export.
+    """
 
     id_generator: IdGenerator = field(default_factory=RandomIdGenerator)
     """Generator for trace and span IDs.

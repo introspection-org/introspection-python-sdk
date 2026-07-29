@@ -180,12 +180,13 @@ class IntrospectionTracingProcessor(TracingProcessor):
         if platform_is_emscripten() or max_batch == 1:
             provider.add_span_processor(SimpleSpanProcessor(exporter))
         else:
+            processor_options: dict[str, int] = {
+                "schedule_delay_millis": self._advanced.flush_interval_ms,
+            }
+            if max_batch is not None:
+                processor_options["max_export_batch_size"] = max_batch
             provider.add_span_processor(
-                BatchSpanProcessor(
-                    exporter,
-                    schedule_delay_millis=self._advanced.flush_interval_ms,
-                    max_export_batch_size=max_batch,
-                )
+                BatchSpanProcessor(exporter, **processor_options)
             )
         return provider
 
