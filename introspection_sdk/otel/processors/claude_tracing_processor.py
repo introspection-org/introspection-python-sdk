@@ -39,6 +39,7 @@ from introspection_sdk.otel._usage import (
     as_cost_float,
     usage_cost_attributes,
 )
+from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.schemas.genai import (
     InputMessage,
     MessagePart,
@@ -394,26 +395,19 @@ class ClaudeTracingProcessor:
             id_generator=self._advanced.id_generator,
             resource=Resource.create(attrs),
         )
-        max_batch = self._advanced.max_batch_size
-        if (
-            max_batch is None
-            and token
-            and (
-                token.startswith("intro_dev")
-                or token.startswith("intro_staging")
-            )
-        ):
-            max_batch = 1
-        if platform_is_emscripten() or max_batch == 1:
+        if platform_is_emscripten():
             provider.add_span_processor(SimpleSpanProcessor(exporter))
         else:
-            processor_options: dict[str, int] = {
-                "schedule_delay_millis": self._advanced.flush_interval_ms,
-            }
-            if max_batch is not None:
-                processor_options["max_export_batch_size"] = max_batch
             provider.add_span_processor(
-                BatchSpanProcessor(exporter, **processor_options)
+                BatchSpanProcessor(
+                    exporter,
+                    **batch_processor_options(
+                        max_queue_size=self._advanced.max_queue_size,
+                        max_batch_size=self._advanced.max_batch_size,
+                        flush_interval_ms=self._advanced.flush_interval_ms,
+                        export_timeout_ms=self._advanced.export_timeout_ms,
+                    ),
+                )
             )
         return provider
 

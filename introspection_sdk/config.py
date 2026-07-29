@@ -77,16 +77,29 @@ class AdvancedOptions:
     """Custom log exporter. If provided, bypasses the default OTLP exporter.
     Use for testing or custom export logic."""
 
-    flush_interval_ms: int = 5000
+    flush_interval_ms: int | None = None
     """Flush interval in milliseconds for batch processors (spans and logs).
-    Lower values reduce latency but increase network requests.
-    Default: 5000"""
+
+    ``None`` leaves the OpenTelemetry processor default unchanged.
+    """
 
     max_batch_size: int | None = None
-    """Maximum span batch size before auto-flush.
+    """Maximum batch size before auto-flush (spans and logs).
 
     ``None`` leaves the OpenTelemetry processor default unchanged. Set to
     ``1`` only when the caller explicitly wants immediate one-span export.
+    """
+
+    max_queue_size: int | None = None
+    """Maximum queued telemetry records before export.
+
+    ``None`` leaves the OpenTelemetry processor default unchanged.
+    """
+
+    export_timeout_ms: int | None = None
+    """Maximum time allowed for a batch export, in milliseconds.
+
+    ``None`` leaves the OpenTelemetry processor default unchanged.
     """
 
     id_generator: IdGenerator = field(default_factory=RandomIdGenerator)

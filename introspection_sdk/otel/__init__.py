@@ -181,7 +181,9 @@ def init(
         base_otel_url=base_url,
         log_exporter=resolved_advanced.log_exporter,
         flush_interval_ms=resolved_advanced.flush_interval_ms,
-        max_batch_size=resolved_advanced.max_batch_size or 100,
+        max_batch_size=resolved_advanced.max_batch_size,
+        max_queue_size=resolved_advanced.max_queue_size,
+        export_timeout_ms=resolved_advanced.export_timeout_ms,
     )
 
     _state["provider"] = provider

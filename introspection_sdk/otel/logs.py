@@ -44,6 +44,7 @@ from opentelemetry.semconv.resource import (
     ResourceAttributes,  # ty: ignore[deprecated]  # OpenTelemetry deprecated ResourceAttributes but new API not available yet
 )
 
+from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.otel.types import (
     Attr,
     Baggage,
@@ -104,8 +105,10 @@ class IntrospectionLogs:
         service_name: str | None = None,
         base_otel_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
-        flush_interval_ms: int = 5000,
-        max_batch_size: int = 100,
+        flush_interval_ms: int | None = None,
+        max_batch_size: int | None = None,
+        max_queue_size: int | None = None,
+        export_timeout_ms: int | None = None,
         log_exporter: LogRecordExporter | None = None,
     ) -> None:
         """Initialize the logs surface.
@@ -123,8 +126,14 @@ class IntrospectionLogs:
                 default ``"https://otel.introspection.dev"``).
             additional_headers: Extra HTTP headers added to OTLP
                 requests.
-            flush_interval_ms: OTLP batch flush interval. Default 5000.
-            max_batch_size: OTLP max export batch size. Default 100.
+            flush_interval_ms: OTLP batch flush interval. ``None`` uses the
+                OpenTelemetry default.
+            max_batch_size: OTLP max export batch size. ``None`` uses the
+                OpenTelemetry default.
+            max_queue_size: OTLP max queue size. ``None`` uses the
+                OpenTelemetry default.
+            export_timeout_ms: OTLP export timeout. ``None`` uses the
+                OpenTelemetry default.
             log_exporter: Custom exporter — bypasses OTLP construction.
                 Use for tests.
         """
@@ -139,6 +148,8 @@ class IntrospectionLogs:
         self._additional_headers = additional_headers
         self._flush_interval_ms = flush_interval_ms
         self._max_batch_size = max_batch_size
+        self._max_queue_size = max_queue_size
+        self._export_timeout_ms = export_timeout_ms
 
         if not self._token:
             logger.warning(
@@ -174,9 +185,12 @@ class IntrospectionLogs:
 
         processor = BatchLogRecordProcessor(
             exporter,
-            max_queue_size=2048,
-            max_export_batch_size=self._max_batch_size,
-            schedule_delay_millis=self._flush_interval_ms,
+            **batch_processor_options(
+                max_queue_size=self._max_queue_size,
+                max_batch_size=self._max_batch_size,
+                flush_interval_ms=self._flush_interval_ms,
+                export_timeout_ms=self._export_timeout_ms,
+            ),
         )
 
         resource = Resource.create(

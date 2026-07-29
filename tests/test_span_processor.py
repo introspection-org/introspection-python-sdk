@@ -44,18 +44,24 @@ class TestIntrospectionSpanProcessor:
         assert processor is not None
         assert processor.force_flush(1000) is True
 
-    def test_span_processor_applies_max_batch_size(self):
-        """Restate callers can request immediate one-span export batches."""
+    def test_span_processor_applies_explicit_batch_options(self):
+        """Callers can override each OpenTelemetry batch setting."""
         processor = IntrospectionSpanProcessor(
             advanced=AdvancedOptions(
                 span_exporter=InMemorySpanExporter(),
-                max_batch_size=1,
+                max_queue_size=64,
+                max_batch_size=8,
+                flush_interval_ms=123,
+                export_timeout_ms=456,
             ),
         )
 
         assert isinstance(processor._span_processor, BatchSpanProcessor)
         batch = processor._span_processor._batch_processor
-        assert batch._max_export_batch_size == 1
+        assert batch._max_queue_size == 64
+        assert batch._max_export_batch_size == 8
+        assert batch._schedule_delay_millis == 123
+        assert batch._export_timeout_millis == 456
         processor.shutdown()
 
     def test_span_processor_uses_otel_batch_default_when_unspecified(self):
@@ -65,7 +71,10 @@ class TestIntrospectionSpanProcessor:
 
         assert isinstance(processor._span_processor, BatchSpanProcessor)
         batch = processor._span_processor._batch_processor
+        assert batch._max_queue_size == 2048
         assert batch._max_export_batch_size == 512
+        assert batch._schedule_delay_millis == 5000
+        assert batch._export_timeout_millis == 30000
         processor.shutdown()
 
     def test_span_processor_with_in_memory_exporter(self):
