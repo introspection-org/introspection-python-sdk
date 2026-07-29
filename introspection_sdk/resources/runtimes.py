@@ -4,8 +4,9 @@
 ``client.runtimes(runtime)`` returns a :class:`RuntimeHandle`
 which exposes ``.run()``. When called with a
 runtime slug or UUID, the handle resolves it on the caller's project
-on first use. UUID selectors are runtime group IDs; concrete runtime
-row IDs are used only by explicit ``*_id`` methods.
+on every use — never cached, so a version withdrawn after the handle was
+built cannot strand it. UUID selectors are runtime group IDs; concrete
+runtime row IDs are used only by explicit ``*_id`` methods.
 """
 
 from __future__ import annotations
@@ -155,8 +156,16 @@ class Runtimes:
 class RuntimeHandle:
     """Handle for a specific runtime slug or runtime group id.
 
-    Resolves the selector lazily on first use by listing on the caller's
-    project. Built by ``client.runtimes(runtime)``.
+    Holds the stable selector and resolves it on each use, by listing on the
+    caller's project. Built by ``client.runtimes(runtime)``.
+
+    The resolved row id is deliberately not cached. A runtime group's versions
+    change underneath a long-lived handle: deploys add them, and yanking or
+    deleting retires them. A handle that remembered its first answer went on
+    using a version that could since have been withdrawn, so every later
+    ``run()`` failed with a 404 no caller could clear short of rebuilding the
+    handle. Holding the selector instead costs one lookup per use and always
+    reaches whatever the group currently serves.
     """
 
     def __init__(
@@ -169,18 +178,13 @@ class RuntimeHandle:
         self._runtimes = runtimes
         self._project = project
         self._raw = runtime
-        self._resolved_id: UUID | None = None
 
     @property
     def runtime_id(self) -> UUID:
         return self._resolve()
 
     def _resolve(self) -> UUID:
-        if self._resolved_id is not None:
-            return self._resolved_id
-        runtime = self._runtimes.resolve(str(self._raw), project=self._project)
-        self._resolved_id = runtime.id
-        return self._resolved_id
+        return self._runtimes.resolve(str(self._raw), project=self._project).id
 
     def run(
         self,
@@ -346,8 +350,9 @@ class AsyncRuntimes:
 class AsyncRuntimeHandle:
     """Async twin of :class:`RuntimeHandle`.
 
-    Resolves the selector lazily on first use by listing on the caller's
-    project. Built by ``client.runtimes(runtime)``.
+    Holds the stable selector and resolves it on each use, by listing on the
+    caller's project. Built by ``client.runtimes(runtime)``. See
+    :class:`RuntimeHandle` for why the resolved id is not cached.
     """
 
     def __init__(
@@ -360,16 +365,12 @@ class AsyncRuntimeHandle:
         self._runtimes = runtimes
         self._project = project
         self._raw = runtime
-        self._resolved_id: UUID | None = None
 
     async def _resolve(self) -> UUID:
-        if self._resolved_id is not None:
-            return self._resolved_id
-        runtime = await self._runtimes.resolve(
+        resolved = await self._runtimes.resolve(
             str(self._raw), project=self._project
         )
-        self._resolved_id = runtime.id
-        return self._resolved_id
+        return resolved.id
 
     async def run(
         self,
