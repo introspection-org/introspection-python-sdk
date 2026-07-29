@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.9.0...v0.10.0) (2026-07-29)
+
+
+### Features
+
+* route tasks to a named dev server via INTROSPECTION_DEV_TARGET ([#98](https://github.com/introspection-org/introspection-python-sdk/issues/98)) ([3497ef9](https://github.com/introspection-org/introspection-python-sdk/commit/3497ef9a55c69214ffc3ef1149bc1c9f5beab190))
+
+
+### Bug Fixes
+
+* drop CLEAR from TaskRunKind ([#92](https://github.com/introspection-org/introspection-python-sdk/issues/92)) ([4d132ca](https://github.com/introspection-org/introspection-python-sdk/commit/4d132ca5a9b8f4f7067b9d141faeb74dd7cffb03))
+
 ## [0.9.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.8.0...v0.9.0) (2026-07-24)
 
 
