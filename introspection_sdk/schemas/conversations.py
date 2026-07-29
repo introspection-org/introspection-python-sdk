@@ -4,16 +4,9 @@ Field names are kept on-the-wire (snake_case) to match the DP Pydantic
 models verbatim. Every model sets ``extra="allow"`` so new server fields
 don't break older clients.
 
-The surface uses two distinct paging styles:
-
-* **Cursor paging** (``GET /v1/conversations``) — the standard
-  Introspection :class:`~introspection_sdk.schemas.pagination.Paginated`
-  envelope with an opaque ``next`` token.
-* **After/has_more paging** (``GET /v1/conversations/{id}/items``) — an
-  OpenAI-style :class:`ConversationItemList` envelope with ``first_id`` /
-  ``last_id`` / ``has_more``. There is no ``next`` token: pass the
-  previous page's ``last_id`` as the ``after`` query param while
-  ``has_more`` is true.
+Both list surfaces use opaque ``next`` cursors. Conversation items retain an
+OpenAI-style :class:`ConversationItemList` envelope with ``first_id`` /
+``last_id`` / ``has_more`` metadata.
 """
 
 from __future__ import annotations
@@ -159,9 +152,8 @@ class ConversationItem(_ApiModel):
 class ConversationItemList(_ApiModel):
     """OpenAI-style list envelope for conversation items.
 
-    Unlike :class:`~introspection_sdk.schemas.pagination.Paginated`, there
-    is no ``next`` token: page by passing ``last_id`` as the ``after``
-    query param while ``has_more`` is true.
+    ``first_id`` and ``last_id`` are informational. Pagination uses the
+    opaque ``next`` token.
     """
 
     object: Literal["list"] = "list"
@@ -169,6 +161,7 @@ class ConversationItemList(_ApiModel):
     first_id: str | None = None
     last_id: str | None = None
     has_more: bool = False
+    next: str | None = None
 
 
 class ConversationSummary(_ApiModel):

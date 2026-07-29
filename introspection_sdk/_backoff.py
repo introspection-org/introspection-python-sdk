@@ -20,6 +20,8 @@ The stream in :mod:`.resumable` shares only the delay math; its retry
 
 from __future__ import annotations
 
+import random
+
 #: Cap on the capped-exponential retry backoff (seconds).
 _MAX_RETRY_BACKOFF = 10.0
 
@@ -28,11 +30,18 @@ _IDEMPOTENT_RETRY_STATUSES = frozenset({502, 503, 504})
 
 
 def _retry_delay(
-    attempt: int, retry_after: float | None, base: float
+    attempt: int,
+    retry_after: float | None,
+    base: float,
+    *,
+    random_value: float | None = None,
 ) -> float:
-    """``Retry-After`` as the floor of a capped-exponential step (``base * 2^n``)."""
-    exp = min(base * (2**attempt), _MAX_RETRY_BACKOFF)
-    return max(retry_after or 0.0, exp)
+    """``Retry-After`` floor plus capped exponential full jitter."""
+    floor = min(retry_after or 0.0, _MAX_RETRY_BACKOFF)
+    exponential = min(base * (2**attempt), _MAX_RETRY_BACKOFF)
+    jitter_room = min(exponential, _MAX_RETRY_BACKOFF - floor)
+    sample = random.random() if random_value is None else random_value
+    return floor + jitter_room * min(max(sample, 0.0), 1.0)
 
 
 def _is_retryable_status(status: int, idempotent: bool) -> bool:
