@@ -98,3 +98,35 @@ def test_client_unset_carries_nothing_new(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv(DEV_TARGET_ENV, raising=False)
 
     assert IntrospectionClient(token="t")._additional_headers is None
+
+
+def test_non_ascii_and_spaced_targets_are_percent_encoded(monkeypatch) -> None:
+    """httpx raises on a non-ASCII header value, so encoding is what lets a
+    login name like `andré` route rather than fail the request.
+
+    Safe because the Data Plane decodes before it normalizes, so this lands on
+    the same target as the `--as andré` the CLI advertises over protobuf.
+    """
+    monkeypatch.setenv(DEV_TARGET_ENV, "andré")
+    assert resolve_dev_target() == "andr%C3%A9"
+
+    monkeypatch.setenv(DEV_TARGET_ENV, "roland laptop")
+    assert resolve_dev_target() == "roland%20laptop"
+
+    # The ordinary case is untouched.
+    monkeypatch.setenv(DEV_TARGET_ENV, "roland")
+    assert resolve_dev_target() == "roland"
+
+
+def test_encoded_target_survives_an_httpx_request(monkeypatch) -> None:
+    """The reason the encoding exists, asserted against the client that
+    rejected the raw value."""
+    import httpx
+
+    monkeypatch.setenv(DEV_TARGET_ENV, "andré")
+    headers = dev_target_headers(None)
+    assert headers is not None
+    request = httpx.Request(
+        "POST", "http://example.invalid/v1/tasks", headers=headers
+    )
+    assert request.headers[DEV_TARGET_HEADER] == "andr%C3%A9"

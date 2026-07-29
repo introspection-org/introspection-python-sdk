@@ -29,6 +29,7 @@ development pin path, so a stray value in staging or production is ignored.
 """
 
 import os
+from urllib.parse import quote
 
 __all__ = [
     "DEV_TARGET_ENV",
@@ -45,10 +46,20 @@ DEV_TARGET_ENV = "INTROSPECTION_DEV_TARGET"
 
 
 def resolve_dev_target() -> str | None:
-    """The development target for this process, or None when unset."""
+    """The development target for this process, or None when unset.
+
+    Percent-encoded, because the value becomes an HTTP header and a header is
+    bytes: ``httpx`` raises outright on a non-ASCII header value, so a login
+    name like ``andré`` would otherwise fail the request rather than route it.
+    An ordinary ASCII name encodes to itself and is unaffected.
+
+    Safe to send encoded because the Data Plane decodes before it normalizes,
+    so ``andré`` and ``andr%C3%A9`` land on the same target as the ``--as
+    andré`` the CLI advertises over protobuf, where no encoding is needed.
+    """
     raw = os.getenv(DEV_TARGET_ENV)
     trimmed = raw.strip() if raw else ""
-    return trimmed or None
+    return quote(trimmed, safe="") or None
 
 
 def dev_target_headers(
