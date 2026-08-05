@@ -63,6 +63,8 @@ __all__ = [
     "GenAiUsage",
     "IntrospectionAttributes",
     "IntrospectionConversation",
+    "IntrospectionRecipe",
+    "IntrospectionRuntime",
     "SpanAttributes",
     "SpanKind",
     "SpanStatus",
@@ -243,6 +245,24 @@ class _Id(_SpanModel):
     id: str | None = None
 
 
+class IntrospectionRuntime(_SpanModel):
+    """``introspection.runtime.*``.
+
+    Two ids, not one: ``id`` is the specific runtime deployment, ``group_id``
+    the stable group it belongs to. Typing this as a bare ``{id}`` node loses
+    ``group_id`` to ``model_extra`` — silently, because the tree is open.
+    """
+
+    id: str | None = None
+    group_id: str | None = None
+
+
+class IntrospectionRecipe(_SpanModel):
+    """``introspection.recipe.*``."""
+
+    git_commit_sha: str | None = None
+
+
 class IntrospectionConversation(_SpanModel):
     """``introspection.conversation.*``.
 
@@ -277,7 +297,7 @@ class IntrospectionAttributes(_SpanModel):
     member: _Id | None = None
     run: _Id | None = None
     task: _Id | None = None
-    runtime: _Id | None = None
+    runtime: IntrospectionRuntime | None = None
     experiment: _Id | None = None
     environment: str | None = None
     # Cost is the cost of *this object* — the operation's on an item, the
@@ -287,7 +307,7 @@ class IntrospectionAttributes(_SpanModel):
     # cost is not in the GenAI conventions at all.
     cost_usd: float | None = None
     conversation: IntrospectionConversation | None = None
-    recipe: dict[str, Any] | None = None
+    recipe: IntrospectionRecipe | None = None
 
 
 # --- the span -------------------------------------------------------------

@@ -355,3 +355,48 @@ class TestCostPlacement:
         assert introspection.cost_usd == 0.0098
         assert conversation.trace_count == 3
         assert conversation.tool_use_count == 4
+
+
+class TestNestedIdentityNodes:
+    """Nodes the server emits with more than one field are typed for all of them.
+
+    Same class of bug as the `cost_usd` placement: an under-typed node does not
+    fail against an open tree, it quietly drops the extra fields into
+    `model_extra` and returns `None` from typed access.
+    """
+
+    def test_runtime_carries_both_ids(self) -> None:
+        span = GenAiSpan.model_validate(
+            {
+                "trace_id": "t",
+                "start_time": "2026-08-04T22:14:34Z",
+                "attributes": {
+                    "introspection": {
+                        "runtime": {
+                            "id": "019fced4-a",
+                            "group_id": "019fced4-b",
+                        }
+                    }
+                },
+            }
+        )
+
+        runtime = present(present(span.attributes.introspection).runtime)
+        assert runtime.id == "019fced4-a"
+        # The one that was being lost: `group_id` is the stable group, `id` the
+        # specific deployment, and a bare `{id}` node drops it.
+        assert runtime.group_id == "019fced4-b"
+
+    def test_recipe_commit_is_typed(self) -> None:
+        span = GenAiSpan.model_validate(
+            {
+                "trace_id": "t",
+                "start_time": "2026-08-04T22:14:34Z",
+                "attributes": {
+                    "introspection": {"recipe": {"git_commit_sha": "df7339af"}}
+                },
+            }
+        )
+
+        recipe = present(present(span.attributes.introspection).recipe)
+        assert recipe.git_commit_sha == "df7339af"
