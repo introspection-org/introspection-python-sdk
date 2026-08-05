@@ -24,11 +24,11 @@ from introspection_sdk.runner_resources import (
     Conversations,
 )
 from introspection_sdk.runner_resources._reads import ARROW_STREAM_MEDIA_TYPE
-from introspection_sdk.schemas.conversations import ConversationSummary
 from introspection_sdk.schemas.genai import (
     TextPart,
     ToolCallResponsePart,
 )
+from introspection_sdk.schemas.genai_span import GenAiSpan
 
 from .conftest import ORG_ID, PROJECT_ID, FakeAPI
 
@@ -40,58 +40,100 @@ EXPERIMENT_ID = "33333333-3333-3333-3333-333333333333"
 
 SUMMARY_FIXTURE: dict[str, Any] = {
     "trace_id": "trace-1",
-    "conversation_id": "conv-1",
-    "org_id": ORG_ID,
-    "project_id": PROJECT_ID,
+    "span_id": "span-1",
     "start_time": "2025-01-01T00:00:00Z",
     "end_time": "2025-01-01T00:00:05Z",
-    "duration_ms": 5000,
-    "service_name": "agent-runtime",
-    "environment": "production",
-    "runtime_id": RUNTIME_ID,
-    "runtime_group_id": RUNTIME_GROUP_ID,
-    "experiment_id": EXPERIMENT_ID,
-    "recipe_git_commit_sha": "abc123",
-    "model": "claude-x",
-    "agent_name": "agent",
-    "total_input_tokens": 10,
-    "total_output_tokens": 20,
-    "total_tokens": 30,
-    "total_cost_usd": 0.01,
-    "tool_use_count": 2,
-    "failed_tool_use_count": 1,
-    "trace_count": 1,
-    "span_count": 3,
-    "status": "Ok",
-    "has_errors": False,
-    "input_messages": [],
-    "output_messages": [],
+    "duration_ns": 5_000_000_000,
+    "status": {"code": "Ok"},
+    "resource": {"service": {"name": "agent-runtime"}},
+    "attributes": {
+        "gen_ai": {
+            "conversation": {"id": "conv-1"},
+            "agent": {"name": "agent"},
+            "request": {"model": "claude-x"},
+            # On a summary these are the conversation's totals, not one
+            # operation's — same attribute, honest for its scope.
+            "usage": {"input_tokens": 10, "output_tokens": 20},
+            "input": {"messages": []},
+            "output": {"messages": []},
+        },
+        "introspection": {
+            "org": {"id": ORG_ID},
+            "project": {"id": PROJECT_ID},
+            "environment": "production",
+            "runtime": {"id": RUNTIME_ID},
+            "experiment": {"id": EXPERIMENT_ID},
+            "recipe": {"git_commit_sha": "abc123"},
+            # Rollups with no semantic-convention name live here.
+            "conversation": {
+                "trace_count": 1,
+                "span_count": 3,
+                "tool_use_count": 2,
+                "failed_tool_use_count": 1,
+                "cost_usd": 0.01,
+                "has_errors": False,
+            },
+        },
+    },
 }
 
 
 def make_item(**overrides: Any) -> dict[str, Any]:
+    """A conversation item, as the DP returns it: a span.
+
+    ``attributes`` is merged rather than replaced by overrides, so a test that
+    sets one attribute does not silently drop the rest of the tree.
+    """
     item: dict[str, Any] = {
-        "object": "conversation.item",
-        "id": "item-1",
-        "type": "span",
         "trace_id": "trace-1",
         "span_id": "span-1",
-        "created_at": "2025-01-01T00:00:00Z",
-        "span_name": "chat anthropic",
-        "span_kind": "CLIENT",
-        "node_type": "span",
-        "input_messages": [],
+        "start_time": "2025-01-01T00:00:00Z",
+        "name": "chat anthropic",
+        "kind": "CLIENT",
+        "attributes": {"gen_ai": {"input": {"messages": []}}},
     }
+    attributes = overrides.pop("attributes", None)
     item.update(overrides)
+    if attributes is not None:
+        gen_ai = {
+            **item["attributes"].get("gen_ai", {}),
+            **attributes.get("gen_ai", {}),
+        }
+        item["attributes"] = {
+            **item["attributes"],
+            **attributes,
+            "gen_ai": gen_ai,
+        }
     return item
+
+
+def item_with_messages(
+    *,
+    span_id: str = "span-1",
+    operation: str | None = None,
+    input_messages: list[dict[str, Any]] | None = None,
+    output_messages: list[dict[str, Any]] | None = None,
+    **overrides: Any,
+) -> dict[str, Any]:
+    """A span carrying messages, spelled the way the wire spells them."""
+    gen_ai: dict[str, Any] = {}
+    if operation is not None:
+        gen_ai["operation"] = {"name": operation}
+    gen_ai["input"] = {"messages": input_messages or []}
+    if output_messages is not None:
+        gen_ai["output"] = {"messages": output_messages}
+    extra = overrides.pop("attributes", {})
+    gen_ai.update(extra.get("gen_ai", {}))
+    attributes = {**extra, "gen_ai": gen_ai}
+    return make_item(span_id=span_id, attributes=attributes, **overrides)
 
 
 def make_page(data: list[dict[str, Any]], has_more: bool) -> dict[str, Any]:
     return {
         "object": "list",
         "data": data,
-        "first_id": data[0]["id"] if data else None,
-        "last_id": data[-1]["id"] if data else None,
+        "first_id": data[0]["span_id"] if data else None,
+        "last_id": data[-1]["span_id"] if data else None,
         "has_more": has_more,
         "next": "cursor-page-2" if has_more else None,
     }
@@ -179,19 +221,37 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     ]
 
     summary = page.records[0]
-    assert summary.model == "claude-x"
-    assert summary.agent_name == "agent"
-    assert summary.total_tokens == 30
-    assert summary.total_cost_usd == 0.01
-    assert summary.tool_use_count == 2
-    assert summary.failed_tool_use_count == 1
+    assert summary.attributes.gen_ai.request.model == "claude-x"
+    assert summary.attributes.gen_ai.agent.name == "agent"
+    usage = summary.attributes.gen_ai.usage
+    assert usage.input_tokens + usage.output_tokens == 30
+    # Rollups with no semantic-convention name live under `introspection`,
+    # not `gen_ai` — claiming a `gen_ai.*` name for them would assert a
+    # standard meaning that does not exist.
+    rollup = summary.attributes.introspection.conversation
+    assert rollup.cost_usd == 0.01
+    assert rollup.tool_use_count == 2
+    assert rollup.failed_tool_use_count == 1
 
 
-def test_conversation_summary_omits_non_summary_fields():
-    fields = ConversationSummary.model_fields
-    assert "response_model" not in fields
-    assert "operation_name" not in fields
-    assert "signal_categories" not in fields
+def test_the_span_declares_no_flattened_fields():
+    # The flat envelope renamed a standard vocabulary into ~40 hand-named
+    # columns. None of those names should exist on the span: an attribute is
+    # addressed by its semantic-convention name, under `attributes`.
+    fields = GenAiSpan.model_fields
+    for flattened in (
+        "response_model",
+        "request_model",
+        "operation_name",
+        "model_name",
+        "provider_name",
+        "node_type",
+        "input_tokens",
+        "output_messages",
+        "span_attributes",
+        "introspection",
+    ):
+        assert flattened not in fields, flattened
 
 
 async def test_async_list_uses_matching_filters(fake_api: FakeAPI):
@@ -214,7 +274,7 @@ async def test_async_list_uses_matching_filters(fake_api: FakeAPI):
         recipe_git_commit_sha="abc123",
     )
 
-    assert page.records[0].model == "claude-x"
+    assert page.records[0].attributes.gen_ai.request.model == "claude-x"
     req = fake_api.last_request
     assert req.params.get("conversation_id") == "conv-1"
     assert req.params.get("sort") == "cost"
@@ -285,8 +345,10 @@ def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
         fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
     )
     assert [s.trace_id for s in page.records] == ["trace-1", "trace-2"]
-    assert isinstance(page.records[0], ConversationSummary)
-    assert page.records[0].total_tokens == 30
+    assert isinstance(page.records[0], GenAiSpan)
+    # `total_tokens` was input+output; the client adds rather than the server.
+    usage = page.records[0].attributes.gen_ai.usage
+    assert usage.input_tokens + usage.output_tokens == 30
     assert page.next == "cursor-2"
     assert page.count == 2
     assert page.total_count == 9
@@ -488,110 +550,109 @@ def test_items_get_fetches_single_item(fake_api: FakeAPI):
         "conv-1", "item-1", include=["gen_ai.input.messages"]
     )
 
-    assert item.id == "item-1"
+    assert item.span_id == "span-1"
     assert _includes(fake_api.last_request) == ["gen_ai.input.messages"]
 
 
 # --- retrieve() -----------------------------------------------------
 
 
-def test_retrieve_picks_latest_assistant_turn(fake_api: FakeAPI):
+def test_retrieve_picks_latest_chat_turn(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/items",
         json_body=make_page(
             [
-                make_item(id="item-3", node_type="tool_call"),
-                make_item(id="item-2", node_type="assistant"),
-                make_item(id="item-1", node_type="span"),
+                item_with_messages(span_id="span-3"),
+                item_with_messages(span_id="span-2", operation="chat"),
+                item_with_messages(span_id="span-1"),
             ],
             False,
         ),
     )
     fake_api.add(
         "GET",
-        "/v1/conversations/conv-1/items/item-2",
-        json_body=make_item(
-            id="item-2",
-            node_type="assistant",
-            response_id="resp-2",
-            model_name="claude-x",
-            provider_name="anthropic",
-            created_at="2025-01-01T00:00:02Z",
+        "/v1/conversations/conv-1/items/span-2",
+        json_body=item_with_messages(
+            span_id="span-2",
+            operation="chat",
+            start_time="2025-01-01T00:00:02Z",
             input_messages=[
                 {"role": "user", "parts": [{"type": "text", "content": "hi"}]}
             ],
-            output_message={
-                "role": "assistant",
-                "parts": [{"type": "text", "content": "hello"}],
-                "finish_reason": "stop",
-            },
-            system_instructions=[{"type": "text", "content": "be nice"}],
-            tool_definitions=[{"name": "lookup"}],
+            output_messages=[
+                {
+                    "role": "assistant",
+                    "parts": [{"type": "text", "content": "hello"}],
+                    "finish_reason": "stop",
+                }
+            ],
         ),
     )
     convos = _conversations(fake_api)
 
-    response = convos.retrieve("conv-1")
+    span = convos.retrieve("conv-1")
 
-    assert response is not None
+    assert span is not None
     # The scan hit the items list (order=desc) then the item detail.
     assert fake_api.requests[0].params.get("order") == "desc"
     detail_req = fake_api.requests[1]
-    assert detail_req.path == "/v1/conversations/conv-1/items/item-2"
-    assert _includes(detail_req) == [
-        "gen_ai.input.messages",
-        "gen_ai.system_instructions",
-        "gen_ai.tool.definitions",
-    ]
-    assert response.item_id == "item-2"
-    assert response.response_id == "resp-2"
-    assert response.model == "claude-x"
-    assert response.provider_name == "anthropic"
-    assert len(response.input_messages) == 1
-    # output_message is wrapped when gen_ai_output_messages is absent.
-    assert len(response.output_messages) == 1
-    out_part = response.output_messages[0].parts[0]
+    assert detail_req.path == "/v1/conversations/conv-1/items/span-2"
+    # No `include` at all: the items read returns the full history by default,
+    # so asking for the messages you already have is gone from the contract.
+    assert _includes(detail_req) == []
+
+    assert span.span_id == "span-2"
+    assert len(span.input_messages) == 1
+    assert len(span.output_messages) == 1
+    out_part = span.output_messages[0].parts[0]
     assert isinstance(out_part, TextPart)
     assert out_part.content == "hello"
-    assert response.system_instructions is not None
-    assert response.system_instructions[0].content == "be nice"
-    assert response.tool_definitions is not None
-    assert response.tool_definitions[0].name == "lookup"
 
 
-def test_retrieve_with_explicit_item_id_skips_scan(fake_api: FakeAPI):
+def test_retrieve_returns_the_span_itself(fake_api: FakeAPI):
+    # There is no separate response object any more — the span already carries
+    # the full history, so composing a second type from it would be copying
+    # fields into different names.
     fake_api.add(
         "GET",
-        "/v1/conversations/conv-1/items/item-7",
-        json_body=make_item(
-            id="item-7", node_type="assistant", response_id="resp-7"
+        "/v1/conversations/conv-1/items/span-7",
+        json_body=item_with_messages(
+            span_id="span-7",
+            operation="chat",
+            attributes={"gen_ai": {"response": {"id": "resp-7"}}},
         ),
     )
     convos = _conversations(fake_api)
 
-    response = convos.retrieve("conv-1", "item-7")
+    span = convos.retrieve("conv-1", "span-7")
 
     assert len(fake_api.requests) == 1
     assert (
-        fake_api.last_request.path == "/v1/conversations/conv-1/items/item-7"
+        fake_api.last_request.path == "/v1/conversations/conv-1/items/span-7"
     )
-    assert response is not None
-    assert response.item_id == "item-7"
-    assert response.response_id == "resp-7"
+    assert span is not None
+    assert isinstance(span, GenAiSpan)
+    assert span.span_id == "span-7"
+    assert span.attributes.gen_ai.response.id == "resp-7"
 
 
-def test_retrieve_falls_back_to_first_output_message(fake_api: FakeAPI):
+def test_retrieve_falls_back_to_the_first_span_that_produced_output(
+    fake_api: FakeAPI,
+):
+    # `node_type == "assistant"` used to be the primary match. It was a
+    # precomputed UI tree hint with no semantic-convention equivalent and is
+    # gone from the wire, so the fallback carries more weight now: a span that
+    # produced output is a turn even when nothing labelled it one.
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/items",
         json_body=make_page(
             [
-                make_item(id="item-2", node_type="span"),
-                make_item(
-                    id="item-1",
-                    node_type="span",
-                    output_message={"role": "assistant", "parts": []},
+                item_with_messages(span_id="span-2"),
+                item_with_messages(
+                    span_id="span-1",
+                    output_messages=[{"role": "assistant", "parts": []}],
                 ),
             ],
             False,
@@ -599,18 +660,18 @@ def test_retrieve_falls_back_to_first_output_message(fake_api: FakeAPI):
     )
     fake_api.add(
         "GET",
-        "/v1/conversations/conv-1/items/item-1",
-        json_body=make_item(
-            id="item-1",
-            output_message={"role": "assistant", "parts": []},
+        "/v1/conversations/conv-1/items/span-1",
+        json_body=item_with_messages(
+            span_id="span-1",
+            output_messages=[{"role": "assistant", "parts": []}],
         ),
     )
     convos = _conversations(fake_api)
 
-    response = convos.retrieve("conv-1")
+    span = convos.retrieve("conv-1")
 
-    assert response is not None
-    assert response.item_id == "item-1"
+    assert span is not None
+    assert span.span_id == "span-1"
 
 
 def test_retrieve_returns_none_when_no_items(fake_api: FakeAPI):
@@ -619,31 +680,31 @@ def test_retrieve_returns_none_when_no_items(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    response = convos.retrieve("conv-1")
-
-    assert response is None
+    assert convos.retrieve("conv-1") is None
     assert len(fake_api.requests) == 1
 
 
 def test_retrieve_maps_legacy_result_to_response(fake_api: FakeAPI):
+    # The compat shim survives the envelope change: older DP deployments emit
+    # `result` where semconv says `response`. Only the path to the messages
+    # moved — the mapping itself is unchanged and still needed.
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/items",
         json_body=make_page(
-            [make_item(id="item-1", node_type="assistant")], False
+            [item_with_messages(span_id="span-1", operation="chat")], False
         ),
     )
     fake_api.add(
         "GET",
-        "/v1/conversations/conv-1/items/item-1",
-        json_body=make_item(
-            id="item-1",
-            node_type="assistant",
+        "/v1/conversations/conv-1/items/span-1",
+        json_body=item_with_messages(
+            span_id="span-1",
+            operation="chat",
             input_messages=[
                 {
                     "role": "tool",
                     "parts": [
-                        # Legacy DP shape: `result` instead of `response`.
                         {
                             "type": "tool_call_response",
                             "id": "call-1",
@@ -653,7 +714,7 @@ def test_retrieve_maps_legacy_result_to_response(fake_api: FakeAPI):
                     ],
                 }
             ],
-            gen_ai_output_messages=[
+            output_messages=[
                 {
                     "role": "assistant",
                     "parts": [
@@ -669,24 +730,18 @@ def test_retrieve_maps_legacy_result_to_response(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    response = convos.retrieve("conv-1")
+    span = convos.retrieve("conv-1")
 
-    assert response is not None
-    part = response.input_messages[0].parts[0]
-    assert isinstance(part, ToolCallResponsePart)
-    assert part.id == "call-1"
-    assert part.response == {"ok": True}
-    # Non-tool parts pass through untouched.
-    text_part = response.input_messages[0].parts[1]
-    assert isinstance(text_part, TextPart)
-    assert text_part.content == "unrelated"
-    # gen_ai_output_messages is preferred over output_message.
-    out_part = response.output_messages[0].parts[0]
-    assert isinstance(out_part, ToolCallResponsePart)
-    assert out_part.response == "already-semconv"
-
-
-# --- Runner wiring --------------------------------------------------
+    assert span is not None
+    legacy = span.input_messages[0].parts[0]
+    assert isinstance(legacy, ToolCallResponsePart)
+    assert legacy.response == {"ok": True}
+    # A part already in the semconv spelling passes through untouched.
+    already = span.output_messages[0].parts[0]
+    assert isinstance(already, ToolCallResponsePart)
+    assert already.response == "already-semconv"
+    # Non-tool parts are not rewritten.
+    assert isinstance(span.input_messages[0].parts[1], TextPart)
 
 
 def test_runner_exposes_conversations_namespace():
