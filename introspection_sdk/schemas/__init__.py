@@ -29,6 +29,10 @@ from introspection_sdk.schemas.events import (
     PatternPayload,
 )
 from introspection_sdk.schemas.genai import (
+    BinaryPart,
+    CompactionPart,
+    FilePart,
+    GenericPart,
     InputMessage,
     InputMessages,
     MessagePart,
@@ -36,8 +40,10 @@ from introspection_sdk.schemas.genai import (
     OutputMessage,
     OutputMessages,
     TextPart,
+    ThinkingPart,
     ToolCallRequestPart,
     ToolCallResponsePart,
+    UrlPart,
 )
 from introspection_sdk.schemas.genai_span import (
     GenAiAttributes,
@@ -63,8 +69,10 @@ from introspection_sdk.schemas.metrics import (
 
 __all__ = [
     "AGUIEvent",
+    "BinaryPart",
     "ClusteringRunEvent",
     "ClusteringRunPayload",
+    "CompactionPart",
     "ConversationItemInclude",
     "ConversationSortField",
     "Event",
@@ -72,10 +80,12 @@ __all__ = [
     "EventType",
     "FeedbackEvent",
     "FeedbackPayload",
+    "FilePart",
     "GenAiAttributes",
     "GenAiSpan",
     "GenAiSpanList",
     "GenAiUsage",
+    "GenericPart",
     "InputMessage",
     "InputMessages",
     "Interrupt",
@@ -108,6 +118,8 @@ __all__ = [
     "SpanStatus",
     "SpanStatusCode",
     "TextPart",
+    "ThinkingPart",
     "ToolCallRequestPart",
     "ToolCallResponsePart",
+    "UrlPart",
 ]
