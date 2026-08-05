@@ -8,7 +8,12 @@ Based on the OpenTelemetry Gen AI semantic conventions:
 from typing import Annotated, Any, Literal
 
 try:
-    from pydantic import BaseModel, Field
+    from pydantic import (
+        BaseModel,
+        Field,
+        SerializerFunctionWrapHandler,
+        model_serializer,
+    )
 except ImportError as e:
     raise ImportError(
         "pydantic is required to use the schemas module. "
@@ -16,6 +21,7 @@ except ImportError as e:
     ) from e
 
 __all__ = [
+    "OmitNoneModel",
     "TextPart",
     "ThinkingPart",
     "ToolCallRequestPart",
@@ -32,7 +38,35 @@ __all__ = [
 ]
 
 
-class TextPart(BaseModel):
+class OmitNoneModel(BaseModel):
+    """Base whose serialization drops ``None``-valued keys.
+
+    The semantic conventions describe attributes that are *absent* when they
+    have no value, not attributes that are present and null. Emitting
+    ``"finish_reason": null`` on every user message asserts a finish reason
+    exists and is null, which is a different claim from "this message has no
+    finish reason" — and it is the claim a reader then has to defend against.
+
+    This applies on both sides: it is what these models serialize into
+    ``gen_ai.input.messages`` on an emitted span, and what they serialize back
+    out when a conversation is read. Applying it at the base rather than at
+    each call site keeps the two consistent, which matters because a round trip
+    through the API should be an identity.
+    """
+
+    @model_serializer(mode="wrap")
+    def _omit_none(self, handler: SerializerFunctionWrapHandler) -> Any:
+        serialized = handler(self)
+        if isinstance(serialized, dict):
+            return {
+                key: value
+                for key, value in serialized.items()
+                if value is not None
+            }
+        return serialized
+
+
+class TextPart(OmitNoneModel):
     """Text content part."""
 
     type: Literal["text"] = Field(
@@ -41,7 +75,7 @@ class TextPart(BaseModel):
     content: str = Field(description="The text content.")
 
 
-class ThinkingPart(BaseModel):
+class ThinkingPart(OmitNoneModel):
     """Reasoning/thinking content part (e.g. chain-of-thought from reasoning models)."""
 
     type: Literal["thinking"] = Field(
@@ -60,7 +94,7 @@ class ThinkingPart(BaseModel):
     )
 
 
-class ToolCallRequestPart(BaseModel):
+class ToolCallRequestPart(OmitNoneModel):
     """Tool/function call request part."""
 
     type: Literal["tool_call"] = Field(
@@ -76,7 +110,7 @@ class ToolCallRequestPart(BaseModel):
     )
 
 
-class ToolCallResponsePart(BaseModel):
+class ToolCallResponsePart(OmitNoneModel):
     """Tool/function call response part."""
 
     type: Literal["tool_call_response"] = Field(
@@ -97,7 +131,7 @@ MessagePart = Annotated[
 """Discriminated union of :class:`TextPart`, :class:`ThinkingPart`, :class:`ToolCallRequestPart`, and :class:`ToolCallResponsePart`."""
 
 
-class InputMessage(BaseModel):
+class InputMessage(OmitNoneModel):
     """Input message in OTel Gen AI semantic convention format."""
 
     role: Literal["system", "user", "assistant", "tool"] = Field(
@@ -109,7 +143,7 @@ class InputMessage(BaseModel):
     name: str | None = Field(default=None, description="Optional sender name.")
 
 
-class OutputMessage(BaseModel):
+class OutputMessage(OmitNoneModel):
     """Output message in OTel Gen AI semantic convention format."""
 
     role: Literal["system", "user", "assistant", "tool"] = Field(
@@ -133,7 +167,7 @@ OutputMessages = list[OutputMessage]
 """List of :class:`OutputMessage` instances."""
 
 
-class SystemInstruction(BaseModel):
+class SystemInstruction(OmitNoneModel):
     """A single system instruction part (text content)."""
 
     type: Literal["text"] = Field(
@@ -147,7 +181,7 @@ SystemInstructions = list[SystemInstruction]
 """List of :class:`SystemInstruction` instances."""
 
 
-class ToolDefinition(BaseModel):
+class ToolDefinition(OmitNoneModel):
     """A tool/function definition available to the model."""
 
     type: str | None = Field(
