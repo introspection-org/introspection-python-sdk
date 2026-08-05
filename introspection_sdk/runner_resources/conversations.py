@@ -33,14 +33,11 @@ from introspection_sdk.runner_resources._reads import (
     resolve_window,
 )
 from introspection_sdk.schemas.conversations import (
-    ConversationItem,
     ConversationItemInclude,
-    ConversationItemList,
-    ConversationResponse,
     ConversationSortField,
-    ConversationSummary,
     SpanStatus,
 )
+from introspection_sdk.schemas.genai_span import GenAiSpan, GenAiSpanList
 from introspection_sdk.schemas.pagination import Paginated
 
 
@@ -88,12 +85,10 @@ def build_conversation_params(
     }
 
 
-#: Includes requested when building a :class:`ConversationResponse`.
-RESPONSE_INCLUDES: list[ConversationItemInclude] = [
-    "gen_ai.input.messages",
-    "gen_ai.system_instructions",
-    "gen_ai.tool.definitions",
-]
+# The message-family `include` values are gone: the items read returns the
+# full history by default, so there is nothing left for them to gate. Asking
+# for context you already have was the old shape's sharpest edge — forget the
+# parameter and you silently forked a conversation with one turn of context.
 
 
 def _normalize_part(part: Any) -> Any:
@@ -125,30 +120,38 @@ def _normalize_messages(messages: Any) -> Any:
 
 
 def _normalize_item_payload(raw: Any) -> Any:
-    """Apply the legacy ``result`` -> ``response`` mapping across every
-    message-bearing field of a raw conversation-item payload, before it is
-    validated into the strict semconv message models."""
+    """Apply the legacy ``result`` -> ``response`` mapping to a span payload.
+
+    The mapping itself is unchanged and still needed — it is a compatibility
+    shim for older DP deployments, not an artifact of the old envelope. What
+    changed is where the messages live: they used to be flat top-level fields,
+    and now they sit at ``attributes.gen_ai.input.messages`` /
+    ``attributes.gen_ai.output.messages``, so the walk follows the tree.
+    """
     if not isinstance(raw, dict):
         return raw
-    out = dict(raw)
-    for key in (
-        "input_messages",
-        "output_messages",
-        "gen_ai_input_messages",
-        "gen_ai_output_messages",
-    ):
-        if key in out:
-            out[key] = _normalize_messages(out[key])
-    om = out.get("output_message")
-    if isinstance(om, dict) and isinstance(om.get("parts"), list):
-        out["output_message"] = {
-            **om,
-            "parts": [_normalize_part(p) for p in om["parts"]],
-        }
-    return out
+    attributes = raw.get("attributes")
+    if not isinstance(attributes, dict):
+        return raw
+    gen_ai = attributes.get("gen_ai")
+    if not isinstance(gen_ai, dict):
+        return raw
+
+    patched_gen_ai = dict(gen_ai)
+    for key in ("input", "output"):
+        node = patched_gen_ai.get(key)
+        if isinstance(node, dict) and "messages" in node:
+            patched_gen_ai[key] = {
+                **node,
+                "messages": _normalize_messages(node["messages"]),
+            }
+    return {
+        **raw,
+        "attributes": {**attributes, "gen_ai": patched_gen_ai},
+    }
 
 
-def _conversation_items_next(page: ConversationItemList) -> str | None:
+def _conversation_items_next(page: GenAiSpanList) -> str | None:
     if page.has_more and page.next is None:
         raise ValueError("conversation items page has_more without next")
     return page.next
@@ -176,7 +179,7 @@ class ConversationItems:
         service_name: str | None = None,
         operation_name: str | None = None,
         has_attribute: str | None = None,
-    ) -> Pager[ConversationItem, ConversationItemList]:
+    ) -> Pager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. Iterate
         the returned :class:`Pager` to stream every item
         across pages, or call ``.page()`` for the first page only. Pass
@@ -187,7 +190,7 @@ class ConversationItems:
         history of a span.
         """
 
-        def fetch(cursor: str | None) -> ConversationItemList:
+        def fetch(cursor: str | None) -> GenAiSpanList:
             params: dict[str, Any] = {
                 "limit": limit,
                 "next": cursor,
@@ -212,7 +215,7 @@ class ConversationItems:
                         _normalize_item_payload(d) for d in payload["data"]
                     ],
                 }
-            return ConversationItemList.model_validate(payload)
+            return GenAiSpanList.model_validate(payload)
 
         return Pager(
             fetch,
@@ -227,7 +230,7 @@ class ConversationItems:
         item_id: str,
         *,
         include: builtins.list[ConversationItemInclude] | None = None,
-    ) -> ConversationItem:
+    ) -> GenAiSpan:
         """Fetch a single conversation item. Unlike the list route, the
         detail's ``input_messages`` is the FULL input history for that
         span."""
@@ -237,9 +240,7 @@ class ConversationItems:
             f"/v1/conversations/{conversation_id}/items/{item_id}",
             params=params,
         )
-        return ConversationItem.model_validate(
-            _normalize_item_payload(payload)
-        )
+        return GenAiSpan.model_validate(_normalize_item_payload(payload))
 
 
 class Conversations:
@@ -280,7 +281,7 @@ class Conversations:
         end: str | datetime | None = None,
         lookback: str | None = None,
         format: ReadFormat = "json",
-    ) -> Pager[ConversationSummary, Paginated[ConversationSummary]]:
+    ) -> Pager[GenAiSpan, Paginated[GenAiSpan]]:
         """List conversation summaries (cursor envelope). Iterate the
         returned :class:`Pager` to stream every summary across pages, or
         call ``.page()`` for the first page only.
@@ -298,7 +299,7 @@ class Conversations:
             end_date=end_date,
         )
 
-        def fetch(cursor: str | None) -> Paginated[ConversationSummary]:
+        def fetch(cursor: str | None) -> Paginated[GenAiSpan]:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
@@ -328,13 +329,11 @@ class Conversations:
                     expect="raw",
                 )
                 assert isinstance(raw, RawResponse)
-                return decode_arrow_page(
-                    raw, ConversationSummary.model_validate
-                )
+                return decode_arrow_page(raw, GenAiSpan.model_validate)
             payload = self._http.request(
                 "GET", "/v1/conversations", params=params
             )
-            return Paginated[ConversationSummary].model_validate(payload)
+            return Paginated[GenAiSpan].model_validate(payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -414,7 +413,7 @@ class Conversations:
         *,
         max_items: int | None = None,
         **kwargs: Any,
-    ) -> Iterator[ConversationSummary]:
+    ) -> Iterator[GenAiSpan]:
         """Cursor generator: page through :meth:`list` to exhaustion, yielding
         every summary. ``max_items`` bounds the total yielded (``None`` = no
         bound). All other keyword args are forwarded to :meth:`list`."""
@@ -429,16 +428,18 @@ class Conversations:
 
     def retrieve(
         self, conversation_id: str, item_id: str | None = None
-    ) -> ConversationResponse | None:
-        """Responses-API-style retrieve: load the state of a conversation as
-        of one item — the full input history, output, system instructions,
-        and tool definitions of that turn.
+    ) -> GenAiSpan | None:
+        """Load the state of a conversation as of one item.
 
-        When ``item_id`` is omitted, the latest LLM turn is used: the first
-        item (in descending order) whose ``node_type`` is ``"assistant"`` or
-        whose ``operation_name`` is ``"chat"``, falling back to the first
-        item with a non-null ``output_message``. Returns ``None`` when the
-        conversation has no items.
+        Returns the span itself. There is no separate response type any more:
+        the items read already carries the full input history, system
+        instructions, and tool definitions, so composing a second object from
+        it would just be copying fields into different names.
+
+        When ``item_id`` is omitted the latest LLM turn is used — the first
+        item in descending order whose ``gen_ai.operation.name`` is
+        ``"chat"``, falling back to the first item that produced any output.
+        Returns ``None`` when the conversation has no items.
 
         For the full per-turn transcript instead, iterate
         ``items.list(conversation_id, order="asc")``.
@@ -446,39 +447,27 @@ class Conversations:
         target_id = item_id or self._find_latest_turn_id(conversation_id)
         if target_id is None:
             return None
-
-        detail = self.items.get(
-            conversation_id, target_id, include=RESPONSE_INCLUDES
-        )
-        output_messages = detail.gen_ai_output_messages or (
-            [detail.output_message] if detail.output_message else []
-        )
-        model = (
-            detail.model_name or detail.response_model or detail.request_model
-        )
-        return ConversationResponse(
-            conversation_id=conversation_id,
-            response_id=detail.response_id,
-            item_id=detail.id,
-            created_at=detail.created_at,
-            model=model,
-            provider_name=detail.provider_name,
-            # The single-item route returns the FULL input history here.
-            input_messages=detail.input_messages,
-            output_messages=output_messages,
-            system_instructions=detail.system_instructions,
-            tool_definitions=detail.tool_definitions,
-        )
+        return self.items.get(conversation_id, target_id)
 
     def _find_latest_turn_id(self, conversation_id: str) -> str | None:
-        """Scan items in descending order for the most recent LLM turn."""
-        fallback: ConversationItem | None = None
+        """Scan items in descending order for the most recent LLM turn.
+
+        The old heuristic also matched ``node_type == "assistant"``, but
+        ``node_type`` was a precomputed UI tree hint with no semantic-convention
+        equivalent and is gone from the wire. ``gen_ai.operation.name`` is the
+        attribute that actually carried the meaning.
+        """
+        fallback: GenAiSpan | None = None
         for item in self.items.list(conversation_id, order="desc"):
-            if item.node_type == "assistant" or item.operation_name == "chat":
-                return item.id
-            if fallback is None and item.output_message is not None:
+            gen_ai = item.attributes.gen_ai
+            operation = (
+                gen_ai.operation.name if gen_ai and gen_ai.operation else None
+            )
+            if operation == "chat":
+                return item.span_id
+            if fallback is None and item.output_messages:
                 fallback = item
-        return fallback.id if fallback else None
+        return fallback.span_id if fallback else None
 
 
 class AsyncConversationItems:
@@ -503,7 +492,7 @@ class AsyncConversationItems:
         service_name: str | None = None,
         operation_name: str | None = None,
         has_attribute: str | None = None,
-    ) -> AsyncPager[ConversationItem, ConversationItemList]:
+    ) -> AsyncPager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. ``await``
         the returned :class:`AsyncPager` for the first
         page, or ``async for`` it to stream every item across pages. Pass
@@ -514,7 +503,7 @@ class AsyncConversationItems:
         history of a span.
         """
 
-        async def fetch(cursor: str | None) -> ConversationItemList:
+        async def fetch(cursor: str | None) -> GenAiSpanList:
             params: dict[str, Any] = {
                 "limit": limit,
                 "next": cursor,
@@ -539,7 +528,7 @@ class AsyncConversationItems:
                         _normalize_item_payload(d) for d in payload["data"]
                     ],
                 }
-            return ConversationItemList.model_validate(payload)
+            return GenAiSpanList.model_validate(payload)
 
         return AsyncPager(
             fetch,
@@ -554,7 +543,7 @@ class AsyncConversationItems:
         item_id: str,
         *,
         include: builtins.list[ConversationItemInclude] | None = None,
-    ) -> ConversationItem:
+    ) -> GenAiSpan:
         """Fetch a single conversation item. Unlike the list route, the
         detail's ``input_messages`` is the FULL input history for that
         span."""
@@ -564,9 +553,7 @@ class AsyncConversationItems:
             f"/v1/conversations/{conversation_id}/items/{item_id}",
             params=params,
         )
-        return ConversationItem.model_validate(
-            _normalize_item_payload(payload)
-        )
+        return GenAiSpan.model_validate(_normalize_item_payload(payload))
 
 
 class AsyncConversations:
@@ -608,7 +595,7 @@ class AsyncConversations:
         end: str | datetime | None = None,
         lookback: str | None = None,
         format: ReadFormat = "json",
-    ) -> AsyncPager[ConversationSummary, Paginated[ConversationSummary]]:
+    ) -> AsyncPager[GenAiSpan, Paginated[GenAiSpan]]:
         """List conversation summaries (cursor envelope). ``await`` the
         returned :class:`AsyncPager` for the first page, or ``async for`` it
         to stream every summary across pages. See
@@ -623,7 +610,7 @@ class AsyncConversations:
 
         async def fetch(
             cursor: str | None,
-        ) -> Paginated[ConversationSummary]:
+        ) -> Paginated[GenAiSpan]:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
@@ -653,13 +640,11 @@ class AsyncConversations:
                     expect="raw",
                 )
                 assert isinstance(raw, RawResponse)
-                return decode_arrow_page(
-                    raw, ConversationSummary.model_validate
-                )
+                return decode_arrow_page(raw, GenAiSpan.model_validate)
             payload = await self._http.request(
                 "GET", "/v1/conversations", params=params
             )
-            return Paginated[ConversationSummary].model_validate(payload)
+            return Paginated[GenAiSpan].model_validate(payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -739,7 +724,7 @@ class AsyncConversations:
         *,
         max_items: int | None = None,
         **kwargs: Any,
-    ) -> AsyncIterator[ConversationSummary]:
+    ) -> AsyncIterator[GenAiSpan]:
         """Cursor generator: page through :meth:`list` to exhaustion, yielding
         every summary. ``max_items`` bounds the total yielded (``None`` = no
         bound). All other keyword args are forwarded to :meth:`list`."""
@@ -754,16 +739,18 @@ class AsyncConversations:
 
     async def retrieve(
         self, conversation_id: str, item_id: str | None = None
-    ) -> ConversationResponse | None:
-        """Responses-API-style retrieve: load the state of a conversation as
-        of one item — the full input history, output, system instructions,
-        and tool definitions of that turn.
+    ) -> GenAiSpan | None:
+        """Load the state of a conversation as of one item.
 
-        When ``item_id`` is omitted, the latest LLM turn is used: the first
-        item (in descending order) whose ``node_type`` is ``"assistant"`` or
-        whose ``operation_name`` is ``"chat"``, falling back to the first
-        item with a non-null ``output_message``. Returns ``None`` when the
-        conversation has no items.
+        Returns the span itself. There is no separate response type any more:
+        the items read already carries the full input history, system
+        instructions, and tool definitions, so composing a second object from
+        it would just be copying fields into different names.
+
+        When ``item_id`` is omitted the latest LLM turn is used — the first
+        item in descending order whose ``gen_ai.operation.name`` is
+        ``"chat"``, falling back to the first item that produced any output.
+        Returns ``None`` when the conversation has no items.
 
         For the full per-turn transcript instead, iterate
         ``items.list(conversation_id, order="asc")``.
@@ -771,36 +758,24 @@ class AsyncConversations:
         target_id = item_id or await self._find_latest_turn_id(conversation_id)
         if target_id is None:
             return None
-
-        detail = await self.items.get(
-            conversation_id, target_id, include=RESPONSE_INCLUDES
-        )
-        output_messages = detail.gen_ai_output_messages or (
-            [detail.output_message] if detail.output_message else []
-        )
-        model = (
-            detail.model_name or detail.response_model or detail.request_model
-        )
-        return ConversationResponse(
-            conversation_id=conversation_id,
-            response_id=detail.response_id,
-            item_id=detail.id,
-            created_at=detail.created_at,
-            model=model,
-            provider_name=detail.provider_name,
-            # The single-item route returns the FULL input history here.
-            input_messages=detail.input_messages,
-            output_messages=output_messages,
-            system_instructions=detail.system_instructions,
-            tool_definitions=detail.tool_definitions,
-        )
+        return await self.items.get(conversation_id, target_id)
 
     async def _find_latest_turn_id(self, conversation_id: str) -> str | None:
-        """Scan items in descending order for the most recent LLM turn."""
-        fallback: ConversationItem | None = None
+        """Scan items in descending order for the most recent LLM turn.
+
+        The old heuristic also matched ``node_type == "assistant"``, but
+        ``node_type`` was a precomputed UI tree hint with no semantic-convention
+        equivalent and is gone from the wire. ``gen_ai.operation.name`` is the
+        attribute that actually carried the meaning.
+        """
+        fallback: GenAiSpan | None = None
         async for item in self.items.list(conversation_id, order="desc"):
-            if item.node_type == "assistant" or item.operation_name == "chat":
-                return item.id
-            if fallback is None and item.output_message is not None:
+            gen_ai = item.attributes.gen_ai
+            operation = (
+                gen_ai.operation.name if gen_ai and gen_ai.operation else None
+            )
+            if operation == "chat":
+                return item.span_id
+            if fallback is None and item.output_messages:
                 fallback = item
-        return fallback.id if fallback else None
+        return fallback.span_id if fallback else None

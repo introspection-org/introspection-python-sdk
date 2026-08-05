@@ -110,7 +110,7 @@ def main() -> None:
                     f"{len(response.input_messages)} input message(s)"
                 )
             for item in runner.conversations.items.list(cid, order="asc"):
-                print(f"  item {item.id} ({item.node_type})")
+                print(f"  item {item.span_id} ({item.name})")
     finally:
         runner.close()
         client.shutdown()
