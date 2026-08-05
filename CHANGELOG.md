@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.11.0...v0.12.0) (2026-08-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **conversations:** `ConversationItem`, `ConversationItemList`, `ConversationSummary`, `ConversationResponse`, `IntrospectionMetadata` and `SpanEvent` are removed. Both conversation reads now return `GenAiSpan`.
+
+### Features
+
+* **conversations:** replace the flat conversation models with GenAiSpan ([#108](https://github.com/introspection-org/introspection-python-sdk/issues/108)) ([38877ae](https://github.com/introspection-org/introspection-python-sdk/commit/38877aeaf1975221f9d517375d46489e1f988bb7))
+
 ## [0.11.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.10.0...v0.11.0) (2026-07-29)
 
 
