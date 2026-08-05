@@ -60,6 +60,7 @@ __all__ = [
     "GenAiSpanList",
     "GenAiTool",
     "GenAiToolCall",
+    "GenAiCost",
     "GenAiUsage",
     "IntrospectionAttributes",
     "IntrospectionConversation",
@@ -220,6 +221,25 @@ class GenAiOutput(_SpanModel):
     messages: list[OutputMessage] = Field(default_factory=list)
 
 
+class GenAiCost(_SpanModel):
+    """``gen_ai.cost.usd``.
+
+    Not part of the published semantic conventions, but this is the name the
+    span is *written* with — the platform's ClickHouse cost column is
+    materialized from ``gen_ai.cost.usd``, so the read returns the attribute
+    under the name it was stored as rather than relocating it.
+
+    Scoped by which read returned the span, the same way ``gen_ai.usage.*`` is:
+    this operation's cost on an item, the conversation total on a summary.
+
+    Distinct from ``introspection.llm.cost_usd``, which is the *provider*-
+    reported figure (e.g. OpenRouter's ``usage.cost``) rather than the SDK's
+    own calculation. Both can be present; they are different measurements.
+    """
+
+    usd: float | None = None
+
+
 class GenAiAttributes(_SpanModel):
     """The ``gen_ai.*`` attribute family, nested as the convention names it."""
 
@@ -230,6 +250,7 @@ class GenAiAttributes(_SpanModel):
     request: GenAiRequest | None = None
     response: GenAiResponse | None = None
     usage: GenAiUsage | None = None
+    cost: GenAiCost | None = None
     tool: GenAiTool | None = None
     input: GenAiInput | None = None
     output: GenAiOutput | None = None
@@ -300,12 +321,6 @@ class IntrospectionAttributes(_SpanModel):
     runtime: IntrospectionRuntime | None = None
     experiment: _Id | None = None
     environment: str | None = None
-    # Cost is the cost of *this object* — the operation's on an item, the
-    # conversation's on a summary — so it sits beside `environment` rather than
-    # inside `conversation`, mirroring how `gen_ai.usage.*` is scoped by which
-    # read returned the span. It lives here rather than under `gen_ai` because
-    # cost is not in the GenAI conventions at all.
-    cost_usd: float | None = None
     conversation: IntrospectionConversation | None = None
     recipe: IntrospectionRecipe | None = None
 

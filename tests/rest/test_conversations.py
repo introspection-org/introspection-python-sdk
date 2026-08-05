@@ -55,6 +55,9 @@ SUMMARY_FIXTURE: dict[str, Any] = {
             # On a summary these are the conversation's totals, not one
             # operation's — same attribute, honest for its scope.
             "usage": {"input_tokens": 10, "output_tokens": 20},
+            # Cost rolls up the same way, under the name the span writes it
+            # with rather than relocated into `introspection`.
+            "cost": {"usd": 0.01},
             "input": {"messages": []},
             "output": {"messages": []},
         },
@@ -71,7 +74,6 @@ SUMMARY_FIXTURE: dict[str, Any] = {
                 "span_count": 3,
                 "tool_use_count": 2,
                 "failed_tool_use_count": 1,
-                "cost_usd": 0.01,
                 "has_errors": False,
             },
         },
@@ -226,11 +228,12 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     assert summary.attributes.gen_ai.agent.name == "agent"
     usage = summary.attributes.gen_ai.usage
     assert usage.input_tokens + usage.output_tokens == 30
-    # Rollups with no semantic-convention name live under `introspection`,
-    # not `gen_ai` — claiming a `gen_ai.*` name for them would assert a
-    # standard meaning that does not exist.
+    # Cost keeps the name the span stores it under; the counts, which have no
+    # semantic-convention name, stay under `introspection` — claiming a
+    # `gen_ai.*` name for those would assert a standard meaning that does not
+    # exist.
+    assert summary.attributes.gen_ai.cost.usd == 0.01
     rollup = summary.attributes.introspection.conversation
-    assert rollup.cost_usd == 0.01
     assert rollup.tool_use_count == 2
     assert rollup.failed_tool_use_count == 1
 

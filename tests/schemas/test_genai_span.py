@@ -311,48 +311,76 @@ class TestOneShapeTwoDepths:
 
 
 class TestCostPlacement:
-    """`cost_usd` sits beside `environment`, not inside `conversation`.
+    """Cost is typed at `gen_ai.cost.usd` — the name the span is written with.
 
-    This was wrong in the first cut: the model followed an early draft of the
-    design doc while the server emitted `introspection.cost_usd`. Because the
-    tree is open, the mismatch did not fail — the value simply landed in
-    `model_extra` and typed access silently returned `None`. That is the
-    failure mode an open tree buys you, so the placement needs its own test.
+    This has been wrong twice, in both directions, which is why it has its own
+    test. First the model followed an early draft of the design doc while the
+    server emitted `introspection.cost_usd`. Then the server itself was
+    relocating it: the platform's cost column is materialized *from*
+    `gen_ai.cost.usd`, so emitting it under `introspection` put a second,
+    renamed copy of an attribute already in the tree.
+
+    Neither mistake failed, and that is the point. The tree is open, so a
+    misplaced value lands in `model_extra` and typed access returns `None` —
+    silently. Placement is exactly what an open tree cannot check for you.
     """
 
-    def test_cost_is_typed_where_the_server_emits_it(self) -> None:
+    def test_cost_is_typed_where_the_span_stores_it(self) -> None:
         span = GenAiSpan.model_validate(
             {
                 "trace_id": "t",
                 "start_time": "2026-08-04T22:14:34Z",
-                "attributes": {"introspection": {"cost_usd": 0.0098}},
+                "attributes": {"gen_ai": {"cost": {"usd": 0.0098}}},
             }
         )
 
-        assert present(span.attributes.introspection).cost_usd == 0.0098
+        assert present(present(span.attributes.gen_ai).cost).usd == 0.0098
 
-    def test_conversation_rollups_stay_conversation_scoped(self) -> None:
-        # The counts genuinely describe the conversation, so they nest; cost
-        # describes whichever object you are holding, so it does not.
+    def test_provider_reported_cost_is_a_separate_measurement(self) -> None:
+        """`introspection.llm.cost_usd` is the provider's figure, not a rename.
+
+        OpenRouter reports what it actually charged; the SDK computes its own
+        estimate. A client can hold both, so neither may occupy the other's key.
+        """
         span = GenAiSpan.model_validate(
             {
                 "trace_id": "t",
                 "start_time": "2026-08-04T22:14:34Z",
                 "attributes": {
-                    "introspection": {
-                        "cost_usd": 0.0098,
-                        "conversation": {
-                            "trace_count": 3,
-                            "tool_use_count": 4,
-                        },
-                    }
+                    "gen_ai": {"cost": {"usd": 0.0098}},
+                    "introspection": {"llm": {"cost_usd": 0.0091}},
                 },
             }
         )
 
+        assert present(present(span.attributes.gen_ai).cost).usd == 0.0098
         introspection = present(span.attributes.introspection)
-        conversation = present(introspection.conversation)
-        assert introspection.cost_usd == 0.0098
+        assert (introspection.model_extra or {})["llm"] == {"cost_usd": 0.0091}
+
+    def test_conversation_rollups_stay_conversation_scoped(self) -> None:
+        # The counts have no semantic-convention name and genuinely describe the
+        # conversation, so they nest under `introspection.conversation`. Cost
+        # has a name the span already uses, so it does not move here.
+        span = GenAiSpan.model_validate(
+            {
+                "trace_id": "t",
+                "start_time": "2026-08-04T22:14:34Z",
+                "attributes": {
+                    "gen_ai": {"cost": {"usd": 0.0098}},
+                    "introspection": {
+                        "conversation": {
+                            "trace_count": 3,
+                            "tool_use_count": 4,
+                        },
+                    },
+                },
+            }
+        )
+
+        conversation = present(
+            present(span.attributes.introspection).conversation
+        )
+        assert present(present(span.attributes.gen_ai).cost).usd == 0.0098
         assert conversation.trace_count == 3
         assert conversation.tool_use_count == 4
 

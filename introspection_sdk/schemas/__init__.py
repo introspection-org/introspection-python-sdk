@@ -47,6 +47,7 @@ from introspection_sdk.schemas.genai import (
 )
 from introspection_sdk.schemas.genai_span import (
     GenAiAttributes,
+    GenAiCost,
     GenAiSpan,
     GenAiSpanList,
     GenAiUsage,
@@ -84,6 +85,7 @@ __all__ = [
     "GenAiAttributes",
     "GenAiSpan",
     "GenAiSpanList",
+    "GenAiCost",
     "GenAiUsage",
     "GenericPart",
     "InputMessage",
