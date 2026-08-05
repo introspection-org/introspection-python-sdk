@@ -124,7 +124,7 @@ async def main() -> None:
                 async for item in runner.conversations.items.list(
                     cid, order="asc"
                 ):
-                    print(f"  item {item.id} ({item.node_type})")
+                    print(f"  item {item.span_id} ({item.name})")
 
 
 if __name__ == "__main__":

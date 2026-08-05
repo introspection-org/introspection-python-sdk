@@ -330,6 +330,22 @@ class GenAiSpan(_SpanModel):
         )
 
     @property
+    def model(self) -> str | None:
+        """The model this span ran against — requested, else responded.
+
+        The old flat shape exposed this as a server-side ``coalesce()`` named
+        ``model_name``, which existed in no specification. Same precedence,
+        now visibly the client's choice rather than a field the API invents.
+        """
+        gen_ai = self.attributes.gen_ai
+        if gen_ai is None:
+            return None
+        requested = gen_ai.request.model if gen_ai.request else None
+        return requested or (
+            gen_ai.response.model if gen_ai.response else None
+        )
+
+    @property
     def input_messages(self) -> list[InputMessage]:
         """``attributes.gen_ai.input.messages`` — empty rather than absent.
 

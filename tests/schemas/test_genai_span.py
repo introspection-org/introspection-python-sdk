@@ -14,11 +14,26 @@ representation got wrong (see `conversations-genai-representation.md` §1):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeVar
 
 import pytest
 
 from introspection_sdk.schemas.genai_span import GenAiSpan, GenAiSpanList
+
+T = TypeVar("T")
+
+
+def present(value: T | None) -> T:
+    """Narrow an optional attribute node, failing the test if it is absent.
+
+    Every level of the attribute tree is optional, because a span may carry any
+    subset of it — a tool span has no `gen_ai.request`, a bare span has no
+    `gen_ai` at all. In a test asserting a *specific* shape an absent node is a
+    failure rather than a branch, so unwrap loudly instead of chaining through
+    `Optional` and leaving the type checker to object.
+    """
+    assert value is not None, "expected this attribute node to be present"
+    return value
 
 
 def _nulls(value: Any, path: str = "") -> list[str]:
@@ -93,28 +108,32 @@ class TestSemconvNaming:
     def test_the_tree_is_addressed_by_convention_name(self) -> None:
         # The whole point: a reader who knows the semantic conventions can
         # find a value without learning a private dialect for it.
-        span = GenAiSpan.model_validate(FULL_SPAN)
+        gen_ai = present(GenAiSpan.model_validate(FULL_SPAN).attributes.gen_ai)
 
-        assert span.attributes.gen_ai.operation.name == "chat"
-        assert span.attributes.gen_ai.provider.name == "anthropic"
-        assert span.attributes.gen_ai.request.model == "claude-sonnet-4-6"
-        assert span.attributes.gen_ai.usage.input_tokens == 1527
+        assert present(gen_ai.operation).name == "chat"
+        assert present(gen_ai.provider).name == "anthropic"
+        assert present(gen_ai.request).model == "claude-sonnet-4-6"
+        assert present(gen_ai.usage).input_tokens == 1527
 
     def test_cache_tokens_nest_the_way_the_convention_nests_them(self) -> None:
         # `gen_ai.usage.cache_read.input_tokens` is a nested count, not a flat
         # `cache_read_input_tokens` — this was our local extension before the
         # conventions adopted it, and the nesting is the adopted spelling.
-        span = GenAiSpan.model_validate(FULL_SPAN)
+        gen_ai = present(GenAiSpan.model_validate(FULL_SPAN).attributes.gen_ai)
 
-        assert span.attributes.gen_ai.usage.cache_creation.input_tokens == 1524
+        assert (
+            present(present(gen_ai.usage).cache_creation).input_tokens == 1524
+        )
 
     def test_introspection_attributes_sit_beside_gen_ai_not_inside_it(
         self,
     ) -> None:
-        span = GenAiSpan.model_validate(FULL_SPAN)
+        introspection = present(
+            GenAiSpan.model_validate(FULL_SPAN).attributes.introspection
+        )
 
-        assert span.attributes.introspection.member.id == "019fbe0c"
-        assert span.attributes.introspection.environment == "production"
+        assert present(introspection.member).id == "019fbe0c"
+        assert introspection.environment == "production"
 
 
 class TestNullIsNeverSerialized:
@@ -181,9 +200,8 @@ class TestTheTreeIsOpen:
             }
         )
 
-        assert span.attributes.gen_ai.model_extra["vendor_specific"] == {
-            "nested": "kept"
-        }
+        extra = present(present(span.attributes.gen_ai).model_extra)
+        assert extra["vendor_specific"] == {"nested": "kept"}
 
     def test_an_entirely_unknown_attribute_family_survives(self) -> None:
         span = GenAiSpan.model_validate(
@@ -194,7 +212,7 @@ class TestTheTreeIsOpen:
             }
         )
 
-        assert span.attributes.model_extra["acme"] == {"tenant": "x"}
+        assert present(span.attributes.model_extra)["acme"] == {"tenant": "x"}
 
     def test_unknown_attributes_round_trip_through_serialization(self) -> None:
         # Surviving validation is not enough — it has to come back out.
@@ -282,7 +300,8 @@ class TestOneShapeTwoDepths:
 
         assert page.has_more is True
         assert page.next == "cursor-abc"
-        assert page.data[0].attributes.gen_ai.operation.name == "chat"
+        gen_ai = present(page.data[0].attributes.gen_ai)
+        assert present(gen_ai.operation).name == "chat"
 
     def test_an_empty_page_is_valid_and_serializes_no_nulls(self) -> None:
         page = GenAiSpanList.model_validate({"object": "list", "data": []})

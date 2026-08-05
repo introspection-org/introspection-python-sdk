@@ -29,6 +29,7 @@ from introspection_sdk.schemas.genai import (
     ToolCallResponsePart,
 )
 from introspection_sdk.schemas.genai_span import GenAiSpan
+from tests.schemas.test_genai_span import present
 
 from .conftest import ORG_ID, PROJECT_ID, FakeAPI
 
@@ -274,7 +275,8 @@ async def test_async_list_uses_matching_filters(fake_api: FakeAPI):
         recipe_git_commit_sha="abc123",
     )
 
-    assert page.records[0].attributes.gen_ai.request.model == "claude-x"
+    gen_ai = present(page.records[0].attributes.gen_ai)
+    assert present(gen_ai.request).model == "claude-x"
     req = fake_api.last_request
     assert req.params.get("conversation_id") == "conv-1"
     assert req.params.get("sort") == "cost"
@@ -347,8 +349,8 @@ def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
     assert [s.trace_id for s in page.records] == ["trace-1", "trace-2"]
     assert isinstance(page.records[0], GenAiSpan)
     # `total_tokens` was input+output; the client adds rather than the server.
-    usage = page.records[0].attributes.gen_ai.usage
-    assert usage.input_tokens + usage.output_tokens == 30
+    usage = present(present(page.records[0].attributes.gen_ai).usage)
+    assert (usage.input_tokens or 0) + (usage.output_tokens or 0) == 30
     assert page.next == "cursor-2"
     assert page.count == 2
     assert page.total_count == 9
@@ -463,14 +465,14 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     convos = _conversations(fake_api)
 
     page = convos.items.list(
-        "conv-1", order="asc", include=["events", "span_attributes"]
+        "conv-1", order="asc", include=["events", "resource_attributes"]
     )
 
     assert len(page.data) == 1
     req = fake_api.last_request
     assert req.path == "/v1/conversations/conv-1/items"
     assert req.params.get("order") == "asc"
-    assert _includes(req) == ["events", "span_attributes"]
+    assert _includes(req) == ["events", "resource_attributes"]
 
 
 def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):
@@ -546,12 +548,12 @@ def test_items_get_fetches_single_item(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    item = convos.items.get(
-        "conv-1", "item-1", include=["gen_ai.input.messages"]
-    )
+    item = convos.items.get("conv-1", "item-1", include=["events"])
 
     assert item.span_id == "span-1"
-    assert _includes(fake_api.last_request) == ["gen_ai.input.messages"]
+    # The message-family includes are gone from the vocabulary: full history is
+    # returned unconditionally, so there is nothing left for them to gate.
+    assert _includes(fake_api.last_request) == ["events"]
 
 
 # --- retrieve() -----------------------------------------------------
@@ -634,7 +636,7 @@ def test_retrieve_returns_the_span_itself(fake_api: FakeAPI):
     assert span is not None
     assert isinstance(span, GenAiSpan)
     assert span.span_id == "span-7"
-    assert span.attributes.gen_ai.response.id == "resp-7"
+    assert present(present(span.attributes.gen_ai).response).id == "resp-7"
 
 
 def test_retrieve_falls_back_to_the_first_span_that_produced_output(
