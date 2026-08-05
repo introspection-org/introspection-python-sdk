@@ -179,6 +179,15 @@ def test_create_accepts_plain_dict_file_refs(fake_api: FakeAPI):
     ]
 
 
+def test_create_sends_a_bare_id_when_no_name_is_given(fake_api: FakeAPI):
+    # The name is optional: the server mounts the file under its own name.
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(
+        prompt="summarize", files=[TaskFileRef(id="file-1")]
+    )
+    assert fake_api.last_request.json()["files"] == [{"id": "file-1"}]
+
+
 def test_create_omits_files_when_none_attached(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
     _tasks(fake_api).create(prompt="hello")

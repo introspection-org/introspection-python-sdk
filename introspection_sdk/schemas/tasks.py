@@ -77,13 +77,16 @@ class TaskFileRef(_ApiModel):
     """A reference to an already-uploaded file, attached to a task.
 
     Bytes go through ``POST /v1/files`` first (``runner.files.upload`` /
-    ``create_text``); a task only ever carries the reference. ``name`` is the
-    workspace-relative path the file is mounted as, so it must be relative and
-    must not traverse outside the task's files directory.
+    ``create_text``); a task only ever carries the reference.
+
+    ``name`` is optional — omit it and the file is mounted under its own name.
+    Supply it only to override: rename, or nest it in a subdirectory
+    (``"specs/senior-jd.pdf"``). When supplied it must be relative and must not
+    traverse outside the task's files directory.
     """
 
     id: str
-    name: str
+    name: str | None = None
     size_bytes: int | None = None
 
 
