@@ -308,3 +308,50 @@ class TestOneShapeTwoDepths:
 
         assert page.data == []
         assert _nulls(page.model_dump(mode="json")) == []
+
+
+class TestCostPlacement:
+    """`cost_usd` sits beside `environment`, not inside `conversation`.
+
+    This was wrong in the first cut: the model followed an early draft of the
+    design doc while the server emitted `introspection.cost_usd`. Because the
+    tree is open, the mismatch did not fail — the value simply landed in
+    `model_extra` and typed access silently returned `None`. That is the
+    failure mode an open tree buys you, so the placement needs its own test.
+    """
+
+    def test_cost_is_typed_where_the_server_emits_it(self) -> None:
+        span = GenAiSpan.model_validate(
+            {
+                "trace_id": "t",
+                "start_time": "2026-08-04T22:14:34Z",
+                "attributes": {"introspection": {"cost_usd": 0.0098}},
+            }
+        )
+
+        assert present(span.attributes.introspection).cost_usd == 0.0098
+
+    def test_conversation_rollups_stay_conversation_scoped(self) -> None:
+        # The counts genuinely describe the conversation, so they nest; cost
+        # describes whichever object you are holding, so it does not.
+        span = GenAiSpan.model_validate(
+            {
+                "trace_id": "t",
+                "start_time": "2026-08-04T22:14:34Z",
+                "attributes": {
+                    "introspection": {
+                        "cost_usd": 0.0098,
+                        "conversation": {
+                            "trace_count": 3,
+                            "tool_use_count": 4,
+                        },
+                    }
+                },
+            }
+        )
+
+        introspection = present(span.attributes.introspection)
+        conversation = present(introspection.conversation)
+        assert introspection.cost_usd == 0.0098
+        assert conversation.trace_count == 3
+        assert conversation.tool_use_count == 4

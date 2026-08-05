@@ -5,14 +5,18 @@ identity and timing at the top level, everything else under ``attributes`` keyed
 by its OpenTelemetry semantic-convention name. ``attributes.gen_ai.request.model``
 is called that here because that is what the SDK wrote when it created the span.
 
-Both conversation reads return this same type. The only difference is how much
-conversation the message lists carry:
+All three conversation reads return this same type. The only difference is how
+much conversation the message lists carry:
 
-- ``GET /v1/conversations`` — the latest turn only, one message each. A preview.
-- ``GET /v1/conversations/{id}/items`` — the **full history**, so a conversation
-  can be resumed with complete context.
+- ``GET /v1/conversations`` — the latest turn only. A list preview.
+- ``GET /v1/conversations/{id}/items`` — that turn's **delta**; concatenate in
+  order for the transcript, each message appearing once.
+- ``GET /v1/conversations/{id}/items/{item_id}`` — the **full history** as of
+  that turn. This is the resumption read, and it needs no ``include``.
 
 That is a depth difference, not a schema difference: one parser, one renderer.
+Full history is the detail read only because returning it per item on a list is
+quadratic — turn 50 would carry fifty messages, turn 49 forty-nine, and so on.
 
 **Absent means absent.** Nothing serializes as ``null``; a value that is not
 present is a key that is not there. The typed families below are a convenience
@@ -259,15 +263,13 @@ class IntrospectionConversation(_SpanModel):
     span_count: int | None = None
     tool_use_count: int | None = None
     failed_tool_use_count: int | None = None
-    cost_usd: float | None = None
     has_errors: bool | None = None
 
 
 class IntrospectionAttributes(_SpanModel):
     """The ``introspection.*`` attribute family.
 
-    Everything here is ours. ``cost_usd`` sits under ``conversation`` rather
-    than ``gen_ai.usage`` because cost is not in the GenAI conventions at all.
+    Everything here is ours.
     """
 
     org: _Id | None = None
@@ -278,6 +280,12 @@ class IntrospectionAttributes(_SpanModel):
     runtime: _Id | None = None
     experiment: _Id | None = None
     environment: str | None = None
+    # Cost is the cost of *this object* — the operation's on an item, the
+    # conversation's on a summary — so it sits beside `environment` rather than
+    # inside `conversation`, mirroring how `gen_ai.usage.*` is scoped by which
+    # read returned the span. It lives here rather than under `gen_ai` because
+    # cost is not in the GenAI conventions at all.
+    cost_usd: float | None = None
     conversation: IntrospectionConversation | None = None
     recipe: dict[str, Any] | None = None
 
