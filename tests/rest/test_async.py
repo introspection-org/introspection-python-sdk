@@ -25,7 +25,7 @@ from introspection_sdk.runner_resources import (
 )
 from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.runner import RunnerSpec
-from introspection_sdk.schemas.tasks import TaskRunKind
+from introspection_sdk.schemas.tasks import TaskFileRef, TaskRunKind
 from introspection_sdk.streaming import parse_ag_ui_events_async
 
 from .conftest import (
@@ -177,6 +177,32 @@ async def test_run_handle_stream_and_text(fake_api: FakeAPI):
         e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events
     ] == ["hel", "lo"]
     assert await handle.text() == "hello"
+
+
+async def test_runs_create_attaches_files_mid_conversation(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
+    )
+    await AsyncTasks(fake_api.async_client()).runs.create(
+        TASK_ID,
+        message="now compare it to this",
+        files=[TaskFileRef(id="file-2", name="jd.md")],
+    )
+    assert fake_api.last_request.json() == {
+        "message": "now compare it to this",
+        "files": [{"id": "file-2", "name": "jd.md"}],
+    }
+
+
+async def test_create_sends_attached_files(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    await AsyncTasks(fake_api.async_client()).create(
+        prompt="summarize the spec",
+        files=[{"id": "file-1", "name": "spec.md"}],
+    )
+    assert fake_api.last_request.json()["files"] == [
+        {"id": "file-1", "name": "spec.md"}
+    ]
 
 
 async def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
