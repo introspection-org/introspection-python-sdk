@@ -73,6 +73,23 @@ class Task(_ApiModel):
     identity_key: str | None = None
 
 
+class TaskFileRef(_ApiModel):
+    """A reference to an already-uploaded file, attached to a task.
+
+    Bytes go through ``POST /v1/files`` first (``runner.files.upload`` /
+    ``create_text``); a task only ever carries the reference.
+
+    ``name`` is optional — omit it and the file is mounted under its own name.
+    Supply it only to override: rename, or nest it in a subdirectory
+    (``"specs/senior-jd.pdf"``). When supplied it must be relative and must not
+    traverse outside the task's files directory.
+    """
+
+    id: str
+    name: str | None = None
+    size_bytes: int | None = None
+
+
 class TaskCreateRequest(_ApiModel):
     # Task creation through a Runner gets its Runtime authority from the
     # Runner credential. Keep response models forward-compatible, but do not
@@ -85,6 +102,15 @@ class TaskCreateRequest(_ApiModel):
     system_id: str | None = None
     repository_id: UUID | None = None
     metadata: dict[str, Any] | None = None
+    files: list[TaskFileRef] | None = Field(
+        default=None,
+        description=(
+            "Files to attach to this task. Materialized into the agent's "
+            "workspace and announced to it before the first turn runs. "
+            "Equivalent to setting metadata.conversation_files.uploads, which "
+            "stays supported; prefer this field."
+        ),
+    )
     idle_timeout_seconds: int | None = Field(
         default=None,
         ge=0,
@@ -126,6 +152,18 @@ class TaskRunCreateRequest(_ApiModel):
     message: str | None = None
     kind: TaskRunKind | None = None
     metadata: dict[str, Any] | None = None
+    files: list[TaskFileRef] | None = Field(
+        default=None,
+        description=(
+            "Files to attach to this turn — the way to add a file "
+            "mid-conversation. The agent's workspace is built once when its "
+            "sandbox starts, so a file attached on a later turn is "
+            "materialized into the running sandbox before that turn executes, "
+            "and joins the task's set so a restart replays it. Re-sending a "
+            "file the task already carries is a no-op. Not accepted alongside "
+            "resume."
+        ),
+    )
 
 
 class TaskRunResumeRequest(_ApiModel):

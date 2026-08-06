@@ -5,6 +5,7 @@ from __future__ import annotations
 from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
 from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
+    TaskFileRef,
     TaskMode,
     TaskPrompt,
     TaskRunKind,
@@ -154,6 +155,71 @@ def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
         "message": "revise",
         "kind": "steer",
         "metadata": {"source": "test"},
+    }
+
+
+def test_create_sends_attached_files(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(
+        prompt="summarize the spec",
+        files=[TaskFileRef(id="file-1", name="spec.md", size_bytes=12)],
+    )
+    assert fake_api.last_request.json()["files"] == [
+        {"id": "file-1", "name": "spec.md", "size_bytes": 12}
+    ]
+
+
+def test_create_accepts_plain_dict_file_refs(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(
+        prompt="summarize", files=[{"id": "file-1", "name": "spec.md"}]
+    )
+    assert fake_api.last_request.json()["files"] == [
+        {"id": "file-1", "name": "spec.md"}
+    ]
+
+
+def test_create_sends_a_bare_id_when_no_name_is_given(fake_api: FakeAPI):
+    # The name is optional: the server mounts the file under its own name.
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(
+        prompt="summarize", files=[TaskFileRef(id="file-1")]
+    )
+    assert fake_api.last_request.json()["files"] == [{"id": "file-1"}]
+
+
+def test_create_omits_files_when_none_attached(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(prompt="hello")
+    assert "files" not in fake_api.last_request.json()
+
+
+def test_start_forwards_attached_files(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).start(
+        prompt="summarize", files=[{"id": "file-1", "name": "spec.md"}]
+    )
+    assert fake_api.last_request.json()["files"] == [
+        {"id": "file-1", "name": "spec.md"}
+    ]
+
+
+def test_runs_create_attaches_files_mid_conversation(fake_api: FakeAPI):
+    # The workspace is built when the sandbox starts, so a file attached on a
+    # later turn has to ride the run that references it.
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs",
+        json_body=task_run_response(),
+    )
+    _tasks(fake_api).runs.create(
+        TASK_ID,
+        message="now compare it to this",
+        files=[TaskFileRef(id="file-2", name="jd.md")],
+    )
+    assert fake_api.last_request.json() == {
+        "message": "now compare it to this",
+        "files": [{"id": "file-2", "name": "jd.md"}],
     }
 
 

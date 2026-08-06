@@ -34,6 +34,7 @@ from introspection_sdk.schemas.tasks import (
     TaskCancelRequest,
     TaskCancelResponse,
     TaskCreateResponse,
+    TaskFileRef,
     TaskMode,
     TaskPrompt,
     TaskRun,
@@ -53,6 +54,17 @@ def _resume_body(
             for entry in resume
         ]
     }
+
+
+def _file_refs(
+    files: list[TaskFileRef | dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        ref.model_dump(exclude_none=True)
+        if isinstance(ref, TaskFileRef)
+        else ref
+        for ref in files
+    ]
 
 
 class RunHandle:
@@ -117,6 +129,7 @@ class TaskRuns:
         message: str | None = None,
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
+        files: list[TaskFileRef | dict[str, Any]] | None = None,
     ) -> RunHandle:
         body: dict[str, Any] = {}
         if prompt is not None:
@@ -133,6 +146,8 @@ class TaskRuns:
             )
         if metadata is not None:
             body["metadata"] = metadata
+        if files:
+            body["files"] = _file_refs(files)
         payload = self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs", json=body
         )
@@ -260,6 +275,7 @@ class Tasks:
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
+        files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -272,6 +288,7 @@ class Tasks:
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
+            "files": _file_refs(files) if files else None,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)
@@ -331,6 +348,7 @@ class Tasks:
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
+        files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
     ) -> RunHandle:
         """Cursor-style sugar: create a task + return a handle on its initial run.
 
@@ -346,6 +364,7 @@ class Tasks:
             repository_id=repository_id,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
+            files=files,
         )
         return RunHandle(res.task, res.run, self.runs)
 
@@ -413,6 +432,7 @@ class AsyncTaskRuns:
         message: str | None = None,
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
+        files: list[TaskFileRef | dict[str, Any]] | None = None,
     ) -> AsyncRunHandle:
         body: dict[str, Any] = {}
         if prompt is not None:
@@ -429,6 +449,8 @@ class AsyncTaskRuns:
             )
         if metadata is not None:
             body["metadata"] = metadata
+        if files:
+            body["files"] = _file_refs(files)
         payload = await self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs", json=body
         )
@@ -550,6 +572,7 @@ class AsyncTasks:
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
+        files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -562,6 +585,7 @@ class AsyncTasks:
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
+            "files": _file_refs(files) if files else None,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
@@ -623,6 +647,7 @@ class AsyncTasks:
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
+        files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
     ) -> AsyncRunHandle:
         """Cursor-style sugar: create a task + return a handle on its initial
         run.
@@ -639,5 +664,6 @@ class AsyncTasks:
             repository_id=repository_id,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
+            files=files,
         )
         return AsyncRunHandle(res.task, res.run, self.runs)
