@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.12.0...v0.13.0) (2026-08-06)
+
+
+### Features
+
+* **tasks:** add `files` to task and task-run create ([#111](https://github.com/introspection-org/introspection-python-sdk/issues/111)) ([5aa45e1](https://github.com/introspection-org/introspection-python-sdk/commit/5aa45e15a279fb92231d28f580c127dc14d1b3dc))
+
 ## [0.12.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.11.0...v0.12.0) (2026-08-05)
 
 
