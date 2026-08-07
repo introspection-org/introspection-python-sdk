@@ -24,6 +24,7 @@ from introspection_sdk.runner_resources import (
     Conversations,
 )
 from introspection_sdk.runner_resources._reads import ARROW_STREAM_MEDIA_TYPE
+from introspection_sdk.schemas.conversations import Conversation
 from introspection_sdk.schemas.genai import (
     TextPart,
     ToolCallResponsePart,
@@ -31,7 +32,7 @@ from introspection_sdk.schemas.genai import (
 from introspection_sdk.schemas.genai_span import GenAiSpan
 from tests.schemas.test_genai_span import present
 
-from .conftest import ORG_ID, PROJECT_ID, FakeAPI
+from .conftest import FakeAPI
 
 RUNTIME_ID = "11111111-1111-1111-1111-111111111111"
 RUNTIME_GROUP_ID = "22222222-2222-2222-2222-222222222222"
@@ -40,44 +41,43 @@ EXPERIMENT_ID = "33333333-3333-3333-3333-333333333333"
 # --- Wire fixtures (raw dicts, as the DP returns them) --------------
 
 SUMMARY_FIXTURE: dict[str, Any] = {
-    "trace_id": "trace-1",
-    "span_id": "span-1",
-    "start_time": "2025-01-01T00:00:00Z",
-    "end_time": "2025-01-01T00:00:05Z",
-    "duration_ns": 5_000_000_000,
-    "status": {"code": "Ok"},
-    "resource": {"service": {"name": "agent-runtime"}},
-    "attributes": {
-        "gen_ai": {
-            "conversation": {"id": "conv-1"},
-            "agent": {"name": "agent"},
-            "request": {"model": "claude-x"},
-            # On a summary these are the conversation's totals, not one
-            # operation's — same attribute, honest for its scope.
-            "usage": {"input_tokens": 10, "output_tokens": 20},
-            # Cost rolls up the same way, under the name the span writes it
-            # with rather than relocated into `introspection`.
-            "cost": {"usd": 0.01},
-            "input": {"messages": []},
-            "output": {"messages": []},
-        },
-        "introspection": {
-            "org": {"id": ORG_ID},
-            "project": {"id": PROJECT_ID},
-            "environment": "production",
-            "runtime": {"id": RUNTIME_ID},
-            "experiment": {"id": EXPERIMENT_ID},
-            "recipe": {"git_commit_sha": "abc123"},
-            # Rollups with no semantic-convention name live here.
-            "conversation": {
-                "trace_count": 1,
-                "span_count": 3,
-                "tool_use_count": 2,
-                "failed_tool_use_count": 1,
-                "has_errors": False,
-            },
-        },
+    "object": "conversation",
+    "id": "conv-1",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:05Z",
+    "usage": {
+        "input_tokens": 10,
+        "output_tokens": 20,
+        "total_tokens": 30,
     },
+    "cost": {"usd": 0.01},
+    "metrics": {
+        "duration_ms": 5000,
+        "trace_count": 1,
+        "span_count": 3,
+        "tool_use_count": 2,
+        "failed_tool_use_count": 1,
+        "has_errors": False,
+    },
+    "environment": "production",
+    "service_name": "agent-runtime",
+    "runtime_id": RUNTIME_ID,
+    "experiment_id": EXPERIMENT_ID,
+    "recipe_git_commit_sha": "abc123",
+}
+
+SUMMARY_WITH_AGENTS = {
+    **SUMMARY_FIXTURE,
+    "agents": [
+        {"id": "root-run", "name": "agent", "depth": 0},
+        {
+            "id": "child-run",
+            "name": "researcher",
+            "parent_id": "root-run",
+            "invocation_id": "child-invocation",
+            "depth": 1,
+        },
+    ],
 }
 
 
@@ -202,6 +202,7 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     )
 
     assert len(page.records) == 1
+    assert page.records[0].agents is None
     req = fake_api.last_request
     assert req.path == "/v1/conversations"
     assert req.params.get("limit") == "10"
@@ -224,18 +225,25 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     ]
 
     summary = page.records[0]
-    assert summary.attributes.gen_ai.request.model == "claude-x"
-    assert summary.attributes.gen_ai.agent.name == "agent"
-    usage = summary.attributes.gen_ai.usage
-    assert usage.input_tokens + usage.output_tokens == 30
-    # Cost keeps the name the span stores it under; the counts, which have no
-    # semantic-convention name, stay under `introspection` — claiming a
-    # `gen_ai.*` name for those would assert a standard meaning that does not
-    # exist.
-    assert summary.attributes.gen_ai.cost.usd == 0.01
-    rollup = summary.attributes.introspection.conversation
-    assert rollup.tool_use_count == 2
-    assert rollup.failed_tool_use_count == 1
+    assert summary.id == "conv-1"
+    assert summary.usage.total_tokens == 30
+    assert summary.cost.usd == 0.01
+    assert summary.metrics.tool_use_count == 2
+    assert summary.metrics.failed_tool_use_count == 1
+
+
+def test_get_returns_complete_agent_index(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1", json_body=SUMMARY_WITH_AGENTS
+    )
+    summary = _conversations(fake_api).get("conv-1")
+    assert summary.agents is not None
+    assert [
+        (agent.id, agent.parent_id, agent.depth) for agent in summary.agents
+    ] == [
+        ("root-run", None, 0),
+        ("child-run", "root-run", 1),
+    ]
 
 
 def test_the_span_declares_no_flattened_fields():
@@ -278,8 +286,7 @@ async def test_async_list_uses_matching_filters(fake_api: FakeAPI):
         recipe_git_commit_sha="abc123",
     )
 
-    gen_ai = present(page.records[0].attributes.gen_ai)
-    assert present(gen_ai.request).model == "claude-x"
+    assert page.records[0].id == "conv-1"
     req = fake_api.last_request
     assert req.params.get("conversation_id") == "conv-1"
     assert req.params.get("sort") == "cost"
@@ -299,9 +306,7 @@ def test_iter_drives_cursor_next_until_exhausted(fake_api: FakeAPI):
         _sequence_handler(
             [
                 cursor_page([SUMMARY_FIXTURE], "cursor-2"),
-                cursor_page(
-                    [{**SUMMARY_FIXTURE, "trace_id": "trace-2"}], None
-                ),
+                cursor_page([{**SUMMARY_FIXTURE, "id": "conv-2"}], None),
             ]
         ),
     )
@@ -310,7 +315,7 @@ def test_iter_drives_cursor_next_until_exhausted(fake_api: FakeAPI):
     summaries = list(convos.list())
 
     assert len(summaries) == 2
-    assert summaries[1].trace_id == "trace-2"
+    assert summaries[1].id == "conv-2"
     assert len(fake_api.requests) == 2
     assert fake_api.requests[1].params.get("next") == "cursor-2"
 
@@ -328,7 +333,7 @@ def _arrow_stream(rows: list[dict[str, Any]]) -> bytes:
 
 def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
     body = _arrow_stream(
-        [SUMMARY_FIXTURE, {**SUMMARY_FIXTURE, "trace_id": "trace-2"}]
+        [SUMMARY_FIXTURE, {**SUMMARY_FIXTURE, "id": "conv-2"}]
     )
     fake_api.add(
         "GET",
@@ -349,11 +354,9 @@ def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
     assert (
         fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
     )
-    assert [s.trace_id for s in page.records] == ["trace-1", "trace-2"]
-    assert isinstance(page.records[0], GenAiSpan)
-    # `total_tokens` was input+output; the client adds rather than the server.
-    usage = present(present(page.records[0].attributes.gen_ai).usage)
-    assert (usage.input_tokens or 0) + (usage.output_tokens or 0) == 30
+    assert [s.id for s in page.records] == ["conv-1", "conv-2"]
+    assert isinstance(page.records[0], Conversation)
+    assert page.records[0].usage.total_tokens == 30
     assert page.next == "cursor-2"
     assert page.count == 2
     assert page.total_count == 9
@@ -374,7 +377,7 @@ async def test_async_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
     assert (
         fake_api.last_request.headers.get("accept") == ARROW_STREAM_MEDIA_TYPE
     )
-    assert [s.trace_id for s in page.records] == ["trace-1"]
+    assert [s.id for s in page.records] == ["conv-1"]
     assert page.count == 1
     assert page.total_count == 1
     assert page.next is None
@@ -385,9 +388,9 @@ async def test_async_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
 
 def test_arrow_accessor_yields_tables_per_page(fake_api: FakeAPI):
     page1 = _arrow_stream(
-        [SUMMARY_FIXTURE, {**SUMMARY_FIXTURE, "trace_id": "trace-2"}]
+        [SUMMARY_FIXTURE, {**SUMMARY_FIXTURE, "id": "conv-2"}]
     )
-    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "trace_id": "trace-3"}])
+    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "id": "conv-3"}])
     responses = iter(
         [
             httpx.Response(
@@ -413,7 +416,7 @@ def test_arrow_accessor_yields_tables_per_page(fake_api: FakeAPI):
 
 def test_arrow_accessor_read_all_concatenates(fake_api: FakeAPI):
     page1 = _arrow_stream([SUMMARY_FIXTURE])
-    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "trace_id": "trace-2"}])
+    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "id": "conv-2"}])
     responses = iter(
         [
             httpx.Response(
@@ -431,12 +434,12 @@ def test_arrow_accessor_read_all_concatenates(fake_api: FakeAPI):
 
     assert isinstance(table, pa.Table)
     assert table.num_rows == 2
-    assert table.column("trace_id").to_pylist() == ["trace-1", "trace-2"]
+    assert table.column("id").to_pylist() == ["conv-1", "conv-2"]
 
 
 async def test_async_arrow_accessor_read_all(fake_api: FakeAPI):
     page1 = _arrow_stream([SUMMARY_FIXTURE])
-    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "trace_id": "trace-2"}])
+    page2 = _arrow_stream([{**SUMMARY_FIXTURE, "id": "conv-2"}])
     responses = iter(
         [
             httpx.Response(
@@ -453,7 +456,7 @@ async def test_async_arrow_accessor_read_all(fake_api: FakeAPI):
     table = await convos.arrow().read_all()
 
     assert table.num_rows == 2
-    assert table.column("trace_id").to_pylist() == ["trace-1", "trace-2"]
+    assert table.column("id").to_pylist() == ["conv-1", "conv-2"]
 
 
 # --- items.list()/iter() (opaque next paging) ---------------------
@@ -468,14 +471,32 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     convos = _conversations(fake_api)
 
     page = convos.items.list(
-        "conv-1", order="asc", include=["events", "resource_attributes"]
+        "conv-1",
+        order="asc",
+        include=[
+            "gen_ai.system_instructions",
+            "gen_ai.tool.definitions",
+            "events",
+            "span_attributes",
+            "resource_attributes",
+        ],
+        agent="root",
     )
 
     assert len(page.data) == 1
     req = fake_api.last_request
     assert req.path == "/v1/conversations/conv-1/items"
     assert req.params.get("order") == "asc"
-    assert _includes(req) == ["events", "resource_attributes"]
+    assert _includes(req) == [
+        "gen_ai.system_instructions",
+        "gen_ai.tool.definitions",
+        "events",
+        "span_attributes",
+        "resource_attributes",
+    ]
+    assert req.params.get("agent") == "root"
+    assert req.params.get("agent_name") is None
+    assert req.params.get("agent_id") is None
 
 
 def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):

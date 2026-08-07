@@ -102,7 +102,7 @@ def main() -> None:
         print(f"recent conversations (first page): {len(convos_page.records)}")
         if convos_page.records:
             summary = convos_page.records[0]
-            cid = summary.conversation_id or summary.trace_id
+            cid = summary.id
             response = runner.conversations.retrieve(cid)
             if response is not None:
                 print(

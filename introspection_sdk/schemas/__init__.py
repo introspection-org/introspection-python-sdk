@@ -7,8 +7,13 @@ from introspection_sdk.schemas.agui import (
     ResumeEntry,
 )
 from introspection_sdk.schemas.conversations import (
+    Conversation,
+    ConversationAgent,
+    ConversationCost,
     ConversationItemInclude,
+    ConversationMetrics,
     ConversationSortField,
+    ConversationUsage,
 )
 from introspection_sdk.schemas.events import (
     ClusteringRunEvent,
@@ -75,7 +80,12 @@ __all__ = [
     "ClusteringRunPayload",
     "CompactionPart",
     "ConversationItemInclude",
+    "Conversation",
+    "ConversationCost",
+    "ConversationMetrics",
+    "ConversationAgent",
     "ConversationSortField",
+    "ConversationUsage",
     "Event",
     "EventSortField",
     "EventType",

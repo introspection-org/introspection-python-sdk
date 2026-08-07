@@ -253,14 +253,14 @@ class TestConvenienceAccessors:
         assert span.conversation_id is None
 
 
-class TestOneShapeTwoDepths:
-    """List and items return the same type; only message depth differs."""
+class TestItemMessageDepths:
+    """Item pages and item detail use one span type at different depths."""
 
     @pytest.mark.parametrize("message_count", [1, 12])
     def test_the_same_model_parses_a_preview_and_a_full_history(
         self, message_count: int
     ) -> None:
-        # The list read sends one message; the items read sends the whole
+        # The item list sends one message; item detail sends the whole
         # conversation so it can be resumed. Same type either way — if this
         # ever needed two models, the "one parser" claim would be false.
         raw = {

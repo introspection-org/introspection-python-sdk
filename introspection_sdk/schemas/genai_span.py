@@ -1,20 +1,15 @@
-"""The GenAI span — the single object the ``/v1/conversations`` surface returns.
+"""The GenAI span returned by conversation item reads.
 
 A conversation item **is** an OpenTelemetry span, so this models it as one:
 identity and timing at the top level, everything else under ``attributes`` keyed
 by its OpenTelemetry semantic-convention name. ``attributes.gen_ai.request.model``
 is called that here because that is what the SDK wrote when it created the span.
 
-All three conversation reads return this same type. The only difference is how
-much conversation the message lists carry:
-
-- ``GET /v1/conversations`` — the latest turn only. A list preview.
 - ``GET /v1/conversations/{id}/items`` — that turn's **delta**; concatenate in
   order for the transcript, each message appearing once.
 - ``GET /v1/conversations/{id}/items/{item_id}`` — the **full history** as of
   that turn. This is the resumption read, and it needs no ``include``.
 
-That is a depth difference, not a schema difference: one parser, one renderer.
 Full history is the detail read only because returning it per item on a list is
 quadratic — turn 50 would carry fifty messages, turn 49 forty-nine, and so on.
 
@@ -209,7 +204,7 @@ class GenAiTool(_SpanModel):
 class GenAiInput(_SpanModel):
     """``gen_ai.input.messages``.
 
-    Full history on the items read; the latest turn only on the list read.
+    Full history on item detail; the turn-local delta on the items list.
     """
 
     messages: list[InputMessage] = Field(default_factory=list)
@@ -287,10 +282,7 @@ class IntrospectionRecipe(_SpanModel):
 class IntrospectionConversation(_SpanModel):
     """``introspection.conversation.*``.
 
-    On an item these describe the turn's place in the conversation. On a
-    summary, the counts describe the conversation as a whole — these are the
-    rollups that have no semantic-convention name, which is why they live here
-    rather than under ``gen_ai``.
+    These describe the turn's place in the conversation.
     """
 
     position: int | None = None
