@@ -33,6 +33,7 @@ from introspection_sdk.runner_resources._reads import (
     resolve_window,
 )
 from introspection_sdk.schemas.conversations import (
+    Conversation,
     ConversationItemInclude,
     ConversationSortField,
     SpanStatus,
@@ -281,7 +282,7 @@ class Conversations:
         end: str | datetime | None = None,
         lookback: str | None = None,
         format: ReadFormat = "json",
-    ) -> Pager[GenAiSpan, Paginated[GenAiSpan]]:
+    ) -> Pager[Conversation, Paginated[Conversation]]:
         """List conversation summaries (cursor envelope). Iterate the
         returned :class:`Pager` to stream every summary across pages, or
         call ``.page()`` for the first page only.
@@ -299,7 +300,7 @@ class Conversations:
             end_date=end_date,
         )
 
-        def fetch(cursor: str | None) -> Paginated[GenAiSpan]:
+        def fetch(cursor: str | None) -> Paginated[Conversation]:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
@@ -329,11 +330,11 @@ class Conversations:
                     expect="raw",
                 )
                 assert isinstance(raw, RawResponse)
-                return decode_arrow_page(raw, GenAiSpan.model_validate)
+                return decode_arrow_page(raw, Conversation.model_validate)
             payload = self._http.request(
                 "GET", "/v1/conversations", params=params
             )
-            return Paginated[GenAiSpan].model_validate(payload)
+            return Paginated[Conversation].model_validate(payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -413,7 +414,7 @@ class Conversations:
         *,
         max_items: int | None = None,
         **kwargs: Any,
-    ) -> Iterator[GenAiSpan]:
+    ) -> Iterator[Conversation]:
         """Cursor generator: page through :meth:`list` to exhaustion, yielding
         every summary. ``max_items`` bounds the total yielded (``None`` = no
         bound). All other keyword args are forwarded to :meth:`list`."""
@@ -425,6 +426,13 @@ class Conversations:
             yielded += 1
             if max_items is not None and yielded >= max_items:
                 return
+
+    def get(self, conversation_id: str) -> Conversation:
+        """Fetch one conversation summary with its complete agent index."""
+        payload = self._http.request(
+            "GET", f"/v1/conversations/{conversation_id}"
+        )
+        return Conversation.model_validate(payload)
 
     def retrieve(
         self, conversation_id: str, item_id: str | None = None
@@ -595,7 +603,7 @@ class AsyncConversations:
         end: str | datetime | None = None,
         lookback: str | None = None,
         format: ReadFormat = "json",
-    ) -> AsyncPager[GenAiSpan, Paginated[GenAiSpan]]:
+    ) -> AsyncPager[Conversation, Paginated[Conversation]]:
         """List conversation summaries (cursor envelope). ``await`` the
         returned :class:`AsyncPager` for the first page, or ``async for`` it
         to stream every summary across pages. See
@@ -610,7 +618,7 @@ class AsyncConversations:
 
         async def fetch(
             cursor: str | None,
-        ) -> Paginated[GenAiSpan]:
+        ) -> Paginated[Conversation]:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
@@ -640,11 +648,11 @@ class AsyncConversations:
                     expect="raw",
                 )
                 assert isinstance(raw, RawResponse)
-                return decode_arrow_page(raw, GenAiSpan.model_validate)
+                return decode_arrow_page(raw, Conversation.model_validate)
             payload = await self._http.request(
                 "GET", "/v1/conversations", params=params
             )
-            return Paginated[GenAiSpan].model_validate(payload)
+            return Paginated[Conversation].model_validate(payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -724,7 +732,7 @@ class AsyncConversations:
         *,
         max_items: int | None = None,
         **kwargs: Any,
-    ) -> AsyncIterator[GenAiSpan]:
+    ) -> AsyncIterator[Conversation]:
         """Cursor generator: page through :meth:`list` to exhaustion, yielding
         every summary. ``max_items`` bounds the total yielded (``None`` = no
         bound). All other keyword args are forwarded to :meth:`list`."""
@@ -736,6 +744,13 @@ class AsyncConversations:
             yielded += 1
             if max_items is not None and yielded >= max_items:
                 return
+
+    async def get(self, conversation_id: str) -> Conversation:
+        """Fetch one conversation summary with its complete agent index."""
+        payload = await self._http.request(
+            "GET", f"/v1/conversations/{conversation_id}"
+        )
+        return Conversation.model_validate(payload)
 
     async def retrieve(
         self, conversation_id: str, item_id: str | None = None

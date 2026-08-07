@@ -114,7 +114,7 @@ async def main() -> None:
             )
             if convos_page.records:
                 summary = convos_page.records[0]
-                cid = summary.conversation_id or summary.trace_id
+                cid = summary.id
                 response = await runner.conversations.retrieve(cid)
                 if response is not None:
                     print(
