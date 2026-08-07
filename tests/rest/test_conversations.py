@@ -75,6 +75,22 @@ SUMMARY_FIXTURE: dict[str, Any] = {
                 "tool_use_count": 2,
                 "failed_tool_use_count": 1,
                 "has_errors": False,
+                "agents": [
+                    {
+                        "id": "root-run",
+                        "name": "agent",
+                        "parent_id": None,
+                        "invocation_id": "root-invocation",
+                        "depth": 0,
+                    },
+                    {
+                        "id": "child-run",
+                        "name": "researcher",
+                        "parent_id": "root-run",
+                        "invocation_id": "child-invocation",
+                        "depth": 1,
+                    },
+                ],
             },
         },
     },
@@ -202,6 +218,12 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     )
 
     assert len(page.records) == 1
+    agents = page.records[0].attributes.introspection.conversation.agents
+    assert agents is not None
+    assert [(agent.id, agent.parent_id, agent.depth) for agent in agents] == [
+        ("root-run", None, 0),
+        ("child-run", "root-run", 1),
+    ]
     req = fake_api.last_request
     assert req.path == "/v1/conversations"
     assert req.params.get("limit") == "10"
@@ -468,14 +490,32 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     convos = _conversations(fake_api)
 
     page = convos.items.list(
-        "conv-1", order="asc", include=["events", "resource_attributes"]
+        "conv-1",
+        order="asc",
+        include=[
+            "gen_ai.system_instructions",
+            "gen_ai.tool.definitions",
+            "events",
+            "span_attributes",
+            "resource_attributes",
+        ],
+        agent="root",
     )
 
     assert len(page.data) == 1
     req = fake_api.last_request
     assert req.path == "/v1/conversations/conv-1/items"
     assert req.params.get("order") == "asc"
-    assert _includes(req) == ["events", "resource_attributes"]
+    assert _includes(req) == [
+        "gen_ai.system_instructions",
+        "gen_ai.tool.definitions",
+        "events",
+        "span_attributes",
+        "resource_attributes",
+    ]
+    assert req.params.get("agent") == "root"
+    assert req.params.get("agent_name") is None
+    assert req.params.get("agent_id") is None
 
 
 def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):

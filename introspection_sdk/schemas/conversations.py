@@ -41,7 +41,10 @@ ConversationSortField = Literal[
 """Allow-listed summary fields for ``GET /v1/conversations`` sorting."""
 
 ConversationItemInclude = Literal[
+    "gen_ai.system_instructions",
+    "gen_ai.tool.definitions",
     "events",
+    "span_attributes",
     "resource_attributes",
 ]
 """Optional conversation item expansions, passed as a repeated ``include``

@@ -46,6 +46,7 @@ from introspection_sdk.schemas.genai import (
     UrlPart,
 )
 from introspection_sdk.schemas.genai_span import (
+    ConversationAgent,
     GenAiAttributes,
     GenAiCost,
     GenAiSpan,
@@ -75,6 +76,7 @@ __all__ = [
     "ClusteringRunPayload",
     "CompactionPart",
     "ConversationItemInclude",
+    "ConversationAgent",
     "ConversationSortField",
     "Event",
     "EventSortField",

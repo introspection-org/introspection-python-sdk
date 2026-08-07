@@ -63,6 +63,7 @@ __all__ = [
     "GenAiCost",
     "GenAiUsage",
     "IntrospectionAttributes",
+    "ConversationAgent",
     "IntrospectionConversation",
     "IntrospectionRecipe",
     "IntrospectionRuntime",
@@ -284,6 +285,16 @@ class IntrospectionRecipe(_SpanModel):
     git_commit_sha: str | None = None
 
 
+class ConversationAgent(_SpanModel):
+    """One invocation in a conversation's lightweight agent index."""
+
+    id: str
+    name: str | None = None
+    parent_id: str | None = None
+    invocation_id: str | None = None
+    depth: int | None = None
+
+
 class IntrospectionConversation(_SpanModel):
     """``introspection.conversation.*``.
 
@@ -305,6 +316,7 @@ class IntrospectionConversation(_SpanModel):
     tool_use_count: int | None = None
     failed_tool_use_count: int | None = None
     has_errors: bool | None = None
+    agents: list[ConversationAgent] | None = None
 
 
 class IntrospectionAttributes(_SpanModel):
