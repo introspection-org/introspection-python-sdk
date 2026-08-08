@@ -60,20 +60,10 @@ def _infer_system_from_span_name(span_name: str | None) -> str | None:
     return None
 
 
-# LangChain/LangGraph internal wrapper span names to skip when walking up
-# the span tree to find the actual agent/node name.
-_LANGCHAIN_WRAPPER_NAMES: frozenset[str] = frozenset(
+# Generic framework wrapper span names to skip when walking up the span
+# tree to find the actual agent/node name.
+_WRAPPER_SPAN_NAMES: frozenset[str] = frozenset(
     {
-        "RunnableSequence",
-        "RunnableParallel",
-        "RunnableMap",
-        "RunnableLambda",
-        "RunnableRetry",
-        "_ConfigurableModel",
-        "ChatOpenAI",
-        "ChatAnthropic",
-        "ChatGoogleGenerativeAI",
-        "ChatGroq",
         # LlamaIndex low-level wrappers — the actual LLM call is the child span
         "Ollama.predict",
         "Ollama.complete",
@@ -375,9 +365,6 @@ class IntrospectionSpanProcessor(SpanProcessor):
     def _find_agent_name(self, span_id: int | None) -> str | None:
         """Walk up the span tree to find the first non-wrapper span name.
 
-        Skips generic LangChain wrapper names (RunnableSequence, etc.) to
-        surface the actual LangGraph node name as the agent name.
-
         Args:
             span_id: The span_id to start walking up from.
 
@@ -394,7 +381,7 @@ class IntrospectionSpanProcessor(SpanProcessor):
             if entry is None:
                 break
             name, parent_id = entry
-            if name not in _LANGCHAIN_WRAPPER_NAMES:
+            if name not in _WRAPPER_SPAN_NAMES:
                 return name
             current_id = parent_id
         return None

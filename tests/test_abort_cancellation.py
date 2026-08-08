@@ -4,9 +4,9 @@ A user-initiated cancellation of an in-flight LLM call — an ``asyncio`` task
 cancel, a Ctrl-C, or breaking out of a stream early — must read as a deliberate
 stop, not a failure: the span stays status ``UNSET`` and is annotated with the
 native ``gen_ai.response.finish_reasons=["aborted"]`` plus
-``introspection.termination_reason="cancelled"``. These tests drive the real
-Anthropic/Gemini wrappers and the LangChain callback handler against an
-in-memory exporter — no models, no network.
+``introspection.termination_reason="cancelled"``. These tests exercise the
+shared ``mark_span_cancelled`` helper against an in-memory exporter — no
+models, no network.
 """
 
 from __future__ import annotations

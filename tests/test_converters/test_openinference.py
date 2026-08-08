@@ -83,22 +83,6 @@ def test_response_id_from_output_value_top_level():
     assert extract_response_id(attrs) == "chatcmpl-1"
 
 
-def test_response_id_from_langchain_nested_generations():
-    payload = {
-        "generations": [
-            [
-                {
-                    "message": {
-                        "kwargs": {"response_metadata": {"id": "resp_nested"}}
-                    }
-                }
-            ]
-        ]
-    }
-    attrs = {OI.OUTPUT_VALUE: json.dumps(payload)}
-    assert extract_response_id(attrs) == "resp_nested"
-
-
 def test_response_id_none_when_absent_or_invalid():
     assert extract_response_id(None) is None
     assert extract_response_id({OI.OUTPUT_VALUE: "{not json"}) is None
@@ -108,7 +92,7 @@ def test_response_id_none_when_absent_or_invalid():
 # --- tool definitions -----------------------------------------------
 
 
-def test_tool_definitions_langchain_function_wrapper():
+def test_tool_definitions_openai_function_wrapper():
     schema = {
         "type": "function",
         "function": {
@@ -275,7 +259,7 @@ def test_convert_tool_span_translates_output_value():
 
 def test_is_openinference_span():
     assert is_openinference_span("openinference.instrumentation.openai")
-    assert not is_openinference_span("langchain")
+    assert not is_openinference_span("some.other.scope")
     assert not is_openinference_span(None)
 
 

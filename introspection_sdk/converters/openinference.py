@@ -112,61 +112,6 @@ def extract_token_usage(attrs: Attributes | None) -> dict[str, int]:
         ]
 
     return usage
-
-
-def _extract_response_id_from_langchain_output(
-    payload: dict[str, Any],
-) -> str | None:
-    """Extract OpenAI response id from LangChainInstrumentor ``output.value``.
-
-    LangChainInstrumentor encodes outputs as a ``generations`` structure where
-    the OpenAI response id is nested under::
-
-        generations[*][*].message.kwargs.response_metadata.id
-
-    Args:
-        payload: Parsed JSON dict from ``output.value``.
-
-    Returns:
-        The response id string, or ``None`` if not found.
-    """
-    generations = payload.get("generations")
-    if not isinstance(generations, list):
-        return None
-
-    def extract_from_item(item: Any) -> str | None:
-        if not isinstance(item, dict):
-            return None
-        message = item.get("message")
-        if not isinstance(message, dict):
-            return None
-        kwargs = message.get("kwargs")
-        if not isinstance(kwargs, dict):
-            return None
-        response_metadata = kwargs.get("response_metadata")
-        if not isinstance(response_metadata, dict):
-            return None
-        response_id = response_metadata.get("id")
-        return (
-            response_id
-            if isinstance(response_id, str) and response_id
-            else None
-        )
-
-    for outer in generations:
-        if isinstance(outer, list):
-            for item in outer:
-                response_id = extract_from_item(item)
-                if response_id:
-                    return response_id
-        else:
-            response_id = extract_from_item(outer)
-            if response_id:
-                return response_id
-
-    return None
-
-
 def extract_response_id(attrs: Attributes | None) -> str | None:
     """Extract ``gen_ai.response.id`` from OpenInference attributes.
 
@@ -178,8 +123,6 @@ def extract_response_id(attrs: Attributes | None) -> str | None:
       and top-level ``id="chatcmpl-..."``.
     - Responses API: ``output.value`` JSON has ``object="response"`` and
       top-level ``id="resp_..."``.
-    - LangChainInstrumentor: ``output.value`` JSON has ``generations=[[..]]``
-      and the id is nested under ``message.kwargs.response_metadata.id``.
 
     Args:
         attrs: OpenInference span attributes.
@@ -210,7 +153,7 @@ def extract_response_id(attrs: Attributes | None) -> str | None:
     if isinstance(response_id, str) and response_id:
         return response_id
 
-    return _extract_response_id_from_langchain_output(payload)
+    return None
 
 
 def extract_tool_definitions(
@@ -258,7 +201,7 @@ def extract_tool_definitions(
             if schema is None:
                 continue
 
-            # LangChainInstrumentor encodes OpenAI tool schemas as:
+            # OpenAI function-wrapper tool schemas:
             # {"type":"function","function":{"name":...,"description":...,"parameters":...}}
             if schema.get("type") == "function" and isinstance(
                 schema.get("function"), dict
