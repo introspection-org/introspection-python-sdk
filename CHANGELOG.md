@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.13.0...v0.14.0) (2026-08-08)
+
+
+### Features
+
+* **conversations:** add summary resources and agent selection ([#113](https://github.com/introspection-org/introspection-python-sdk/issues/113)) ([053a6a8](https://github.com/introspection-org/introspection-python-sdk/commit/053a6a8a17fc3612c0a572a526defffb836c76eb))
+
 ## [0.13.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.12.0...v0.13.0) (2026-08-06)
 
 
