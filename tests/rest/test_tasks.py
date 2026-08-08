@@ -6,7 +6,6 @@ from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
 from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
     TaskFileRef,
-    TaskMode,
     TaskPrompt,
     TaskRunKind,
 )
@@ -29,11 +28,12 @@ def _tasks(fake_api: FakeAPI) -> Tasks:
 
 def test_list_with_filters(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/tasks", json_body=paginated([task_payload()]))
-    page = _tasks(fake_api).list(statuses=["pending"], modes=["agent"])
+    page = _tasks(fake_api).list(statuses=["pending"])
     assert str(page.records[0].id) == TASK_ID
     params = fake_api.last_request.params
     assert params.get_list("statuses") == ["pending"]
-    assert params.get("modes") == "agent"
+    # `GET /v1/tasks` has no `modes` filter — task modes are retired.
+    assert params.get("modes") is None
 
 
 def test_iter(fake_api: FakeAPI):
@@ -41,16 +41,27 @@ def test_iter(fake_api: FakeAPI):
     assert len(list(_tasks(fake_api).list())) == 1
 
 
-def test_create_serialises_mode_enum(fake_api: FakeAPI):
+def test_create_sends_agent_name_and_drops_none(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
     res = _tasks(fake_api).create(
-        prompt="hello", mode=TaskMode.INTROSPECT, metadata=None
+        prompt="hello", agent_name="reviewer", metadata=None
     )
     assert str(res.task.id) == TASK_ID
     assert res.task.identity_key == "user:u-1"
     body = fake_api.last_request.json()
-    assert body["mode"] == "introspect"
+    assert body["agent_name"] == "reviewer"
     assert "metadata" not in body  # None dropped
+
+
+def test_create_sends_no_retired_task_mode_fields(fake_api: FakeAPI):
+    # `TaskCreate` is extra="forbid" server-side, so a `mode` or `system_id`
+    # left in the payload is a 422 on every create, not a field the server
+    # ignores. This pins that neither comes back.
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(prompt="hello")
+    body = fake_api.last_request.json()
+    assert "mode" not in body
+    assert "system_id" not in body
 
 
 def test_create_sends_idle_timeout_and_fork_share_id(fake_api: FakeAPI):

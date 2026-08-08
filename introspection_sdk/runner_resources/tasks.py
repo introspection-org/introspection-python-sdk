@@ -35,7 +35,6 @@ from introspection_sdk.schemas.tasks import (
     TaskCancelResponse,
     TaskCreateResponse,
     TaskFileRef,
-    TaskMode,
     TaskPrompt,
     TaskRun,
     TaskRunKind,
@@ -241,7 +240,6 @@ class Tasks:
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        modes: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
     ) -> Pager[Task, Paginated[Task]]:
         """List tasks. Iterate the returned :class:`Pager` to stream every
@@ -255,8 +253,6 @@ class Tasks:
             }
             if statuses:
                 params["statuses"] = statuses
-            if modes:
-                params["modes"] = modes
             if require_automation_id is not None:
                 params["require_automation_id"] = require_automation_id
             payload = self._http.request("GET", "/v1/tasks", params=params)
@@ -269,8 +265,7 @@ class Tasks:
         *,
         title: str | None = None,
         prompt: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
+        agent_name: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -280,8 +275,7 @@ class Tasks:
         body: dict[str, Any] = {
             "title": title,
             "prompt": prompt,
-            "mode": mode.value if isinstance(mode, TaskMode) else mode,
-            "system_id": system_id,
+            "agent_name": agent_name,
             "repository_id": (
                 str(repository_id) if repository_id is not None else None
             ),
@@ -343,8 +337,7 @@ class Tasks:
         *,
         prompt: str,
         title: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
+        agent_name: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -359,8 +352,7 @@ class Tasks:
         res = self.create(
             title=title,
             prompt=prompt,
-            mode=mode,
-            system_id=system_id,
+            agent_name=agent_name,
             repository_id=repository_id,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
@@ -536,7 +528,6 @@ class AsyncTasks:
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        modes: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
     ) -> AsyncPager[Task, Paginated[Task]]:
         """List tasks. ``await`` the returned :class:`AsyncPager` for the
@@ -550,8 +541,6 @@ class AsyncTasks:
             }
             if statuses:
                 params["statuses"] = statuses
-            if modes:
-                params["modes"] = modes
             if require_automation_id is not None:
                 params["require_automation_id"] = require_automation_id
             payload = await self._http.request(
@@ -566,8 +555,7 @@ class AsyncTasks:
         *,
         title: str | None = None,
         prompt: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
+        agent_name: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -577,8 +565,7 @@ class AsyncTasks:
         body: dict[str, Any] = {
             "title": title,
             "prompt": prompt,
-            "mode": mode.value if isinstance(mode, TaskMode) else mode,
-            "system_id": system_id,
+            "agent_name": agent_name,
             "repository_id": (
                 str(repository_id) if repository_id is not None else None
             ),
@@ -642,8 +629,7 @@ class AsyncTasks:
         *,
         prompt: str,
         title: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
+        agent_name: str | None = None,
         repository_id: UUID | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
@@ -659,8 +645,7 @@ class AsyncTasks:
         res = await self.create(
             title=title,
             prompt=prompt,
-            mode=mode,
-            system_id=system_id,
+            agent_name=agent_name,
             repository_id=repository_id,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,

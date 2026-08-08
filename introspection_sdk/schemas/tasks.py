@@ -20,17 +20,18 @@ class _ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class TaskMode(StrEnum):
+class TaskKind(StrEnum):
+    """The execution shape of a task.
+
+    ``AGENT`` boots the runtime-agent image and runs an interactive LLM agent;
+    ``PROCESS`` runs a one-shot baked script and reports through the same
+    completion path. This replaced the retired ``TaskMode``: there are no task
+    modes any more — every agent task is a conversation, and the recipe agent
+    is selected by ``agent_name``.
+    """
+
     AGENT = "agent"
-    INTROSPECT = "introspect"
-    SYSTEM_REVIEW = "system_review"
-    SYSTEM_INSTRUMENTATION = "system_instrumentation"
-    OBSERVATION_REVIEW = "observation_review"
-    SECURITY_REVIEW = "security_review"
-    REPO_INDEX = "repo_index"
-    SYSTEM_DISCOVERY = "system_discovery"
-    ONBOARDING = "onboarding"
-    HEARTBEAT = "heartbeat"
+    PROCESS = "process"
 
 
 class TaskStatus(StrEnum):
@@ -59,7 +60,7 @@ class Task(_ApiModel):
     updated_at: datetime
     title: str | None = None
     display_index: int | None = None
-    mode: TaskMode = TaskMode.AGENT
+    kind: TaskKind = TaskKind.AGENT
     status: TaskStatus = TaskStatus.PENDING
     member_id: UUID | None = None
     automation_id: UUID | None = None
@@ -98,8 +99,13 @@ class TaskCreateRequest(_ApiModel):
 
     title: str | None = None
     prompt: str | None = None
-    mode: TaskMode = TaskMode.AGENT
-    system_id: str | None = None
+    agent_name: str | None = Field(
+        default=None,
+        description=(
+            "Recipe agent to run; omit for the recipe default "
+            "(agents/agent.yaml)."
+        ),
+    )
     repository_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     files: list[TaskFileRef] | None = Field(
