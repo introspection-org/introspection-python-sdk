@@ -18,7 +18,7 @@ Two concerns live here, common to ``runner.conversations`` and
   :class:`~introspection_sdk.schemas.pagination.Paginated` envelope the JSON
   path produces, so the auto-paging ``Pager`` drives both formats
   unchanged.
-* **Columnar page iteration.** The ``.arrow()`` accessors return an
+* **Columnar page iteration.** The ``.list_arrow()`` accessors return an
   :class:`ArrowPageIterator` / :class:`AsyncArrowPageIterator` yielding one
   ``pyarrow.Table`` per server page (constant memory), with a
   ``read_all()`` convenience concatenating every page into one Table.

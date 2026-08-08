@@ -390,7 +390,7 @@ class Conversations:
 
         return cursor_paginate(fetch, start=next)
 
-    def arrow(
+    def list_arrow(
         self,
         *,
         limit: int = 100,
@@ -538,7 +538,7 @@ class Conversations:
     ) -> Any:
         """Export one complete conversation as a single ``pyarrow.Table``.
 
-        Unlike :meth:`arrow`, this is one table for the whole conversation
+        Unlike :meth:`list_arrow`, this is one table for the whole conversation
         rather than an iterator of pages: the export route assembles the
         conversation server-side and streams it in one response. Returns
         ``None`` for an empty body.
@@ -791,7 +791,7 @@ class AsyncConversations:
 
         return async_cursor_paginate(fetch, start=next)
 
-    def arrow(
+    def list_arrow(
         self,
         *,
         limit: int = 100,

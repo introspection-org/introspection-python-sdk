@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    model_validator,
+)
 
 
 class _ApiModel(BaseModel):
@@ -45,7 +52,11 @@ class ShareCreateRequest(_ApiModel):
     it to target one member."""
 
     resource_type: ShareResourceType
-    resource_id: str
+    # A conversation id is not a uuid, so the wire type is a plain string.
+    # A file id is one, though, and ``File.id`` hands back a ``UUID`` —
+    # coercing here is what lets this SDK's own output be fed back into
+    # its own input instead of raising a validation error.
+    resource_id: Annotated[str, BeforeValidator(str)]
     granted_member_id: UUID | None = None
     granted_identity_key: str | None = Field(
         default=None, min_length=1, max_length=320

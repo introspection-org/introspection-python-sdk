@@ -223,7 +223,7 @@ class Events:
     :meth:`list` returns an auto-paging
     :class:`~introspection_sdk.pagination.Pager` over the standard cursor
     envelope's opaque ``next`` token. :meth:`iterate` is a bounded
-    convenience generator over the same stream. :meth:`arrow` is the
+    convenience generator over the same stream. :meth:`list_arrow` is the
     columnar accessor — raw ``pyarrow.Table`` pages instead of models.
     """
 
@@ -352,7 +352,7 @@ class Events:
             if max_items is not None and yielded >= max_items:
                 return
 
-    def arrow(
+    def list_arrow(
         self,
         event_name: str | IntrospectionEventName,
         *,
@@ -548,7 +548,7 @@ class AsyncEvents:
             if max_items is not None and yielded >= max_items:
                 return
 
-    def arrow(
+    def list_arrow(
         self,
         event_name: str | IntrospectionEventName,
         *,

@@ -5,7 +5,7 @@ required single-family ``event_name`` selection, the discriminated typed
 ``Event`` union (envelope + nested ``payload``), the unknown-family skip
 tolerance, the ergonomic window params (``order`` / ``start`` / ``end`` /
 ``lookback``), the bounded ``iterate`` generator, the optional Arrow decode
-path, and the columnar ``.arrow()`` accessor.
+path, and the columnar ``.list_arrow()`` accessor.
 
 Driven through the offline :class:`FakeAPI` transport from ``conftest.py`` —
 nothing in ``introspection_sdk`` is patched.
@@ -210,9 +210,9 @@ def test_iterate_requires_event_name(fake_api: FakeAPI):
 def test_arrow_requires_event_name(fake_api: FakeAPI):
     events = _events(fake_api)
     with pytest.raises(TypeError):
-        events.arrow()  # type: ignore[call-arg]
+        events.list_arrow()  # type: ignore[call-arg]
     with pytest.raises(ValueError, match="event_name is required"):
-        events.arrow("")
+        events.list_arrow("")
     assert fake_api.requests == []
 
 
@@ -647,7 +647,7 @@ def test_iter_arrow_pages_via_next_header(fake_api: FakeAPI):
     assert fake_api.requests[1].params.get("next") == "cursor-2"
 
 
-# --- columnar .arrow() accessor -------------------------------------
+# --- columnar .list_arrow() accessor -------------------------------------
 
 
 def test_arrow_accessor_yields_tables_per_page(fake_api: FakeAPI):
@@ -666,7 +666,7 @@ def test_arrow_accessor_yields_tables_per_page(fake_api: FakeAPI):
     fake_api.add_handler("GET", "/v1/events", lambda _req: next(responses))
     events = _events(fake_api)
 
-    tables = list(events.arrow("introspection.feedback", limit=2))
+    tables = list(events.list_arrow("introspection.feedback", limit=2))
 
     assert [t.num_rows for t in tables] == [2, 1]
     assert all(isinstance(t, pa.Table) for t in tables)
@@ -695,7 +695,7 @@ def test_arrow_accessor_read_all_concatenates(fake_api: FakeAPI):
     fake_api.add_handler("GET", "/v1/events", lambda _req: next(responses))
     events = _events(fake_api)
 
-    table = events.arrow("introspection.feedback").read_all()
+    table = events.list_arrow("introspection.feedback").read_all()
 
     assert isinstance(table, pa.Table)
     assert table.num_rows == 2
@@ -706,7 +706,7 @@ def test_arrow_accessor_read_all_empty(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/events", content=b"")
     events = _events(fake_api)
 
-    table = events.arrow("introspection.feedback").read_all()
+    table = events.list_arrow("introspection.feedback").read_all()
 
     assert isinstance(table, pa.Table)
     assert table.num_rows == 0
@@ -780,7 +780,7 @@ async def test_async_arrow_accessor(fake_api: FakeAPI):
     fake_api.add_handler("GET", "/v1/events", lambda _req: next(responses))
     events = AsyncEvents(fake_api.async_client())
 
-    tables = [t async for t in events.arrow("introspection.feedback")]
+    tables = [t async for t in events.list_arrow("introspection.feedback")]
     assert [t.num_rows for t in tables] == [1, 1]
 
     responses2 = iter(
@@ -792,7 +792,7 @@ async def test_async_arrow_accessor(fake_api: FakeAPI):
         ]
     )
     fake_api.add_handler("GET", "/v1/events", lambda _req: next(responses2))
-    table = await events.arrow("introspection.feedback").read_all()
+    table = await events.list_arrow("introspection.feedback").read_all()
     assert table.num_rows == 2
 
 
