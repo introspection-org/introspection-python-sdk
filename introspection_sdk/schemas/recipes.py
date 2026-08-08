@@ -1,4 +1,4 @@
-"""Pydantic mirrors of CP `/v1/recipes` request/response models.
+"""Pydantic mirrors of CP `/v1/recipes` response models.
 
 Wire fields are snake_case verbatim and unknown fields are tolerated
 via ``extra="allow"`` so CP additions don't break the SDK.

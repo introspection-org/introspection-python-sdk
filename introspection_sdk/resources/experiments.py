@@ -54,7 +54,7 @@ class Experiments:
     def __call__(self, experiment_id: UUID) -> ExperimentHandle:
         return ExperimentHandle(self, experiment_id=experiment_id)
 
-    # --- CRUD --------------------------------------------------------
+    # --- reads --------------------------------------------------------
 
     def list(
         self,
@@ -222,7 +222,7 @@ class AsyncExperiments:
     def __call__(self, experiment_id: UUID) -> AsyncExperimentHandle:
         return AsyncExperimentHandle(self, experiment_id=experiment_id)
 
-    # --- CRUD --------------------------------------------------------
+    # --- reads --------------------------------------------------------
 
     def list(
         self,

@@ -35,7 +35,7 @@ class Recipes:
         self._http = http
         self._additional_headers = additional_headers
 
-    # --- CRUD --------------------------------------------------------
+    # --- reads --------------------------------------------------------
 
     def list(
         self,
@@ -87,7 +87,7 @@ class AsyncRecipes:
         self._http = http
         self._additional_headers = additional_headers
 
-    # --- CRUD --------------------------------------------------------
+    # --- reads --------------------------------------------------------
 
     def list(
         self,

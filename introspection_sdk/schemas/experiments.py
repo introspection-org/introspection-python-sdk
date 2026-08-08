@@ -84,14 +84,6 @@ class ExperimentGoal(_ApiModel):
     components: list[ExperimentGoalComponent] = Field(default_factory=list)
 
 
-class ExperimentArmCreate(_ApiModel):
-    """One arm in the create body — a runtime version + display label."""
-
-    runtime_id: UUID
-    arm_label: str
-    agent_overrides: dict[str, str] | None = None
-
-
 class ExperimentArm(_ApiModel):
     """One arm as returned on the experiment row."""
 
@@ -128,7 +120,6 @@ class Experiment(_ApiModel):
 __all__ = [
     "Experiment",
     "ExperimentArm",
-    "ExperimentArmCreate",
     "ExperimentGoal",
     "ExperimentGoalComponent",
     "ExperimentGoalDirection",

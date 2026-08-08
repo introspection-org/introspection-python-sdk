@@ -74,8 +74,16 @@ def schema_properties(spec: dict, name: str) -> set[str]:
 
 
 def query_parameters(spec: dict, path: str, method: str) -> set[str]:
+    """Query parameters only.
+
+    A templated route also declares its path segments as parameters, and
+    counting those would report a path argument the caller passes positionally
+    as a query parameter the SDK forgot.
+    """
     return {
-        p["name"] for p in spec["paths"][path][method].get("parameters", [])
+        p["name"]
+        for p in spec["paths"][path][method].get("parameters", [])
+        if p.get("in") == "query"
     }
 
 
@@ -290,6 +298,24 @@ SURFACES = (
         # the Accept header rather than a query parameter.
         client_side=frozenset({"order", "start", "end", "lookback", "format"}),
         missing_is_fatal=False,
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    # The export route needs its own surface. Widening the check to 15 surfaces
+    # still left every route this SDK had just *gained* unchecked, so the
+    # conversation export shipped without `start_date`/`end_date` and nothing
+    # noticed: a guard that covers only what already existed goes blind exactly
+    # where new code lands.
+    Surface(
+        name="conversation export filters",
+        where="GET /v1/conversations/{id}/export query parameters",
+        sdk=lambda: signature_params(Conversations.export_trajectory),
+        # `conversation_id` is the path segment, passed positionally.
+        client_side=frozenset({"conversation_id"}),
+        server=lambda spec: query_parameters(
+            spec, "/v1/conversations/{conversation_id}/export", "get"
+        ),
+        missing_is_fatal=True,
         extra_means="sent as a query parameter the API does not accept",
         missing_means="accepted by the API but not exposed here",
     ),

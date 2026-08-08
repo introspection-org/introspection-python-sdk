@@ -59,12 +59,19 @@ def build_export_params(
     operation_name: str | None = None,
     lookback_days: int | None = None,
     share_id: str | UUID | None = None,
+    start_date: str | datetime | None = None,
+    end_date: str | datetime | None = None,
 ) -> dict[str, Any]:
     """Query params for the conversation export route.
 
     The export is assembled server-side over the whole conversation, so
     there is no cursor or page bound here: every param filters what gets
     assembled.
+
+    ``start_date`` / ``end_date`` bound which records are assembled. Unlike
+    the list routes, this route takes them under their wire names with no
+    ergonomic ``start`` / ``end`` / ``lookback`` aliases, because the route's
+    own relative window is the separate ``lookback_days`` integer.
     """
     params: dict[str, Any] = {}
     if agent is not None:
@@ -77,6 +84,10 @@ def build_export_params(
         params["lookback_days"] = lookback_days
     if share_id is not None:
         params["share_id"] = str(share_id)
+    if start_date is not None:
+        params["start_date"] = start_date
+    if end_date is not None:
+        params["end_date"] = end_date
     return params
 
 
@@ -475,6 +486,8 @@ class Conversations:
         operation_name: str | None = None,
         lookback_days: int | None = None,
         share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
     ) -> Trajectory:
         """Export one complete conversation as trajectory-v1.
 
@@ -497,6 +510,8 @@ class Conversations:
                 operation_name=operation_name,
                 lookback_days=lookback_days,
                 share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
             ),
             headers=TRAJECTORY_ACCEPT_HEADERS,
         )
@@ -511,6 +526,8 @@ class Conversations:
         operation_name: str | None = None,
         lookback_days: int | None = None,
         share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
     ) -> Any:
         """Export one complete conversation as a single ``pyarrow.Table``.
 
@@ -530,6 +547,8 @@ class Conversations:
                 operation_name=operation_name,
                 lookback_days=lookback_days,
                 share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
             ),
             headers=ARROW_ACCEPT_HEADERS,
             expect="raw",
@@ -860,6 +879,8 @@ class AsyncConversations:
         operation_name: str | None = None,
         lookback_days: int | None = None,
         share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
     ) -> Trajectory:
         """Async twin of :meth:`Conversations.export_trajectory`."""
         payload = await self._http.request(
@@ -871,6 +892,8 @@ class AsyncConversations:
                 operation_name=operation_name,
                 lookback_days=lookback_days,
                 share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
             ),
             headers=TRAJECTORY_ACCEPT_HEADERS,
         )
@@ -885,6 +908,8 @@ class AsyncConversations:
         operation_name: str | None = None,
         lookback_days: int | None = None,
         share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
     ) -> Any:
         """Async twin of :meth:`Conversations.export_arrow`."""
         raw = await self._http.request(
@@ -896,6 +921,8 @@ class AsyncConversations:
                 operation_name=operation_name,
                 lookback_days=lookback_days,
                 share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
             ),
             headers=ARROW_ACCEPT_HEADERS,
             expect="raw",
