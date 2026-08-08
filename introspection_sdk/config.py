@@ -26,7 +26,6 @@ class AdvancedOptions:
         from introspection_sdk import (
             IntrospectionClient,
             IntrospectionSpanProcessor,
-            IntrospectionTracingProcessor,
         )
         from introspection_sdk.config import AdvancedOptions
         from introspection_sdk.testing import TestSpanExporter

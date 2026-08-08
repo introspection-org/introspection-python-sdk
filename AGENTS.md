@@ -83,12 +83,9 @@ mock `claude_agent_sdk` at the module level — extend the transport instead.
 | Area | Floor today | Target |
 | --- | --- | --- |
 | `processors/span_processor.py` | 89% | 95% |
-| `processors/tracing_processor.py` | 84% | 95% |
 | `processors/claude_tracing_processor.py` | 74% | 95% |
-| `processors/langchain_callback_handler.py` | 15% | 90% |
 | `converters/openinference.py` | 62% | 90% |
 | `converters/genai_to_openinference.py` | 25% | 90% |
-| `anthropic.py` / `gemini.py` | ~73% | 95% |
 | `client.py` | 26% | 90% |
 | **Total** | **60%** (ratchet floor) | **95%** |
 

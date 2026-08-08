@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import pytest
 from openai import AsyncOpenAI
@@ -13,14 +12,6 @@ from testing import TestSpanExporter
 from introspection_sdk import IntrospectionSpanProcessor
 from introspection_sdk.testing.redaction import redact_secrets
 
-HAS_AGENTS = True
-try:
-    from introspection_sdk import IntrospectionTracingProcessor
-except RuntimeError:
-    HAS_AGENTS = False
-    if TYPE_CHECKING:
-        from introspection_sdk import IntrospectionTracingProcessor
-
 
 @dataclass
 class CaptureSpanProcessor:
@@ -28,14 +19,6 @@ class CaptureSpanProcessor:
 
     exporter: TestSpanExporter
     processor: IntrospectionSpanProcessor
-
-
-@dataclass
-class CaptureTracingProcessor:
-    """Holds the span exporter and tracing processor for testing."""
-
-    exporter: TestSpanExporter
-    processor: IntrospectionTracingProcessor
 
 
 # Kept in sync with the JS SDK's cassette scrubbing (introspection-js-sdk

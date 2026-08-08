@@ -22,14 +22,13 @@ dependencies = [
 arrow = ["pyarrow>=14.0.0"]
 # Install with `pip install introspection-sdk[otel]` to enable the
 # OpenTelemetry exporter, the span / tracing processors, the LLM SDK
-# instrumentors (Anthropic / Gemini / Claude / LangChain), and the
-# IntrospectionLogs (track / feedback / identify) surface. Default
+# processors (IntrospectionSpanProcessor / ClaudeTracingProcessor) and
+# the IntrospectionLogs (track / feedback / identify) surface. Default
 # install is REST-only (client.runtimes / client.experiments / Runner
 # / tasks / files).
 otel = [
     "opentelemetry-sdk >= 1.39.0, < 1.43.0",
     "opentelemetry-exporter-otlp-proto-http>=1.39.0,<1.43.0",
-    "openai>=2.30.0",
 ]
 dev = ["pre-commit>=3.5.0", "ruff==0.14.14", "ty>=0.0.7"]
 test = [
@@ -43,24 +42,16 @@ test = [
     "inline-snapshot>=0.31.0",
     "dirty-equals>=0.11.0",
     "responses>=0.25.8",
+    "openai>=2.30.0",
     "anthropic>=0.85.0",
-    "google-genai>=1.0.0",
     "pydantic-ai>=1.68.0",
-    "openai-agents>=0.12.2",
     "claude-agent-sdk>=0.1.0,<=0.1.7",
     "posthog>=7.9.0",
-    "langchain-core>=1.0.0",
     "openinference-instrumentation-anthropic>=0.1.0",
-    "openinference-instrumentation-openai-agents>=0.1.0",
 ]
 # Per-framework convenience installs. init() auto-detects frameworks
 # regardless of how they were installed; these extras are a one-command setup.
-openai = ["openai>=2.0.0"]
-anthropic = ["anthropic>=0.85.0"]
-gemini = ["google-genai>=1.0.0"]
-openai-agents = ["openai-agents>=0.12.2"]
 claude-agent = ["claude-agent-sdk>=0.1.0,<=0.1.7"]
-langchain = ["langchain-core>=0.3.0"]
 logfire = ["logfire>=4.0.0"]
 pydantic-ai = ["pydantic-ai>=1.68.0"]
 
@@ -71,12 +62,7 @@ braintrust = ["braintrust[otel]>=0.1.0"]
 
 # Convenience bundle for greenfield projects / CI smoke tests.
 all = [
-    "openai>=2.0.0",
-    "anthropic>=0.85.0",
-    "google-genai>=1.0.0",
-    "openai-agents>=0.12.2",
     "claude-agent-sdk>=0.1.0,<=0.1.7",
-    "langchain-core>=0.3.0",
     "logfire>=4.0.0",
     "pydantic-ai>=1.68.0",
 ]

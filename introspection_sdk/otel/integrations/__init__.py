@@ -20,11 +20,7 @@ __all__ = [
 
 # Import paths, resolved lazily so a missing framework just skips its shim.
 _BUILTIN_INTEGRATIONS: list[str] = [
-    "introspection_sdk.otel.integrations.anthropic.AnthropicIntegration",
-    "introspection_sdk.otel.integrations.gemini.GeminiIntegration",
-    "introspection_sdk.otel.integrations.openai_agents.OpenAIAgentsIntegration",
     "introspection_sdk.otel.integrations.claude_agent.ClaudeAgentIntegration",
-    "introspection_sdk.otel.integrations.langchain.LangchainIntegration",
 ]
 
 _installed: set[str] = set()

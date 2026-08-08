@@ -3,7 +3,7 @@
 Wraps ClaudeSDKClient to intercept conversations and forward traces to the
 Introspection backend via OTLP with OTel Gen AI semantic convention attributes.
 
-Architecture mirrors IntrospectionTracingProcessor (for OpenAI Agents SDK):
+Architecture:
 - Creates its own OTel TracerProvider with OTLP exporter
 - Patches ClaudeSDKClient to create spans from conversation messages
 - Extracts gen_ai.* attributes from StreamEvent, AssistantMessage, UserMessage, ResultMessage

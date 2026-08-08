@@ -14,7 +14,6 @@ from inline_snapshot import snapshot
 from .conftest import (
     HAS_ARIZE,
     HAS_OPENINFERENCE,
-    HAS_OPENINFERENCE_AGENTS,
     HAS_OPENINFERENCE_ANTHROPIC,
     CaptureOpenInferenceSpans,
 )
@@ -189,48 +188,3 @@ def test_arize_anthropic_messages_dual_export(
             "gen_ai.usage.output_tokens": IsInt(),
         }
     )
-
-
-@pytest.mark.skipif(
-    not HAS_OPENINFERENCE_AGENTS,
-    reason="openinference-instrumentation-openai-agents not installed.",
-)
-async def test_arize_openai_agents_dual_export(
-    arize_agents_provider: CaptureOpenInferenceSpans,
-    request: pytest.FixtureRequest,
-):
-    """OpenAI Agents run -> Arize + Introspection via OpenInference."""
-    from agents import Agent, Runner, function_tool
-
-    cassette = _CASSETTE_DIR / f"{request.node.name}.yaml"
-    key = os.environ.get("OPENAI_API_KEY", "")
-    if not cassette.exists() and (not key.startswith("sk-") or "dummy" in key):
-        pytest.skip(
-            f"No cassette at {cassette.name} and OPENAI_API_KEY missing/dummy; "
-            "record with --record-mode=once. See "
-            "docs/test-quality-audit-plan.md (Phase 3c)."
-        )
-
-    @function_tool
-    def get_weather(city: str) -> str:
-        """Get weather for a city."""
-        return f"It's sunny in {city}."
-
-    agent = Agent(
-        name="Weather Agent",
-        model="gpt-5-nano",
-        instructions="Use the get_weather tool, then answer in one sentence.",
-        tools=[get_weather],
-    )
-    result = await Runner.run(agent, "What's the weather in Tokyo?")
-    assert result.final_output is not None
-
-    arize_agents_provider.processor.force_flush()
-    spans = arize_agents_provider.exporter.get_finished_spans()
-    gen = [
-        s
-        for s in spans
-        if s["attributes"].get("gen_ai.request.model")
-        or s["attributes"].get("gen_ai.agent.name")
-    ]
-    assert gen, f"expected gen_ai spans; got {[s['name'] for s in spans]}"

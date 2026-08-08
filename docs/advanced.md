@@ -44,66 +44,12 @@ logfire.configure(additional_span_processors=[IntrospectionSpanProcessor()])
 logfire.instrument_openai()
 ```
 
-### OpenAI Agents SDK
-
-```python
-from agents import set_trace_processors
-from introspection_sdk import IntrospectionTracingProcessor
-
-set_trace_processors([IntrospectionTracingProcessor()])
-```
-
-Some reasoning models emit items the OpenAI Conversations API rejects;
-`IntrospectionConversationsSession` strips them transparently:
-
-```python
-from introspection_sdk import IntrospectionConversationsSession
-
-session = IntrospectionConversationsSession(conversation_id="conv_123")
-result = await Runner.run(agent, "Hello!", session=session)
-```
-
 ### Claude Agent SDK
 
 ```python
 from introspection_sdk import ClaudeTracingProcessor
 
 ClaudeTracingProcessor().configure()  # all ClaudeSDKClient instances traced
-```
-
-### Anthropic SDK
-
-```python
-from introspection_sdk.anthropic import AnthropicInstrumentor
-
-AnthropicInstrumentor().instrument(tracer_provider=provider)
-```
-
-### Gemini (google-genai)
-
-```python
-from introspection_sdk.gemini import GeminiInstrumentor
-
-GeminiInstrumentor().instrument(tracer_provider=provider)
-```
-
-### LangChain / LangGraph
-
-```python
-from introspection_sdk import IntrospectionCallbackHandler
-
-handler = IntrospectionCallbackHandler(service_name="my-app")
-response = model.invoke("Hello!", config={"callbacks": [handler]})
-```
-
-For LangGraph, pass the app's session id as `thread_id`; the handler maps it to
-`gen_ai.conversation.id`:
-
-```python
-response = graph.invoke(
-    {"messages": [{"role": "user", "content": "Hello!"}]},
-    config={"callbacks": [handler], "configurable": {"thread_id": "user-123"}},
-)
 ```
 
 ## Sharing one provider across `init()` and a standalone processor
@@ -115,7 +61,7 @@ integration.
 
 ```python
 provider = introspection.get_tracer_provider()
-processor = IntrospectionTracingProcessor(tracer_provider=provider)
+processor = IntrospectionSpanProcessor(tracer_provider=provider)
 ```
 
 ## Testing with an in-memory exporter

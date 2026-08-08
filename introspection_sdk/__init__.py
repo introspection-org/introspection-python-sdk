@@ -9,14 +9,8 @@ to add the OpenTelemetry surface:
 
 * :class:`IntrospectionLogs` — ``track`` / ``feedback`` / ``identify``
   emitted as OTLP log records.
-* :class:`IntrospectionSpanProcessor` /
-  :class:`IntrospectionTracingProcessor` /
-  :class:`ClaudeTracingProcessor` — attach to your TracerProvider.
-* :class:`AnthropicInstrumentor` / :class:`GeminiInstrumentor` and the
-  privacy-preserving OpenAI embeddings wrappers — LLM SDK instrumentation.
-* :class:`IntrospectionCallbackHandler` — LangChain integration.
-* :class:`IntrospectionConversationsSession` — OpenAI Agents
-  conversation session helper.
+* :class:`IntrospectionSpanProcessor` / :class:`ClaudeTracingProcessor` —
+  attach to your TracerProvider.
 
 The three surfaces (REST client, logs, traces) are independent —
 construct only what you need.
@@ -66,30 +60,12 @@ if TYPE_CHECKING:
     # loaded lazily via ``__getattr__`` (see below) so the REST-only
     # install does not need ``opentelemetry`` to be importable.
     from introspection_sdk.config import AdvancedOptions
-    from introspection_sdk.otel.anthropic import (
-        REDACTED_THINKING_CONTENT,
-        AnthropicInstrumentor,
-    )
-    from introspection_sdk.otel.gemini import GeminiInstrumentor
     from introspection_sdk.otel.logs import IntrospectionLogs
-    from introspection_sdk.otel.openai import (
-        async_traced_embeddings_create,
-        traced_embeddings_create,
-    )
     from introspection_sdk.otel.processors.claude_tracing_processor import (
         ClaudeTracingProcessor,
     )
-    from introspection_sdk.otel.processors.langchain_callback_handler import (
-        IntrospectionCallbackHandler,
-    )
     from introspection_sdk.otel.processors.span_processor import (
         IntrospectionSpanProcessor,
-    )
-    from introspection_sdk.otel.processors.tracing_processor import (
-        IntrospectionTracingProcessor,
-    )
-    from introspection_sdk.otel.sessions import (
-        IntrospectionConversationsSession,
     )
     from introspection_sdk.otel.types import (
         Attr,
@@ -100,21 +76,13 @@ if TYPE_CHECKING:
 
 _OTEL_REQUIRED_NAMES = {
     "AdvancedOptions",
-    "AnthropicInstrumentor",
     "Attr",
     "Baggage",
     "ClaudeTracingProcessor",
     "EventName",
     "FeedbackProperties",
-    "GeminiInstrumentor",
-    "async_traced_embeddings_create",
-    "traced_embeddings_create",
-    "IntrospectionCallbackHandler",
-    "IntrospectionConversationsSession",
     "IntrospectionLogs",
     "IntrospectionSpanProcessor",
-    "IntrospectionTracingProcessor",
-    "REDACTED_THINKING_CONTENT",
 }
 
 
@@ -136,38 +104,6 @@ def __getattr__(name: str) -> object:
                 from introspection_sdk.otel.logs import IntrospectionLogs
 
                 return IntrospectionLogs
-            if name in {
-                "AnthropicInstrumentor",
-                "REDACTED_THINKING_CONTENT",
-            }:
-                from introspection_sdk.otel.anthropic import (
-                    REDACTED_THINKING_CONTENT,
-                    AnthropicInstrumentor,
-                )
-
-                return {
-                    "AnthropicInstrumentor": AnthropicInstrumentor,
-                    "REDACTED_THINKING_CONTENT": REDACTED_THINKING_CONTENT,
-                }[name]
-            if name == "GeminiInstrumentor":
-                from introspection_sdk.otel.gemini import (
-                    GeminiInstrumentor,
-                )
-
-                return GeminiInstrumentor
-            if name in {
-                "async_traced_embeddings_create",
-                "traced_embeddings_create",
-            }:
-                from introspection_sdk.otel.openai import (
-                    async_traced_embeddings_create,
-                    traced_embeddings_create,
-                )
-
-                return {
-                    "async_traced_embeddings_create": async_traced_embeddings_create,
-                    "traced_embeddings_create": traced_embeddings_create,
-                }[name]
             if name in {
                 "Attr",
                 "Baggage",
@@ -193,30 +129,12 @@ def __getattr__(name: str) -> object:
                 )
 
                 return ClaudeTracingProcessor
-            if name == "IntrospectionCallbackHandler":
-                from introspection_sdk.otel.processors.langchain_callback_handler import (
-                    IntrospectionCallbackHandler,
-                )
-
-                return IntrospectionCallbackHandler
             if name == "IntrospectionSpanProcessor":
                 from introspection_sdk.otel.processors.span_processor import (
                     IntrospectionSpanProcessor,
                 )
 
                 return IntrospectionSpanProcessor
-            if name == "IntrospectionTracingProcessor":
-                from introspection_sdk.otel.processors.tracing_processor import (
-                    IntrospectionTracingProcessor,
-                )
-
-                return IntrospectionTracingProcessor
-            if name == "IntrospectionConversationsSession":
-                from introspection_sdk.otel.sessions import (
-                    IntrospectionConversationsSession,
-                )
-
-                return IntrospectionConversationsSession
         except ImportError as exc:  # pragma: no cover - missing extra
             raise ImportError(
                 f"`{name}` requires the OpenTelemetry extra. "
@@ -256,19 +174,11 @@ __all__ = [
     "token_exchange",
     # OTel-only (lazy-loaded; require `[otel]` extra)
     "AdvancedOptions",
-    "AnthropicInstrumentor",
     "Attr",
     "Baggage",
     "ClaudeTracingProcessor",
     "EventName",
     "FeedbackProperties",
-    "GeminiInstrumentor",
-    "async_traced_embeddings_create",
-    "traced_embeddings_create",
-    "IntrospectionCallbackHandler",
-    "IntrospectionConversationsSession",
     "IntrospectionLogs",
     "IntrospectionSpanProcessor",
-    "IntrospectionTracingProcessor",
-    "REDACTED_THINKING_CONTENT",
 ]

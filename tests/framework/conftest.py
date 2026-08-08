@@ -5,7 +5,7 @@ from collections.abc import Iterator
 
 import logfire
 import pytest
-from conftest import CaptureSpanProcessor, CaptureTracingProcessor
+from conftest import CaptureSpanProcessor
 from openai import AsyncOpenAI
 from testing import TestSpanExporter
 
@@ -18,15 +18,6 @@ try:
     HAS_ANTHROPIC = True
 except ImportError:
     HAS_ANTHROPIC = False
-
-try:
-    from agents import set_trace_processors
-
-    from introspection_sdk import IntrospectionTracingProcessor
-
-    HAS_AGENTS = True
-except (ImportError, RuntimeError):
-    HAS_AGENTS = False
 
 DUMMY_OPENAI_KEY = "sk-test-dummy-key-for-vcr-replay"
 DUMMY_ANTHROPIC_KEY = "sk-ant-test-dummy-key-for-vcr-replay"
@@ -90,25 +81,5 @@ def cap_span_processor() -> Iterator[CaptureSpanProcessor]:
     )
     try:
         yield CaptureSpanProcessor(exporter=exporter, processor=processor)
-    finally:
-        processor.shutdown()
-
-
-@pytest.fixture
-def cap_tracing_processor() -> Iterator[CaptureTracingProcessor]:
-    """Configure IntrospectionTracingProcessor for capturing agent traces."""
-    if not HAS_AGENTS:
-        pytest.skip("openai-agents not installed")
-    exporter = TestSpanExporter()
-    processor = IntrospectionTracingProcessor(
-        advanced=AdvancedOptions(span_exporter=exporter),
-    )
-    set_trace_processors([processor])
-    logfire.configure(
-        send_to_logfire=False,
-        console=False,
-    )
-    try:
-        yield CaptureTracingProcessor(exporter=exporter, processor=processor)
     finally:
         processor.shutdown()

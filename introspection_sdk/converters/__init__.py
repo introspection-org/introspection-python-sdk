@@ -8,10 +8,6 @@ from introspection_sdk.converters.logfire import (
     convert_logfire_to_genai,
     is_logfire_span,
 )
-from introspection_sdk.converters.openai import (
-    convert_responses_inputs_to_semconv,
-    convert_responses_outputs_to_semconv,
-)
 from introspection_sdk.converters.openinference import (
     ConvertedReadableSpan,
     convert_openinference_to_genai,
@@ -21,8 +17,6 @@ from introspection_sdk.converters.openinference import (
 __all__ = [
     "convert_logfire_to_genai",
     "convert_genai_to_openinference",
-    "convert_responses_inputs_to_semconv",
-    "convert_responses_outputs_to_semconv",
     "ConvertedReadableSpan",
     "convert_openinference_to_genai",
     "is_logfire_span",

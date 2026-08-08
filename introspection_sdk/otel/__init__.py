@@ -8,14 +8,8 @@ Exports the independent telemetry surfaces:
 
 * :class:`IntrospectionLogs` — OTLP logs emitter for
   ``track`` / ``feedback`` / ``identify``.
-* :class:`IntrospectionSpanProcessor` / :class:`IntrospectionTracingProcessor` /
-  :class:`ClaudeTracingProcessor` — span/trace processors that
-  forward to the Introspection backend.
-* :class:`AnthropicInstrumentor` / :class:`GeminiInstrumentor` and the
-  privacy-preserving OpenAI embeddings wrappers — LLM SDK instrumentation.
-* :class:`IntrospectionCallbackHandler` — LangChain callback handler.
-* :class:`IntrospectionConversationsSession` — OpenAI Agents
-  conversation session helper.
+* :class:`IntrospectionSpanProcessor` / :class:`ClaudeTracingProcessor` —
+  span/trace processors that forward to the Introspection backend.
 
 Also exposes the one-liner ``init()`` entry point that auto-discovers
 installed LLM frameworks and wires them into a shared
@@ -26,17 +20,12 @@ from __future__ import annotations
 
 import atexit
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from opentelemetry.sdk.trace import TracerProvider
 
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.otel.anthropic import (
-    REDACTED_THINKING_CONTENT,
-    AnthropicInstrumentor,
-)
 from introspection_sdk.otel.conversation import conversation
-from introspection_sdk.otel.gemini import GeminiInstrumentor
 from introspection_sdk.otel.integrations import (
     discover_integrations,
     setup_integrations,
@@ -46,21 +35,11 @@ from introspection_sdk.otel.integrations._provider import (
 )
 from introspection_sdk.otel.integrations.base import DidNotEnable, Integration
 from introspection_sdk.otel.logs import IntrospectionLogs
-from introspection_sdk.otel.openai import (
-    async_traced_embeddings_create,
-    traced_embeddings_create,
-)
 from introspection_sdk.otel.processors.claude_tracing_processor import (
     ClaudeTracingProcessor,
 )
-from introspection_sdk.otel.processors.langchain_callback_handler import (
-    IntrospectionCallbackHandler,
-)
 from introspection_sdk.otel.processors.span_processor import (
     IntrospectionSpanProcessor,
-)
-from introspection_sdk.otel.processors.tracing_processor import (
-    IntrospectionTracingProcessor,
 )
 from introspection_sdk.otel.types import (
     Attr,
@@ -70,27 +49,14 @@ from introspection_sdk.otel.types import (
 )
 from introspection_sdk.utils import logger
 
-if TYPE_CHECKING:
-    from introspection_sdk.otel.sessions import (
-        IntrospectionConversationsSession,
-    )
-
 __all__ = [
     "IntrospectionLogs",
     "IntrospectionSpanProcessor",
-    "IntrospectionTracingProcessor",
     "ClaudeTracingProcessor",
-    "IntrospectionCallbackHandler",
-    "AnthropicInstrumentor",
-    "GeminiInstrumentor",
-    "async_traced_embeddings_create",
-    "traced_embeddings_create",
-    "IntrospectionConversationsSession",
     "Attr",
     "Baggage",
     "EventName",
     "FeedbackProperties",
-    "REDACTED_THINKING_CONTENT",
     "init",
     "get_client",
     "get_tracer_provider",
@@ -107,22 +73,6 @@ _state: dict[str, Any] = {
     "client": None,
     "atexit_registered": False,
 }
-
-
-def __getattr__(name: str) -> object:
-    """Load framework-specific helpers only when their extra is installed."""
-    if name == "IntrospectionConversationsSession":
-        try:
-            from introspection_sdk.otel.sessions import (
-                IntrospectionConversationsSession,
-            )
-        except ImportError as exc:
-            raise ImportError(
-                "IntrospectionConversationsSession requires the "
-                "'introspection-sdk[openai-agents]' extra"
-            ) from exc
-        return IntrospectionConversationsSession
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def init(

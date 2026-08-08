@@ -15,46 +15,7 @@ uv run python -m introspection_examples.api.runtimes                 # Runner: t
 uv run python -m introspection_examples.api.async_runtimes           # AsyncRunner: same flow on asyncio
 ```
 
-## Experimental support for other frameworks
-
-These framework examples are experimental.
-
-```bash
-uv run -m introspection_examples.otel.anthropic_sdk.anthropic_langfuse_init    # Anthropic + Langfuse
-uv run -m introspection_examples.otel.anthropic_sdk.anthropic_langsmith_init   # Anthropic + LangSmith
-uv run -m introspection_examples.otel.gemini_sdk.gemini_arize_init             # Gemini + Arize
-uv run -m introspection_examples.otel.openai_agents.agents_braintrust_init     # OpenAI Agents + Braintrust
-uv run -m introspection_examples.otel.gemini_sdk.gemini_init                   # Gemini only (no dual export)
-```
-
 ## Experimental framework examples
-
-### OpenAI Agents SDK
-
-```bash
-uv run -m introspection_examples.otel.openai_agents.example              # Basic tracing
-uv run -m introspection_examples.otel.openai_agents.responses_api_features  # Responses API (web search, reasoning, MCP)
-uv run -m introspection_examples.otel.openai_agents.agents_braintrust    # + Braintrust
-uv run -m introspection_examples.otel.openai_agents.agents_arize         # + Arize
-uv run -m introspection_examples.otel.openai_agents.agents_langsmith     # + LangSmith
-uv run -m introspection_examples.otel.openai_agents.agents_langfuse      # + Langfuse
-```
-
-### Anthropic SDK (native)
-
-Uses `AnthropicInstrumentor` to capture the full Anthropic response including extended thinking blocks with signatures:
-
-```bash
-uv run -m introspection_examples.otel.anthropic_sdk.anthropic_native     # Thinking + tool calling
-```
-
-### Gemini SDK (native)
-
-Uses `GeminiInstrumentor` to capture the full Gemini response including thought signatures — encrypted reasoning-state tokens that Gemini 3.x attaches to text and function-call parts and must be replayed on subsequent turns:
-
-```bash
-uv run -m introspection_examples.otel.gemini_sdk.gemini_native           # Thought signatures + tool calling
-```
 
 ### Claude Agent SDK
 
@@ -63,25 +24,6 @@ uv run -m introspection_examples.otel.claude_agent.claude_braintrust     # + Bra
 uv run -m introspection_examples.otel.claude_agent.claude_arize          # + Arize
 uv run -m introspection_examples.otel.claude_agent.claude_langsmith      # + LangSmith
 uv run -m introspection_examples.otel.claude_agent.claude_langfuse       # + Langfuse
-```
-
-### LangChain / LangGraph
-
-```bash
-uv run -m introspection_examples.otel.langchain_langgraph.handler        # IntrospectionCallbackHandler
-```
-
-For LangGraph, pass the app's session id in `configurable.thread_id`. The
-callback handler maps that internal LangGraph thread id to
-`gen_ai.conversation.id`, so each graph thread appears as a distinct
-Introspection conversation.
-
-```python
-thread_id = "user-session-123"
-await graph.ainvoke(
-    input,
-    config={"callbacks": [handler], "configurable": {"thread_id": thread_id}},
-)
 ```
 
 ### Logfire
@@ -121,11 +63,7 @@ uv run -m introspection_examples.otel.openinference.anthropic_langfuse    # + La
 examples/introspection_examples/
   api/                 # REST API (IntrospectionClient, Runner, tasks, files)
   otel/                # OpenTelemetry-based integrations
-    openai_agents/     # OpenAI Agents SDK (first-party integration)
-    anthropic_sdk/     # Anthropic SDK (native AnthropicInstrumentor)
-    gemini_sdk/        # Google Gemini SDK (native GeminiInstrumentor)
     claude_agent/      # Claude Agent SDK (first-party integration)
-    langchain_langgraph/ # LangChain / LangGraph
     logfire_examples/  # Logfire (OpenAI / Anthropic clients)
     openinference/     # OpenInference (OpenAI + Anthropic with dual export)
 ```

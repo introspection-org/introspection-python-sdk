@@ -26,36 +26,23 @@ arize = [
     "openinference-instrumentation-anthropic>=0.1.0",
 ]
 braintrust = [
-    "braintrust[otel,openai-agents]>=0.1.0",
+    "braintrust[otel]>=0.1.0",
     "openinference-instrumentation-openai>=0.1.0",
 ]
 langfuse = [
     "langfuse>=3.0.0",
     "openinference-instrumentation-openai>=0.1.0",
 ]
-langchain = [
-    "langchain>=1.2.7",
-    "langchain-openai>=1.1.7",
-    "openinference-instrumentation-langchain>=0.1.58",
-]
 logfire = [
     "logfire>=4.23.0",
-]
-openai-agents = [
-    "openai-agents>=0.12.2",
-    "langsmith[openai-agents]>=0.6.0",
-    "openinference-instrumentation-openai-agents>=0.1.0",
 ]
 claude-agent-sdk = [
     "claude-agent-sdk>=0.1.0,<=0.1.7",
     "anthropic>=0.85.0",
     "langsmith[claude-agent-sdk]>=0.6.0",
 ]
-gemini = [
-    "google-genai>=1.0.0",
-]
 all = [
-    "introspection-examples[arize,braintrust,langfuse,langchain,logfire,openai-agents,claude-agent-sdk,gemini]",
+    "introspection-examples[arize,braintrust,langfuse,logfire,claude-agent-sdk]",
 ]
 
 [tool.hatch.build.targets.wheel]

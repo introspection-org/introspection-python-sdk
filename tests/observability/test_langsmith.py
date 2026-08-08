@@ -4,9 +4,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion
 
 try:
-    from agents import Agent, Runner, function_tool, set_trace_processors
     from langsmith import traceable
-    from langsmith.wrappers import OpenAIAgentsTracingProcessor
 
     HAS_LANGSMITH = True
 except ImportError:
@@ -16,38 +14,9 @@ pytestmark = [
     pytest.mark.vcr(),
     pytest.mark.skipif(
         not HAS_LANGSMITH,
-        reason="LangSmith/agents dependencies not installed",
+        reason="LangSmith dependencies not installed",
     ),
 ]
-
-
-async def test_langsmith_openai_agent_sdk(
-    openai_model: str,
-):
-    @function_tool
-    def get_weather(city: str) -> str:
-        """Get weather for a given city."""
-        return f"It's always sunny in {city}!"
-
-    async def main():
-        agent = Agent(
-            name="Weather Agent",
-            model=openai_model,
-            instructions="You are a helpful assistant.",
-            tools=[get_weather],
-        )
-
-        question = "What is the weather in San Francisco?"
-        result = await Runner.run(agent, question)
-        print(result.final_output)
-
-    # Add instrumentation with LangSmith only
-    # NOTE: logfire.instrument_openai_agents() disabled due to LogfireTraceWrapper
-    # abstract class issues in the custom logfire branch
-    set_trace_processors([OpenAIAgentsTracingProcessor()])  # type: ignore[list-item]
-
-    with logfire.span("langsmith openai agent sdk"):
-        await main()
 
 
 async def test_langsmith_traceable_chat_completion(
