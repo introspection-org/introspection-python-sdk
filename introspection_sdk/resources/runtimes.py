@@ -60,6 +60,23 @@ class Runtimes:
             project=project,
         )
 
+    def handle(self, runtime_id: UUID) -> RuntimeHandle:
+        """Bind a handle to a concrete ``runtime_id``, skipping resolution.
+
+        ``client.runtimes(selector)`` holds a slug or runtime group id and
+        lists on every use to find what the group currently serves. Pass a
+        runtime id there and the lookup answers nothing: the ``runtime``
+        filter matches slugs and group ids, not the row's own id. Use this
+        when the id is already known — from ``resolve()``, ``get()``, or a
+        broker that handed it over.
+        """
+        return RuntimeHandle(
+            self,
+            runtime=runtime_id,
+            project=None,
+            resolved=True,
+        )
+
     # Runtime lifecycle and version selection are managed by the CLI and
     # platform. The SDK intentionally exposes only read, resolve, and run.
 
@@ -69,9 +86,7 @@ class Runtimes:
         project: str | None = None,
         runtime: str | None = None,
         recipe_id: UUID | None = None,
-        only_active: bool | None = None,
         environment: str | None = None,
-        exclude_yanked: bool | None = None,
         limit: int = 100,
         next: str | None = None,
     ) -> Pager[Runtime, Paginated[Runtime]]:
@@ -79,18 +94,15 @@ class Runtimes:
         every runtime across pages, or call ``.page()`` for the first page
         only.
 
-        Pass ``environment`` to restrict to runtimes serving that lane and
-        ``exclude_yanked=True`` to omit withdrawn runtimes (mirrors the
-        server-side active resolution)."""
+        Pass ``environment`` to restrict to runtimes serving that lane. An
+        API key already selects its environment, so passing both is a 400."""
 
         def fetch(cursor: str | None) -> Paginated[Runtime]:
             params: dict[str, Any] = {
                 "project": project,
                 "runtime": runtime,
                 "recipe_id": recipe_id,
-                "only_active": only_active,
                 "environment": environment,
-                "exclude_yanked": exclude_yanked,
                 "limit": limit,
                 "next": cursor,
             }
@@ -99,7 +111,7 @@ class Runtimes:
 
         return cursor_paginate(fetch, start=next)
 
-    def get(self, runtime_id: UUID, *, project: str) -> Runtime:
+    def get(self, runtime_id: UUID, *, project: str | None = None) -> Runtime:
         payload = self._http.request(
             "GET",
             f"/v1/runtimes/{runtime_id}",
@@ -110,7 +122,7 @@ class Runtimes:
     def resolve(
         self, runtime: str | UUID, *, project: str | None = None
     ) -> Runtime:
-        """Resolve an active runtime by slug or runtime group id.
+        """Resolve a runtime by slug or runtime group id.
 
         The standalone form of ``client.runtimes(runtime)`` resolution —
         handy for a server broker that resolves a concrete ``runtime_id`` to hand
@@ -118,23 +130,21 @@ class Runtimes:
         resolves runtimes itself). The project is scoped by the token
         server-side; pass ``project`` only to override it.
 
-        Raises ``LookupError`` if no active runtime matches the slug or
-        runtime group id, or if the selector is ambiguous (more than one active
-        match).
+        The route answers newest-first and has no notion of a single
+        "active" row for a development credential, so a slug that has
+        been published more than once resolves to its newest runtime
+        rather than failing as ambiguous.
+
+        Raises ``LookupError`` if nothing matches the slug or runtime
+        group id.
         """
         page = self.list(
             runtime=str(runtime),
-            only_active=True,
-            limit=2,
+            limit=1,
             project=project,
         ).page()
         if not page.records:
-            raise LookupError(f"No active runtime {runtime!r}")
-        if len(page.records) > 1:
-            raise LookupError(
-                f"Ambiguous runtime {runtime!r}: "
-                f"{len(page.records)} active matches"
-            )
+            raise LookupError(f"No runtime {runtime!r}")
         return page.records[0]
 
     # --- /run --------------------------------------------------------
@@ -174,16 +184,20 @@ class RuntimeHandle:
         *,
         runtime: str | UUID,
         project: str | None,
+        resolved: bool = False,
     ) -> None:
         self._runtimes = runtimes
         self._project = project
         self._raw = runtime
+        self._resolved = resolved
 
     @property
     def runtime_id(self) -> UUID:
         return self._resolve()
 
     def _resolve(self) -> UUID:
+        if self._resolved:
+            return UUID(str(self._raw))
         return self._runtimes.resolve(str(self._raw), project=self._project).id
 
     def run(
@@ -256,6 +270,23 @@ class AsyncRuntimes:
             project=project,
         )
 
+    def handle(self, runtime_id: UUID) -> AsyncRuntimeHandle:
+        """Bind a handle to a concrete ``runtime_id``, skipping resolution.
+
+        ``client.runtimes(selector)`` holds a slug or runtime group id and
+        lists on every use to find what the group currently serves. Pass a
+        runtime id there and the lookup answers nothing: the ``runtime``
+        filter matches slugs and group ids, not the row's own id. Use this
+        when the id is already known — from ``resolve()``, ``get()``, or a
+        broker that handed it over.
+        """
+        return AsyncRuntimeHandle(
+            self,
+            runtime=runtime_id,
+            project=None,
+            resolved=True,
+        )
+
     # Runtime lifecycle and version selection are managed by the CLI and
     # platform. The SDK intentionally exposes only read, resolve, and run.
 
@@ -265,9 +296,7 @@ class AsyncRuntimes:
         project: str | None = None,
         runtime: str | None = None,
         recipe_id: UUID | None = None,
-        only_active: bool | None = None,
         environment: str | None = None,
-        exclude_yanked: bool | None = None,
         limit: int = 100,
         next: str | None = None,
     ) -> AsyncPager[Runtime, Paginated[Runtime]]:
@@ -275,18 +304,15 @@ class AsyncRuntimes:
         first page, or ``async for`` it to stream every runtime across
         pages.
 
-        Pass ``environment`` to restrict to runtimes serving that lane and
-        ``exclude_yanked=True`` to omit withdrawn runtimes (mirrors the
-        server-side active resolution)."""
+        Pass ``environment`` to restrict to runtimes serving that lane. An
+        API key already selects its environment, so passing both is a 400."""
 
         async def fetch(cursor: str | None) -> Paginated[Runtime]:
             params: dict[str, Any] = {
                 "project": project,
                 "runtime": runtime,
                 "recipe_id": recipe_id,
-                "only_active": only_active,
                 "environment": environment,
-                "exclude_yanked": exclude_yanked,
                 "limit": limit,
                 "next": cursor,
             }
@@ -297,7 +323,9 @@ class AsyncRuntimes:
 
         return async_cursor_paginate(fetch, start=next)
 
-    async def get(self, runtime_id: UUID, *, project: str) -> Runtime:
+    async def get(
+        self, runtime_id: UUID, *, project: str | None = None
+    ) -> Runtime:
         payload = await self._http.request(
             "GET",
             f"/v1/runtimes/{runtime_id}",
@@ -310,25 +338,19 @@ class AsyncRuntimes:
     ) -> Runtime:
         """Async twin of :meth:`Runtimes.resolve`.
 
-        Resolve an active runtime by slug or runtime group id on the caller's project — the
+        Resolve a runtime by slug or runtime group id on the caller's project — the
         standalone form of ``client.runtimes(runtime)`` resolution, handy
         for a server broker that resolves a concrete ``runtime_id`` to hand to a
-        browser client. Raises ``LookupError`` if no active runtime
-        matches, or if the selector is ambiguous.
+        browser client. Resolves to the newest runtime for the selector;
+        raises ``LookupError`` if nothing matches.
         """
         page = await self.list(
             runtime=str(runtime),
-            only_active=True,
-            limit=2,
+            limit=1,
             project=project,
         ).page()
         if not page.records:
-            raise LookupError(f"No active runtime {runtime!r}")
-        if len(page.records) > 1:
-            raise LookupError(
-                f"Ambiguous runtime {runtime!r}: "
-                f"{len(page.records)} active matches"
-            )
+            raise LookupError(f"No runtime {runtime!r}")
         return page.records[0]
 
     # --- /run --------------------------------------------------------
@@ -361,12 +383,16 @@ class AsyncRuntimeHandle:
         *,
         runtime: str | UUID,
         project: str | None,
+        resolved: bool = False,
     ) -> None:
         self._runtimes = runtimes
         self._project = project
         self._raw = runtime
+        self._resolved = resolved
 
     async def _resolve(self) -> UUID:
+        if self._resolved:
+            return UUID(str(self._raw))
         resolved = await self._runtimes.resolve(
             str(self._raw), project=self._project
         )

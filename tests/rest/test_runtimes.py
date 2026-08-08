@@ -33,12 +33,14 @@ def test_list_validates_and_drops_none_params(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
     )
-    page = _runtimes(fake_api).list(project=PROJECT_ID, only_active=True)
+    page = _runtimes(fake_api).list(
+        project=PROJECT_ID, environment="production"
+    )
     assert page.count == 1
     assert str(page.records[0].id) == RUNTIME_ID
     params = fake_api.last_request.params
     assert params.get("project") == PROJECT_ID
-    assert params.get("only_active") == "true"
+    assert params.get("environment") == "production"
     assert "name" not in params
     assert "runtime" not in params
 
@@ -112,19 +114,24 @@ def test_handle_resolves_runtime_via_list(fake_api: FakeAPI):
 def test_handle_runtime_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
     handle = _runtimes(fake_api)("missing")
-    with pytest.raises(LookupError, match="No active runtime"):
+    with pytest.raises(LookupError, match="No runtime"):
         _ = handle.runtime_id
 
 
-def test_handle_ambiguous_runtime_raises(fake_api: FakeAPI):
+def test_handle_takes_the_newest_of_several_versions(fake_api: FakeAPI):
+    """A slug is published once per version, so several rows share it.
+
+    The route answers newest-first, so the first record is the one the
+    group currently serves. This used to raise "Ambiguous" because
+    resolve() asked for `only_active`, a filter the route never had.
+    """
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload(), runtime_payload()]),
     )
     handle = _runtimes(fake_api)("dup")
-    with pytest.raises(LookupError, match="Ambiguous"):
-        _ = handle.runtime_id
+    assert handle.runtime_id == UUID(RUNTIME_ID)
 
 
 def test_resolve_returns_runtime(fake_api: FakeAPI):
@@ -137,24 +144,40 @@ def test_resolve_returns_runtime(fake_api: FakeAPI):
     assert str(runtime.id) == RUNTIME_ID
     params = fake_api.last_request.params
     assert params.get("runtime") == "checkout-agent"
-    assert params.get("only_active") == "true"
+    assert params.get("limit") == "1"
     assert params.get("project") == PROJECT_ID
 
 
 def test_resolve_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
-    with pytest.raises(LookupError, match="No active runtime"):
+    with pytest.raises(LookupError, match="No runtime"):
         _runtimes(fake_api).resolve("missing")
 
 
-def test_resolve_ambiguous_raises(fake_api: FakeAPI):
+def test_resolve_takes_the_newest_of_several_versions(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/runtimes",
         json_body=paginated([runtime_payload(), runtime_payload()]),
     )
-    with pytest.raises(LookupError, match="Ambiguous"):
-        _runtimes(fake_api).resolve("dup")
+    assert str(_runtimes(fake_api).resolve("dup").id) == RUNTIME_ID
+
+
+def test_handle_skips_resolution_for_a_known_runtime_id(fake_api: FakeAPI):
+    """`handle(id)` binds the id straight through.
+
+    `runtimes(selector)` lists to resolve, and the `runtime` filter
+    matches slugs and group ids rather than a row's own id — so a
+    caller holding a runtime id needs a path that does not list.
+    """
+    fake_api.add(
+        "POST",
+        f"/v1/runtimes/{RUNTIME_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    handle = _runtimes(fake_api).handle(UUID(RUNTIME_ID))
+    assert handle.runtime_id == UUID(RUNTIME_ID)
+    assert handle.run().session_id == runner_spec_payload().session_id
 
 
 def test_run_returns_runner_with_context(fake_api: FakeAPI):

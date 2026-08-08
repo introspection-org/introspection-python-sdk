@@ -51,6 +51,7 @@ from pathlib import Path
 
 from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.resources.recipes import Recipes
+from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner_resources.conversations import (
     ConversationItems,
     Conversations,
@@ -137,12 +138,7 @@ SURFACES = (
         # Runner-bound client: the credential's claim is authoritative for
         # runtime selection and the API ignores a body runtime_id from such a
         # caller, so exposing it would be a field that silently does nothing.
-        # `repository_id` is retired from the public create body: the API
-        # accepted it, stamped it into task metadata, and read it nowhere.
-        # Exempted so the check stays green against a published reference
-        # that still declares it; the stale-exemption rule fails once the
-        # reference catches up, which is the prompt to delete this.
-        exempt=frozenset({"runtime_id", "repository_id"}),
+        exempt=frozenset({"runtime_id"}),
         extra_means="rejected with a 422 — the create body forbids undeclared fields",
         missing_means="cannot be sent by callers of this SDK",
     ),
@@ -162,9 +158,6 @@ SURFACES = (
         sdk=lambda: set(TaskRunCreateRequest.model_fields)
         | set(TaskRunResumeRequest.model_fields),
         server=lambda spec: schema_properties(spec, "TaskRunCreate"),
-        # `message` was the legacy shorthand for `prompt.text`, retired in the
-        # same cycle; the exemption self-clears as above.
-        exempt=frozenset({"message"}),
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
     ),
@@ -366,6 +359,24 @@ SURFACES = (
         server=lambda spec: query_parameters(spec, "/v1/recipes", "get"),
         exempt=frozenset({"project_id"}),
         missing_is_fatal=False,
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    # The last list surface without a declaration, and it had drifted:
+    # this SDK offered `only_active` and `exclude_yanked` filters the route
+    # never accepted, so they rode along as query parameters the server
+    # discarded and the caller's filter silently did nothing. Worse, the
+    # phantom `only_active` was load-bearing: `resolve()` passed it and then
+    # asserted a single match, so any slug published more than once failed
+    # as "ambiguous".
+    Surface(
+        name="runtime list filters",
+        where="GET /v1/runtimes query parameters",
+        plane="cp",
+        sdk=lambda: signature_params(Runtimes.list),
+        server=lambda spec: query_parameters(spec, "/v1/runtimes", "get"),
+        exempt=frozenset({"project_id"}),
+        missing_is_fatal=True,
         extra_means="sent as a query parameter the API does not accept",
         missing_means="accepted by the API but not exposed here",
     ),

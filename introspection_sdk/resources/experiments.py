@@ -59,7 +59,7 @@ class Experiments:
     def list(
         self,
         *,
-        project: str | UUID,
+        project: str | UUID | None = None,
         runtime: str | UUID | None = None,
         environment: str | None = None,
         status: str | None = None,
@@ -72,7 +72,7 @@ class Experiments:
 
         def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project": str(project),
+                "project": str(project) if project else None,
                 "runtime": str(runtime) if runtime is not None else None,
                 "environment": environment,
                 "status": status,
@@ -227,7 +227,7 @@ class AsyncExperiments:
     def list(
         self,
         *,
-        project: str | UUID,
+        project: str | UUID | None = None,
         runtime: str | UUID | None = None,
         environment: str | None = None,
         status: str | None = None,
@@ -240,7 +240,7 @@ class AsyncExperiments:
 
         async def fetch(cursor: str | None) -> Paginated[Experiment]:
             params: dict[str, Any] = {
-                "project": str(project),
+                "project": str(project) if project else None,
                 "runtime": str(runtime) if runtime is not None else None,
                 "environment": environment,
                 "status": status,

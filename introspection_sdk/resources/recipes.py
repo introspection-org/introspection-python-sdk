@@ -40,7 +40,7 @@ class Recipes:
     def list(
         self,
         *,
-        project: str | UUID,
+        project: str | UUID | None = None,
         repository_id: UUID | None = None,
         name: str | None = None,
         limit: int | None = None,
@@ -51,7 +51,7 @@ class Recipes:
 
         def fetch(cursor: str | None) -> Paginated[Recipe]:
             params: dict[str, Any] = {
-                "project": str(project),
+                "project": str(project) if project else None,
                 "repository_id": (
                     str(repository_id) if repository_id is not None else None
                 ),
@@ -86,7 +86,7 @@ class AsyncRecipes:
     def list(
         self,
         *,
-        project: str | UUID,
+        project: str | UUID | None = None,
         repository_id: UUID | None = None,
         name: str | None = None,
         limit: int | None = None,
@@ -98,7 +98,7 @@ class AsyncRecipes:
 
         async def fetch(cursor: str | None) -> Paginated[Recipe]:
             params: dict[str, Any] = {
-                "project": str(project),
+                "project": str(project) if project else None,
                 "repository_id": (
                     str(repository_id) if repository_id is not None else None
                 ),

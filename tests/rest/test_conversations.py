@@ -387,7 +387,7 @@ async def test_async_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
     assert page.next is None
 
 
-# --- columnar .arrow() accessor -------------------------------------
+# --- columnar .list_arrow() accessor -------------------------------------
 
 
 def test_arrow_accessor_yields_tables_per_page(fake_api: FakeAPI):
@@ -408,7 +408,7 @@ def test_arrow_accessor_yields_tables_per_page(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    tables = list(convos.arrow(limit=2, environment="production"))
+    tables = list(convos.list_arrow(limit=2, environment="production"))
 
     assert [t.num_rows for t in tables] == [2, 1]
     assert all(isinstance(t, pa.Table) for t in tables)
@@ -434,7 +434,7 @@ def test_arrow_accessor_read_all_concatenates(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    table = convos.arrow().read_all()
+    table = convos.list_arrow().read_all()
 
     assert isinstance(table, pa.Table)
     assert table.num_rows == 2
@@ -457,7 +457,7 @@ async def test_async_arrow_accessor_read_all(fake_api: FakeAPI):
     )
     convos = AsyncConversations(fake_api.async_client())
 
-    table = await convos.arrow().read_all()
+    table = await convos.list_arrow().read_all()
 
     assert table.num_rows == 2
     assert table.column("id").to_pylist() == ["conv-1", "conv-2"]
