@@ -45,6 +45,7 @@ __all__ = [
     "PatternAssignmentPayload",
     "PatternEvent",
     "PatternPayload",
+    "UnknownEvent",
 ]
 
 
@@ -283,3 +284,19 @@ Event = Annotated[
     | JudgementEvent,
     Field(discriminator="event_name"),
 ]
+
+
+class UnknownEvent(IntrospectionEventBase):
+    """Forward-compatible fallback for a family this SDK version predates.
+
+    The closed :data:`Event` union exists so the payload type is fixed by
+    the ``event_name`` tag. A seventh family added server-side has no
+    member to select, so it surfaces here with the envelope validated and
+    ``payload`` left untyped, rather than raising. Paginated reads skip
+    such rows (the caller named a family, so an off-family row is noise);
+    :meth:`~introspection_sdk.runner_resources.events.Events.get` cannot,
+    because the caller named an id and an error would make a new server
+    family look like a missing event.
+    """
+
+    payload: Any = None

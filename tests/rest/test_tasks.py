@@ -6,8 +6,8 @@ from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
 from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
     TaskFileRef,
-    TaskMode,
     TaskPrompt,
+    TaskRepoRequest,
     TaskRunKind,
 )
 
@@ -29,11 +29,12 @@ def _tasks(fake_api: FakeAPI) -> Tasks:
 
 def test_list_with_filters(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/tasks", json_body=paginated([task_payload()]))
-    page = _tasks(fake_api).list(statuses=["pending"], modes=["agent"])
+    page = _tasks(fake_api).list(statuses=["pending"])
     assert str(page.records[0].id) == TASK_ID
     params = fake_api.last_request.params
     assert params.get_list("statuses") == ["pending"]
-    assert params.get("modes") == "agent"
+    # `GET /v1/tasks` has no `modes` filter — task modes are retired.
+    assert params.get("modes") is None
 
 
 def test_iter(fake_api: FakeAPI):
@@ -41,16 +42,48 @@ def test_iter(fake_api: FakeAPI):
     assert len(list(_tasks(fake_api).list())) == 1
 
 
-def test_create_serialises_mode_enum(fake_api: FakeAPI):
+def test_create_sends_agent_name_and_drops_none(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
     res = _tasks(fake_api).create(
-        prompt="hello", mode=TaskMode.INTROSPECT, metadata=None
+        prompt="hello", agent_name="reviewer", metadata=None
     )
     assert str(res.task.id) == TASK_ID
     assert res.task.identity_key == "user:u-1"
     body = fake_api.last_request.json()
-    assert body["mode"] == "introspect"
+    assert body["agent_name"] == "reviewer"
     assert "metadata" not in body  # None dropped
+
+
+def test_create_sends_repositories_and_omits_platform_defaults(
+    fake_api: FakeAPI,
+):
+    # `ref` and `depth` default to the repository's registered branch and a
+    # shallow clone server-side, so an unset one must be absent, not null.
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(
+        prompt="hello",
+        repositories=[
+            TaskRepoRequest(repo="acme/api-service"),
+            TaskRepoRequest(repo="acme/web", ref="main", depth=0),
+            {"repo": "acme/docs", "ref": "v1.2.0"},
+        ],
+    )
+    assert fake_api.last_request.json()["repositories"] == [
+        {"repo": "acme/api-service"},
+        {"repo": "acme/web", "ref": "main", "depth": 0},
+        {"repo": "acme/docs", "ref": "v1.2.0"},
+    ]
+
+
+def test_create_sends_no_retired_task_mode_fields(fake_api: FakeAPI):
+    # `TaskCreate` is extra="forbid" server-side, so a `mode` or `system_id`
+    # left in the payload is a 422 on every create, not a field the server
+    # ignores. This pins that neither comes back.
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(prompt="hello")
+    body = fake_api.last_request.json()
+    assert "mode" not in body
+    assert "system_id" not in body
 
 
 def test_create_sends_idle_timeout_and_fork_share_id(fake_api: FakeAPI):
@@ -129,14 +162,14 @@ def test_runs_create_with_prompt_model(fake_api: FakeAPI):
     assert fake_api.last_request.json()["prompt"] == {"text": "hi"}
 
 
-def test_runs_create_with_message(fake_api: FakeAPI):
+def test_runs_create_with_prompt(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs",
         json_body=task_run_response(),
     )
-    _tasks(fake_api).runs.create(TASK_ID, message="ping")
-    assert fake_api.last_request.json() == {"message": "ping"}
+    _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "ping"})
+    assert fake_api.last_request.json() == {"prompt": {"text": "ping"}}
 
 
 def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
@@ -147,12 +180,12 @@ def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
     )
     _tasks(fake_api).runs.create(
         TASK_ID,
-        message="revise",
+        prompt={"text": "revise"},
         kind=TaskRunKind.STEER,
         metadata={"source": "test"},
     )
     assert fake_api.last_request.json() == {
-        "message": "revise",
+        "prompt": {"text": "revise"},
         "kind": "steer",
         "metadata": {"source": "test"},
     }
@@ -214,11 +247,11 @@ def test_runs_create_attaches_files_mid_conversation(fake_api: FakeAPI):
     )
     _tasks(fake_api).runs.create(
         TASK_ID,
-        message="now compare it to this",
+        prompt={"text": "now compare it to this"},
         files=[TaskFileRef(id="file-2", name="jd.md")],
     )
     assert fake_api.last_request.json() == {
-        "message": "now compare it to this",
+        "prompt": {"text": "now compare it to this"},
         "files": [{"id": "file-2", "name": "jd.md"}],
     }
 
@@ -278,7 +311,7 @@ def test_run_handle_cancel(fake_api: FakeAPI):
         f"/v1/tasks/{TASK_ID}/runs",
         json_body=task_run_response(),
     )
-    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+    handle = _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"})
     assert handle.cancel().id == "run-1"
     assert fake_api.last_request.json() is None
 
@@ -294,7 +327,7 @@ def test_run_handle_abort_and_drain(fake_api: FakeAPI):
         f"/v1/tasks/{TASK_ID}/runs",
         json_body=task_run_response(),
     )
-    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+    handle = _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"})
 
     assert handle.cancel({"mode": "drain"}).id == "run-1"
     assert fake_api.last_request.json() == {"mode": "drain"}
@@ -329,7 +362,7 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
         f"/v1/tasks/{TASK_ID}/runs/run-1/stream",
         content=sse.encode(),
     )
-    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+    handle = _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"})
     events = list(handle.stream())
     assert [
         e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events

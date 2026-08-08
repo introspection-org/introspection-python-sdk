@@ -1,5 +1,10 @@
-"""``client.experiments`` — CP CRUD + lifecycle + ``.run()`` returning a
+"""``client.experiments`` — CP read + lifecycle + ``.run()`` returning a
 :class:`Runner`.
+
+Lookup and lifecycle only: a runner brackets its own execution, resolving
+the experiment and then ``start`` / ``end`` / ``cancel`` around the work it
+is being measured on. Authoring an experiment is a project-authoring act
+and lives in the CLI.
 
 ``client.experiments`` is the :class:`Experiments` instance; calling
 ``client.experiments(id)`` returns an :class:`ExperimentHandle` with
@@ -20,11 +25,7 @@ from introspection_sdk.pagination import (
     cursor_paginate,
 )
 from introspection_sdk.runner import AsyncRunner, Runner
-from introspection_sdk.schemas.experiments import (
-    Experiment,
-    ExperimentCreate,
-    ExperimentUpdate,
-)
+from introspection_sdk.schemas.experiments import Experiment
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.runner import (
     RunCaller,
@@ -32,21 +33,6 @@ from introspection_sdk.schemas.runner import (
     RunnerSpec,
     RunRequest,
 )
-
-
-def _experiment_create_body(
-    input: ExperimentCreate | dict[str, Any],
-) -> dict[str, Any]:
-    if not isinstance(input, ExperimentCreate):
-        return {
-            key: value for key, value in input.items() if value is not None
-        }
-    body = input.model_dump(exclude_none=True, mode="json")
-    runtime = body.pop("runtime", None)
-    if runtime is None:
-        runtime = body.pop("runtime_group_id")
-    body["runtime"] = runtime
-    return body
 
 
 class Experiments:
@@ -68,14 +54,14 @@ class Experiments:
     def __call__(self, experiment_id: UUID) -> ExperimentHandle:
         return ExperimentHandle(self, experiment_id=experiment_id)
 
-    # --- CRUD --------------------------------------------------------
+    # --- reads --------------------------------------------------------
 
     def list(
         self,
         *,
         project: str | UUID,
         runtime: str | UUID | None = None,
-        name: str | None = None,
+        environment: str | None = None,
         status: str | None = None,
         limit: int = 100,
         next: str | None = None,
@@ -88,7 +74,7 @@ class Experiments:
             params: dict[str, Any] = {
                 "project": str(project),
                 "runtime": str(runtime) if runtime is not None else None,
-                "name": name,
+                "environment": environment,
                 "status": status,
                 "limit": limit,
                 "next": cursor,
@@ -112,35 +98,6 @@ class Experiments:
             params=params or None,
         )
         return Experiment.model_validate(payload)
-
-    def create(self, input: ExperimentCreate | dict[str, Any]) -> Experiment:
-        body = _experiment_create_body(input)
-        payload = self._http.request("POST", "/v1/experiments", json=body)
-        return Experiment.model_validate(payload)
-
-    def update(
-        self,
-        experiment_id: UUID,
-        input: ExperimentUpdate | dict[str, Any],
-    ) -> Experiment:
-        body = (
-            input.model_dump(exclude_none=True, mode="json")
-            if isinstance(input, ExperimentUpdate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
-        payload = self._http.request(
-            "PATCH", f"/v1/experiments/{experiment_id}", json=body
-        )
-        return Experiment.model_validate(payload)
-
-    def delete(self, experiment_id: UUID) -> None:
-        self._http.request(
-            "DELETE",
-            f"/v1/experiments/{experiment_id}",
-            expect="empty",
-        )
-
-    # --- /run + lifecycle -------------------------------------------
 
     def _post_run(
         self,
@@ -265,14 +222,14 @@ class AsyncExperiments:
     def __call__(self, experiment_id: UUID) -> AsyncExperimentHandle:
         return AsyncExperimentHandle(self, experiment_id=experiment_id)
 
-    # --- CRUD --------------------------------------------------------
+    # --- reads --------------------------------------------------------
 
     def list(
         self,
         *,
         project: str | UUID,
         runtime: str | UUID | None = None,
-        name: str | None = None,
+        environment: str | None = None,
         status: str | None = None,
         limit: int = 100,
         next: str | None = None,
@@ -285,7 +242,7 @@ class AsyncExperiments:
             params: dict[str, Any] = {
                 "project": str(project),
                 "runtime": str(runtime) if runtime is not None else None,
-                "name": name,
+                "environment": environment,
                 "status": status,
                 "limit": limit,
                 "next": cursor,
@@ -309,39 +266,6 @@ class AsyncExperiments:
             params=params or None,
         )
         return Experiment.model_validate(payload)
-
-    async def create(
-        self, input: ExperimentCreate | dict[str, Any]
-    ) -> Experiment:
-        body = _experiment_create_body(input)
-        payload = await self._http.request(
-            "POST", "/v1/experiments", json=body
-        )
-        return Experiment.model_validate(payload)
-
-    async def update(
-        self,
-        experiment_id: UUID,
-        input: ExperimentUpdate | dict[str, Any],
-    ) -> Experiment:
-        body = (
-            input.model_dump(exclude_none=True, mode="json")
-            if isinstance(input, ExperimentUpdate)
-            else {k: v for k, v in input.items() if v is not None}
-        )
-        payload = await self._http.request(
-            "PATCH", f"/v1/experiments/{experiment_id}", json=body
-        )
-        return Experiment.model_validate(payload)
-
-    async def delete(self, experiment_id: UUID) -> None:
-        await self._http.request(
-            "DELETE",
-            f"/v1/experiments/{experiment_id}",
-            expect="empty",
-        )
-
-    # --- /run + lifecycle -------------------------------------------
 
     async def _post_run(
         self,

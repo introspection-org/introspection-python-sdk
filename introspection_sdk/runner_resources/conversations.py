@@ -17,6 +17,8 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
+from pydantic import TypeAdapter
+
 from introspection_sdk._http import RawResponse, _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -26,10 +28,12 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.runner_resources._reads import (
     ARROW_ACCEPT_HEADERS,
+    TRAJECTORY_ACCEPT_HEADERS,
     ArrowPageIterator,
     AsyncArrowPageIterator,
     ReadFormat,
     decode_arrow_page,
+    decode_arrow_table,
     resolve_window,
 )
 from introspection_sdk.schemas.conversations import (
@@ -40,13 +44,57 @@ from introspection_sdk.schemas.conversations import (
 )
 from introspection_sdk.schemas.genai_span import GenAiSpan, GenAiSpanList
 from introspection_sdk.schemas.pagination import Paginated
+from introspection_sdk.schemas.trajectory import Trajectory, TrajectoryRecord
+
+#: Validates a decoded export body into the trajectory-v1 record array.
+TRAJECTORY_ADAPTER: TypeAdapter[list[TrajectoryRecord]] = TypeAdapter(
+    list[TrajectoryRecord]
+)
+
+
+def build_export_params(
+    *,
+    agent: str | None = None,
+    service_name: str | None = None,
+    operation_name: str | None = None,
+    lookback_days: int | None = None,
+    share_id: str | UUID | None = None,
+    start_date: str | datetime | None = None,
+    end_date: str | datetime | None = None,
+) -> dict[str, Any]:
+    """Query params for the conversation export route.
+
+    The export is assembled server-side over the whole conversation, so
+    there is no cursor or page bound here: every param filters what gets
+    assembled.
+
+    ``start_date`` / ``end_date`` bound which records are assembled. Unlike
+    the list routes, this route takes them under their wire names with no
+    ergonomic ``start`` / ``end`` / ``lookback`` aliases, because the route's
+    own relative window is the separate ``lookback_days`` integer.
+    """
+    params: dict[str, Any] = {}
+    if agent is not None:
+        params["agent"] = agent
+    if service_name is not None:
+        params["service_name"] = service_name
+    if operation_name is not None:
+        params["operation_name"] = operation_name
+    if lookback_days is not None:
+        params["lookback_days"] = lookback_days
+    if share_id is not None:
+        params["share_id"] = str(share_id)
+    if start_date is not None:
+        params["start_date"] = start_date
+    if end_date is not None:
+        params["end_date"] = end_date
+    return params
 
 
 def build_conversation_params(
     *,
     limit: int = 100,
     cursor: str | None = None,
-    include_total: bool = False,
     conversation_id: str | None = None,
     sort: ConversationSortField | None = None,
     direction: Literal["asc", "desc"] | None = None,
@@ -67,7 +115,6 @@ def build_conversation_params(
     return {
         "limit": limit,
         "next": cursor,
-        "include_total": include_total,
         "conversation_id": conversation_id,
         "sort": sort,
         "direction": direction,
@@ -261,7 +308,6 @@ class Conversations:
         *,
         limit: int = 100,
         next: str | None = None,
-        include_total: bool = False,
         conversation_id: str | None = None,
         sort: ConversationSortField | None = None,
         direction: Literal["asc", "desc"] | None = None,
@@ -304,7 +350,6 @@ class Conversations:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
-                include_total=include_total,
                 conversation_id=conversation_id,
                 sort=sort,
                 direction=direction or order,
@@ -343,7 +388,6 @@ class Conversations:
         *,
         limit: int = 100,
         next: str | None = None,
-        include_total: bool = False,
         conversation_id: str | None = None,
         sort: ConversationSortField | None = None,
         direction: Literal["asc", "desc"] | None = None,
@@ -380,7 +424,6 @@ class Conversations:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
-                include_total=include_total,
                 conversation_id=conversation_id,
                 sort=sort,
                 direction=direction or order,
@@ -433,6 +476,85 @@ class Conversations:
             "GET", f"/v1/conversations/{conversation_id}"
         )
         return Conversation.model_validate(payload)
+
+    def export_trajectory(
+        self,
+        conversation_id: str,
+        *,
+        agent: str | None = None,
+        service_name: str | None = None,
+        operation_name: str | None = None,
+        lookback_days: int | None = None,
+        share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+    ) -> Trajectory:
+        """Export one complete conversation as trajectory-v1.
+
+        This is not :meth:`ConversationItems.list` in another coat. The
+        export is assembled server-side over the whole conversation, so it
+        carries no cursor and no page bound; the keyword args filter what
+        gets assembled.
+
+        The trajectory is a projection derived on read from the stored
+        GenAI messages, so a conversation that cannot be represented as
+        trajectory-v1 raises rather than returning a partial export, and a
+        conversation with no exportable records raises ``NotFoundError``.
+        """
+        payload = self._http.request(
+            "GET",
+            f"/v1/conversations/{conversation_id}/export",
+            params=build_export_params(
+                agent=agent,
+                service_name=service_name,
+                operation_name=operation_name,
+                lookback_days=lookback_days,
+                share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
+            ),
+            headers=TRAJECTORY_ACCEPT_HEADERS,
+        )
+        return TRAJECTORY_ADAPTER.validate_python(payload)
+
+    def export_arrow(
+        self,
+        conversation_id: str,
+        *,
+        agent: str | None = None,
+        service_name: str | None = None,
+        operation_name: str | None = None,
+        lookback_days: int | None = None,
+        share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+    ) -> Any:
+        """Export one complete conversation as a single ``pyarrow.Table``.
+
+        Unlike :meth:`arrow`, this is one table for the whole conversation
+        rather than an iterator of pages: the export route assembles the
+        conversation server-side and streams it in one response. Returns
+        ``None`` for an empty body.
+
+        Requires the optional ``pyarrow`` dependency.
+        """
+        raw = self._http.request(
+            "GET",
+            f"/v1/conversations/{conversation_id}/export",
+            params=build_export_params(
+                agent=agent,
+                service_name=service_name,
+                operation_name=operation_name,
+                lookback_days=lookback_days,
+                share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
+            ),
+            headers=ARROW_ACCEPT_HEADERS,
+            expect="raw",
+        )
+        assert isinstance(raw, RawResponse)
+        return decode_arrow_table(raw)
 
     def retrieve(
         self, conversation_id: str, item_id: str | None = None
@@ -582,7 +704,6 @@ class AsyncConversations:
         *,
         limit: int = 100,
         next: str | None = None,
-        include_total: bool = False,
         conversation_id: str | None = None,
         sort: ConversationSortField | None = None,
         direction: Literal["asc", "desc"] | None = None,
@@ -622,7 +743,6 @@ class AsyncConversations:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
-                include_total=include_total,
                 conversation_id=conversation_id,
                 sort=sort,
                 direction=direction or order,
@@ -661,7 +781,6 @@ class AsyncConversations:
         *,
         limit: int = 100,
         next: str | None = None,
-        include_total: bool = False,
         conversation_id: str | None = None,
         sort: ConversationSortField | None = None,
         direction: Literal["asc", "desc"] | None = None,
@@ -698,7 +817,6 @@ class AsyncConversations:
             params = build_conversation_params(
                 limit=limit,
                 cursor=cursor,
-                include_total=include_total,
                 conversation_id=conversation_id,
                 sort=sort,
                 direction=direction or order,
@@ -751,6 +869,66 @@ class AsyncConversations:
             "GET", f"/v1/conversations/{conversation_id}"
         )
         return Conversation.model_validate(payload)
+
+    async def export_trajectory(
+        self,
+        conversation_id: str,
+        *,
+        agent: str | None = None,
+        service_name: str | None = None,
+        operation_name: str | None = None,
+        lookback_days: int | None = None,
+        share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+    ) -> Trajectory:
+        """Async twin of :meth:`Conversations.export_trajectory`."""
+        payload = await self._http.request(
+            "GET",
+            f"/v1/conversations/{conversation_id}/export",
+            params=build_export_params(
+                agent=agent,
+                service_name=service_name,
+                operation_name=operation_name,
+                lookback_days=lookback_days,
+                share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
+            ),
+            headers=TRAJECTORY_ACCEPT_HEADERS,
+        )
+        return TRAJECTORY_ADAPTER.validate_python(payload)
+
+    async def export_arrow(
+        self,
+        conversation_id: str,
+        *,
+        agent: str | None = None,
+        service_name: str | None = None,
+        operation_name: str | None = None,
+        lookback_days: int | None = None,
+        share_id: str | UUID | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+    ) -> Any:
+        """Async twin of :meth:`Conversations.export_arrow`."""
+        raw = await self._http.request(
+            "GET",
+            f"/v1/conversations/{conversation_id}/export",
+            params=build_export_params(
+                agent=agent,
+                service_name=service_name,
+                operation_name=operation_name,
+                lookback_days=lookback_days,
+                share_id=share_id,
+                start_date=start_date,
+                end_date=end_date,
+            ),
+            headers=ARROW_ACCEPT_HEADERS,
+            expect="raw",
+        )
+        assert isinstance(raw, RawResponse)
+        return decode_arrow_table(raw)
 
     async def retrieve(
         self, conversation_id: str, item_id: str | None = None
