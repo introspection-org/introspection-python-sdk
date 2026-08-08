@@ -18,7 +18,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class _ApiModel(BaseModel):
@@ -125,53 +125,15 @@ class Experiment(_ApiModel):
     updated_at: datetime | None = None
 
 
-class ExperimentCreate(_ApiModel):
-    """POST /v1/experiments body. Creates a DRAFT; call ``start`` to route."""
-
-    project: str | UUID
-    name: str
-    runtime: str | UUID | None = None
-    runtime_group_id: UUID | None = None
-    arms: list[ExperimentArmCreate] = Field(min_length=2, max_length=20)
-    goal_json: ExperimentGoal
-    description: str | None = None
-    environment: str | None = None
-    scoring_interval_seconds: int | None = None
-    hash_key_fields: list[str] | None = None
-    sample_rate: float | None = None
-
-    @model_validator(mode="after")
-    def _exactly_one_runtime_selector(self) -> ExperimentCreate:
-        if (self.runtime is None) == (self.runtime_group_id is None):
-            raise ValueError(
-                "exactly one of runtime or runtime_group_id is required"
-            )
-        return self
-
-
-class ExperimentUpdate(_ApiModel):
-    """PATCH /v1/experiments/{id}. Status transitions use start/end/cancel;
-    runtime_group_id and arms are immutable once running."""
-
-    name: str | None = None
-    description: str | None = None
-    goal_json: ExperimentGoal | None = None
-    scoring_interval_seconds: int | None = None
-    hash_key_fields: list[str] | None = None
-    sample_rate: float | None = None
-
-
 __all__ = [
     "Experiment",
     "ExperimentArm",
     "ExperimentArmCreate",
-    "ExperimentCreate",
     "ExperimentGoal",
     "ExperimentGoalComponent",
     "ExperimentGoalDirection",
     "ExperimentGoalGuard",
     "ExperimentStatus",
-    "ExperimentUpdate",
     "JudgeGoalComponent",
     "TelemetryGoalComponent",
 ]

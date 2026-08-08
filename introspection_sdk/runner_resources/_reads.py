@@ -50,6 +50,14 @@ ReadFormat = Literal["json", "arrow"]
 #: batches + EOS) — matches the DP ``serialization.ARROW_STREAM_MEDIA_TYPE``.
 ARROW_STREAM_MEDIA_TYPE = "application/vnd.apache.arrow.stream"
 
+#: Base media type of a trajectory-v1 conversation export. Callers append
+#: the ``version`` parameter; a server that does not implement the requested
+#: version answers ``406`` rather than silently serving a different shape.
+TRAJECTORY_MEDIA_TYPE = "application/vnd.letta.trajectory+json"
+
+#: Accept header selecting the pinned trajectory-v1 export representation.
+TRAJECTORY_ACCEPT_HEADERS = {"Accept": f"{TRAJECTORY_MEDIA_TYPE};version=1"}
+
 #: Accept header injected on the Arrow path.
 ARROW_ACCEPT_HEADERS: dict[str, str] = {"Accept": ARROW_STREAM_MEDIA_TYPE}
 

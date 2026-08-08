@@ -32,20 +32,4 @@ class Recipe(_ApiModel):
     updated_at: datetime
 
 
-class RecipeCreate(_ApiModel):
-    project: str | UUID
-    repository_id: UUID
-    name: str
-    git_ref: str
-    git_commit_sha: str
-    sub_path: str | None = None
-    slug: str | None = None
-    description: str | None = None
-
-
-class RecipeUpdate(_ApiModel):
-    name: str | None = None
-    description: str | None = None
-
-
-__all__ = ["Recipe", "RecipeCreate", "RecipeUpdate"]
+__all__ = ["Recipe"]

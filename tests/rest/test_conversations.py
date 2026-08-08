@@ -30,6 +30,10 @@ from introspection_sdk.schemas.genai import (
     ToolCallResponsePart,
 )
 from introspection_sdk.schemas.genai_span import GenAiSpan
+from introspection_sdk.schemas.trajectory import (
+    TrajectoryAssistantRecord,
+    TrajectoryMetaRecord,
+)
 from tests.schemas.test_genai_span import present
 
 from .conftest import FakeAPI
@@ -782,3 +786,133 @@ def test_runner_exposes_conversations_namespace():
     runner.close()
     with pytest.raises(RunnerExpiredError):
         _ = runner.conversations
+
+
+# --- complete-conversation export -----------------------------------
+
+TRAJECTORY_BODY = [
+    {"role": "meta", "source": "claude-code", "model": "opus"},
+    {
+        "role": "user",
+        "content": "fix the bug",
+        "timestamp": "2025-01-01T00:00:00Z",
+    },
+    {
+        "role": "assistant",
+        "content": None,
+        "timestamp": "2025-01-01T00:00:01Z",
+        "tool_calls": [
+            {"id": "call_1", "name": "edit", "args": '{"path": "a.py"}'}
+        ],
+    },
+    {
+        "role": "tool",
+        "tool_call_id": "call_1",
+        "content": "ok",
+        "timestamp": "2025-01-01T00:00:02Z",
+        "ok": True,
+    },
+    {
+        "role": "assistant",
+        "content": "done",
+        "timestamp": "2025-01-01T00:00:03Z",
+    },
+]
+
+
+def test_export_trajectory_negotiates_v1_and_types_records(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+    records = _conversations(fake_api).export_trajectory("conv-1")
+
+    sent = fake_api.requests[-1]
+    # The version parameter is load-bearing: a server that does not implement
+    # it must answer 406 rather than silently serving a different shape.
+    assert sent.headers["accept"] == (
+        "application/vnd.letta.trajectory+json;version=1"
+    )
+
+    assert [type(r).__name__ for r in records] == [
+        "TrajectoryMetaRecord",
+        "TrajectoryUserRecord",
+        "TrajectoryAssistantRecord",
+        "TrajectoryToolRecord",
+        "TrajectoryAssistantRecord",
+    ]
+    tool_call_turn = records[2]
+    assert isinstance(tool_call_turn, TrajectoryAssistantRecord)
+    # `content: null` is what distinguishes a tool-call record from prose.
+    assert tool_call_turn.content is None
+    assert tool_call_turn.tool_calls is not None
+    assert tool_call_turn.tool_calls[0].name == "edit"
+    # args stays a JSON-encoded string — that is the upstream contract.
+    assert tool_call_turn.tool_calls[0].args == '{"path": "a.py"}'
+
+    prose_turn = records[4]
+    assert isinstance(prose_turn, TrajectoryAssistantRecord)
+    assert prose_turn.content == "done"
+    assert prose_turn.tool_calls is None
+
+
+def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+    _conversations(fake_api).export_trajectory(
+        "conv-1",
+        agent="root",
+        service_name="svc",
+        operation_name="chat",
+        lookback_days=7,
+        share_id="33333333-3333-3333-3333-333333333333",
+    )
+
+    params = dict(fake_api.requests[-1].params)
+    assert params == {
+        "agent": "root",
+        "service_name": "svc",
+        "operation_name": "chat",
+        "lookback_days": "7",
+        "share_id": "33333333-3333-3333-3333-333333333333",
+    }
+    # The export is assembled server-side over the whole conversation, so it
+    # must never carry a cursor or page bound.
+    assert "limit" not in params
+    assert "next" not in params
+
+
+def test_export_arrow_negotiates_arrow_and_returns_one_table(
+    fake_api: FakeAPI,
+):
+    table = pa.table({"id": ["a", "b"], "content": ["hi", "there"]})
+    sink = io.BytesIO()
+    with pa.ipc.new_stream(sink, table.schema) as writer:
+        writer.write_table(table)
+
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", content=sink.getvalue()
+    )
+    result = _conversations(fake_api).export_arrow("conv-1")
+
+    assert fake_api.requests[-1].headers["accept"] == ARROW_STREAM_MEDIA_TYPE
+    assert result.num_rows == 2
+    assert result.column("content").to_pylist() == ["hi", "there"]
+
+
+def test_export_arrow_empty_body_is_none(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/conversations/conv-1/export", content=b"")
+    assert _conversations(fake_api).export_arrow("conv-1") is None
+
+
+@pytest.mark.asyncio
+async def test_async_export_trajectory(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+    conversations = AsyncConversations(fake_api.async_client())
+    records = await conversations.export_trajectory("conv-1")
+    assert len(records) == 5
+    meta = records[0]
+    assert isinstance(meta, TrajectoryMetaRecord)
+    assert meta.source == "claude-code"

@@ -36,6 +36,10 @@ class File(_ApiModel):
     version: int = 1
     parent_id: UUID | None = None
     storage_version_id: str | None = None
+    #: Coalesced caller identity that created this file.
+    identity_key: str | None = None
+    #: Task this file was created from (accounting only).
+    task_id: UUID | None = None
 
 
 class FileUpdateRequest(_ApiModel):

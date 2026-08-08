@@ -38,6 +38,7 @@ from introspection_sdk.schemas.events import (
     ObservationEvent,
     PatternAssignmentEvent,
     PatternEvent,
+    UnknownEvent,
 )
 
 from .conftest import FakeAPI
@@ -814,3 +815,55 @@ def test_runner_exposes_events_and_metrics():
         _ = runner.events
     with pytest.raises(RunnerExpiredError):
         _ = runner.metrics
+
+
+# --- single-event get -----------------------------------------------
+
+
+def test_get_returns_typed_family_member(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        f"/v1/events/{OBSERVATION_ID}",
+        json_body=observation_event(id=OBSERVATION_ID),
+    )
+    record = _events(fake_api).get(OBSERVATION_ID)
+
+    assert isinstance(record, ObservationEvent)
+    assert record.payload.summary == "did the thing"
+    # No event_name is sent: the family is discovered from the response.
+    assert dict(fake_api.requests[-1].params) == {}
+
+
+def test_get_unknown_family_returns_unknown_event_rather_than_none(
+    fake_api: FakeAPI,
+):
+    """A family added server-side must not look like a missing event.
+
+    ``list`` skips off-family rows because the caller named a family. ``get``
+    cannot: the caller named an id, so dropping the row would be reported as
+    "not found" for an event that plainly exists.
+    """
+    fake_api.add(
+        "GET",
+        "/v1/events/evt-future",
+        json_body=envelope("introspection.seventh_family", {"anything": 1}),
+    )
+    record = _events(fake_api).get("evt-future")
+
+    assert isinstance(record, UnknownEvent)
+    assert record.event_name == "introspection.seventh_family"
+    assert record.payload == {"anything": 1}
+
+
+@pytest.mark.asyncio
+async def test_async_get_returns_typed_family_member(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        f"/v1/events/{OBSERVATION_ID}",
+        json_body=observation_event(id=OBSERVATION_ID),
+    )
+    events = AsyncEvents(fake_api.async_client())
+    record = await events.get(OBSERVATION_ID)
+
+    assert isinstance(record, ObservationEvent)
+    assert record.payload.lens == "task_resolution"
