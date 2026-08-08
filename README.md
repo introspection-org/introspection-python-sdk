@@ -8,7 +8,7 @@
   </a>
 </div>
 
-<h4 align="center">Deploy vertical agents that improve in production.</h4>
+<h4 align="center">The infrastructure for long-horizon vertical agents.</h4>
 
 <div align="center">
   <a href="https://introspection.dev"><img src="https://img.shields.io/badge/website-introspection.dev-blue" alt="Website"></a>
@@ -19,10 +19,12 @@
 
 <br>
 
-[Introspection](https://introspection.dev) is the managed cloud for vertical
-agents, powered by Pi. Define an agent as a recipe, deploy it to a
-commit-pinned runtime, and improve it in production with conversations,
-patterns, judges, and experiments.
+[Introspection](https://introspection.dev) is the infrastructure for
+long-horizon vertical agents, powered by Pi. Define an agent as a
+[Recipe](https://pi.recipes) — agents, skills, policies, and evals in plain
+source you own in Git — deploy it to a governed per-customer Runtime, and
+improve it in production with conversations, observations, judges, and
+experiments.
 
 This is the Python platform SDK. Use it to open a runner against a deployed
 runtime, start and stream tasks, and manage files, conversations, recipes,
@@ -243,7 +245,10 @@ pip install 'introspection-sdk[otel]'
 
 Both are documented in [**`docs/otel.md`**](docs/otel.md).
 
-Support for other LLM frameworks is experimental.
+Beyond the core processors, the Claude Agent SDK integration
+(`ClaudeTracingProcessor`, `[claude-agent]` extra) is experimental. Agents
+already instrumented with Logfire or OpenInference are converted to GenAI
+semantic conventions by `IntrospectionSpanProcessor` automatically.
 
 ## Environment variables
 
@@ -259,7 +264,7 @@ export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
 # the line to copy. No default — see "Sharing a Runtime" below.
 export INTROSPECTION_DEV_TARGET="roland"                            # optional
 
-# OTel (IntrospectionLogs + span processors + instrumentors) — see docs/otel.md
+# OTel (IntrospectionLogs + span processors) — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional
 export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
 ```

@@ -58,7 +58,7 @@ For new HTTP-backed tests:
 
 1. Add the test with `@pytest.mark.vcr()`.
 2. Make sure the appropriate API key is set in your environment
-   (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, …).
+   (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …).
 3. Run once with `--record-mode=once`:
 
    ```shell
