@@ -30,6 +30,10 @@ from introspection_sdk.schemas.genai import (
     ToolCallResponsePart,
 )
 from introspection_sdk.schemas.genai_span import GenAiSpan
+from introspection_sdk.schemas.trajectory import (
+    TrajectoryAssistantRecord,
+    TrajectoryMetaRecord,
+)
 from tests.schemas.test_genai_span import present
 
 from .conftest import FakeAPI
@@ -472,7 +476,6 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
 
     page = convos.items.list(
         "conv-1",
-        order="asc",
         include=[
             "gen_ai.system_instructions",
             "gen_ai.tool.definitions",
@@ -486,7 +489,8 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     assert len(page.data) == 1
     req = fake_api.last_request
     assert req.path == "/v1/conversations/conv-1/items"
-    assert req.params.get("order") == "asc"
+    # No ordering parameter: the route sorts descending and takes none.
+    assert "order" not in req.params
     assert _includes(req) == [
         "gen_ai.system_instructions",
         "gen_ai.tool.definitions",
@@ -544,7 +548,7 @@ def test_items_iter_rejects_has_more_without_next(fake_api: FakeAPI):
         list(convos.items.list("conv-1"))
 
 
-def test_items_iter_walks_ascending_transcript(fake_api: FakeAPI):
+def test_items_iter_walks_every_page_without_an_order_param(fake_api: FakeAPI):
     fake_api.add_handler(
         "GET",
         "/v1/conversations/conv-1/items",
@@ -557,11 +561,14 @@ def test_items_iter_walks_ascending_transcript(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    items = list(convos.items.list("conv-1", order="asc"))
+    items = list(convos.items.list("conv-1"))
 
     assert [i.id for i in items] == ["item-1", "item-2"]
-    assert fake_api.requests[0].params.get("order") == "asc"
-    assert fake_api.requests[1].params.get("order") == "asc"
+    # The route sorts descending and takes no ordering parameter, so the SDK
+    # must not send one. It used to send `order`, which was silently dropped:
+    # callers asking for "asc" got descending items and no error.
+    assert "order" not in fake_api.requests[0].params
+    assert "order" not in fake_api.requests[1].params
 
 
 def test_items_get_fetches_single_item(fake_api: FakeAPI):
@@ -620,8 +627,9 @@ def test_retrieve_picks_latest_chat_turn(fake_api: FakeAPI):
     span = convos.retrieve("conv-1")
 
     assert span is not None
-    # The scan hit the items list (order=desc) then the item detail.
-    assert fake_api.requests[0].params.get("order") == "desc"
+    # The scan hit the items list then the item detail. No ordering
+    # parameter is sent: the route is descending-only.
+    assert "order" not in fake_api.requests[0].params
     detail_req = fake_api.requests[1]
     assert detail_req.path == "/v1/conversations/conv-1/items/span-2"
     # No `include` at all: the items read returns the full history by default,
@@ -782,3 +790,133 @@ def test_runner_exposes_conversations_namespace():
     runner.close()
     with pytest.raises(RunnerExpiredError):
         _ = runner.conversations
+
+
+# --- complete-conversation export -----------------------------------
+
+TRAJECTORY_BODY = [
+    {"role": "meta", "source": "claude-code", "model": "opus"},
+    {
+        "role": "user",
+        "content": "fix the bug",
+        "timestamp": "2025-01-01T00:00:00Z",
+    },
+    {
+        "role": "assistant",
+        "content": None,
+        "timestamp": "2025-01-01T00:00:01Z",
+        "tool_calls": [
+            {"id": "call_1", "name": "edit", "args": '{"path": "a.py"}'}
+        ],
+    },
+    {
+        "role": "tool",
+        "tool_call_id": "call_1",
+        "content": "ok",
+        "timestamp": "2025-01-01T00:00:02Z",
+        "ok": True,
+    },
+    {
+        "role": "assistant",
+        "content": "done",
+        "timestamp": "2025-01-01T00:00:03Z",
+    },
+]
+
+
+def test_export_trajectory_negotiates_v1_and_types_records(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+    records = _conversations(fake_api).export_trajectory("conv-1")
+
+    sent = fake_api.requests[-1]
+    # The version parameter is load-bearing: a server that does not implement
+    # it must answer 406 rather than silently serving a different shape.
+    assert sent.headers["accept"] == (
+        "application/vnd.letta.trajectory+json;version=1"
+    )
+
+    assert [type(r).__name__ for r in records] == [
+        "TrajectoryMetaRecord",
+        "TrajectoryUserRecord",
+        "TrajectoryAssistantRecord",
+        "TrajectoryToolRecord",
+        "TrajectoryAssistantRecord",
+    ]
+    tool_call_turn = records[2]
+    assert isinstance(tool_call_turn, TrajectoryAssistantRecord)
+    # `content: null` is what distinguishes a tool-call record from prose.
+    assert tool_call_turn.content is None
+    assert tool_call_turn.tool_calls is not None
+    assert tool_call_turn.tool_calls[0].name == "edit"
+    # args stays a JSON-encoded string — that is the upstream contract.
+    assert tool_call_turn.tool_calls[0].args == '{"path": "a.py"}'
+
+    prose_turn = records[4]
+    assert isinstance(prose_turn, TrajectoryAssistantRecord)
+    assert prose_turn.content == "done"
+    assert prose_turn.tool_calls is None
+
+
+def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+    _conversations(fake_api).export_trajectory(
+        "conv-1",
+        agent="root",
+        service_name="svc",
+        operation_name="chat",
+        lookback_days=7,
+        share_id="33333333-3333-3333-3333-333333333333",
+    )
+
+    params = dict(fake_api.requests[-1].params)
+    assert params == {
+        "agent": "root",
+        "service_name": "svc",
+        "operation_name": "chat",
+        "lookback_days": "7",
+        "share_id": "33333333-3333-3333-3333-333333333333",
+    }
+    # The export is assembled server-side over the whole conversation, so it
+    # must never carry a cursor or page bound.
+    assert "limit" not in params
+    assert "next" not in params
+
+
+def test_export_arrow_negotiates_arrow_and_returns_one_table(
+    fake_api: FakeAPI,
+):
+    table = pa.table({"id": ["a", "b"], "content": ["hi", "there"]})
+    sink = io.BytesIO()
+    with pa.ipc.new_stream(sink, table.schema) as writer:
+        writer.write_table(table)
+
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", content=sink.getvalue()
+    )
+    result = _conversations(fake_api).export_arrow("conv-1")
+
+    assert fake_api.requests[-1].headers["accept"] == ARROW_STREAM_MEDIA_TYPE
+    assert result.num_rows == 2
+    assert result.column("content").to_pylist() == ["hi", "there"]
+
+
+def test_export_arrow_empty_body_is_none(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/conversations/conv-1/export", content=b"")
+    assert _conversations(fake_api).export_arrow("conv-1") is None
+
+
+@pytest.mark.asyncio
+async def test_async_export_trajectory(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+    conversations = AsyncConversations(fake_api.async_client())
+    records = await conversations.export_trajectory("conv-1")
+    assert len(records) == 5
+    meta = records[0]
+    assert isinstance(meta, TrajectoryMetaRecord)
+    assert meta.source == "claude-code"

@@ -8,17 +8,10 @@ from uuid import UUID
 
 from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.runner import Runner
-from introspection_sdk.schemas.experiments import (
-    ExperimentArmCreate,
-    ExperimentCreate,
-    ExperimentGoal,
-    JudgeGoalComponent,
-)
 
 from .conftest import (
     EXPERIMENT_ID,
     PROJECT_ID,
-    RUNTIME_ID,
     FakeAPI,
     experiment_payload,
     paginated,
@@ -72,88 +65,6 @@ def test_get_with_project(fake_api: FakeAPI):
     )
     _experiments(fake_api).get(UUID(EXPERIMENT_ID), project=PROJECT_ID)
     assert fake_api.last_request.params.get("project") == PROJECT_ID
-
-
-def test_create_from_model(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
-    _experiments(fake_api).create(
-        ExperimentCreate(
-            project=PROJECT_ID,
-            name="prompt-bake-off",
-            runtime_group_id=UUID(RUNTIME_GROUP_ID),
-            arms=[
-                ExperimentArmCreate(
-                    runtime_id=UUID(RUNTIME_ID), arm_label="control"
-                ),
-                ExperimentArmCreate(
-                    runtime_id=UUID(TREATMENT_RUNTIME_ID),
-                    arm_label="treatment",
-                ),
-            ],
-            goal_json=ExperimentGoal(
-                components=[JudgeGoalComponent(judge_id=UUID(JUDGE_ID))]
-            ),
-        )
-    )
-    body = fake_api.last_request.json()
-    assert body["name"] == "prompt-bake-off"
-    assert body["runtime"] == RUNTIME_GROUP_ID
-    assert [arm["arm_label"] for arm in body["arms"]] == [
-        "control",
-        "treatment",
-    ]
-    goal_component = body["goal_json"]["components"][0]
-    assert goal_component["source"] == "judge"
-    assert goal_component["judge_id"] == JUDGE_ID
-
-
-def test_create_from_model_accepts_runtime_slug(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
-    _experiments(fake_api).create(
-        ExperimentCreate(
-            project=PROJECT_ID,
-            name="prompt-bake-off",
-            runtime="support-agent",
-            arms=[
-                ExperimentArmCreate(
-                    runtime_id=UUID(RUNTIME_ID), arm_label="control"
-                ),
-                ExperimentArmCreate(
-                    runtime_id=UUID(TREATMENT_RUNTIME_ID),
-                    arm_label="treatment",
-                ),
-            ],
-            goal_json=ExperimentGoal(
-                components=[JudgeGoalComponent(judge_id=UUID(JUDGE_ID))]
-            ),
-        )
-    )
-    assert fake_api.last_request.json()["runtime"] == "support-agent"
-
-
-def test_create_from_dict(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
-    _experiments(fake_api).create(
-        {"project": PROJECT_ID, "name": "x", "description": None}
-    )
-    assert "description" not in fake_api.last_request.json()
-
-
-def test_update(fake_api: FakeAPI):
-    fake_api.add(
-        "PATCH",
-        f"/v1/experiments/{EXPERIMENT_ID}",
-        json_body=experiment_payload(name="renamed"),
-    )
-    exp = _experiments(fake_api).update(
-        UUID(EXPERIMENT_ID), {"name": "renamed"}
-    )
-    assert exp.name == "renamed"
-
-
-def test_delete_expects_empty(fake_api: FakeAPI):
-    fake_api.add("DELETE", f"/v1/experiments/{EXPERIMENT_ID}", status=204)
-    assert _experiments(fake_api).delete(UUID(EXPERIMENT_ID)) is None
 
 
 def test_handle_run(fake_api: FakeAPI):

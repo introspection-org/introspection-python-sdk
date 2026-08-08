@@ -32,6 +32,7 @@ from introspection_sdk.schemas.events import (
     PatternAssignmentPayload,
     PatternEvent,
     PatternPayload,
+    UnknownEvent,
 )
 from introspection_sdk.schemas.genai import (
     BinaryPart,
@@ -72,6 +73,16 @@ from introspection_sdk.schemas.metrics import (
     MetricTimeDimension,
     MetricView,
 )
+from introspection_sdk.schemas.trajectory import (
+    Trajectory,
+    TrajectoryAssistantRecord,
+    TrajectoryMetaRecord,
+    TrajectoryReasoningRecord,
+    TrajectoryRecord,
+    TrajectoryToolCall,
+    TrajectoryToolRecord,
+    TrajectoryUserRecord,
+)
 
 __all__ = [
     "AGUIEvent",
@@ -79,11 +90,11 @@ __all__ = [
     "ClusteringRunEvent",
     "ClusteringRunPayload",
     "CompactionPart",
-    "ConversationItemInclude",
     "Conversation",
-    "ConversationCost",
-    "ConversationMetrics",
     "ConversationAgent",
+    "ConversationCost",
+    "ConversationItemInclude",
+    "ConversationMetrics",
     "ConversationSortField",
     "ConversationUsage",
     "Event",
@@ -93,9 +104,9 @@ __all__ = [
     "FeedbackPayload",
     "FilePart",
     "GenAiAttributes",
+    "GenAiCost",
     "GenAiSpan",
     "GenAiSpanList",
-    "GenAiCost",
     "GenAiUsage",
     "GenericPart",
     "InputMessage",
@@ -133,5 +144,14 @@ __all__ = [
     "ThinkingPart",
     "ToolCallRequestPart",
     "ToolCallResponsePart",
+    "Trajectory",
+    "TrajectoryAssistantRecord",
+    "TrajectoryMetaRecord",
+    "TrajectoryReasoningRecord",
+    "TrajectoryRecord",
+    "TrajectoryToolCall",
+    "TrajectoryToolRecord",
+    "TrajectoryUserRecord",
+    "UnknownEvent",
     "UrlPart",
 ]

@@ -1,7 +1,6 @@
 """Pydantic mirrors of DP `/v1/tasks` request/response models.
 
-Mirrors `apps/dataplane-api/introspection_dataplane/models/task.py`.
-Extra fields are tolerated so DP additions don't break the SDK.
+Extra fields are tolerated so API additions don't break the SDK.
 """
 
 from __future__ import annotations
@@ -20,17 +19,18 @@ class _ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class TaskMode(StrEnum):
+class TaskKind(StrEnum):
+    """The execution shape of a task.
+
+    ``AGENT`` boots the runtime-agent image and runs an interactive LLM agent;
+    ``PROCESS`` runs a one-shot baked script and reports through the same
+    completion path. This replaced the retired ``TaskMode``: there are no task
+    modes any more — every agent task is a conversation, and the recipe agent
+    is selected by ``agent_name``.
+    """
+
     AGENT = "agent"
-    INTROSPECT = "introspect"
-    SYSTEM_REVIEW = "system_review"
-    SYSTEM_INSTRUMENTATION = "system_instrumentation"
-    OBSERVATION_REVIEW = "observation_review"
-    SECURITY_REVIEW = "security_review"
-    REPO_INDEX = "repo_index"
-    SYSTEM_DISCOVERY = "system_discovery"
-    ONBOARDING = "onboarding"
-    HEARTBEAT = "heartbeat"
+    PROCESS = "process"
 
 
 class TaskStatus(StrEnum):
@@ -59,7 +59,7 @@ class Task(_ApiModel):
     updated_at: datetime
     title: str | None = None
     display_index: int | None = None
-    mode: TaskMode = TaskMode.AGENT
+    kind: TaskKind = TaskKind.AGENT
     status: TaskStatus = TaskStatus.PENDING
     member_id: UUID | None = None
     automation_id: UUID | None = None
@@ -90,6 +90,32 @@ class TaskFileRef(_ApiModel):
     size_bytes: int | None = None
 
 
+class TaskRepoRequest(_ApiModel):
+    """One ``repositories[]`` entry: a repository plus the state to clone it at.
+
+    The recipe's ``runtime.github.repositories`` grant decides what a runtime
+    MAY clone; this decides what a task DOES clone, and at what ref. An entry
+    outside the grant is dropped by the server, never a launch failure.
+    """
+
+    repo: str = Field(description='Registered repository slug, "owner/name".')
+    ref: str | None = Field(
+        default=None,
+        description=(
+            "Branch, tag, or commit to check out. Omitted uses the "
+            "repository's registered default branch."
+        ),
+    )
+    depth: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Shallow-clone depth; 0 clones full history. Omitted uses the "
+            "platform default."
+        ),
+    )
+
+
 class TaskCreateRequest(_ApiModel):
     # Task creation through a Runner gets its Runtime authority from the
     # Runner credential. Keep response models forward-compatible, but do not
@@ -98,9 +124,21 @@ class TaskCreateRequest(_ApiModel):
 
     title: str | None = None
     prompt: str | None = None
-    mode: TaskMode = TaskMode.AGENT
-    system_id: str | None = None
-    repository_id: UUID | None = None
+    agent_name: str | None = Field(
+        default=None,
+        description=(
+            "Recipe agent to run; omit for the recipe default "
+            "(agents/agent.yaml)."
+        ),
+    )
+    repositories: list[TaskRepoRequest] | None = Field(
+        default=None,
+        max_length=10,
+        description=(
+            "Workspace repositories to clone into the sandbox's "
+            "workspace/repos/ before the first turn, at most 10."
+        ),
+    )
     metadata: dict[str, Any] | None = None
     files: list[TaskFileRef] | None = Field(
         default=None,
@@ -149,7 +187,6 @@ class TaskRunKind(StrEnum):
 
 class TaskRunCreateRequest(_ApiModel):
     prompt: TaskPrompt | None = None
-    message: str | None = None
     kind: TaskRunKind | None = None
     metadata: dict[str, Any] | None = None
     files: list[TaskFileRef] | None = Field(

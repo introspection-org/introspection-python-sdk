@@ -2,7 +2,7 @@
 
 The Metrics API is a deliberately closed, allow-listed "parameterized
 report", not a query language: closed op/field allow-lists, an enum
-interval, and hard caps (see the DP ``docs/design/metrics-api.md``). These
+interval, and hard caps. These
 models mirror the request grammar and response envelope so callers can
 build a typed request and read a typed result.
 

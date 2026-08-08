@@ -9,7 +9,6 @@ from __future__ import annotations
 import builtins
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
-from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
@@ -35,8 +34,8 @@ from introspection_sdk.schemas.tasks import (
     TaskCancelResponse,
     TaskCreateResponse,
     TaskFileRef,
-    TaskMode,
     TaskPrompt,
+    TaskRepoRequest,
     TaskRun,
     TaskRunKind,
     TaskRunResponse,
@@ -64,6 +63,20 @@ def _file_refs(
         if isinstance(ref, TaskFileRef)
         else ref
         for ref in files
+    ]
+
+
+def _repo_refs(
+    repositories: list[TaskRepoRequest | dict[str, Any]],
+) -> list[dict[str, Any]]:
+    # `exclude_none` matters here: `ref` and `depth` default to the
+    # repository's registered branch and a shallow clone server-side, and a
+    # null would be the caller asking for something instead of nothing.
+    return [
+        repo.model_dump(exclude_none=True)
+        if isinstance(repo, TaskRepoRequest)
+        else repo
+        for repo in repositories
     ]
 
 
@@ -126,7 +139,6 @@ class TaskRuns:
         task_id: str,
         *,
         prompt: TaskPrompt | dict[str, Any] | None = None,
-        message: str | None = None,
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
@@ -138,8 +150,6 @@ class TaskRuns:
                 if isinstance(prompt, TaskPrompt)
                 else prompt
             )
-        if message is not None:
-            body["message"] = message
         if kind is not None:
             body["kind"] = (
                 kind.value if isinstance(kind, TaskRunKind) else kind
@@ -241,7 +251,6 @@ class Tasks:
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        modes: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
     ) -> Pager[Task, Paginated[Task]]:
         """List tasks. Iterate the returned :class:`Pager` to stream every
@@ -255,8 +264,6 @@ class Tasks:
             }
             if statuses:
                 params["statuses"] = statuses
-            if modes:
-                params["modes"] = modes
             if require_automation_id is not None:
                 params["require_automation_id"] = require_automation_id
             payload = self._http.request("GET", "/v1/tasks", params=params)
@@ -269,9 +276,9 @@ class Tasks:
         *,
         title: str | None = None,
         prompt: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
-        repository_id: UUID | None = None,
+        agent_name: str | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
@@ -280,15 +287,12 @@ class Tasks:
         body: dict[str, Any] = {
             "title": title,
             "prompt": prompt,
-            "mode": mode.value if isinstance(mode, TaskMode) else mode,
-            "system_id": system_id,
-            "repository_id": (
-                str(repository_id) if repository_id is not None else None
-            ),
+            "agent_name": agent_name,
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,
+            "repositories": _repo_refs(repositories) if repositories else None,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)
@@ -343,9 +347,9 @@ class Tasks:
         *,
         prompt: str,
         title: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
-        repository_id: UUID | None = None,
+        agent_name: str | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
@@ -359,9 +363,8 @@ class Tasks:
         res = self.create(
             title=title,
             prompt=prompt,
-            mode=mode,
-            system_id=system_id,
-            repository_id=repository_id,
+            agent_name=agent_name,
+            repositories=repositories,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
             files=files,
@@ -429,7 +432,6 @@ class AsyncTaskRuns:
         task_id: str,
         *,
         prompt: TaskPrompt | dict[str, Any] | None = None,
-        message: str | None = None,
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
@@ -441,8 +443,6 @@ class AsyncTaskRuns:
                 if isinstance(prompt, TaskPrompt)
                 else prompt
             )
-        if message is not None:
-            body["message"] = message
         if kind is not None:
             body["kind"] = (
                 kind.value if isinstance(kind, TaskRunKind) else kind
@@ -536,7 +536,6 @@ class AsyncTasks:
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        modes: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
     ) -> AsyncPager[Task, Paginated[Task]]:
         """List tasks. ``await`` the returned :class:`AsyncPager` for the
@@ -550,8 +549,6 @@ class AsyncTasks:
             }
             if statuses:
                 params["statuses"] = statuses
-            if modes:
-                params["modes"] = modes
             if require_automation_id is not None:
                 params["require_automation_id"] = require_automation_id
             payload = await self._http.request(
@@ -566,9 +563,9 @@ class AsyncTasks:
         *,
         title: str | None = None,
         prompt: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
-        repository_id: UUID | None = None,
+        agent_name: str | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
@@ -577,15 +574,12 @@ class AsyncTasks:
         body: dict[str, Any] = {
             "title": title,
             "prompt": prompt,
-            "mode": mode.value if isinstance(mode, TaskMode) else mode,
-            "system_id": system_id,
-            "repository_id": (
-                str(repository_id) if repository_id is not None else None
-            ),
+            "agent_name": agent_name,
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,
+            "repositories": _repo_refs(repositories) if repositories else None,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
@@ -642,9 +636,9 @@ class AsyncTasks:
         *,
         prompt: str,
         title: str | None = None,
-        mode: TaskMode | str = TaskMode.AGENT,
-        system_id: str | None = None,
-        repository_id: UUID | None = None,
+        agent_name: str | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
@@ -659,9 +653,8 @@ class AsyncTasks:
         res = await self.create(
             title=title,
             prompt=prompt,
-            mode=mode,
-            system_id=system_id,
-            repository_id=repository_id,
+            agent_name=agent_name,
+            repositories=repositories,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
             files=files,

@@ -5,10 +5,8 @@ Wire fields are snake_case verbatim. Unknown fields are tolerated
 via ``extra="allow"``.
 
 The customer-facing :class:`RunnerSpec` is intentionally narrow —
-sandbox-internal fields (``credentials`` for ext_proc egress, the
-``bootstrap`` repo manifest, DP ``limits``, and the any-llm
-``llm_proxy`` descriptor) live on ``InternalRunnerSpec`` on the
-CP→DP internal route. See ``introspection-cloud/docs/design/sdk-api.md``.
+the fields it omits are server-internal and are never returned to
+callers of this SDK.
 """
 
 from __future__ import annotations
@@ -124,9 +122,7 @@ class RunnerSpec(_ApiModel):
     """Response body of CP ``/v1/{runtimes|experiments}/{id}/run`` —
     the customer wire.
 
-    Sandbox-internal fields (``credentials``, ``bootstrap``, ``limits``,
-    ``llm_proxy``) live on ``InternalRunnerSpec`` on the CP→DP internal
-    route — never returned to customer callers.
+    Server-internal fields are never returned to customer callers.
 
     The customer's only credential is ``session_token`` — an RS256
     ``session_locator`` JWT. The DP server materializes the real

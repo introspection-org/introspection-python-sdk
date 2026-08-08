@@ -58,6 +58,7 @@ from introspection_sdk.schemas.events import (
     Event,
     EventSortField,
     IntrospectionEventName,
+    UnknownEvent,
 )
 from introspection_sdk.schemas.pagination import Paginated
 
@@ -119,6 +120,21 @@ def validate_event_row(row: dict[str, Any]) -> Event | None:
     if row.get("event_name") not in KNOWN_EVENT_NAMES:
         UNKNOWN_EVENT_SKIPS.increment(row.get("event_name"))
         return None
+    return EVENT_ADAPTER.validate_python(row)
+
+
+def validate_single_event(payload: Any) -> Event | UnknownEvent:
+    """Validate one wire row read by id.
+
+    Unlike :func:`validate_event_row`, an unknown family is never skipped:
+    the caller named an id, so returning nothing would be indistinguishable
+    from a missing event. The envelope is validated and the payload left
+    untyped instead.
+    """
+    row = normalize_event_arrow_row(payload)
+    if row.get("event_name") not in KNOWN_EVENT_NAMES:
+        UNKNOWN_EVENT_SKIPS.increment(row.get("event_name"))
+        return UnknownEvent.model_validate(row)
     return EVENT_ADAPTER.validate_python(row)
 
 
@@ -304,6 +320,17 @@ class Events:
             return validate_event_page(payload)
 
         return cursor_paginate(fetch, start=next)
+
+    def get(self, event_id: str) -> Event | UnknownEvent:
+        """Read one event by id, across every family.
+
+        No ``event_name`` is supplied, so the family is not known in
+        advance and the result widens to :class:`UnknownEvent` for a
+        family added server-side after this SDK version. Raises
+        ``NotFoundError`` when the id does not resolve in tenant scope.
+        """
+        payload = self._http.request("GET", f"/v1/events/{event_id}")
+        return validate_single_event(payload)
 
     def iterate(
         self,
@@ -495,6 +522,11 @@ class AsyncEvents:
             return validate_event_page(payload)
 
         return async_cursor_paginate(fetch, start=next)
+
+    async def get(self, event_id: str) -> Event | UnknownEvent:
+        """Async twin of :meth:`Events.get`."""
+        payload = await self._http.request("GET", f"/v1/events/{event_id}")
+        return validate_single_event(payload)
 
     async def iterate(
         self,

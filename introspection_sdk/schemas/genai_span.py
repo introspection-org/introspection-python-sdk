@@ -17,8 +17,6 @@ quadratic — turn 50 would carry fifty messages, turn 49 forty-nine, and so on.
 present is a key that is not there. The typed families below are a convenience
 over an open tree, not a closed set — every model allows extra keys, so an
 attribute nobody modelled still arrives and still round-trips.
-
-See ``docs/design/conversations-genai-representation.md`` in ``introspection-cloud``.
 """
 
 from __future__ import annotations
