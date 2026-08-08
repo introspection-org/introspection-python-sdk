@@ -2,8 +2,7 @@
 
 Pure CRUD, no handle subtype. Recipes are immutable snapshots of a
 git repository at a specific commit; runtimes / experiment arms refer
-to recipes by id. See ``introspection-cloud/docs/design/sdk-api.md``
-section "Recipes — `client.recipes` (CP)".
+to recipes by id.
 """
 
 from __future__ import annotations

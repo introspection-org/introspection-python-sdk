@@ -96,11 +96,10 @@ SURFACES = (
         # runtime selection and the API ignores a body runtime_id from such a
         # caller, so exposing it would be a field that silently does nothing.
         # `repository_id` is retired from the public create body: the API
-        # accepted it, stamped it into task metadata, and read it nowhere. It
-        # survives only on the internal CP -> DP warmup body. Exempted so the
-        # check stays green against a published reference that still declares
-        # it; the stale-exemption rule fails once the reference catches up,
-        # which is the prompt to delete this.
+        # accepted it, stamped it into task metadata, and read it nowhere.
+        # Exempted so the check stays green against a published reference
+        # that still declares it; the stale-exemption rule fails once the
+        # reference catches up, which is the prompt to delete this.
         exempt=frozenset({"runtime_id", "repository_id"}),
         extra_means="rejected with a 422 — the create body forbids undeclared fields",
         missing_means="cannot be sent by callers of this SDK",

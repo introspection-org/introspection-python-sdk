@@ -1,7 +1,6 @@
 """Pydantic mirrors of DP `/v1/tasks` request/response models.
 
-Mirrors `apps/dataplane-api/introspection_dataplane/models/task.py`.
-Extra fields are tolerated so DP additions don't break the SDK.
+Extra fields are tolerated so API additions don't break the SDK.
 """
 
 from __future__ import annotations
