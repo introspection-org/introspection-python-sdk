@@ -36,6 +36,7 @@ from introspection_sdk.schemas.tasks import (
     TaskCreateResponse,
     TaskFileRef,
     TaskPrompt,
+    TaskRepoRequest,
     TaskRun,
     TaskRunKind,
     TaskRunResponse,
@@ -63,6 +64,20 @@ def _file_refs(
         if isinstance(ref, TaskFileRef)
         else ref
         for ref in files
+    ]
+
+
+def _repo_refs(
+    repositories: list[TaskRepoRequest | dict[str, Any]],
+) -> list[dict[str, Any]]:
+    # `exclude_none` matters here: `ref` and `depth` default to the
+    # repository's registered branch and a shallow clone server-side, and a
+    # null would be the caller asking for something instead of nothing.
+    return [
+        repo.model_dump(exclude_none=True)
+        if isinstance(repo, TaskRepoRequest)
+        else repo
+        for repo in repositories
     ]
 
 
@@ -267,6 +282,8 @@ class Tasks:
         prompt: str | None = None,
         agent_name: str | None = None,
         repository_id: UUID | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
@@ -283,6 +300,7 @@ class Tasks:
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,
+            "repositories": _repo_refs(repositories) if repositories else None,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)
@@ -339,6 +357,8 @@ class Tasks:
         title: str | None = None,
         agent_name: str | None = None,
         repository_id: UUID | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
@@ -354,6 +374,7 @@ class Tasks:
             prompt=prompt,
             agent_name=agent_name,
             repository_id=repository_id,
+            repositories=repositories,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
             files=files,
@@ -557,6 +578,8 @@ class AsyncTasks:
         prompt: str | None = None,
         agent_name: str | None = None,
         repository_id: UUID | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
@@ -573,6 +596,7 @@ class AsyncTasks:
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,
+            "repositories": _repo_refs(repositories) if repositories else None,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
@@ -631,6 +655,8 @@ class AsyncTasks:
         title: str | None = None,
         agent_name: str | None = None,
         repository_id: UUID | None = None,
+        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
+        | None = None,
         metadata: dict[str, Any] | None = None,
         idle_timeout_seconds: int | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
@@ -647,6 +673,7 @@ class AsyncTasks:
             prompt=prompt,
             agent_name=agent_name,
             repository_id=repository_id,
+            repositories=repositories,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
             files=files,

@@ -7,6 +7,7 @@ from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
     TaskFileRef,
     TaskPrompt,
+    TaskRepoRequest,
     TaskRunKind,
 )
 
@@ -51,6 +52,27 @@ def test_create_sends_agent_name_and_drops_none(fake_api: FakeAPI):
     body = fake_api.last_request.json()
     assert body["agent_name"] == "reviewer"
     assert "metadata" not in body  # None dropped
+
+
+def test_create_sends_repositories_and_omits_platform_defaults(
+    fake_api: FakeAPI,
+):
+    # `ref` and `depth` default to the repository's registered branch and a
+    # shallow clone server-side, so an unset one must be absent, not null.
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(
+        prompt="hello",
+        repositories=[
+            TaskRepoRequest(repo="acme/api-service"),
+            TaskRepoRequest(repo="acme/web", ref="main", depth=0),
+            {"repo": "acme/docs", "ref": "v1.2.0"},
+        ],
+    )
+    assert fake_api.last_request.json()["repositories"] == [
+        {"repo": "acme/api-service"},
+        {"repo": "acme/web", "ref": "main", "depth": 0},
+        {"repo": "acme/docs", "ref": "v1.2.0"},
+    ]
 
 
 def test_create_sends_no_retired_task_mode_fields(fake_api: FakeAPI):

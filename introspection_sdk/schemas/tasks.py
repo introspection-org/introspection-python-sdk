@@ -91,6 +91,32 @@ class TaskFileRef(_ApiModel):
     size_bytes: int | None = None
 
 
+class TaskRepoRequest(_ApiModel):
+    """One ``repositories[]`` entry: a repository plus the state to clone it at.
+
+    The recipe's ``runtime.github.repositories`` grant decides what a runtime
+    MAY clone; this decides what a task DOES clone, and at what ref. An entry
+    outside the grant is dropped by the server, never a launch failure.
+    """
+
+    repo: str = Field(description='Registered repository slug, "owner/name".')
+    ref: str | None = Field(
+        default=None,
+        description=(
+            "Branch, tag, or commit to check out. Omitted uses the "
+            "repository's registered default branch."
+        ),
+    )
+    depth: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Shallow-clone depth; 0 clones full history. Omitted uses the "
+            "platform default."
+        ),
+    )
+
+
 class TaskCreateRequest(_ApiModel):
     # Task creation through a Runner gets its Runtime authority from the
     # Runner credential. Keep response models forward-compatible, but do not
@@ -107,6 +133,14 @@ class TaskCreateRequest(_ApiModel):
         ),
     )
     repository_id: UUID | None = None
+    repositories: list[TaskRepoRequest] | None = Field(
+        default=None,
+        max_length=10,
+        description=(
+            "Workspace repositories to clone into the sandbox's "
+            "workspace/repos/ before the first turn, at most 10."
+        ),
+    )
     metadata: dict[str, Any] | None = None
     files: list[TaskFileRef] | None = Field(
         default=None,
