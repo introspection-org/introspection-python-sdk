@@ -137,12 +137,7 @@ SURFACES = (
         # Runner-bound client: the credential's claim is authoritative for
         # runtime selection and the API ignores a body runtime_id from such a
         # caller, so exposing it would be a field that silently does nothing.
-        # `repository_id` is retired from the public create body: the API
-        # accepted it, stamped it into task metadata, and read it nowhere.
-        # Exempted so the check stays green against a published reference
-        # that still declares it; the stale-exemption rule fails once the
-        # reference catches up, which is the prompt to delete this.
-        exempt=frozenset({"runtime_id", "repository_id"}),
+        exempt=frozenset({"runtime_id"}),
         extra_means="rejected with a 422 — the create body forbids undeclared fields",
         missing_means="cannot be sent by callers of this SDK",
     ),
@@ -162,9 +157,7 @@ SURFACES = (
         sdk=lambda: set(TaskRunCreateRequest.model_fields)
         | set(TaskRunResumeRequest.model_fields),
         server=lambda spec: schema_properties(spec, "TaskRunCreate"),
-        # `message` was the legacy shorthand for `prompt.text`, retired in the
-        # same cycle; the exemption self-clears as above.
-        exempt=frozenset({"message"}),
+        exempt=frozenset(),
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
     ),
