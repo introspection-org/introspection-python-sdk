@@ -221,17 +221,22 @@ class ConversationItems:
         *,
         limit: int = 100,
         next: str | None = None,
-        order: str | None = None,
         include: builtins.list[ConversationItemInclude] | None = None,
         agent: str | None = None,
         service_name: str | None = None,
         operation_name: str | None = None,
-        has_attribute: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        lookback_days: int | None = None,
+        share_id: str | None = None,
     ) -> Pager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. Iterate
         the returned :class:`Pager` to stream every item
-        across pages, or call ``.page()`` for the first page only. Pass
-        ``order="asc"`` to walk the transcript from the start.
+        across pages, or call ``.page()`` for the first page only.
+
+        Items are always returned newest-first: the route hardcodes a
+        descending sort and rejects a cursor that disagrees, so there is no
+        ordering parameter.
 
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
@@ -242,12 +247,14 @@ class ConversationItems:
             params: dict[str, Any] = {
                 "limit": limit,
                 "next": cursor,
-                "order": order,
                 "include": include,
                 "agent": agent,
                 "service_name": service_name,
                 "operation_name": operation_name,
-                "has_attribute": has_attribute,
+                "start_date": start_date,
+                "end_date": end_date,
+                "lookback_days": lookback_days,
+                "share_id": share_id,
             }
             payload = self._http.request(
                 "GET",
@@ -572,7 +579,7 @@ class Conversations:
         Returns ``None`` when the conversation has no items.
 
         For the full per-turn transcript instead, iterate
-        ``items.list(conversation_id, order="asc")``.
+        ``items.list(conversation_id)``, which is newest-first.
         """
         target_id = item_id or self._find_latest_turn_id(conversation_id)
         if target_id is None:
@@ -588,7 +595,8 @@ class Conversations:
         attribute that actually carried the meaning.
         """
         fallback: GenAiSpan | None = None
-        for item in self.items.list(conversation_id, order="desc"):
+        # The route is descending-only, so the first match is the latest.
+        for item in self.items.list(conversation_id):
             gen_ai = item.attributes.gen_ai
             operation = (
                 gen_ai.operation.name if gen_ai and gen_ai.operation else None
@@ -616,17 +624,22 @@ class AsyncConversationItems:
         *,
         limit: int = 100,
         next: str | None = None,
-        order: str | None = None,
         include: builtins.list[ConversationItemInclude] | None = None,
         agent: str | None = None,
         service_name: str | None = None,
         operation_name: str | None = None,
-        has_attribute: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        lookback_days: int | None = None,
+        share_id: str | None = None,
     ) -> AsyncPager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. ``await``
         the returned :class:`AsyncPager` for the first
-        page, or ``async for`` it to stream every item across pages. Pass
-        ``order="asc"`` to walk the transcript from the start.
+        page, or ``async for`` it to stream every item across pages.
+
+        Items are always returned newest-first: the route hardcodes a
+        descending sort and rejects a cursor that disagrees, so there is no
+        ordering parameter.
 
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
@@ -637,12 +650,14 @@ class AsyncConversationItems:
             params: dict[str, Any] = {
                 "limit": limit,
                 "next": cursor,
-                "order": order,
                 "include": include,
                 "agent": agent,
                 "service_name": service_name,
                 "operation_name": operation_name,
-                "has_attribute": has_attribute,
+                "start_date": start_date,
+                "end_date": end_date,
+                "lookback_days": lookback_days,
+                "share_id": share_id,
             }
             payload = await self._http.request(
                 "GET",
@@ -946,7 +961,7 @@ class AsyncConversations:
         Returns ``None`` when the conversation has no items.
 
         For the full per-turn transcript instead, iterate
-        ``items.list(conversation_id, order="asc")``.
+        ``items.list(conversation_id)``, which is newest-first.
         """
         target_id = item_id or await self._find_latest_turn_id(conversation_id)
         if target_id is None:
@@ -962,7 +977,8 @@ class AsyncConversations:
         attribute that actually carried the meaning.
         """
         fallback: GenAiSpan | None = None
-        async for item in self.items.list(conversation_id, order="desc"):
+        # The route is descending-only, so the first match is the latest.
+        async for item in self.items.list(conversation_id):
             gen_ai = item.attributes.gen_ai
             operation = (
                 gen_ai.operation.name if gen_ai and gen_ai.operation else None

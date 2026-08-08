@@ -51,7 +51,10 @@ from pathlib import Path
 
 from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.resources.recipes import Recipes
-from introspection_sdk.runner_resources.conversations import Conversations
+from introspection_sdk.runner_resources.conversations import (
+    ConversationItems,
+    Conversations,
+)
 from introspection_sdk.runner_resources.events import Events
 from introspection_sdk.runner_resources.files import Files
 from introspection_sdk.runner_resources.shares import Shares
@@ -321,6 +324,22 @@ SURFACES = (
         client_side=frozenset({"conversation_id"}),
         server=lambda spec: query_parameters(
             spec, "/v1/conversations/{conversation_id}/export", "get"
+        ),
+        missing_is_fatal=True,
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    # The items route is where the ordering bug hid: this SDK declared an
+    # `order` the route never accepted and omitted the window/share params it
+    # did, and no surface covered it. A sub-resource is still a route.
+    Surface(
+        name="conversation item list filters",
+        where="GET /v1/conversations/{id}/items query parameters",
+        sdk=lambda: signature_params(ConversationItems.list),
+        # `conversation_id` is the path segment, passed positionally.
+        client_side=frozenset({"conversation_id"}),
+        server=lambda spec: query_parameters(
+            spec, "/v1/conversations/{conversation_id}/items", "get"
         ),
         missing_is_fatal=True,
         extra_means="sent as a query parameter the API does not accept",

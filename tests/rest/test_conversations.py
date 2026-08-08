@@ -476,7 +476,6 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
 
     page = convos.items.list(
         "conv-1",
-        order="asc",
         include=[
             "gen_ai.system_instructions",
             "gen_ai.tool.definitions",
@@ -490,7 +489,8 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     assert len(page.data) == 1
     req = fake_api.last_request
     assert req.path == "/v1/conversations/conv-1/items"
-    assert req.params.get("order") == "asc"
+    # No ordering parameter: the route sorts descending and takes none.
+    assert "order" not in req.params
     assert _includes(req) == [
         "gen_ai.system_instructions",
         "gen_ai.tool.definitions",
@@ -548,7 +548,7 @@ def test_items_iter_rejects_has_more_without_next(fake_api: FakeAPI):
         list(convos.items.list("conv-1"))
 
 
-def test_items_iter_walks_ascending_transcript(fake_api: FakeAPI):
+def test_items_iter_walks_every_page_without_an_order_param(fake_api: FakeAPI):
     fake_api.add_handler(
         "GET",
         "/v1/conversations/conv-1/items",
@@ -561,11 +561,14 @@ def test_items_iter_walks_ascending_transcript(fake_api: FakeAPI):
     )
     convos = _conversations(fake_api)
 
-    items = list(convos.items.list("conv-1", order="asc"))
+    items = list(convos.items.list("conv-1"))
 
     assert [i.id for i in items] == ["item-1", "item-2"]
-    assert fake_api.requests[0].params.get("order") == "asc"
-    assert fake_api.requests[1].params.get("order") == "asc"
+    # The route sorts descending and takes no ordering parameter, so the SDK
+    # must not send one. It used to send `order`, which was silently dropped:
+    # callers asking for "asc" got descending items and no error.
+    assert "order" not in fake_api.requests[0].params
+    assert "order" not in fake_api.requests[1].params
 
 
 def test_items_get_fetches_single_item(fake_api: FakeAPI):
@@ -624,8 +627,9 @@ def test_retrieve_picks_latest_chat_turn(fake_api: FakeAPI):
     span = convos.retrieve("conv-1")
 
     assert span is not None
-    # The scan hit the items list (order=desc) then the item detail.
-    assert fake_api.requests[0].params.get("order") == "desc"
+    # The scan hit the items list then the item detail. No ordering
+    # parameter is sent: the route is descending-only.
+    assert "order" not in fake_api.requests[0].params
     detail_req = fake_api.requests[1]
     assert detail_req.path == "/v1/conversations/conv-1/items/span-2"
     # No `include` at all: the items read returns the full history by default,
