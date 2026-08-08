@@ -109,7 +109,7 @@ def main() -> None:
                     f"latest turn of {cid}: model={response.model}, "
                     f"{len(response.input_messages)} input message(s)"
                 )
-            for item in runner.conversations.items.list(cid, order="asc"):
+            for item in runner.conversations.items.list(cid):
                 print(f"  item {item.span_id} ({item.name})")
     finally:
         runner.close()
