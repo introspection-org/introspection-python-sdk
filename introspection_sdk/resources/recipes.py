@@ -43,11 +43,8 @@ class Recipes:
         project: str | UUID,
         repository_id: UUID | None = None,
         name: str | None = None,
-        git_ref: str | None = None,
-        git_commit_sha: str | None = None,
         limit: int | None = None,
         next: str | None = None,
-        include_total: bool | None = None,
     ) -> Pager[Recipe, Paginated[Recipe]]:
         """List recipes. Iterate the returned :class:`Pager` to stream every
         recipe across pages, or call ``.page()`` for the first page only."""
@@ -59,11 +56,8 @@ class Recipes:
                     str(repository_id) if repository_id is not None else None
                 ),
                 "name": name,
-                "git_ref": git_ref,
-                "git_commit_sha": git_commit_sha,
                 "limit": limit,
                 "next": cursor,
-                "include_total": include_total,
             }
             payload = self._http.request("GET", "/v1/recipes", params=params)
             return Paginated[Recipe].model_validate(payload)
@@ -95,11 +89,8 @@ class AsyncRecipes:
         project: str | UUID,
         repository_id: UUID | None = None,
         name: str | None = None,
-        git_ref: str | None = None,
-        git_commit_sha: str | None = None,
         limit: int | None = None,
         next: str | None = None,
-        include_total: bool | None = None,
     ) -> AsyncPager[Recipe, Paginated[Recipe]]:
         """List recipes. ``await`` the returned :class:`AsyncPager` for the
         first page, or ``async for`` it to stream every recipe across
@@ -112,11 +103,8 @@ class AsyncRecipes:
                     str(repository_id) if repository_id is not None else None
                 ),
                 "name": name,
-                "git_ref": git_ref,
-                "git_commit_sha": git_commit_sha,
                 "limit": limit,
                 "next": cursor,
-                "include_total": include_total,
             }
             payload = await self._http.request(
                 "GET", "/v1/recipes", params=params

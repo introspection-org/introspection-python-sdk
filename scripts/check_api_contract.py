@@ -49,6 +49,8 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from introspection_sdk.resources.experiments import Experiments
+from introspection_sdk.resources.recipes import Recipes
 from introspection_sdk.runner_resources.conversations import Conversations
 from introspection_sdk.runner_resources.events import Events
 from introspection_sdk.runner_resources.files import Files
@@ -67,6 +69,7 @@ from introspection_sdk.schemas.tasks import (
 )
 
 DEFAULT_SPEC = "https://docs.introspection.dev/openapi/dataplane.json"
+DEFAULT_CP_SPEC = "https://docs.introspection.dev/openapi/controlplane.json"
 
 
 def schema_properties(spec: dict, name: str) -> set[str]:
@@ -111,6 +114,10 @@ class Surface:
     # this the check reports them as params the API rejects, which is exactly
     # backwards: they are never sent, so the API never sees them.
     client_side: frozenset[str] = frozenset()
+    # Which reference declares this surface. The two planes are separate
+    # services with separate specs, and the CP half went unchecked entirely
+    # until an experiments filter the API does not accept shipped in two SDKs.
+    plane: str = "dp"
     extra_is_fatal: bool = True
     missing_is_fatal: bool = True
     extra_means: str = ""
@@ -319,6 +326,30 @@ SURFACES = (
         extra_means="sent as a query parameter the API does not accept",
         missing_means="accepted by the API but not exposed here",
     ),
+    # --- control plane -----------------------------------------------------
+    Surface(
+        name="experiment list filters",
+        where="GET /v1/experiments query parameters",
+        plane="cp",
+        sdk=lambda: signature_params(Experiments.list),
+        server=lambda spec: query_parameters(spec, "/v1/experiments", "get"),
+        # The deprecated spelling of `project`; this SDK sends the current one.
+        exempt=frozenset({"project_id"}),
+        missing_is_fatal=False,
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    Surface(
+        name="recipe list filters",
+        where="GET /v1/recipes query parameters",
+        plane="cp",
+        sdk=lambda: signature_params(Recipes.list),
+        server=lambda spec: query_parameters(spec, "/v1/recipes", "get"),
+        exempt=frozenset({"project_id"}),
+        missing_is_fatal=False,
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
     # --- metrics -----------------------------------------------------------
     Surface(
         name="MetricQueryRequest",
@@ -357,18 +388,25 @@ def report(lines: list[str], heading: str, fields: AbstractSet[str]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--spec", default=DEFAULT_SPEC, help="OpenAPI URL or path"
+        "--spec", default=DEFAULT_SPEC, help="Data-Plane OpenAPI URL or path"
+    )
+    parser.add_argument(
+        "--cp-spec",
+        default=DEFAULT_CP_SPEC,
+        help="Control-Plane OpenAPI URL or path",
     )
     args = parser.parse_args()
 
-    try:
-        spec = load_spec(args.spec)
-    except Exception as error:  # noqa: BLE001 - any failure to read is fatal here
-        print(
-            f"could not read the API reference at {args.spec}: {error}",
-            file=sys.stderr,
-        )
-        return 1
+    specs: dict[str, dict] = {}
+    for plane, source in (("dp", args.spec), ("cp", args.cp_spec)):
+        try:
+            specs[plane] = load_spec(source)
+        except Exception as error:  # noqa: BLE001 - any failure to read is fatal
+            print(
+                f"could not read the API reference at {source}: {error}",
+                file=sys.stderr,
+            )
+            return 1
 
     problems: list[str] = []
     advisories: list[str] = []
@@ -376,7 +414,7 @@ def main() -> int:
 
     for surface in SURFACES:
         try:
-            server_fields = surface.server(spec)
+            server_fields = surface.server(specs[surface.plane])
         except KeyError as error:
             problems.append(f"{surface.name}: the reference has no {error}")
             continue
