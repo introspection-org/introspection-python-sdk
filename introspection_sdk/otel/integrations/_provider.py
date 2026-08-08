@@ -3,7 +3,7 @@
 All spans on the shared provider flow through a single
 :class:`IntrospectionSpanProcessor`, which converts OpenInference/Logfire spans
 to gen_ai semconv, stamps conversation/identity baggage onto every span
-(including native Gemini/Anthropic spans), and exports them.
+and exports them.
 """
 
 from __future__ import annotations

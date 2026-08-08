@@ -21,7 +21,7 @@ class Integration(ABC):
     """Base class for framework integrations wired up by ``init()``.
 
     ``deactivates`` names other integrations to disable when this one is active,
-    so a wrapping framework (e.g. LangChain) doesn't double-trace the SDK it wraps.
+    so a wrapping framework doesn't double-trace the SDK it wraps.
     """
 
     identifier: str
