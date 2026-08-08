@@ -468,7 +468,7 @@ def main() -> int:
 
     if problems:
         print("\n".join(problems), file=sys.stderr)
-        print(f"\nreference: {args.spec}", file=sys.stderr)
+        print(f"\nreference: {args.spec} + {args.cp_spec}", file=sys.stderr)
         return 1
 
     print(
