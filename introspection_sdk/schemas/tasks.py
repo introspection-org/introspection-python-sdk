@@ -132,7 +132,6 @@ class TaskCreateRequest(_ApiModel):
             "(agents/agent.yaml)."
         ),
     )
-    repository_id: UUID | None = None
     repositories: list[TaskRepoRequest] | None = Field(
         default=None,
         max_length=10,
@@ -189,7 +188,6 @@ class TaskRunKind(StrEnum):
 
 class TaskRunCreateRequest(_ApiModel):
     prompt: TaskPrompt | None = None
-    message: str | None = None
     kind: TaskRunKind | None = None
     metadata: dict[str, Any] | None = None
     files: list[TaskFileRef] | None = Field(

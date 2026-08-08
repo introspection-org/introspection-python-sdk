@@ -162,14 +162,14 @@ def test_runs_create_with_prompt_model(fake_api: FakeAPI):
     assert fake_api.last_request.json()["prompt"] == {"text": "hi"}
 
 
-def test_runs_create_with_message(fake_api: FakeAPI):
+def test_runs_create_with_prompt(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         f"/v1/tasks/{TASK_ID}/runs",
         json_body=task_run_response(),
     )
-    _tasks(fake_api).runs.create(TASK_ID, message="ping")
-    assert fake_api.last_request.json() == {"message": "ping"}
+    _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "ping"})
+    assert fake_api.last_request.json() == {"prompt": {"text": "ping"}}
 
 
 def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
@@ -180,12 +180,12 @@ def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
     )
     _tasks(fake_api).runs.create(
         TASK_ID,
-        message="revise",
+        prompt={"text": "revise"},
         kind=TaskRunKind.STEER,
         metadata={"source": "test"},
     )
     assert fake_api.last_request.json() == {
-        "message": "revise",
+        "prompt": {"text": "revise"},
         "kind": "steer",
         "metadata": {"source": "test"},
     }
@@ -247,11 +247,11 @@ def test_runs_create_attaches_files_mid_conversation(fake_api: FakeAPI):
     )
     _tasks(fake_api).runs.create(
         TASK_ID,
-        message="now compare it to this",
+        prompt={"text": "now compare it to this"},
         files=[TaskFileRef(id="file-2", name="jd.md")],
     )
     assert fake_api.last_request.json() == {
-        "message": "now compare it to this",
+        "prompt": {"text": "now compare it to this"},
         "files": [{"id": "file-2", "name": "jd.md"}],
     }
 
@@ -311,7 +311,7 @@ def test_run_handle_cancel(fake_api: FakeAPI):
         f"/v1/tasks/{TASK_ID}/runs",
         json_body=task_run_response(),
     )
-    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+    handle = _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"})
     assert handle.cancel().id == "run-1"
     assert fake_api.last_request.json() is None
 
@@ -327,7 +327,7 @@ def test_run_handle_abort_and_drain(fake_api: FakeAPI):
         f"/v1/tasks/{TASK_ID}/runs",
         json_body=task_run_response(),
     )
-    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+    handle = _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"})
 
     assert handle.cancel({"mode": "drain"}).id == "run-1"
     assert fake_api.last_request.json() == {"mode": "drain"}
@@ -362,7 +362,7 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
         f"/v1/tasks/{TASK_ID}/runs/run-1/stream",
         content=sse.encode(),
     )
-    handle = _tasks(fake_api).runs.create(TASK_ID, message="x")
+    handle = _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"})
     events = list(handle.stream())
     assert [
         e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events

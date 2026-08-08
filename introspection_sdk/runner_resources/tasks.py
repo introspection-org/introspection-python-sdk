@@ -9,7 +9,6 @@ from __future__ import annotations
 import builtins
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
-from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
@@ -140,7 +139,6 @@ class TaskRuns:
         task_id: str,
         *,
         prompt: TaskPrompt | dict[str, Any] | None = None,
-        message: str | None = None,
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
@@ -152,8 +150,6 @@ class TaskRuns:
                 if isinstance(prompt, TaskPrompt)
                 else prompt
             )
-        if message is not None:
-            body["message"] = message
         if kind is not None:
             body["kind"] = (
                 kind.value if isinstance(kind, TaskRunKind) else kind
@@ -281,7 +277,6 @@ class Tasks:
         title: str | None = None,
         prompt: str | None = None,
         agent_name: str | None = None,
-        repository_id: UUID | None = None,
         repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
         | None = None,
         metadata: dict[str, Any] | None = None,
@@ -293,9 +288,6 @@ class Tasks:
             "title": title,
             "prompt": prompt,
             "agent_name": agent_name,
-            "repository_id": (
-                str(repository_id) if repository_id is not None else None
-            ),
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
@@ -356,7 +348,6 @@ class Tasks:
         prompt: str,
         title: str | None = None,
         agent_name: str | None = None,
-        repository_id: UUID | None = None,
         repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
         | None = None,
         metadata: dict[str, Any] | None = None,
@@ -373,7 +364,6 @@ class Tasks:
             title=title,
             prompt=prompt,
             agent_name=agent_name,
-            repository_id=repository_id,
             repositories=repositories,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,
@@ -442,7 +432,6 @@ class AsyncTaskRuns:
         task_id: str,
         *,
         prompt: TaskPrompt | dict[str, Any] | None = None,
-        message: str | None = None,
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
@@ -454,8 +443,6 @@ class AsyncTaskRuns:
                 if isinstance(prompt, TaskPrompt)
                 else prompt
             )
-        if message is not None:
-            body["message"] = message
         if kind is not None:
             body["kind"] = (
                 kind.value if isinstance(kind, TaskRunKind) else kind
@@ -577,7 +564,6 @@ class AsyncTasks:
         title: str | None = None,
         prompt: str | None = None,
         agent_name: str | None = None,
-        repository_id: UUID | None = None,
         repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
         | None = None,
         metadata: dict[str, Any] | None = None,
@@ -589,9 +575,6 @@ class AsyncTasks:
             "title": title,
             "prompt": prompt,
             "agent_name": agent_name,
-            "repository_id": (
-                str(repository_id) if repository_id is not None else None
-            ),
             "metadata": metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
@@ -654,7 +637,6 @@ class AsyncTasks:
         prompt: str,
         title: str | None = None,
         agent_name: str | None = None,
-        repository_id: UUID | None = None,
         repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
         | None = None,
         metadata: dict[str, Any] | None = None,
@@ -672,7 +654,6 @@ class AsyncTasks:
             title=title,
             prompt=prompt,
             agent_name=agent_name,
-            repository_id=repository_id,
             repositories=repositories,
             metadata=metadata,
             idle_timeout_seconds=idle_timeout_seconds,

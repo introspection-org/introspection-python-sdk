@@ -170,7 +170,7 @@ async def test_run_handle_stream_and_text(fake_api: FakeAPI):
         content=sse.encode(),
     )
     handle = await AsyncTasks(fake_api.async_client()).runs.create(
-        TASK_ID, message="x"
+        TASK_ID, prompt={"text": "x"}
     )
     events = [e async for e in handle.stream()]
     assert [
@@ -185,11 +185,11 @@ async def test_runs_create_attaches_files_mid_conversation(fake_api: FakeAPI):
     )
     await AsyncTasks(fake_api.async_client()).runs.create(
         TASK_ID,
-        message="now compare it to this",
+        prompt={"text": "now compare it to this"},
         files=[TaskFileRef(id="file-2", name="jd.md")],
     )
     assert fake_api.last_request.json() == {
-        "message": "now compare it to this",
+        "prompt": {"text": "now compare it to this"},
         "files": [{"id": "file-2", "name": "jd.md"}],
     }
 
@@ -211,12 +211,12 @@ async def test_runs_create_with_kind_and_metadata(fake_api: FakeAPI):
     )
     await AsyncTasks(fake_api.async_client()).runs.create(
         TASK_ID,
-        message="revise",
+        prompt={"text": "revise"},
         kind=TaskRunKind.STEER,
         metadata={"source": "test"},
     )
     assert fake_api.last_request.json() == {
-        "message": "revise",
+        "prompt": {"text": "revise"},
         "kind": "steer",
         "metadata": {"source": "test"},
     }
@@ -252,7 +252,7 @@ async def test_run_handle_cancel(fake_api: FakeAPI):
         json_body=task_cancel_response("run-1"),
     )
     handle = await AsyncTasks(fake_api.async_client()).runs.create(
-        TASK_ID, message="x"
+        TASK_ID, prompt={"text": "x"}
     )
     cancelled = await handle.cancel()
     assert cancelled.id == "run-1"
@@ -269,7 +269,7 @@ async def test_run_handle_abort_and_drain(fake_api: FakeAPI):
         json_body=task_cancel_response("run-1"),
     )
     handle = await AsyncTasks(fake_api.async_client()).runs.create(
-        TASK_ID, message="x"
+        TASK_ID, prompt={"text": "x"}
     )
 
     assert (await handle.cancel({"mode": "drain"})).id == "run-1"
