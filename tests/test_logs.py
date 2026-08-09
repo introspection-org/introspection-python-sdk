@@ -182,17 +182,21 @@ def test_identify_emits_traits_on_the_record(logs, exporter):
 def test_every_record_names_this_sdk_and_its_version_as_the_scope(
     logs, exporter
 ):
-    # The scope rides every record and is how ingest attributes an event to a
-    # client and a release. "introspection-sdk" alone did not say which of the
-    # four surfaces sent it.
+    # The scope rides every record and is how ingest attributes an event to
+    # the SDK and release that produced it.
     from introspection_sdk.version import VERSION
 
     logs.track("E")
     logs.flush()
     (data,) = exporter.get_finished_logs()
     scope = data.instrumentation_scope
-    assert scope.name == "introspection-sdk-python"
+    assert scope.name == "introspection-sdk"
     assert scope.version == VERSION
+
+    # The language is deliberately absent from the scope name: it rides the
+    # resource, which is where semconv puts it. The scope name's brevity
+    # depends on that, so assert it here.
+    assert data.resource.attributes["telemetry.sdk.language"] == "python"
 
 
 def test_shutdown_is_callable(logs):

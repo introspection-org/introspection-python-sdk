@@ -200,11 +200,13 @@ class IntrospectionLogs:
 
         self._logger_provider = LoggerProvider(resource=resource)
         self._logger_provider.add_log_record_processor(processor)
-        # Scope name identifies which client produced a record. The bare
-        # "introspection-sdk" was ambiguous against the Node, browser, and
-        # Rust surfaces, which all name themselves specifically.
+        # The dist name, per the OTel convention that the scope names the
+        # instrumentation library. Deliberately not language-tagged: the SDK
+        # language already rides the resource as ``telemetry.sdk.language``
+        # ("python" here), which is the semconv-designated place for it. All
+        # four Introspection SDKs use this same scope name.
         self._otel_logger = self._logger_provider.get_logger(
-            "introspection-sdk-python",
+            "introspection-sdk",
             VERSION,
         )
 
