@@ -112,27 +112,6 @@ class SandboxUnavailableError(IntrospectionAPIError):
     """503 / 504 — sandbox or upstream is unavailable."""
 
 
-class StreamError(IntrospectionAPIError):
-    """SSE transport failure (malformed frames, mid-stream disconnect)."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        status_code: int = 0,
-        code: str | None = None,
-        request_id: str | None = None,
-        body: Any = None,
-    ) -> None:
-        super().__init__(
-            message,
-            status_code=status_code,
-            code=code,
-            request_id=request_id,
-            body=body,
-        )
-
-
 class NetworkError(IntrospectionAPIError):
     """Transport-level failure (DNS, TCP, TLS, timeout)."""
 
@@ -256,7 +235,6 @@ __all__ = [
     "RateLimitError",
     "RunnerExpiredError",
     "SandboxUnavailableError",
-    "StreamError",
     "ValidationError",
     "error_from_response",
 ]

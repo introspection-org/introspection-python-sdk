@@ -86,10 +86,7 @@ class IntrospectionClient:
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.recipes = Recipes(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
+        self.recipes = Recipes(self._http)
 
     @classmethod
     def from_service_account(
@@ -199,10 +196,7 @@ class AsyncIntrospectionClient:
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.recipes = AsyncRecipes(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
+        self.recipes = AsyncRecipes(self._http)
 
     @classmethod
     async def from_service_account(

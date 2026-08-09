@@ -8,7 +8,6 @@ runtimes / experiment arms refer to recipes by id.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
@@ -26,14 +25,8 @@ from introspection_sdk.schemas.recipes import Recipe
 class Recipes:
     """CP ``/v1/recipes`` namespace."""
 
-    def __init__(
-        self,
-        http: _HttpClient,
-        *,
-        additional_headers: Mapping[str, str] | None = None,
-    ) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
-        self._additional_headers = additional_headers
 
     # --- reads --------------------------------------------------------
 
@@ -72,14 +65,8 @@ class Recipes:
 class AsyncRecipes:
     """Async twin of :class:`Recipes` (CP ``/v1/recipes``)."""
 
-    def __init__(
-        self,
-        http: _AsyncHttpClient,
-        *,
-        additional_headers: Mapping[str, str] | None = None,
-    ) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
-        self._additional_headers = additional_headers
 
     # --- reads --------------------------------------------------------
 

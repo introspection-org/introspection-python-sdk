@@ -169,12 +169,6 @@ class TaskCreateRequest(_ApiModel):
     )
 
 
-class TaskUpdateRequest(_ApiModel):
-    title: str | None = None
-    is_archived: bool | None = None
-    metadata: dict[str, Any] | None = None
-
-
 class TaskPrompt(_ApiModel):
     text: str = Field(min_length=1)
     images: list[str] | None = None

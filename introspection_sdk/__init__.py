@@ -31,7 +31,6 @@ from introspection_sdk._errors import (
     RateLimitError,
     RunnerExpiredError,
     SandboxUnavailableError,
-    StreamError,
     ValidationError,
 )
 from introspection_sdk.auth import (
@@ -153,7 +152,6 @@ __all__ = [
     "Runner",
     "RunnerExpiredError",
     "SandboxUnavailableError",
-    "StreamError",
     "ValidationError",
     # Server-side OAuth helpers (machine / federated auth)
     "async_authorization_code_token",

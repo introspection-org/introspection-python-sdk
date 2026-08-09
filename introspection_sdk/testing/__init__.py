@@ -2,7 +2,6 @@
 
 __all__ = ["TestSpanExporter"]
 
-import json
 from collections.abc import Sequence
 from typing import Any
 
@@ -61,19 +60,7 @@ class TestSpanExporter(SpanExporter):
 
     @staticmethod
     def _span_to_dict(span: ReadableSpan) -> dict[str, Any]:
-        attrs: dict[str, Any] = {}
-        if span.attributes:
-            for k, v in span.attributes.items():
-                if isinstance(v, str):
-                    try:
-                        parsed = json.loads(v)
-                        if isinstance(parsed, list | dict):
-                            attrs[k] = v
-                            continue
-                    except (json.JSONDecodeError, ValueError):
-                        pass
-                attrs[k] = v
-
+        attrs: dict[str, Any] = dict(span.attributes or {})
         result: dict[str, Any] = {
             "name": span.name,
             "attributes": attrs,
