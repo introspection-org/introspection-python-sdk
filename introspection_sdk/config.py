@@ -2,8 +2,6 @@
 
 __all__ = ["AdvancedOptions"]
 
-import time
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -18,42 +16,32 @@ if TYPE_CHECKING:
 class AdvancedOptions:
     """Advanced options for configuration and testing.
 
-    These options allow customizing the API endpoint, headers, and injecting
-    custom generators and exporters for deterministic testing.
+    These options customize the OTLP endpoint, headers, and batching, and let
+    tests inject in-memory exporters. They configure telemetry only —
+    :class:`~introspection_sdk.IntrospectionClient` takes no ``advanced``
+    argument.
 
     Example:
         ```python
-        from introspection_sdk import (
-            IntrospectionClient,
-            IntrospectionSpanProcessor,
-        )
+        from introspection_sdk import IntrospectionSpanProcessor
         from introspection_sdk.config import AdvancedOptions
         from introspection_sdk.testing import TestSpanExporter
 
-        # Custom base URL and headers for span processor
+        # Custom collector and headers
         processor = IntrospectionSpanProcessor(
             token="your-token",
             advanced=AdvancedOptions(
-                base_url="http://localhost:5418/v1/traces",
+                base_url="http://localhost:5418",
                 additional_headers={"X-Custom-Header": "value"},
+                flush_interval_ms=1000,
+                max_batch_size=50,
             ),
         )
 
-        # Testing with custom exporter
+        # Testing with an in-memory exporter
         processor = IntrospectionSpanProcessor(
             advanced=AdvancedOptions(
                 span_exporter=TestSpanExporter(),
-            ),
-        )
-
-        # Custom configuration for client
-        client = IntrospectionClient(
-            token="your-token",
-            advanced=AdvancedOptions(
-                base_url="http://localhost:8080",
-                flush_interval_ms=1000,
-                max_batch_size=50,
-                additional_headers={"X-Custom-Header": "value"},
             ),
         )
         ```
@@ -102,9 +90,5 @@ class AdvancedOptions:
     """
 
     id_generator: IdGenerator = field(default_factory=RandomIdGenerator)
-    """Generator for trace and span IDs.
-    Use IncrementalIdGenerator for deterministic testing."""
-
-    ns_timestamp_generator: Callable[[], int] = time.time_ns
-    """Generator for nanosecond timestamps.
-    Use TimeGenerator for deterministic testing."""
+    """Generator for trace and span IDs, used when ``init()`` creates the
+    provider. Use ``IncrementalIdGenerator`` for deterministic testing."""

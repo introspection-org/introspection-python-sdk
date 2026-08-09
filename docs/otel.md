@@ -15,6 +15,31 @@ pip install 'introspection-sdk[otel]'
 They are independent of each other and of the Introspection API — construct
 only what you need.
 
+## Both at once: `init()`
+
+```python
+from introspection_sdk import otel as introspection
+
+introspection.init(token="intro_xxx", service_name="my-service")
+
+with introspection.conversation() as conversation_id:
+    with introspection.with_user_id("user_123"):
+        ...                                  # your gen_ai spans
+        introspection.track("checkout_completed", {"amount": 42})
+
+introspection.shutdown()                     # also runs at exit
+```
+
+`init()` attaches the span processor to a shared `TracerProvider` (yours if you
+pass `tracer_provider=`, otherwise the global one) and builds the logs stream
+behind `track` / `feedback` / `identify`. It returns the provider and is
+idempotent; `shutdown()` flushes both and clears the state so a later `init()`
+reconfigures.
+
+The `with_*` context managers (`with_agent`, `with_conversation`,
+`with_user_id`, `with_anonymous_id`) scope OTel baggage that both surfaces
+read, so anything set inside the block lands on the events *and* on the spans.
+
 ---
 
 ## 1. Analytics events (track, feedback, identify) with `IntrospectionLogs`
@@ -78,6 +103,26 @@ provider.add_span_processor(IntrospectionSpanProcessor(token="intro_xxx"))
 
 The SDK ships no framework instrumentors. Emit `gen_ai.*` spans yourself (or
 from whatever library already emits them) and the processor exports them.
+
+**Only LLM spans are exported.** A span reaching the processor without any of
+`gen_ai.provider.name`, `gen_ai.operation.name`, `gen_ai.request.model`,
+`gen_ai.input.messages`, or `gen_ai.output.messages` is dropped — the processor
+usually sits on the global provider, where every HTTP and framework span in the
+process also arrives.
+
+On the spans it does export, the processor:
+
+- stamps `gen_ai.conversation.id` (baggage wins, then an existing attribute,
+  then a stable per-trace id),
+- stamps `gen_ai.agent.name` / `gen_ai.agent.id` and
+  `identity.user.id` / `identity.anonymous.id` from baggage, so a scope set
+  with `identify()` or the `with_*` managers reaches the trace,
+- defaults `gen_ai.operation.name` to `"chat"` when messages are present,
+- drops the deprecated `gen_ai.system` key in favour of `gen_ai.provider.name`.
+
+For hand-instrumented spans the SDK also exports `mark_span_cancelled` (the
+abort-is-not-an-error contract) and `set_usage_cost_attributes`
+(provider-reported cost) from `introspection_sdk.otel`.
 
 ## Environment variables (OTel)
 

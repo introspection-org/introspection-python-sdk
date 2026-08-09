@@ -1,6 +1,6 @@
 """Unit tests for provider-reported LLM cost extraction.
 
-Covers :mod:`introspection_sdk.otel._usage` directly (pure helper, no
+Covers :mod:`introspection_sdk.otel.usage` directly (pure helper, no
 network) with OpenRouter-style usage payloads.
 """
 
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from introspection_sdk.otel._usage import (
+from introspection_sdk.otel.usage import (
     UsageCostAttr,
     as_cost_float,
     usage_cost_attributes,

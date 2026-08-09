@@ -17,12 +17,7 @@ __all__ = [
     "Baggage",
     "EventName",
     "FeedbackProperties",
-    "REDACTED_THINKING_CONTENT",
 ]
-
-
-REDACTED_THINKING_CONTENT = "[redacted]"
-"""Placeholder used in place of redacted/encrypted thinking content."""
 
 
 class EventName:

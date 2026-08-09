@@ -8,9 +8,10 @@ OpenTelemetry.
 
 For OpenTelemetry-based emission of ``track`` / ``feedback`` /
 ``identify`` events, install the ``[otel]`` extra and use
-:class:`introspection_sdk.IntrospectionLogs`. For trace export
-(span / tracing processors, LLM SDK instrumentors), pick the relevant
-processors from :mod:`introspection_sdk.otel`.
+:class:`introspection_sdk.IntrospectionLogs`. For trace export, attach
+:class:`introspection_sdk.IntrospectionSpanProcessor` to your
+``TracerProvider`` — or call :func:`introspection_sdk.otel.init` to get
+both surfaces at once.
 """
 
 from __future__ import annotations

@@ -1,4 +1,7 @@
-"""Provider-reported LLM cost extraction shared by the instrumentors.
+"""Provider-reported LLM cost extraction for gen_ai spans.
+
+For callers instrumenting an LLM client by hand, and for the harness
+integrations built on top of this SDK.
 
 Some providers report the billed cost of a call directly in the
 response ``usage`` block. OpenRouter, for example, returns::

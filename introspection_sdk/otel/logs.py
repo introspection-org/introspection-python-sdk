@@ -32,7 +32,6 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urljoin
 
 from opentelemetry import baggage, context
 from opentelemetry._logs import SeverityNumber
@@ -46,6 +45,7 @@ from opentelemetry.semconv.resource import (
     ResourceAttributes,  # ty: ignore[deprecated]  # OpenTelemetry deprecated ResourceAttributes but new API not available yet
 )
 
+from introspection_sdk.otel._endpoint import otlp_endpoint
 from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.otel.types import (
     Attr,
@@ -161,12 +161,7 @@ class IntrospectionLogs:
         if log_exporter is not None:
             exporter: LogRecordExporter = log_exporter
         else:
-            if self._base_otel_url.endswith("/v1/logs"):
-                endpoint = self._base_otel_url
-            else:
-                endpoint = urljoin(
-                    self._base_otel_url.rstrip("/") + "/", "v1/logs"
-                )
+            endpoint = otlp_endpoint(self._base_otel_url, "logs")
 
             logger.info(
                 "IntrospectionLogs initialized: "
@@ -174,7 +169,8 @@ class IntrospectionLogs:
             )
 
             headers: dict[str, str] = {
-                "Authorization": f"Bearer {self._token}"
+                "User-Agent": f"introspection-sdk/{VERSION}",
+                "Authorization": f"Bearer {self._token}",
             }
             if self._additional_headers:
                 headers.update(self._additional_headers)
@@ -392,6 +388,7 @@ class IntrospectionLogs:
             timestamp=self._get_timestamp(),
             context=context.get_current(),
             severity_number=SeverityNumber.INFO,
+            severity_text="INFO",
             attributes=attributes,
         )
         logger.debug(f"Tracked: {event_name}")
@@ -421,6 +418,7 @@ class IntrospectionLogs:
             timestamp=self._get_timestamp(),
             context=context.get_current(),
             severity_number=SeverityNumber.INFO,
+            severity_text="INFO",
             attributes=attributes,
         )
         logger.debug(f"Feedback: {props.name}")
@@ -445,6 +443,7 @@ class IntrospectionLogs:
                 timestamp=self._get_timestamp(),
                 context=context.get_current(),
                 severity_number=SeverityNumber.INFO,
+                severity_text="INFO",
                 attributes=attributes,
             )
             logger.debug(f"Identified: {user_id}")
@@ -453,9 +452,6 @@ class IntrospectionLogs:
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
-
-    def reset(self) -> None:
-        logger.debug("IntrospectionLogs state reset")
 
     def flush(self, timeout_ms: int = 30000) -> bool:
         logger.info("Flushing IntrospectionLogs")

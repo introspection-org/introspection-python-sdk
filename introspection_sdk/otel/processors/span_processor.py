@@ -1,7 +1,6 @@
 """OpenTelemetry SpanProcessor for the Introspection backend."""
 
 import os
-from urllib.parse import urljoin
 
 from opentelemetry import baggage as otel_baggage
 from opentelemetry.context import Context
@@ -17,12 +16,38 @@ from opentelemetry.sdk.trace.export import (
 )
 
 from introspection_sdk.config import AdvancedOptions
+from introspection_sdk.otel._endpoint import otlp_endpoint
 from introspection_sdk.otel.conversation import resolve_conversation_id
 from introspection_sdk.otel.processors._batch import batch_processor_options
+from introspection_sdk.otel.types import Attr, Baggage
 from introspection_sdk.utils import logger, platform_is_emscripten
 from introspection_sdk.version import VERSION
 
 __all__ = ["IntrospectionSpanProcessor"]
+
+#: A span carrying any of these is LLM-relevant and gets exported. Everything
+#: else in the process (HTTP clients, web-framework routing, database drivers)
+#: reaches this processor too once it is attached to the global provider, and
+#: must not be shipped to Introspection.
+_GEN_AI_MARKERS = (
+    "gen_ai.provider.name",
+    "gen_ai.operation.name",
+    "gen_ai.request.model",
+    "gen_ai.input.messages",
+    "gen_ai.output.messages",
+)
+
+#: End-user identity baggage keys -> their semconv span-attribute keys. The
+#: baggage keys use the ``identify()`` underscore form; the span attributes use
+#: the dotted semconv form.
+_IDENTITY_BAGGAGE_TO_ATTRIBUTE = {
+    Baggage.USER_ID: Attr.USER_ID,
+    Baggage.ANONYMOUS_ID: Attr.ANONYMOUS_ID,
+}
+
+#: Deprecated pre-1.27 provider key. ``gen_ai.provider.name`` supersedes it and
+#: an emitter that still writes it would ship both.
+_DEPRECATED_SYSTEM_KEY = "gen_ai.system"
 
 
 class _AttributeOverrideSpan(ReadableSpan):
@@ -108,8 +133,9 @@ class _AttributeOverrideSpan(ReadableSpan):
 class IntrospectionSpanProcessor(SpanProcessor):
     """Span processor that sends traces to the Introspection API.
 
-    Intercepts OpenTelemetry spans, stamps identity baggage onto them
-    formats to OTel Gen AI semantic conventions, and exports them via OTLP.
+    Intercepts OpenTelemetry spans, drops the ones with no ``gen_ai.*`` data,
+    stamps conversation / agent / identity baggage onto the rest, and exports
+    them via OTLP.
 
     Args:
         token: Introspection API token. Falls back to the
@@ -164,13 +190,7 @@ class IntrospectionSpanProcessor(SpanProcessor):
                     self._advanced.additional_headers or {}
                 ),  # TODO: Add validation for headers
             }
-            if base_url.endswith("/v1/traces"):
-                endpoint = base_url
-            else:
-                # Relative join, matching IntrospectionLogs: an absolute
-                # "/v1/traces" would discard a path prefix on the base URL
-                # (…/otlp → …/v1/traces instead of …/otlp/v1/traces).
-                endpoint = urljoin(base_url.rstrip("/") + "/", "v1/traces")
+            endpoint = otlp_endpoint(base_url, "traces")
             logger.info(
                 "Initializing introspection with endpoint: %s", endpoint
             )
@@ -214,8 +234,9 @@ class IntrospectionSpanProcessor(SpanProcessor):
     def on_end(self, span: ReadableSpan) -> None:
         """Called when a span is ended.
 
-        Stamps conversation / identity baggage onto the span and forwards it
-        to the underlying exporter.
+        Drops spans with no LLM-relevant data, then stamps conversation /
+        agent / identity baggage onto the rest and forwards them to the
+        underlying exporter.
 
         Args:
             span: The completed span to process.
@@ -226,32 +247,59 @@ class IntrospectionSpanProcessor(SpanProcessor):
         if not span.context.trace_flags.sampled:
             return
 
-        span = self._enrich_span(span)
-        self._span_processor.on_end(span)
+        attributes = span.attributes or {}
+        if not any(attributes.get(key) is not None for key in _GEN_AI_MARKERS):
+            # An infrastructure span: HTTP, routing, database. Exporting it
+            # would also mint a synthetic conversation id for a span that has
+            # nothing to do with a conversation.
+            return
+
+        self._span_processor.on_end(self._enrich_span(span))
 
     def _enrich_span(self, span: ReadableSpan) -> ReadableSpan:
-        """Add conversation ID, agent name, and service name resource to span."""
-        extra: dict[str, str | int] = {}
+        """Add conversation, agent, and identity attributes plus service name."""
+        attrs = dict(span.attributes or {})
+        attrs.pop(_DEPRECATED_SYSTEM_KEY, None)
 
-        # Use conversation ID from baggage if set, otherwise check existing
-        # attribute, then auto-generate per trace
-        baggage_conv_id = otel_baggage.get_baggage("gen_ai.conversation.id")
-        existing_conv_id = (span.attributes or {}).get(
-            "gen_ai.conversation.id"
-        )
+        # Conversation id: baggage > existing attribute > auto-generate per
+        # trace.
+        baggage_conv_id = otel_baggage.get_baggage(Baggage.CONVERSATION_ID)
         if baggage_conv_id:
-            extra["gen_ai.conversation.id"] = str(baggage_conv_id)
-        elif not existing_conv_id:
-            extra["gen_ai.conversation.id"] = resolve_conversation_id(
+            attrs[Attr.CONVERSATION_ID] = str(baggage_conv_id)
+        elif not attrs.get(Attr.CONVERSATION_ID):
+            attrs[Attr.CONVERSATION_ID] = resolve_conversation_id(
                 trace_key=str(span.context.trace_id)
             )
 
-        # Propagate agent name from baggage if not already on span
-        baggage_agent_name = otel_baggage.get_baggage("gen_ai.agent.name")
-        if baggage_agent_name and not (span.attributes or {}).get(
-            "gen_ai.agent.name"
+        # An emitter that recorded messages without naming the operation is
+        # doing a chat completion.
+        if not attrs.get("gen_ai.operation.name") and (
+            attrs.get("gen_ai.input.messages")
+            or attrs.get("gen_ai.output.messages")
         ):
-            extra["gen_ai.agent.name"] = str(baggage_agent_name)
+            attrs["gen_ai.operation.name"] = "chat"
+
+        # Agent name / id from baggage. Baggage wins so per-call agent
+        # identity overrides any default stamped by the emitter.
+        for baggage_key, attribute_key in (
+            (Baggage.AGENT_NAME, Attr.AGENT_NAME),
+            (Baggage.AGENT_ID, Attr.AGENT_ID),
+        ):
+            value = otel_baggage.get_baggage(baggage_key)
+            if value:
+                attrs[attribute_key] = str(value)
+
+        # End-user identity, set once at the run root by ``identify()`` and
+        # inherited by every child span through context propagation. Without
+        # this, spans and the events emitted alongside them disagree about who
+        # the user was.
+        for (
+            baggage_key,
+            attribute_key,
+        ) in _IDENTITY_BAGGAGE_TO_ATTRIBUTE.items():
+            value = otel_baggage.get_baggage(baggage_key)
+            if value:
+                attrs[attribute_key] = str(value)
 
         # Build a new resource with service.name if provided
         resource: Resource | None = None
@@ -260,12 +308,7 @@ class IntrospectionSpanProcessor(SpanProcessor):
                 Resource({"service.name": self._service_name})
             )
 
-        if extra or resource is not None:
-            existing = dict(span.attributes or {})
-            existing.update(extra)
-            span = _AttributeOverrideSpan(span, existing, resource=resource)
-
-        return span
+        return _AttributeOverrideSpan(span, attrs, resource=resource)
 
     def shutdown(self) -> None:
         """Shut down the underlying batch span processor."""

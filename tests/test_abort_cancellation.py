@@ -21,7 +21,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 from opentelemetry.trace import StatusCode
 
-from introspection_sdk.otel._termination import mark_span_cancelled
+from introspection_sdk.otel.termination import mark_span_cancelled
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers

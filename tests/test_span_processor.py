@@ -14,10 +14,14 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 from introspection_sdk import AdvancedOptions, IntrospectionSpanProcessor
 
-from .test_utils import IncrementalIdGenerator, TimeGenerator, spans_to_dict
+from .test_utils import IncrementalIdGenerator, spans_to_dict
 
 # Matches auto-generated conversation IDs like "intro_conv_<32 hex chars>"
 _CONV_ID = IsStr(regex=r"^intro_conv_[0-9a-f]{32}$")
+
+#: The processor only exports spans carrying gen_ai data, so every span in
+#: these tests sets the minimum marker.
+_MODEL = "claude-haiku-4-5"
 
 
 class TestIntrospectionSpanProcessor:
@@ -85,8 +89,6 @@ class TestIntrospectionSpanProcessor:
             token="test-token",
             advanced=AdvancedOptions(
                 span_exporter=exporter,
-                id_generator=IncrementalIdGenerator(),
-                ns_timestamp_generator=TimeGenerator(),
             ),
         )
 
@@ -99,6 +101,7 @@ class TestIntrospectionSpanProcessor:
         with tracer.start_as_current_span("test-span") as span:
             span.set_attribute("test.key", "test.value")
             span.set_attribute("test.number", 42)
+            span.set_attribute("gen_ai.request.model", _MODEL)
 
         # Force flush to ensure spans are exported
         processor.force_flush(1000)
@@ -126,6 +129,7 @@ class TestIntrospectionSpanProcessor:
                     "attributes": {
                         "test.key": "test.value",
                         "test.number": 42,
+                        "gen_ai.request.model": _MODEL,
                         "gen_ai.conversation.id": _CONV_ID,
                     },
                 },
@@ -135,15 +139,13 @@ class TestIntrospectionSpanProcessor:
         provider.shutdown()
 
     def test_span_processor_preserves_span_attributes(self):
-        """Test that span attributes are preserved through processing."""
+        """Attributes on a gen_ai span survive processing untouched."""
         exporter = InMemorySpanExporter()
 
         processor = IntrospectionSpanProcessor(
             token="test-token",
             advanced=AdvancedOptions(
                 span_exporter=exporter,
-                id_generator=IncrementalIdGenerator(),
-                ns_timestamp_generator=TimeGenerator(),
             ),
         )
 
@@ -154,8 +156,8 @@ class TestIntrospectionSpanProcessor:
         # Create a span with multiple attributes
         with tracer.start_as_current_span("test-span-with-attributes") as span:
             span.set_attribute("service.name", "test-service")
-            span.set_attribute("http.method", "GET")
-            span.set_attribute("http.status_code", 200)
+            span.set_attribute("gen_ai.request.model", _MODEL)
+            span.set_attribute("gen_ai.usage.input_tokens", 200)
             span.set_status(trace.Status(trace.StatusCode.OK))
 
         processor.force_flush(1000)
@@ -182,13 +184,40 @@ class TestIntrospectionSpanProcessor:
                     "end_time": 2000000000,
                     "attributes": {
                         "service.name": "test-service",
-                        "http.method": "GET",
-                        "http.status_code": 200,
+                        "gen_ai.request.model": _MODEL,
+                        "gen_ai.usage.input_tokens": 200,
                         "gen_ai.conversation.id": _CONV_ID,
                     },
                 },
             ]
         )
+
+        provider.shutdown()
+
+    def test_infrastructure_spans_are_not_exported(self):
+        """A span with no gen_ai data never reaches the exporter.
+
+        The processor is attached to the global provider, so every HTTP,
+        routing, and database span in the process passes through it. Exporting
+        those would both ship unrelated traffic and mint a synthetic
+        conversation id for a span that has no conversation.
+        """
+        exporter = InMemorySpanExporter()
+
+        processor = IntrospectionSpanProcessor(
+            token="test-token",
+            advanced=AdvancedOptions(span_exporter=exporter),
+        )
+        provider = TracerProvider(id_generator=IncrementalIdGenerator())
+        provider.add_span_processor(processor)
+        tracer = provider.get_tracer("test-tracer")
+
+        with tracer.start_as_current_span("GET /health") as span:
+            span.set_attribute("http.request.method", "GET")
+            span.set_attribute("http.response.status_code", 200)
+
+        processor.force_flush(1000)
+        assert exporter.get_finished_spans() == ()
 
         provider.shutdown()
 
@@ -249,8 +278,6 @@ class TestIntrospectionSpanProcessor:
             token="test-token",
             advanced=AdvancedOptions(
                 span_exporter=exporter,
-                id_generator=IncrementalIdGenerator(),
-                ns_timestamp_generator=TimeGenerator(),
             ),
         )
 
@@ -259,14 +286,16 @@ class TestIntrospectionSpanProcessor:
         tracer = provider.get_tracer("test-tracer")
 
         # Create multiple spans
-        with tracer.start_as_current_span("span-1"):
-            pass
+        with tracer.start_as_current_span("span-1") as span:
+            span.set_attribute("gen_ai.request.model", _MODEL)
 
         with tracer.start_as_current_span("span-2") as span:
             span.set_attribute("span.id", 2)
+            span.set_attribute("gen_ai.request.model", _MODEL)
 
         with tracer.start_as_current_span("span-3") as span:
             span.set_attribute("span.id", 3)
+            span.set_attribute("gen_ai.request.model", _MODEL)
 
         processor.force_flush(1000)
 
@@ -290,7 +319,10 @@ class TestIntrospectionSpanProcessor:
                     "parent": None,
                     "start_time": 1000000000,
                     "end_time": 2000000000,
-                    "attributes": {"gen_ai.conversation.id": _CONV_ID},
+                    "attributes": {
+                        "gen_ai.request.model": _MODEL,
+                        "gen_ai.conversation.id": _CONV_ID,
+                    },
                 },
                 {
                     "name": "span-2",
@@ -304,6 +336,7 @@ class TestIntrospectionSpanProcessor:
                     "end_time": 3000000000,
                     "attributes": {
                         "span.id": 2,
+                        "gen_ai.request.model": _MODEL,
                         "gen_ai.conversation.id": _CONV_ID,
                     },
                 },
@@ -319,6 +352,7 @@ class TestIntrospectionSpanProcessor:
                     "end_time": 4000000000,
                     "attributes": {
                         "span.id": 3,
+                        "gen_ai.request.model": _MODEL,
                         "gen_ai.conversation.id": _CONV_ID,
                     },
                 },
@@ -335,8 +369,6 @@ class TestIntrospectionSpanProcessor:
             token="test-token",
             advanced=AdvancedOptions(
                 span_exporter=exporter,
-                id_generator=IncrementalIdGenerator(),
-                ns_timestamp_generator=TimeGenerator(),
             ),
         )
 
@@ -347,12 +379,15 @@ class TestIntrospectionSpanProcessor:
         # Create nested spans
         with tracer.start_as_current_span("parent-span") as parent:
             parent.set_attribute("level", "parent")
+            parent.set_attribute("gen_ai.request.model", _MODEL)
             with tracer.start_as_current_span("child-span") as child:
                 child.set_attribute("level", "child")
+                child.set_attribute("gen_ai.request.model", _MODEL)
                 with tracer.start_as_current_span(
                     "grandchild-span"
                 ) as grandchild:
                     grandchild.set_attribute("level", "grandchild")
+                    grandchild.set_attribute("gen_ai.request.model", _MODEL)
 
         processor.force_flush(1000)
 
@@ -382,6 +417,7 @@ class TestIntrospectionSpanProcessor:
                     "end_time": 2000000000,
                     "attributes": {
                         "level": "grandchild",
+                        "gen_ai.request.model": _MODEL,
                         "gen_ai.conversation.id": _CONV_ID,
                     },
                 },
@@ -401,6 +437,7 @@ class TestIntrospectionSpanProcessor:
                     "end_time": 3000000000,
                     "attributes": {
                         "level": "child",
+                        "gen_ai.request.model": _MODEL,
                         "gen_ai.conversation.id": _CONV_ID,
                     },
                 },
@@ -416,6 +453,7 @@ class TestIntrospectionSpanProcessor:
                     "end_time": 4000000000,
                     "attributes": {
                         "level": "parent",
+                        "gen_ai.request.model": _MODEL,
                         "gen_ai.conversation.id": _CONV_ID,
                     },
                 },
@@ -432,8 +470,6 @@ class TestIntrospectionSpanProcessor:
             token="test-token",
             advanced=AdvancedOptions(
                 span_exporter=exporter,
-                id_generator=IncrementalIdGenerator(),
-                ns_timestamp_generator=TimeGenerator(),
             ),
         )
 
@@ -489,8 +525,8 @@ class TestOTLPHttpCalls:
             provider.add_span_processor(processor)
             tracer = provider.get_tracer("test")
 
-            with tracer.start_as_current_span("test-span"):
-                pass
+            with tracer.start_as_current_span("test-span") as span:
+                span.set_attribute("gen_ai.request.model", _MODEL)
 
             processor.force_flush(5000)
 
@@ -512,8 +548,6 @@ class TestBaggagePropagation:
             token="test-token",
             advanced=AdvancedOptions(
                 span_exporter=exporter,
-                id_generator=IncrementalIdGenerator(),
-                ns_timestamp_generator=TimeGenerator(),
             ),
         )
         provider = TracerProvider(id_generator=IncrementalIdGenerator())
@@ -528,8 +562,8 @@ class TestBaggagePropagation:
         ctx = baggage.set_baggage("gen_ai.conversation.id", "my-conv-123")
         token = context.attach(ctx)
         try:
-            with tracer.start_as_current_span("test-span"):
-                pass
+            with tracer.start_as_current_span("test-span") as span:
+                span.set_attribute("gen_ai.request.model", _MODEL)
         finally:
             context.detach(token)
 
@@ -555,8 +589,8 @@ class TestBaggagePropagation:
         ctx = baggage.set_baggage("gen_ai.agent.name", "my-bot")
         token = context.attach(ctx)
         try:
-            with tracer.start_as_current_span("test-span"):
-                pass
+            with tracer.start_as_current_span("test-span") as span:
+                span.set_attribute("gen_ai.request.model", _MODEL)
         finally:
             context.detach(token)
 
@@ -582,6 +616,7 @@ class TestBaggagePropagation:
         try:
             with tracer.start_as_current_span("test-span") as span:
                 span.set_attribute("gen_ai.conversation.id", "span-conv")
+                span.set_attribute("gen_ai.request.model", _MODEL)
         finally:
             context.detach(token)
 
@@ -605,8 +640,8 @@ class TestBaggagePropagation:
         processor, provider, exporter = self._make_processor_and_provider()
         tracer = provider.get_tracer("test-tracer")
 
-        with tracer.start_as_current_span("test-span"):
-            pass
+        with tracer.start_as_current_span("test-span") as span:
+            span.set_attribute("gen_ai.request.model", _MODEL)
 
         processor.force_flush(1000)
 
@@ -643,8 +678,8 @@ class TestBaggagePropagation:
             provider.add_span_processor(processor)
             tracer = provider.get_tracer("test")
 
-            with tracer.start_as_current_span("test-span"):
-                pass
+            with tracer.start_as_current_span("test-span") as span:
+                span.set_attribute("gen_ai.request.model", _MODEL)
 
             processor.force_flush(5000)
 
@@ -655,3 +690,84 @@ class TestBaggagePropagation:
             assert request.headers["X-Custom"] == "custom-value"
 
             provider.shutdown()
+
+    def test_identity_baggage_is_stamped_onto_the_span(self):
+        """identify() has to reach spans, not just events.
+
+        Without this the events emitted alongside a span carry the end user
+        and the span does not, so the two disagree about who was acting.
+        """
+        processor, provider, exporter = self._make_processor_and_provider()
+        tracer = provider.get_tracer("test-tracer")
+
+        ctx = baggage.set_baggage("identity.user_id", "user_42")
+        ctx = baggage.set_baggage("identity.anonymous_id", "anon_7", ctx)
+        token = context.attach(ctx)
+        try:
+            with tracer.start_as_current_span("test-span") as span:
+                span.set_attribute("gen_ai.request.model", _MODEL)
+        finally:
+            context.detach(token)
+
+        processor.force_flush(1000)
+        (span_dict,) = spans_to_dict(
+            exporter.get_finished_spans(),
+            parse_json_attributes=False,
+            normalize_timestamps=True,
+        )
+        assert span_dict["attributes"]["identity.user.id"] == "user_42"
+        assert span_dict["attributes"]["identity.anonymous.id"] == "anon_7"
+
+        provider.shutdown()
+
+    def test_baggage_agent_identity_overrides_the_span_attribute(self):
+        """Per-call agent identity beats a default stamped by the emitter."""
+        processor, provider, exporter = self._make_processor_and_provider()
+        tracer = provider.get_tracer("test-tracer")
+
+        ctx = baggage.set_baggage("gen_ai.agent.name", "from-baggage")
+        ctx = baggage.set_baggage("gen_ai.agent.id", "agent_9", ctx)
+        token = context.attach(ctx)
+        try:
+            with tracer.start_as_current_span("test-span") as span:
+                span.set_attribute("gen_ai.request.model", _MODEL)
+                span.set_attribute("gen_ai.agent.name", "on-span")
+        finally:
+            context.detach(token)
+
+        processor.force_flush(1000)
+        (span_dict,) = spans_to_dict(
+            exporter.get_finished_spans(),
+            parse_json_attributes=False,
+            normalize_timestamps=True,
+        )
+        assert span_dict["attributes"]["gen_ai.agent.name"] == "from-baggage"
+        assert span_dict["attributes"]["gen_ai.agent.id"] == "agent_9"
+
+        provider.shutdown()
+
+    def test_deprecated_system_key_is_stripped_and_operation_defaulted(self):
+        """gen_ai.provider.name supersedes gen_ai.system.
+
+        An emitter that still writes the pre-1.27 key would otherwise ship
+        both. A span carrying messages but no operation name is a chat
+        completion.
+        """
+        processor, provider, exporter = self._make_processor_and_provider()
+        tracer = provider.get_tracer("test-tracer")
+
+        with tracer.start_as_current_span("test-span") as span:
+            span.set_attribute("gen_ai.provider.name", "anthropic")
+            span.set_attribute("gen_ai.system", "anthropic")
+            span.set_attribute("gen_ai.input.messages", "[]")
+
+        processor.force_flush(1000)
+        (span_dict,) = spans_to_dict(
+            exporter.get_finished_spans(),
+            parse_json_attributes=False,
+            normalize_timestamps=True,
+        )
+        assert "gen_ai.system" not in span_dict["attributes"]
+        assert span_dict["attributes"]["gen_ai.operation.name"] == "chat"
+
+        provider.shutdown()

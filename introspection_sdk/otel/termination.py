@@ -10,9 +10,9 @@ platform's read layer keys on to exclude these spans from error counts. This is
 the same shape the JS SDK emits, so both are treated identically downstream.
 
 All three cancellation signals are ``BaseException`` subclasses, so they escape
-``except Exception`` and never reach the ERROR path on their own; the wrappers
-add an explicit ``except CANCELLATION_EXCEPTIONS`` clause to annotate the span
-before re-raising.
+``except Exception`` and never reach the ERROR path on their own; instrumentation must
+add an explicit ``except CANCELLATION_EXCEPTIONS`` clause that calls
+:func:`mark_span_cancelled` before re-raising.
 """
 
 from __future__ import annotations

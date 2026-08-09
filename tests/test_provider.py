@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from testing import TestSpanExporter
 
 import introspection_sdk.otel as introspection
 from introspection_sdk.config import AdvancedOptions
@@ -14,6 +13,7 @@ from introspection_sdk.otel._provider import (
     _attach_exporter,
     _get_or_create_tracer_provider,
 )
+from introspection_sdk.testing import TestSpanExporter
 
 
 @pytest.fixture(autouse=True)

@@ -26,7 +26,8 @@ introspection.init(tracer_provider=my_provider)
 
 `IntrospectionSpanProcessor` works on its own without `init()`. Attach it to
 whatever provider you already have; every `gen_ai.*` span that reaches the
-provider is exported to Introspection.
+provider is exported to Introspection, and everything else is dropped (see
+[otel.md](otel.md) for the exact gate).
 
 ```python
 from opentelemetry.sdk.trace import TracerProvider

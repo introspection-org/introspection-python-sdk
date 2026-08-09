@@ -38,3 +38,24 @@ def test_resolve_is_stable_per_trace_key():
 def test_active_conversation_beats_trace_key():
     with introspection.conversation("explicit"):
         assert resolve_conversation_id(trace_key="kX") == "explicit"
+
+
+def test_trace_fallback_is_bounded():
+    """One entry per trace would otherwise be a slow leak in a long process."""
+    # Imported by name: `introspection_sdk.otel.conversation` the function
+    # shadows the submodule on the package.
+    from introspection_sdk.otel.conversation import (
+        _TRACE_FALLBACK_MAX,
+        _trace_fallback,
+        resolve_conversation_id,
+    )
+
+    _trace_fallback.clear()
+    first = resolve_conversation_id(trace_key="trace-0")
+    for i in range(1, _TRACE_FALLBACK_MAX + 10):
+        resolve_conversation_id(trace_key=f"trace-{i}")
+
+    assert len(_trace_fallback) == _TRACE_FALLBACK_MAX
+    # The oldest key was evicted, so it resolves to a fresh id.
+    assert resolve_conversation_id(trace_key="trace-0") != first
+    _trace_fallback.clear()

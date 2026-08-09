@@ -11,9 +11,10 @@ Exports the independent telemetry surfaces:
 * :class:`IntrospectionSpanProcessor` —
   span/trace processors that forward to the Introspection backend.
 
-Also exposes the one-liner ``init()`` entry point that auto-discovers
-installed LLM frameworks and wires them into a shared
-:class:`~opentelemetry.sdk.trace.TracerProvider`.
+Also exposes the one-liner ``init()`` entry point, which wires both surfaces
+onto a shared :class:`~opentelemetry.sdk.trace.TracerProvider`, plus the
+context managers that scope conversation / agent / identity baggage onto
+everything emitted inside them.
 """
 
 from __future__ import annotations
@@ -28,10 +29,17 @@ from introspection_sdk.config import AdvancedOptions
 from introspection_sdk.otel._provider import (
     _get_or_create_tracer_provider,
 )
-from introspection_sdk.otel.conversation import conversation
+from introspection_sdk.otel.conversation import (
+    conversation,
+    new_conversation_id,
+)
 from introspection_sdk.otel.logs import IntrospectionLogs
 from introspection_sdk.otel.processors.span_processor import (
     IntrospectionSpanProcessor,
+)
+from introspection_sdk.otel.termination import (
+    CANCELLATION_EXCEPTIONS,
+    mark_span_cancelled,
 )
 from introspection_sdk.otel.types import (
     Attr,
@@ -39,6 +47,7 @@ from introspection_sdk.otel.types import (
     EventName,
     FeedbackProperties,
 )
+from introspection_sdk.otel.usage import set_usage_cost_attributes
 from introspection_sdk.utils import logger
 
 __all__ = [
@@ -49,12 +58,22 @@ __all__ = [
     "EventName",
     "FeedbackProperties",
     "init",
+    "shutdown",
     "get_client",
     "get_tracer_provider",
     "conversation",
+    "new_conversation_id",
     "track",
     "feedback",
     "identify",
+    "with_agent",
+    "with_conversation",
+    "with_user_id",
+    "with_anonymous_id",
+    # Helpers for hand-instrumented gen_ai spans.
+    "CANCELLATION_EXCEPTIONS",
+    "mark_span_cancelled",
+    "set_usage_cost_attributes",
 ]
 
 _state: dict[str, Any] = {
@@ -104,7 +123,10 @@ def init(
     client = IntrospectionLogs(
         token=token,
         service_name=service_name,
-        base_otel_url=base_url,
+        # resolved_advanced, not the bare parameter: a caller who configured
+        # only `advanced.base_url` would otherwise point spans at their
+        # collector while logs still went to the default production endpoint.
+        base_otel_url=resolved_advanced.base_url,
         additional_headers=resolved_advanced.additional_headers,
         log_exporter=resolved_advanced.log_exporter,
         flush_interval_ms=resolved_advanced.flush_interval_ms,
@@ -138,6 +160,19 @@ def get_tracer_provider() -> TracerProvider:
     if provider is None:
         raise RuntimeError("introspection.init() must be called first.")
     return provider
+
+
+def shutdown() -> None:
+    """Flush and tear down the telemetry configured by :func:`init`.
+
+    Clears the module state as well, so a later :func:`init` builds a fresh
+    provider and logs client rather than handing back the shut-down ones.
+    Registered as an ``atexit`` hook by :func:`init`; call it directly when
+    you need the flush to happen at a known point.
+    """
+    _shutdown()
+    _state["provider"] = None
+    _state["client"] = None
 
 
 def _shutdown() -> None:
@@ -188,3 +223,35 @@ def identify(
         anonymous_id=anonymous_id,
         event_id=event_id,
     )
+
+
+# The baggage-scoping context managers below mirror the JS SDK's `withAgent` /
+# `withConversation` / `withUserId` / `withAnonymousId`. The span processor
+# reads the same baggage keys, so scoping with these stamps both the events
+# and every span emitted inside the block.
+
+
+def with_agent(agent_name: str, agent_id: str | None = None) -> Any:
+    """Proxy to the global IntrospectionLogs.set_agent() context manager."""
+    return get_client().set_agent(agent_name, agent_id=agent_id)
+
+
+def with_conversation(
+    conversation_id: str | None = None,
+    previous_response_id: str | None = None,
+) -> Any:
+    """Proxy to the global IntrospectionLogs.set_conversation() manager."""
+    return get_client().set_conversation(
+        conversation_id=conversation_id,
+        previous_response_id=previous_response_id,
+    )
+
+
+def with_user_id(user_id: str) -> Any:
+    """Proxy to the global IntrospectionLogs.set_user_id() context manager."""
+    return get_client().set_user_id(user_id)
+
+
+def with_anonymous_id(anonymous_id: str) -> Any:
+    """Proxy to the global IntrospectionLogs.set_anonymous_id() manager."""
+    return get_client().set_anonymous_id(anonymous_id)
