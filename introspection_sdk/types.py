@@ -16,7 +16,6 @@ from introspection_sdk.schemas.genai import (
 __all__ = [
     "GenAiAttributes",
     "GenAiSemconv",
-    "OpenInferenceSemconv",
 ]
 
 
@@ -180,22 +179,3 @@ class GenAiSemconv:
     OUTPUT_MESSAGES = "gen_ai.output.messages"
     SYSTEM_INSTRUCTIONS = "gen_ai.system_instructions"
     TOOL_DEFINITIONS = "gen_ai.tool.definitions"
-
-
-class OpenInferenceSemconv:
-    """OpenInference semantic convention attribute keys.
-
-    Defined inline to avoid requiring the openinference-semantic-conventions package.
-    """
-
-    SPAN_KIND = "openinference.span.kind"
-    LLM_MODEL_NAME = "llm.model_name"
-    LLM_SYSTEM = "llm.system"
-    LLM_TOKEN_COUNT_PROMPT = "llm.token_count.prompt"
-    LLM_TOKEN_COUNT_COMPLETION = "llm.token_count.completion"
-    LLM_TOOLS = "llm.tools"
-    LLM_INPUT_MESSAGES = "llm.input_messages"
-    LLM_OUTPUT_MESSAGES = "llm.output_messages"
-    INPUT_VALUE = "input.value"
-    OUTPUT_VALUE = "output.value"
-    TOOL_JSON_SCHEMA = "tool.json_schema"

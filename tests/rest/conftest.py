@@ -10,7 +10,7 @@ from the SDK's own typed schemas, so they are schema-valid by
 construction.
 
 Scope and honesty about what this does *not* do: ``MockTransport`` is
-not a ``pytest-recording`` cassette, so these tests do **not** verify
+not a recording of a live exchange, so these tests do **not** verify
 the live Introspection wire contract — only that the SDK builds the
 right request (method / path / params / body / headers) and parses a
 well-formed response correctly. The canned bodies encode our assumption

@@ -11,12 +11,10 @@ ever again ending up in the state described in
 
 ## Non-negotiables
 
-1. **Recordings, never mocks** for anything that crosses a process or network
-   boundary. Use `pytest-recording` (VCR cassettes) for HTTP, and the
-   recording transport in `introspection_sdk/testing/` for subprocess SDKs.
-   `MagicMock` / `patch` / `monkeypatch` are reserved for
-   pure-unit tests of internal helpers — never for stubbing an SDK or HTTP
-   client.
+1. **Real request/response pairs, never mocks** for anything that crosses a
+   process or network boundary. Use `responses` to pin the HTTP exchange.
+   `MagicMock` / `patch` / `monkeypatch` are reserved for pure-unit tests of
+   internal helpers — never for stubbing an SDK or HTTP client.
 2. **Coverage cannot go down.** `[tool.coverage.report].fail_under` in
    `pyproject.toml` is a ratchet. Every PR that touches `introspection_sdk/`
    must keep total coverage at or above the floor, and the floor goes up as

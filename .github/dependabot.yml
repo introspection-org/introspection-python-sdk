@@ -18,9 +18,8 @@ updates:
       include: "scope"
     # Restrict alerts/PRs to deps that actually ship to SDK consumers — main
     # `[project] dependencies` plus the user-facing `[project.optional-dependencies]`
-    # extras (logfire / pydantic-ai). Excludes the
-    # `test` and `dev` extras, which are CI-only and not part of the published
-    # surface area.
+    # extras (otel / arrow). Excludes the `test` and `dev` extras, which are
+    # CI-only and not part of the published surface area.
     allow:
       - dependency-type: "production"
     groups:
@@ -33,20 +32,6 @@ updates:
         applies-to: security-updates
         patterns:
           - "opentelemetry-*"
-
-      # AI provider SDKs — Anthropic, OpenAI, etc.
-      ai-providers:
-        applies-to: version-updates
-        patterns:
-          - "openai"
-          - "anthropic"
-          - "pydantic-ai"
-      ai-providers-security:
-        applies-to: security-updates
-        patterns:
-          - "openai"
-          - "anthropic"
-          - "pydantic-ai"
 
       # Test toolchain — pytest family + helpers.
       test-tooling:
