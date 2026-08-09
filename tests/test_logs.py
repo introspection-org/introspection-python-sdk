@@ -236,3 +236,34 @@ def test_serialisable_property_still_becomes_json(logs, exporter):
     assert attrs[f"{Attr.PROPERTIES_PREFIX}meta"] == '{"a": 1}'
     assert attrs[f"{Attr.PROPERTIES_PREFIX}n"] == 5
     assert attrs[f"{Attr.PROPERTIES_PREFIX}ok"] is True
+
+
+def test_wide_event_keeps_event_name_and_id(logs, exporter):
+    """An event with more properties than OTel's attribute cap still names
+    itself.
+
+    OTel caps a log record at ``OTEL_ATTRIBUTE_COUNT_LIMIT`` attributes (128
+    by default) and ``BoundedAttributes`` evicts the *oldest* entry on every
+    insertion past the cap. With the SDK's own identity written before the
+    caller's properties, a wide event was exported with ``event.name`` and
+    ``event.id`` among the evicted: the collector accepted a record that
+    named no event and joined to nothing, and the caller saw no error.
+    Truncation has to cost properties, never identity.
+    """
+    logs.track("stress.wide", {f"k{i}": i for i in range(200)})
+    (record,) = _records(logs, exporter)
+    attrs = record.attributes
+    assert attrs[Attr.EVENT_NAME] == "stress.wide"
+    assert attrs[Attr.EVENT_ID]
+    # The cap still applies -- properties are what it costs.
+    assert len(attrs) <= 128
+
+
+def test_wide_event_keeps_identity_from_baggage(logs, exporter):
+    with logs.set_user_id("u-1"), logs.set_agent("a", "a-1"):
+        logs.track("stress.wide", {f"k{i}": i for i in range(200)})
+    (record,) = _records(logs, exporter)
+    attrs = record.attributes
+    assert attrs[Attr.EVENT_NAME] == "stress.wide"
+    assert attrs[Attr.USER_ID] == "u-1"
+    assert attrs[Attr.AGENT_NAME] == "a"

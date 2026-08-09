@@ -227,35 +227,17 @@ class IntrospectionLogs:
         previous_response_id: str | None = None,
         event_id: str | None = None,
     ) -> dict[str, Any]:
-        attributes: dict[str, Any] = {
-            Attr.EVENT_NAME: event_name,
-            Attr.EVENT_ID: event_id or _generate_message_id(),
-        }
-
-        identity_ctx = self._get_identity_from_context()
-        user_id = identity_ctx.user_id
-        anonymous_id = identity_ctx.anonymous_id
-
-        gen_ai_ctx = self._get_gen_ai_from_context()
-
-        if user_id:
-            attributes[Attr.USER_ID] = user_id
-        if anonymous_id:
-            attributes[Attr.ANONYMOUS_ID] = anonymous_id
-
-        final_conversation_id = conversation_id or gen_ai_ctx.conversation_id
-        final_previous_response_id = (
-            previous_response_id or gen_ai_ctx.previous_response_id
-        )
-
-        if final_conversation_id:
-            attributes[Attr.CONVERSATION_ID] = final_conversation_id
-        if final_previous_response_id:
-            attributes[Attr.PREVIOUS_RESPONSE_ID] = final_previous_response_id
-        if gen_ai_ctx.agent_name:
-            attributes[Attr.AGENT_NAME] = gen_ai_ctx.agent_name
-        if gen_ai_ctx.agent_id:
-            attributes[Attr.AGENT_ID] = gen_ai_ctx.agent_id
+        # Caller-supplied values go in first and the SDK's own identity keys
+        # last. The order matters on the wire: OTel caps a log record at
+        # ``OTEL_ATTRIBUTE_COUNT_LIMIT`` attributes (128 by default) and
+        # ``BoundedAttributes`` evicts the *oldest* entry on each insertion
+        # past the cap. With identity written first, an event carrying more
+        # than ~126 properties reached the collector with ``event.name`` and
+        # ``event.id`` evicted -- an accepted, exported record that named no
+        # event and could not be joined to anything, and the caller saw no
+        # error. Written last, truncation costs properties instead, which is
+        # what a cap on an attribute count is for.
+        attributes: dict[str, Any] = {}
 
         for prefix, source in (
             (Attr.PROPERTIES_PREFIX, properties),
@@ -267,6 +249,36 @@ class IntrospectionLogs:
                 if value is None:
                     continue
                 attributes[f"{prefix}{key}"] = _attribute_value(value)
+
+        identity_ctx = self._get_identity_from_context()
+        user_id = identity_ctx.user_id
+        anonymous_id = identity_ctx.anonymous_id
+
+        gen_ai_ctx = self._get_gen_ai_from_context()
+
+        final_conversation_id = conversation_id or gen_ai_ctx.conversation_id
+        final_previous_response_id = (
+            previous_response_id or gen_ai_ctx.previous_response_id
+        )
+
+        if gen_ai_ctx.agent_id:
+            attributes[Attr.AGENT_ID] = gen_ai_ctx.agent_id
+        if gen_ai_ctx.agent_name:
+            attributes[Attr.AGENT_NAME] = gen_ai_ctx.agent_name
+        if final_previous_response_id:
+            attributes[Attr.PREVIOUS_RESPONSE_ID] = final_previous_response_id
+        if final_conversation_id:
+            attributes[Attr.CONVERSATION_ID] = final_conversation_id
+        if anonymous_id:
+            attributes[Attr.ANONYMOUS_ID] = anonymous_id
+        if user_id:
+            attributes[Attr.USER_ID] = user_id
+
+        # Last of all, so these two are the last things a truncating
+        # ``BoundedAttributes`` would ever drop: without them the record
+        # names no event and joins to nothing.
+        attributes[Attr.EVENT_ID] = event_id or _generate_message_id()
+        attributes[Attr.EVENT_NAME] = event_name
 
         return attributes
 
