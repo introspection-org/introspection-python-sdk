@@ -13,7 +13,13 @@ from introspection_sdk.client import (
     AsyncIntrospectionClient,
     IntrospectionClient,
 )
-from introspection_sdk.resources import Experiments, Recipes, Runtimes
+from introspection_sdk.resources import (
+    Connections,
+    Connectors,
+    Experiments,
+    Recipes,
+    Runtimes,
+)
 
 
 class _RaisingHttp:
@@ -40,6 +46,8 @@ def test_explicit_args_wire_up_namespaces():
     assert isinstance(client.runtimes, Runtimes)
     assert isinstance(client.experiments, Experiments)
     assert isinstance(client.recipes, Recipes)
+    assert isinstance(client.connectors, Connectors)
+    assert isinstance(client.connectors.connections, Connections)
     assert client._token == "tok"
     assert client._base_api_url == "https://api.example.test"
 
