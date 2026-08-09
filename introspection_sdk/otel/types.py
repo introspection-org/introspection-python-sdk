@@ -101,9 +101,17 @@ class FeedbackProperties:
         Returns:
             Dict with ``"name"`` always present, optional ``"comments"``,
             plus any keys from :attr:`extra` merged in.
+
+        :attr:`extra` is seeded first so the named fields win. It used to be
+        merged last, which let ``extra={"name": ...}`` silently replace the
+        feedback name the event was about. Unreachable through
+        ``logs.feedback(name, **extra)`` -- ``name=`` binds to the positional
+        parameter -- but reachable by building this public dataclass
+        directly, and the Node, browser, and Rust SDKs all settled on
+        named-argument-wins for the same field.
         """
-        result: dict[str, Any] = {"name": self.name}
+        result: dict[str, Any] = dict(self.extra)
+        result["name"] = self.name
         if self.comments is not None:
             result["comments"] = self.comments
-        result.update(self.extra)
         return result
