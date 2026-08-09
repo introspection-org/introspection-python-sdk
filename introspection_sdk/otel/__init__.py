@@ -26,12 +26,13 @@ from typing import Any
 from opentelemetry.sdk.trace import TracerProvider
 
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.otel._provider import (
-    _get_or_create_tracer_provider,
-)
-from introspection_sdk.otel.conversation import (
+from introspection_sdk.otel._conversation import (
     conversation,
     new_conversation_id,
+)
+from introspection_sdk.otel._provider import (
+    _detach_exporter,
+    _get_or_create_tracer_provider,
 )
 from introspection_sdk.otel.logs import IntrospectionLogs
 from introspection_sdk.otel.processors.span_processor import (
@@ -156,12 +157,23 @@ def get_tracer_provider() -> TracerProvider:
 def shutdown() -> None:
     """Flush and tear down the telemetry configured by :func:`init`.
 
-    Clears the module state as well, so a later :func:`init` builds a fresh
-    provider and logs client rather than handing back the shut-down ones.
+    Clears the module state and the provider's "already attached" marker, so
+    a later :func:`init` builds a fresh logs client and attaches a fresh span
+    processor. Without clearing the marker the second :func:`init` found the
+    same global provider, short-circuited, and silently exported nothing --
+    including ignoring a new ``advanced.span_exporter``.
+
+    Note the *provider* itself is reused: OpenTelemetry Python refuses to
+    replace an already-set global ``TracerProvider``, so a re-``init`` can
+    only reconfigure the one that is there.
+
     Registered as an ``atexit`` hook by :func:`init`; call it directly when
     you need the flush to happen at a known point.
     """
+    provider = _state["provider"]
     _shutdown()
+    if provider is not None:
+        _detach_exporter(provider)
     _state["provider"] = None
     _state["client"] = None
 
@@ -183,6 +195,9 @@ def _shutdown() -> None:
 
 def _reset_for_tests() -> None:
     # atexit registrations can't be cleanly removed, so leave that flag set.
+    provider = _state["provider"]
+    if provider is not None:
+        _detach_exporter(provider)
     _state["provider"] = None
     _state["client"] = None
 

@@ -82,3 +82,37 @@ def test_shutdown_clears_state_so_init_rebuilds():
     introspection.init(token="t", advanced=_advanced())
     assert introspection.get_tracer_provider() is not None
     assert introspection.get_client() is not None
+
+
+def test_reinit_after_shutdown_exports_to_the_new_exporter():
+    """The attached-marker used to outlive the processor it described.
+
+    A second init() then found the same global provider, short-circuited on
+    the stale marker, and exported nothing at all -- silently ignoring the
+    new span_exporter it was handed.
+    """
+    from opentelemetry import trace
+
+    first = TestSpanExporter()
+    introspection.init(
+        token="t",
+        advanced=AdvancedOptions(
+            span_exporter=first, log_exporter=InMemoryLogRecordExporter()
+        ),
+    )
+    introspection.shutdown()
+
+    second = TestSpanExporter()
+    introspection.init(
+        token="t",
+        advanced=AdvancedOptions(
+            span_exporter=second, log_exporter=InMemoryLogRecordExporter()
+        ),
+    )
+    tracer = trace.get_tracer("test")
+    with tracer.start_as_current_span("chat") as span:
+        span.set_attribute("gen_ai.request.model", "claude")
+    introspection.get_tracer_provider().force_flush()
+
+    assert [s["name"] for s in second.get_finished_spans()] == ["chat"]
+    assert first.get_finished_spans() == []

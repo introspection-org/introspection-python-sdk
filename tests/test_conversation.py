@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import introspection_sdk.otel as introspection
-from introspection_sdk.otel.conversation import (
+from introspection_sdk.otel._conversation import (
     current_conversation_id,
     new_conversation_id,
     resolve_conversation_id,
@@ -42,9 +42,9 @@ def test_active_conversation_beats_trace_key():
 
 def test_trace_fallback_is_bounded():
     """One entry per trace would otherwise be a slow leak in a long process."""
-    # Imported by name: `introspection_sdk.otel.conversation` the function
-    # shadows the submodule on the package.
-    from introspection_sdk.otel.conversation import (
+    # The module is `_conversation`: `otel.conversation` is the re-exported
+    # context manager, which used to shadow the submodule of that name.
+    from introspection_sdk.otel._conversation import (
         _TRACE_FALLBACK_MAX,
         _trace_fallback,
         resolve_conversation_id,
@@ -59,3 +59,36 @@ def test_trace_fallback_is_bounded():
     # The oldest key was evicted, so it resolves to a fresh id.
     assert resolve_conversation_id(trace_key="trace-0") != first
     _trace_fallback.clear()
+
+
+def test_trace_fallback_is_stable_across_threads():
+    """`on_end` runs on whatever thread ended the span.
+
+    Unsynchronised, two threads resolving the same trace both missed the
+    lookup and both minted an id, splitting one trace across conversations.
+    """
+    import threading
+
+    from introspection_sdk.otel import _conversation as conversation_mod
+
+    def race(trace_key: str) -> set[str]:
+        barrier = threading.Barrier(8)
+        seen: list[str] = []
+        lock = threading.Lock()
+
+        def resolve() -> None:
+            barrier.wait()
+            cid = conversation_mod.resolve_conversation_id(trace_key=trace_key)
+            with lock:
+                seen.append(cid)
+
+        threads = [threading.Thread(target=resolve) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        return set(seen)
+
+    for attempt in range(50):
+        ids = race(f"trace-{attempt}")
+        assert len(ids) == 1, f"split on attempt {attempt}: {ids}"

@@ -252,23 +252,16 @@ class IntrospectionLogs:
         if gen_ai_ctx.agent_id:
             attributes[Attr.AGENT_ID] = gen_ai_ctx.agent_id
 
-        if properties:
-            for key, value in properties.items():
-                if value is not None:
-                    attr_key = f"{Attr.PROPERTIES_PREFIX}{key}"
-                    if isinstance(value, str | int | float | bool):
-                        attributes[attr_key] = value
-                    else:
-                        attributes[attr_key] = json.dumps(value)
-
-        if traits:
-            for key, value in traits.items():
-                if value is not None:
-                    attr_key = f"{Attr.TRAITS_PREFIX}{key}"
-                    if isinstance(value, str | int | float | bool):
-                        attributes[attr_key] = value
-                    else:
-                        attributes[attr_key] = json.dumps(value)
+        for prefix, source in (
+            (Attr.PROPERTIES_PREFIX, properties),
+            (Attr.TRAITS_PREFIX, traits),
+        ):
+            if not source:
+                continue
+            for key, value in source.items():
+                if value is None:
+                    continue
+                attributes[f"{prefix}{key}"] = _attribute_value(value)
 
         return attributes
 
@@ -471,6 +464,24 @@ class IntrospectionLogs:
     def shutdown(self) -> None:
         logger.info("Shutting down IntrospectionLogs")
         self._logger_provider.shutdown()
+
+
+def _attribute_value(value: Any) -> Any:
+    """Coerce a property/trait value into something OTLP can carry.
+
+    A telemetry call must never abort the operation it is measuring, and a
+    bare ``json.dumps`` did exactly that: a ``datetime``, ``set``, or
+    ``bytes`` in a property dict raised ``TypeError`` out of ``track()``
+    into the caller's business logic. Anything unserialisable falls back to
+    ``repr`` -- a lossy attribute beats a crash, and the JS SDK's
+    ``JSON.stringify`` never throws here either.
+    """
+    if isinstance(value, str | int | float | bool):
+        return value
+    try:
+        return json.dumps(value)
+    except (TypeError, ValueError):
+        return repr(value)
 
 
 def _generate_message_id() -> str:

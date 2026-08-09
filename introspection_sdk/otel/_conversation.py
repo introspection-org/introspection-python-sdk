@@ -8,6 +8,7 @@ processors call instead of each inventing their own uuid fallback.
 from __future__ import annotations
 
 import contextlib
+import threading
 import uuid
 from collections import OrderedDict
 from collections.abc import Iterator
@@ -29,6 +30,10 @@ _current_conversation_id: ContextVar[str | None] = ContextVar(
 # likely to still be receiving spans.
 _TRACE_FALLBACK_MAX = 4096
 _trace_fallback: OrderedDict[str, str] = OrderedDict()
+# `on_end` runs on whatever thread ended the span. Without this, two threads
+# resolving the same trace both missed the lookup and both minted an id, so a
+# single trace reached the UI split across several conversations.
+_trace_fallback_lock = threading.Lock()
 
 
 def new_conversation_id() -> str:
@@ -54,14 +59,15 @@ def resolve_conversation_id(*, trace_key: str | None = None) -> str:
         return from_baggage
 
     if trace_key is not None:
-        existing = _trace_fallback.get(trace_key)
-        if existing is not None:
-            return existing
-        cid = new_conversation_id()
-        _trace_fallback[trace_key] = cid
-        while len(_trace_fallback) > _TRACE_FALLBACK_MAX:
-            _trace_fallback.popitem(last=False)
-        return cid
+        with _trace_fallback_lock:
+            existing = _trace_fallback.get(trace_key)
+            if existing is not None:
+                return existing
+            cid = new_conversation_id()
+            _trace_fallback[trace_key] = cid
+            while len(_trace_fallback) > _TRACE_FALLBACK_MAX:
+                _trace_fallback.popitem(last=False)
+            return cid
     return new_conversation_id()
 
 

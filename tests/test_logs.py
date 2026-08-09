@@ -6,6 +6,7 @@ constructor hook exists precisely for this) — no mocks.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -177,3 +178,22 @@ def test_missing_token_warns(caplog: pytest.LogCaptureFixture, exporter):
 # extract a pure `_derive_otlp_endpoint()` helper that can be unit-tested
 # directly; that belongs in a change that touches introspection_sdk, not
 # this test-only PR.
+
+
+def test_unserialisable_property_does_not_abort_the_caller(logs, exporter):
+    # A telemetry call must never take down the operation it is measuring.
+    # A bare json.dumps raised TypeError out of track() on any datetime,
+    # set, or bytes in the property dict.
+    logs.track("evt", {"when": datetime(2026, 1, 1), "tags": {"a"}})
+    (record,) = _records(logs, exporter)
+    assert f"{Attr.PROPERTIES_PREFIX}when" in record.attributes
+    assert f"{Attr.PROPERTIES_PREFIX}tags" in record.attributes
+
+
+def test_serialisable_property_still_becomes_json(logs, exporter):
+    logs.track("evt", {"meta": {"a": 1}, "n": 5, "ok": True})
+    (record,) = _records(logs, exporter)
+    attrs = record.attributes
+    assert attrs[f"{Attr.PROPERTIES_PREFIX}meta"] == '{"a": 1}'
+    assert attrs[f"{Attr.PROPERTIES_PREFIX}n"] == 5
+    assert attrs[f"{Attr.PROPERTIES_PREFIX}ok"] is True

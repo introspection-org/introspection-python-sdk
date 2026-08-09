@@ -11,10 +11,12 @@ sequence — nothing in ``introspection_sdk`` is patched.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
+from unittest import mock
 
 import httpx
 import pytest
 
+from introspection_sdk import resumable as resumable_mod
 from introspection_sdk._errors import IntrospectionAPIError
 from introspection_sdk.runner_resources.tasks import AsyncTasks, Tasks
 
@@ -161,6 +163,57 @@ def test_429_readiness_backs_off_then_attaches(fake_api: FakeAPI):
 
     assert _deltas(events) == ["a"]  # 429 never surfaced
     assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 3
+
+
+def test_unknown_event_type_is_not_a_severance(fake_api: FakeAPI):
+    # A payload the SDK cannot validate fails again identically on reconnect.
+    # Treating it as a dropped connection used to loop until the deadline,
+    # re-delivering every event before it on each pass.
+    bad = 'id: 2\nevent: ag_ui\ndata: {"type":"NOT_A_REAL_EVENT"}\n\n'
+    fake_api.add_handler(
+        "GET",
+        STREAM_PATH,
+        _stream_handler([("clean", _content("1", "a") + bad)]),
+    )
+    tasks = Tasks(fake_api.client())
+
+    with pytest.raises(Exception) as excinfo:
+        list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
+    assert not isinstance(excinfo.value, IntrospectionAPIError)
+    attaches = sum(1 for r in fake_api.requests if r.path == STREAM_PATH)
+    assert attaches == 1
+
+
+def test_readiness_waits_advance_the_backoff_exponent(fake_api: FakeAPI):
+    # The 429 branch used to pass a pinned 0 to the delay function, so every
+    # wait was drawn from the same flat window no matter how long the run
+    # stayed unattachable.
+    seen: list[int] = []
+    real_delay = resumable_mod._retry_delay
+
+    def _record(attempt, retry_after, base, **kwargs):
+        seen.append(attempt)
+        return real_delay(attempt, retry_after, base, **kwargs)
+
+    fake_api.add_handler(
+        "GET",
+        STREAM_PATH,
+        _stream_handler(
+            [
+                ("429", ""),
+                ("429", ""),
+                ("429", ""),
+                ("clean", _content("1", "a") + _FINISH),
+            ]
+        ),
+    )
+    tasks = Tasks(fake_api.client())
+
+    with mock.patch.object(resumable_mod, "_retry_delay", _record):
+        events = list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
+
+    assert _deltas(events) == ["a"]
+    assert seen == [1, 2, 3]
 
 
 def test_exhausts_reconnects_raises(fake_api: FakeAPI):

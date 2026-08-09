@@ -16,8 +16,8 @@ from opentelemetry.sdk.trace.export import (
 )
 
 from introspection_sdk.config import AdvancedOptions
+from introspection_sdk.otel._conversation import resolve_conversation_id
 from introspection_sdk.otel._endpoint import otlp_endpoint
-from introspection_sdk.otel.conversation import resolve_conversation_id
 from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.otel.types import Attr, Baggage
 from introspection_sdk.utils import logger, platform_is_emscripten

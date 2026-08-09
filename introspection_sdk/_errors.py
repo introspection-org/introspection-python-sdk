@@ -10,6 +10,8 @@ optional body ``code`` field.
 from __future__ import annotations
 
 import json as _json
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx
@@ -153,12 +155,27 @@ class NetworkError(IntrospectionAPIError):
 
 
 def _parse_retry_after(value: str | None) -> float | None:
+    """Seconds to wait, from either RFC 9110 ``Retry-After`` form.
+
+    The header may be a delay in seconds *or* an HTTP-date. Only the numeric
+    form used to be understood, so a date-form header silently produced no
+    backoff floor at all.
+    """
     if not value:
         return None
     try:
         return float(value)
     except ValueError:
+        pass
+    try:
+        parsed = parsedate_to_datetime(value.strip())
+    except (TypeError, ValueError):
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    delay = (parsed - datetime.now(UTC)).total_seconds()
+    # A date already in the past means "retry now", not "retry in the past".
+    return max(delay, 0.0)
 
 
 def error_from_response(res: httpx.Response) -> IntrospectionAPIError:
