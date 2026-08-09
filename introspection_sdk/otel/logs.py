@@ -491,11 +491,17 @@ def _attribute_value(value: Any) -> Any:
     ``bytes`` in a property dict raised ``TypeError`` out of ``track()``
     into the caller's business logic. Anything unserialisable falls back to
     ``repr`` -- a lossy attribute beats a crash.
+
+    Encoded with compact separators. ``json.dumps`` pads with ``", "`` and
+    ``": "`` by default, so the same list reached the collector as
+    ``["a", "b"]`` from here and ``["a","b"]`` from the other SDKs -- one
+    logical value, two byte sequences, which anything grouping or hashing on
+    a property value sees as two distinct values.
     """
     if isinstance(value, str | int | float | bool):
         return value
     try:
-        return json.dumps(value)
+        return json.dumps(value, separators=(",", ":"))
     except (TypeError, ValueError):
         return repr(value)
 

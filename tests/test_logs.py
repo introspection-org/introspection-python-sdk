@@ -51,11 +51,12 @@ def test_track_emits_event_with_properties(logs, exporter):
 
 
 def test_track_serialises_complex_property_values(logs, exporter):
-    logs.track("E", {"payload": {"a": 1}})
+    logs.track("E", {"payload": {"a": 1}, "tags": ["a", "b"]})
     (record,) = _records(logs, exporter)
-    assert record.attributes[f"{Attr.PROPERTIES_PREFIX}payload"] == (
-        '{"a": 1}'
-    )
+    # Compact separators, so one logical value is one byte sequence
+    # whichever SDK emitted it.
+    assert record.attributes[f"{Attr.PROPERTIES_PREFIX}payload"] == '{"a":1}'
+    assert record.attributes[f"{Attr.PROPERTIES_PREFIX}tags"] == '["a","b"]'
 
 
 def test_track_uses_explicit_event_id(logs, exporter):
@@ -233,7 +234,7 @@ def test_serialisable_property_still_becomes_json(logs, exporter):
     logs.track("evt", {"meta": {"a": 1}, "n": 5, "ok": True})
     (record,) = _records(logs, exporter)
     attrs = record.attributes
-    assert attrs[f"{Attr.PROPERTIES_PREFIX}meta"] == '{"a": 1}'
+    assert attrs[f"{Attr.PROPERTIES_PREFIX}meta"] == '{"a":1}'
     assert attrs[f"{Attr.PROPERTIES_PREFIX}n"] == 5
     assert attrs[f"{Attr.PROPERTIES_PREFIX}ok"] is True
 
