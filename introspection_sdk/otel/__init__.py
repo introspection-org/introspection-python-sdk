@@ -206,9 +206,9 @@ def identify(
     traits: dict[str, Any] | None = None,
     anonymous_id: str | None = None,
     event_id: str | None = None,
-) -> Any:
-    """Proxy to the global IntrospectionLogs.identify() context manager."""
-    return get_client().identify(
+) -> None:
+    """Proxy to the global IntrospectionLogs.identify(). Requires init() first."""
+    get_client().identify(
         user_id,
         traits=traits,
         anonymous_id=anonymous_id,

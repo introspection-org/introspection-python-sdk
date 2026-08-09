@@ -53,7 +53,9 @@ logs = IntrospectionLogs(
     base_otel_url="https://otel.introspection.dev",  # or env: INTROSPECTION_BASE_OTEL_URL
 )
 
-with logs.identify("user_123", traits={"plan": "pro"}):
+logs.identify("user_123", traits={"plan": "pro"})
+
+with logs.set_user_id("user_123"):
     with logs.set_conversation("conv_456", previous_response_id="msg_123"):
         logs.feedback("thumbs_up", comments="Great response!")
 
@@ -67,7 +69,7 @@ logs.shutdown()
 | ------ | ----------- |
 | `track(event, properties=)` | Track any user action |
 | `feedback(type, **kwargs)` | Track feedback on AI responses |
-| `identify(user_id, traits=)` | Associate a user with traits (context manager) |
+| `identify(user_id, traits=)` | Associate a user with traits |
 | `flush(timeout_ms=30000)` | Flush pending events |
 | `shutdown()` | Shutdown and flush |
 
@@ -116,7 +118,7 @@ On the spans it does export, the processor:
   then a stable per-trace id),
 - stamps `gen_ai.agent.name` / `gen_ai.agent.id` and
   `identity.user.id` / `identity.anonymous.id` from baggage, so a scope set
-  with `identify()` or the `with_*` managers reaches the trace,
+  with the `with_*` managers reaches the trace,
 - defaults `gen_ai.operation.name` to `"chat"` when messages are present,
 - drops the deprecated `gen_ai.system` key in favour of `gen_ai.provider.name`.
 

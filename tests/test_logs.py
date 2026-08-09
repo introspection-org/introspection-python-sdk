@@ -80,8 +80,9 @@ def test_feedback_emits_feedback_event(logs, exporter):
 
 
 def test_identify_sets_user_and_emits(logs, exporter):
-    with logs.identify("user_42", traits={"plan": "pro"}):
-        pass
+    # A bare call emits, matching the other SDKs. While identify() was a
+    # context manager this line built a generator and sent nothing.
+    logs.identify("user_42", traits={"plan": "pro"})
     (record,) = _records(logs, exporter)
     attrs = record.attributes
     assert attrs[Attr.EVENT_NAME] == EventName.IDENTIFY
@@ -89,14 +90,27 @@ def test_identify_sets_user_and_emits(logs, exporter):
     assert attrs[f"{Attr.TRAITS_PREFIX}plan"] == "pro"
 
 
-def test_identify_baggage_visible_to_nested_track(logs, exporter):
-    with logs.identify("user_99", anonymous_id="anon_1"):
-        logs.track("Inside")
+def test_identify_does_not_leak_onto_later_events(logs, exporter):
+    logs.identify("user_99", anonymous_id="anon_1")
+    logs.track("After")
     records = _records(logs, exporter)
-    # identify + the nested track event.
-    track_rec = next(
-        r for r in records if r.attributes[Attr.EVENT_NAME] == "Inside"
+    identify_rec = next(
+        r
+        for r in records
+        if r.attributes[Attr.EVENT_NAME] == EventName.IDENTIFY
     )
+    assert identify_rec.attributes[Attr.USER_ID] == "user_99"
+    assert identify_rec.attributes[Attr.ANONYMOUS_ID] == "anon_1"
+    after_rec = next(
+        r for r in records if r.attributes[Attr.EVENT_NAME] == "After"
+    )
+    assert Attr.USER_ID not in after_rec.attributes
+
+
+def test_set_user_id_scopes_identity_across_events(logs, exporter):
+    with logs.set_user_id("user_99"), logs.set_anonymous_id("anon_1"):
+        logs.track("Inside")
+    (track_rec,) = _records(logs, exporter)
     assert track_rec.attributes[Attr.USER_ID] == "user_99"
     assert track_rec.attributes[Attr.ANONYMOUS_ID] == "anon_1"
 
@@ -139,8 +153,7 @@ def test_set_baggage_serialises_non_string_values(logs, exporter):
 def test_identify_emits_traits_on_the_record(logs, exporter):
     # The traits argument is what reaches the record; the client keeps no
     # accumulated copy of it.
-    with logs.identify("u", traits={"a": 1}):
-        pass
+    logs.identify("u", traits={"a": 1})
     (record,) = _records(logs, exporter)
     assert record.attributes[f"{Attr.TRAITS_PREFIX}a"] == 1
     assert record.attributes[Attr.USER_ID] == "u"

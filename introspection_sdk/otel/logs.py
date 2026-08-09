@@ -13,7 +13,8 @@ Example::
     from introspection_sdk import IntrospectionLogs
 
     logs = IntrospectionLogs(token="intro_xxx", service_name="my-app")
-    with logs.identify("user_42"):
+    logs.identify("user_42", traits={"plan": "pro"})
+    with logs.set_user_id("user_42"):
         logs.track("Button Clicked", {"button_id": "submit"})
         logs.feedback("thumbs_up", conversation_id="conv_456")
     logs.shutdown()
@@ -93,7 +94,8 @@ class IntrospectionLogs:
 
         logs.track("Button Clicked", {"button_id": "submit"})
         logs.feedback("thumbs_up", conversation_id="conv_456")
-        with logs.identify("user_42"):
+        logs.identify("user_42", traits={"plan": "pro"})
+        with logs.set_user_id("user_42"):
             logs.track("Page Viewed", {"path": "/pricing"})
 
         logs.shutdown()
@@ -423,18 +425,28 @@ class IntrospectionLogs:
         )
         logger.debug(f"Feedback: {props.name}")
 
-    @contextmanager
     def identify(
         self,
         user_id: str,
         traits: dict[str, Any] | None = None,
         anonymous_id: str | None = None,
         event_id: str | None = None,
-    ) -> Iterator[None]:
+    ) -> None:
+        """Emit an ``identify`` event associating ``user_id`` with ``traits``.
+
+        The identity lands on this event only. To scope it across several
+        events, wrap them in :meth:`set_user_id`.
+
+        This used to be a context manager, which made the bare call
+        ``logs.identify("u1")`` -- the form every other Introspection SDK
+        takes -- construct a generator and emit nothing at all.
+        """
         baggage_values: dict[str, str] = {Baggage.USER_ID: user_id}
         if anonymous_id:
             baggage_values[Baggage.ANONYMOUS_ID] = anonymous_id
 
+        # The identity attributes are read off the context, so the ids this
+        # call is about have to be on it while the record is built.
         with self.set_baggage(**baggage_values):
             attributes = self._build_attributes(
                 EventName.IDENTIFY, traits=traits, event_id=event_id
@@ -446,8 +458,7 @@ class IntrospectionLogs:
                 severity_text="INFO",
                 attributes=attributes,
             )
-            logger.debug(f"Identified: {user_id}")
-            yield
+        logger.debug(f"Identified: {user_id}")
 
     # ------------------------------------------------------------------
     # Lifecycle
