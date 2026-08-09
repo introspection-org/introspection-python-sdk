@@ -31,9 +31,12 @@ development pin path, so a stray value in staging or production is ignored.
 import os
 from urllib.parse import quote
 
+from introspection_sdk.version import USER_AGENT
+
 __all__ = [
     "DEV_TARGET_ENV",
     "DEV_TARGET_HEADER",
+    "client_headers",
     "dev_target_headers",
     "resolve_dev_target",
 ]
@@ -75,3 +78,18 @@ def dev_target_headers(
     if target is None:
         return additional_headers
     return {DEV_TARGET_HEADER: target, **(additional_headers or {})}
+
+
+def client_headers(
+    additional_headers: dict[str, str] | None,
+) -> dict[str, str]:
+    """The default header set every REST client starts from.
+
+    ``User-Agent`` identifies the SDK and its release on API traffic the way
+    it already does on the two OTLP streams. Both defaults are merged *under*
+    the caller's own headers, so an explicit entry still wins.
+    """
+    return {
+        "User-Agent": USER_AGENT,
+        **(dev_target_headers(additional_headers) or {}),
+    }

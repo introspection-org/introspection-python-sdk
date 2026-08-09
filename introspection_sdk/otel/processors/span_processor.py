@@ -21,7 +21,7 @@ from introspection_sdk.otel._endpoint import otlp_endpoint
 from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.otel.types import Attr, Baggage
 from introspection_sdk.utils import logger, platform_is_emscripten
-from introspection_sdk.version import VERSION
+from introspection_sdk.version import USER_AGENT
 
 __all__ = ["IntrospectionSpanProcessor"]
 
@@ -186,7 +186,7 @@ class IntrospectionSpanProcessor(SpanProcessor):
             if not token:
                 raise ValueError("INTROSPECTION_TOKEN is not set")
             headers = {
-                "User-Agent": f"introspection-sdk/{VERSION}",
+                "User-Agent": USER_AGENT,
                 "Authorization": f"Bearer {token}",
                 **(
                     self._advanced.additional_headers or {}

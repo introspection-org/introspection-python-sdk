@@ -27,7 +27,7 @@ from introspection_sdk.auth import (
     async_service_account_token,
     service_account_token,
 )
-from introspection_sdk.dev_target import dev_target_headers
+from introspection_sdk.dev_target import client_headers
 from introspection_sdk.resources import (
     AsyncExperiments,
     AsyncRecipes,
@@ -72,7 +72,7 @@ class IntrospectionClient:
         # the paths a runner cannot: a bare `POST /v1/tasks` with a dev API key
         # mints its JWT from the key row and has no per-request claim to carry.
         # Resolved once here so every resource client below inherits it.
-        self._additional_headers = dev_target_headers(additional_headers)
+        self._additional_headers = client_headers(additional_headers)
         self._http = _HttpClient(
             api_url=self._base_api_url,
             token=self._token,
@@ -182,7 +182,7 @@ class AsyncIntrospectionClient:
         # the paths a runner cannot: a bare `POST /v1/tasks` with a dev API key
         # mints its JWT from the key row and has no per-request claim to carry.
         # Resolved once here so every resource client below inherits it.
-        self._additional_headers = dev_target_headers(additional_headers)
+        self._additional_headers = client_headers(additional_headers)
         self._http = _AsyncHttpClient(
             api_url=self._base_api_url,
             token=self._token,

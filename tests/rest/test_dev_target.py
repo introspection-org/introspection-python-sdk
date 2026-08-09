@@ -91,13 +91,16 @@ def test_client_carries_the_header_on_every_namespace(
 
     client = client_cls(token="t")
 
-    assert client._additional_headers == {DEV_TARGET_HEADER: "roland"}
+    assert client._additional_headers[DEV_TARGET_HEADER] == "roland"
 
 
-def test_client_unset_carries_nothing_new(monkeypatch: pytest.MonkeyPatch):
+def test_client_unset_carries_no_target(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv(DEV_TARGET_ENV, raising=False)
 
-    assert IntrospectionClient(token="t")._additional_headers is None
+    # The client always carries its own `User-Agent`, so the assertion is
+    # that no *target* was added, not that the header set is empty.
+    headers = IntrospectionClient(token="t")._additional_headers
+    assert DEV_TARGET_HEADER not in (headers or {})
 
 
 def test_non_ascii_and_spaced_targets_are_percent_encoded(monkeypatch) -> None:

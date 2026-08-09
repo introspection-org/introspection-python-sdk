@@ -56,7 +56,7 @@ from introspection_sdk.otel.types import (
     FeedbackProperties,
 )
 from introspection_sdk.utils import logger
-from introspection_sdk.version import VERSION
+from introspection_sdk.version import USER_AGENT, VERSION
 
 if TYPE_CHECKING:
     from opentelemetry.sdk._logs.export import LogRecordExporter
@@ -172,7 +172,7 @@ class IntrospectionLogs:
             )
 
             headers: dict[str, str] = {
-                "User-Agent": f"introspection-sdk/{VERSION}",
+                "User-Agent": USER_AGENT,
                 "Authorization": f"Bearer {self._token}",
             }
             if self._additional_headers:
