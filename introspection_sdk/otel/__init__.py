@@ -232,10 +232,9 @@ def identify(
     )
 
 
-# The baggage-scoping context managers below are the Python spelling of the
-# `withConversation` / `withUserId` / `withAnonymousId`. The span processor
-# reads the same baggage keys, so scoping with these stamps both the events
-# and every span emitted inside the block.
+# The baggage-scoping context managers below set the same baggage keys the
+# span processor reads, so scoping with these stamps both the events and
+# every span emitted inside the block.
 
 
 def with_agent(agent_name: str, agent_id: str | None = None) -> Any:

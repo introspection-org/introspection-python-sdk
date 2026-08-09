@@ -73,9 +73,9 @@ def conversation(conversation_id: str | None = None) -> Iterator[str]:
     Baggage is the whole mechanism. There used to be a ``ContextVar``
     carried alongside it and consulted first, but the two were set and
     cleared together by this one function and nothing else could write
-    either, so it was a second copy of the same fact -- and one the JS and
-    other entry points do not have. Baggage is also the copy that crosses a process
-    boundary, which the contextvar never could.
+    either, so it was a second copy of the same fact. Baggage is also the
+    copy that crosses a process boundary, which the contextvar never
+    could.
     """
     cid = conversation_id or new_conversation_id()
     token = otel_context.attach(
