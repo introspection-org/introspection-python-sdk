@@ -24,6 +24,9 @@ from introspection_sdk.runner_resources import (
     Conversations,
 )
 from introspection_sdk.runner_resources._reads import ARROW_STREAM_MEDIA_TYPE
+from introspection_sdk.runner_resources.conversations import (
+    LATEST_TURN_SCAN_LIMIT,
+)
 from introspection_sdk.schemas.conversations import Conversation
 from introspection_sdk.schemas.genai import (
     TextPart,
@@ -716,6 +719,67 @@ def test_retrieve_returns_none_when_no_items(fake_api: FakeAPI):
 
     assert convos.retrieve("conv-1") is None
     assert len(fake_api.requests) == 1
+
+
+#: Pages of history the fake conversation below holds. Finite only so an
+#: unbounded scan fails the request-count assertion instead of hanging the
+#: suite — a real conversation puts no such bound on it.
+_HISTORY_PAGES = 5
+
+
+def _unmatched_items_pages(fake_api: FakeAPI) -> None:
+    """Serve pages of items that match neither ``retrieve()`` rule.
+
+    No ``chat`` operation and no output messages, and every page but the
+    last advertises another one — the shape that made the unbounded scan
+    walk the whole conversation.
+    """
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        page = len(fake_api.requests)
+        return httpx.Response(
+            200,
+            json=make_page(
+                [
+                    item_with_messages(span_id=f"span-{page}-{i}")
+                    for i in range(LATEST_TURN_SCAN_LIMIT)
+                ],
+                page < _HISTORY_PAGES,
+            ),
+        )
+
+    fake_api.add_handler("GET", "/v1/conversations/conv-1/items", handler)
+
+
+def test_retrieve_bounds_the_latest_turn_scan(fake_api: FakeAPI):
+    """The scan stops at one bounded page instead of walking every turn.
+
+    It drove the auto-paging ``Pager``, so a conversation whose recent items
+    are all tool spans cost one request per page of its entire history for
+    what the caller issued as a single ``retrieve()``.
+    """
+    _unmatched_items_pages(fake_api)
+
+    assert _conversations(fake_api).retrieve("conv-1") is None
+
+    assert len(fake_api.requests) == 1
+    assert (
+        fake_api.last_request.params.get("limit")
+        == f"{LATEST_TURN_SCAN_LIMIT}"
+    )
+
+
+async def test_async_retrieve_bounds_the_latest_turn_scan(fake_api: FakeAPI):
+    _unmatched_items_pages(fake_api)
+
+    convos = AsyncConversations(fake_api.async_client())
+    assert await convos.retrieve("conv-1") is None
+
+    assert len(fake_api.requests) == 1
+    assert (
+        fake_api.last_request.params.get("limit")
+        == f"{LATEST_TURN_SCAN_LIMIT}"
+    )
 
 
 def test_retrieve_maps_legacy_result_to_response(fake_api: FakeAPI):

@@ -241,8 +241,14 @@ class IntrospectionSpanProcessor(SpanProcessor):
         Args:
             span: The completed span to process.
         """
+        # Lazy `%`-args, not an f-string: this runs on every span the
+        # provider ends, and the f-string built the message -- formatting
+        # the name and the 128-bit trace id -- before `logging` got the
+        # chance to throw it away, which it does on any level above DEBUG.
         logger.debug(
-            f"Ending introspection span: {span.name} (trace_id={span.context.trace_id:x})"
+            "Ending introspection span: %s (trace_id=%x)",
+            span.name,
+            span.context.trace_id,
         )
         if not span.context.trace_flags.sampled:
             return

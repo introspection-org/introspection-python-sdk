@@ -390,6 +390,17 @@ class AsyncRuntimeHandle:
         self._raw = runtime
         self._resolved = resolved
 
+    async def runtime_id(self) -> UUID:
+        """Resolve the concrete runtime id this handle currently serves.
+
+        The async twin of :attr:`RuntimeHandle.runtime_id`. A coroutine
+        rather than a property because resolving costs a request, and a
+        property cannot be awaited. Without it the async client had no
+        public way to read the id a handle resolves to — the broker case
+        the sync property exists for.
+        """
+        return await self._resolve()
+
     async def _resolve(self) -> UUID:
         if self._resolved:
             return UUID(str(self._raw))

@@ -15,6 +15,7 @@ import asyncio
 import time
 from collections.abc import AsyncIterator, Iterator, Mapping
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
 
 import httpx
@@ -378,5 +379,22 @@ def _clean_params(
     for k, v in params.items():
         if v is None:
             continue
-        out[k] = v
+        out[k] = _param_value(v)
     return out
+
+
+def _param_value(value: Any) -> Any:
+    """Render one query-parameter value the way the API expects it.
+
+    ``httpx`` falls back to ``str()`` for anything it does not know, and
+    ``str(datetime)`` is the space-separated form ``2025-01-01 12:30:00+00:00``
+    -- not ISO-8601. The window parameters (``start`` / ``end`` /
+    ``start_date`` / ``end_date``, and the ``start_date`` a ``lookback``
+    resolves to) accept ``datetime`` by design, so every one of them went out
+    malformed. ``isoformat()`` puts the ``T`` back.
+    """
+    if isinstance(value, datetime | date):
+        return value.isoformat()
+    if isinstance(value, list | tuple):
+        return [_param_value(item) for item in value]
+    return value

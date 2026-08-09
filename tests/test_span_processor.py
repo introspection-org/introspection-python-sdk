@@ -1,18 +1,21 @@
 """Tests for IntrospectionSpanProcessor."""
 
+import logging
 import os
 
 import pytest
 from dirty_equals import IsStr
 from inline_snapshot import snapshot
 from opentelemetry import baggage, context, trace
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.trace import SpanContext, TraceFlags
 
 from introspection_sdk import AdvancedOptions, IntrospectionSpanProcessor
+from introspection_sdk.utils import logger as sdk_logger
 
 from .test_utils import IncrementalIdGenerator, spans_to_dict
 
@@ -771,3 +774,49 @@ class TestBaggagePropagation:
         assert span_dict["attributes"]["gen_ai.operation.name"] == "chat"
 
         provider.shutdown()
+
+
+class TestOnEndHotPath:
+    """`on_end` runs for every span the provider ends, kept or dropped."""
+
+    def test_debug_message_is_not_built_when_the_level_discards_it(self):
+        """The debug line must not be rendered at levels that drop it.
+
+        It used to be built with an f-string, so the span name and the
+        128-bit trace id were formatted on that path before `logging` had
+        the chance to throw the record away -- which it does for every
+        application that has not opted into DEBUG.
+        """
+        rendered = {"n": 0}
+
+        class CountedName(str):
+            def __str__(self) -> str:
+                rendered["n"] += 1
+                return "span"
+
+            def __format__(self, _spec: str) -> str:
+                rendered["n"] += 1
+                return "span"
+
+        span = ReadableSpan(
+            name=CountedName("span"),
+            context=SpanContext(
+                trace_id=0x1234,
+                span_id=0x5678,
+                is_remote=False,
+                trace_flags=TraceFlags(TraceFlags.SAMPLED),
+            ),
+            attributes={},
+        )
+        processor = IntrospectionSpanProcessor(
+            advanced=AdvancedOptions(span_exporter=InMemorySpanExporter()),
+        )
+        previous = sdk_logger.level
+        sdk_logger.setLevel(logging.WARNING)
+        try:
+            processor.on_end(span)
+        finally:
+            sdk_logger.setLevel(previous)
+            processor.shutdown()
+
+        assert rendered["n"] == 0

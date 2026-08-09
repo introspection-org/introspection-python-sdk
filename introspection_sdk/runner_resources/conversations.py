@@ -70,6 +70,17 @@ class ConversationExportParams(TypedDict, total=False):
 
 JSON_EXPORT_HEADERS = {"Accept": "application/json"}
 
+#: How many items ``retrieve()`` scans, newest-first, looking for the latest
+#: LLM turn. The scan used to be unbounded: it drove the auto-paging
+#: ``Pager`` and, on a conversation whose recent items are all tool or
+#: retrieval spans, walked every turn ever recorded -- one request per page,
+#: for a lookup the caller expects to cost one or two. The turn it wants is
+#: at the head of a descending list; if it is not in the first page, the
+#: caller wants ``items.list()`` and their own predicate, not this heuristic.
+#: Deliberately below the list route's default page size, so the bound is the
+#: request the SDK asks for and not just a local slice of a larger page.
+LATEST_TURN_SCAN_LIMIT = 50
+
 
 def build_export_params(
     *,
@@ -651,10 +662,16 @@ class Conversations:
         ``node_type`` was a precomputed UI tree hint with no semantic-convention
         equivalent and is gone from the wire. ``gen_ai.operation.name`` is the
         attribute that actually carried the meaning.
+
+        Bounded by :data:`LATEST_TURN_SCAN_LIMIT`: see its note for why an
+        unbounded scan was the wrong shape for this lookup.
         """
         fallback: GenAiSpan | None = None
+        scanned = 0
         # The route is descending-only, so the first match is the latest.
-        for item in self.items.list(conversation_id):
+        for item in self.items.list(
+            conversation_id, limit=LATEST_TURN_SCAN_LIMIT
+        ):
             gen_ai = item.attributes.gen_ai
             operation = (
                 gen_ai.operation.name if gen_ai and gen_ai.operation else None
@@ -663,6 +680,11 @@ class Conversations:
                 return item.span_id
             if fallback is None and item.output_messages:
                 fallback = item
+            # Counted after the body, so the loop stops on the last item of
+            # the page rather than asking the pager for the next one.
+            scanned += 1
+            if scanned >= LATEST_TURN_SCAN_LIMIT:
+                break
         return fallback.span_id if fallback else None
 
 
@@ -1060,10 +1082,15 @@ class AsyncConversations:
         ``node_type`` was a precomputed UI tree hint with no semantic-convention
         equivalent and is gone from the wire. ``gen_ai.operation.name`` is the
         attribute that actually carried the meaning.
+
+        Bounded by :data:`LATEST_TURN_SCAN_LIMIT`, exactly as the sync twin.
         """
         fallback: GenAiSpan | None = None
+        scanned = 0
         # The route is descending-only, so the first match is the latest.
-        async for item in self.items.list(conversation_id):
+        async for item in self.items.list(
+            conversation_id, limit=LATEST_TURN_SCAN_LIMIT
+        ):
             gen_ai = item.attributes.gen_ai
             operation = (
                 gen_ai.operation.name if gen_ai and gen_ai.operation else None
@@ -1072,4 +1099,7 @@ class AsyncConversations:
                 return item.span_id
             if fallback is None and item.output_messages:
                 fallback = item
+            scanned += 1
+            if scanned >= LATEST_TURN_SCAN_LIMIT:
+                break
         return fallback.span_id if fallback else None

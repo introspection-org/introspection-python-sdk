@@ -6,6 +6,8 @@ Driven through a real in-process ``httpx`` transport (see
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
+
 import httpx
 import pytest
 
@@ -17,8 +19,9 @@ from introspection_sdk._errors import (
     SandboxUnavailableError,
 )
 from introspection_sdk._http import _clean_params
+from introspection_sdk.runner_resources import Events
 
-from .conftest import FakeAPI
+from .conftest import FakeAPI, paginated
 
 
 def _fails_then(
@@ -83,6 +86,42 @@ def test_none_query_params_are_dropped(fake_api: FakeAPI):
     assert params.get("a") == "1"
     assert "b" not in params
     assert params.get("limit") == "50"
+
+
+def test_datetime_query_params_are_iso_8601(fake_api: FakeAPI):
+    """A ``datetime`` window bound must go out as ISO-8601.
+
+    ``httpx`` renders unknown types with ``str()``, and ``str(datetime)``
+    separates the date and the time with a space
+    (``2025-01-01 12:30:00+00:00``), which is not ISO-8601 and reaches the
+    server percent-encoded as ``+``.
+    """
+    fake_api.add("GET", "/v1/events", json_body={})
+    http = fake_api.client()
+    http.request(
+        "GET",
+        "/v1/events",
+        params={
+            "start_date": datetime(2025, 1, 1, 12, 30, tzinfo=UTC),
+            "end_date": date(2025, 1, 2),
+            "event_id": ["a", datetime(2025, 1, 3, tzinfo=UTC)],
+        },
+    )
+    params = fake_api.last_request.params
+    assert params.get("start_date") == "2025-01-01T12:30:00+00:00"
+    assert params.get("end_date") == "2025-01-02"
+    assert params.get_list("event_id") == ["a", "2025-01-03T00:00:00+00:00"]
+    assert " " not in str(fake_api.last_request.url)
+
+
+def test_events_list_sends_lookback_window_as_iso_8601(fake_api: FakeAPI):
+    """The same, one layer up: ``lookback`` resolves to a ``datetime``."""
+    fake_api.add("GET", "/v1/events", json_body=paginated([]))
+    Events(fake_api.client()).list("identify", lookback="24h").page()
+    start = fake_api.last_request.params.get("start_date")
+    assert start is not None
+    assert "T" in start and " " not in start
+    assert datetime.fromisoformat(start).tzinfo is not None
 
 
 def test_json_body_is_forwarded(fake_api: FakeAPI):
