@@ -47,6 +47,16 @@ class Attr:
     AGENT_NAME = "gen_ai.agent.name"
     AGENT_ID = "gen_ai.agent.id"
 
+    # Introspection-namespaced span attributes. The SDK emits no spans of its
+    # own, so nothing here writes them — they are the names hand-written and
+    # harness instrumentation must use to stay consistent with the other
+    # SDKs. TERMINATION_REASON="cancelled" alongside
+    # gen_ai.response.finish_reasons=["aborted"] and an Unset status is how a
+    # caller-requested abort is distinguished from a failure.
+    TERMINATION_REASON = "introspection.termination_reason"
+    LLM_COST_USD = "introspection.llm.cost_usd"
+    LLM_UPSTREAM_COST_USD = "introspection.llm.upstream_cost_usd"
+
     # Prefixes for dynamic keys
     PROPERTIES_PREFIX = "properties."
     TRAITS_PREFIX = "context.traits."

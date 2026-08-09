@@ -37,17 +37,12 @@ from introspection_sdk.otel.logs import IntrospectionLogs
 from introspection_sdk.otel.processors.span_processor import (
     IntrospectionSpanProcessor,
 )
-from introspection_sdk.otel.termination import (
-    CANCELLATION_EXCEPTIONS,
-    mark_span_cancelled,
-)
 from introspection_sdk.otel.types import (
     Attr,
     Baggage,
     EventName,
     FeedbackProperties,
 )
-from introspection_sdk.otel.usage import set_usage_cost_attributes
 from introspection_sdk.utils import logger
 
 __all__ = [
@@ -70,10 +65,6 @@ __all__ = [
     "with_conversation",
     "with_user_id",
     "with_anonymous_id",
-    # Helpers for hand-instrumented gen_ai spans.
-    "CANCELLATION_EXCEPTIONS",
-    "mark_span_cancelled",
-    "set_usage_cost_attributes",
 ]
 
 _state: dict[str, Any] = {

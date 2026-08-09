@@ -120,9 +120,11 @@ On the spans it does export, the processor:
 - defaults `gen_ai.operation.name` to `"chat"` when messages are present,
 - drops the deprecated `gen_ai.system` key in favour of `gen_ai.provider.name`.
 
-For hand-instrumented spans the SDK also exports `mark_span_cancelled` (the
-abort-is-not-an-error contract) and `set_usage_cost_attributes`
-(provider-reported cost) from `introspection_sdk.otel`.
+`Attr` carries the Introspection-namespaced key names for hand-written
+instrumentation: `Attr.TERMINATION_REASON` (`"cancelled"` alongside
+`gen_ai.response.finish_reasons=["aborted"]` and an Unset status is how a
+requested abort reads as an outcome rather than a failure) and
+`Attr.LLM_COST_USD` / `Attr.LLM_UPSTREAM_COST_USD` for provider-reported cost.
 
 ## Environment variables (OTel)
 
