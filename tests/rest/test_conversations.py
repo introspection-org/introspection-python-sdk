@@ -859,6 +859,70 @@ def test_export_trajectory_negotiates_v1_and_types_records(fake_api: FakeAPI):
     assert prose_turn.tool_calls is None
 
 
+def test_export_json_negotiates_json_and_types_span_list(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        json_body=make_page([make_item()], False),
+    )
+
+    result = _conversations(fake_api).export_json("conv-1")
+
+    assert fake_api.last_request.headers["accept"] == "application/json"
+    assert len(result.data) == 1
+    assert result.data[0].span_id == "span-1"
+
+
+@pytest.mark.parametrize(
+    ("format", "accept"),
+    [
+        ("json", "application/json"),
+        ("trajectory", "application/vnd.letta.trajectory+json;version=1"),
+        ("arrow", ARROW_STREAM_MEDIA_TYPE),
+    ],
+)
+def test_export_stream_preserves_wire_bytes_and_filters(
+    fake_api: FakeAPI, format: str, accept: str
+):
+    body = b'[{"wire":"bytes"}]'
+    fake_api.add("GET", "/v1/conversations/conv-1/export", content=body)
+
+    chunks = _conversations(fake_api).export_stream(
+        "conv-1",
+        format,  # type: ignore[arg-type]
+        agent="root",
+        service_name="svc",
+        operation_name="chat",
+        lookback_days=7,
+        share_id="33333333-3333-3333-3333-333333333333",
+        start_date="2026-07-01T00:00:00Z",
+        end_date="2026-07-02T00:00:00Z",
+    )
+
+    assert b"".join(chunks) == body
+    request = fake_api.last_request
+    assert request.headers["accept"] == accept
+    assert dict(request.params) == {
+        "agent": "root",
+        "service_name": "svc",
+        "operation_name": "chat",
+        "lookback_days": "7",
+        "share_id": "33333333-3333-3333-3333-333333333333",
+        "start_date": "2026-07-01T00:00:00Z",
+        "end_date": "2026-07-02T00:00:00Z",
+    }
+
+
+def test_export_encodes_conversation_id(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/conversations/conv/one/export", content=b"export")
+
+    assert (
+        b"".join(_conversations(fake_api).export_stream("conv/one", "json"))
+        == b"export"
+    )
+    assert b"conv%2Fone" in fake_api.last_request.url.raw_path
+
+
 def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
@@ -920,3 +984,21 @@ async def test_async_export_trajectory(fake_api: FakeAPI):
     meta = records[0]
     assert isinstance(meta, TrajectoryMetaRecord)
     assert meta.source == "claude-code"
+
+
+@pytest.mark.asyncio
+async def test_async_export_json_and_stream(fake_api: FakeAPI):
+    body = make_page([make_item()], False)
+    fake_api.add("GET", "/v1/conversations/conv-1/export", json_body=body)
+    conversations = AsyncConversations(fake_api.async_client())
+
+    result = await conversations.export_json("conv-1")
+    assert result.data[0].span_id == "span-1"
+
+    raw = b'[{"wire":"bytes"}]'
+    fake_api.add("GET", "/v1/conversations/conv-1/export", content=raw)
+    chunks = conversations.export_stream("conv-1", "trajectory")
+    assert b"".join([chunk async for chunk in chunks]) == raw
+    assert fake_api.last_request.headers["accept"] == (
+        "application/vnd.letta.trajectory+json;version=1"
+    )

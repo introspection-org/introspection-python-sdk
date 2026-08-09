@@ -126,6 +126,21 @@ the latest LLM turn of a conversation as a Responses-API-style view
 (`await runner.conversations.retrieve(conversation_id)`), and walks a
 conversation's per-turn items (`runner.conversations.items.list(...)`).
 
+Complete exports are server-paginated in 1,000-row storage pages. Use a typed
+helper when you need the parsed result, or `export_stream` to forward raw JSON,
+trajectory, or Arrow bytes without retaining the full response in SDK memory:
+
+```python
+async for chunk in runner.conversations.export_stream(
+    conversation_id, "trajectory", agent="root"
+):
+    await destination.write(chunk)
+
+spans = await runner.conversations.export_json(conversation_id)
+trajectory = await runner.conversations.export_trajectory(conversation_id)
+table = await runner.conversations.export_arrow(conversation_id)  # [arrow] extra
+```
+
 Every `list()` returns an `AsyncPager`: `async for` it to stream every item
 across pages (fetched lazily), or `await` it for the first page with its
 envelope metadata (counts, cursors):
