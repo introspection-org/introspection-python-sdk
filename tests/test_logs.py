@@ -83,7 +83,7 @@ def test_feedback_emits_feedback_event(logs, exporter):
 def test_feedback_named_fields_win_over_extra_of_the_same_key(exporter):
     # FeedbackProperties is public, so `extra` can carry a key that collides
     # with a named field. Merging extra last let it replace the feedback name
-    # the event was about; the Node, browser, and Rust SDKs all resolve this
+    # the event was about; every other entry point resolves this
     # the same way.
     from introspection_sdk.otel.types import FeedbackProperties
 
@@ -100,7 +100,7 @@ def test_feedback_named_fields_win_over_extra_of_the_same_key(exporter):
 
 
 def test_identify_sets_user_and_emits(logs, exporter):
-    # A bare call emits, matching the other SDKs. While identify() was a
+    # A bare call emits. While identify() was a
     # context manager this line built a generator and sent nothing.
     logs.identify("user_42", traits={"plan": "pro"})
     (record,) = _records(logs, exporter)

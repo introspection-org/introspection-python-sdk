@@ -18,8 +18,8 @@ form-encoded token POST:
 
 Every helper returns the shared :class:`OAuthToken` shape, which carries
 ``dp_url`` — the Data Plane endpoint the CP resolved for the token's
-project. A broker hands that straight to a browser SDK as ``dpUrl`` so
-the SPA connects without separately configured Data Plane URLs.
+project. A broker hands that to a browser client so the SPA connects
+without separately configured Data Plane URLs.
 
 Each function has an ``async_`` twin (:func:`async_service_account_token`
 etc.) for use from :class:`~introspection_sdk.AsyncIntrospectionClient`
@@ -77,7 +77,8 @@ class OAuthToken(BaseModel):
     scope: str | None = None
     #: Data Plane API base URL for the token's project, resolved by the
     #: CP. ``None`` when no deployment resolves; the caller then needs an
-    #: explicit DP URL. Hand this to the browser SDK as ``dpUrl``.
+    #: explicit DP URL. Hand this to a browser client so it needs no
+    #: separate Data Plane configuration.
     dp_url: str | None = None
 
 

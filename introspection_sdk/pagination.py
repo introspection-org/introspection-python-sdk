@@ -1,6 +1,6 @@
 """Lazy, auto-paging collection returned by every ``list()`` method.
 
-The Python sibling of the JS SDK's ``Paginator`` (``pagination.ts``).
+Cursor pagination over the DP's list endpoints.
 A :class:`Pager` is the single object every ``list()`` returns. It is
 
 * **iterable** — iterate it (``for item in listing``) to stream every
@@ -8,7 +8,7 @@ A :class:`Pager` is the single object every ``list()`` returns. It is
   it; stop early to stop fetching; and
 * **a first-page handle** — call :meth:`Pager.page` to get the first page
   with its wire-envelope metadata intact (counts, cursors, ``has_more``,
-  …). This mirrors ``await listing`` in the async JS SDK; the first page
+  …). Awaiting the listing yields the first page;
   is fetched once and cached.
 
 Every list endpoint speaks the standard Introspection cursor envelope
@@ -91,7 +91,7 @@ class AsyncPager(Generic[T, TPage]):
     * **awaitable** — ``await listing`` resolves to the first page with
       its wire-envelope metadata intact (counts, cursors, ``has_more``,
       …), fetched once and cached. This mirrors ``await listing`` in the
-      async JS SDK and the sync :meth:`Pager.page`; and
+      sync :meth:`Pager.page`; and
     * **async-iterable** — ``async for item in listing`` streams every
       item across all pages, fetching each page only as the iterator
       reaches it; stop early to stop fetching.
@@ -123,7 +123,7 @@ class AsyncPager(Generic[T, TPage]):
 
     def __await__(self) -> Generator[Any, None, TPage]:
         # Lets callers ``await listing`` to get the first page directly,
-        # mirroring the async JS SDK's ``await listing``.
+        # so ``await listing`` yields the first page.
         return self.page().__await__()
 
     async def __aiter__(self) -> AsyncIterator[T]:

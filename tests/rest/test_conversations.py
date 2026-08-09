@@ -1,6 +1,6 @@
 """Contract tests for the read-only ``runner.conversations`` namespace.
 
-Mirrors the JS SDK's ``tests/api/conversations.test.ts``: opaque cursor
+Opaque cursor
 pagination across both conversation envelopes, the
 Responses-API-style ``retrieve()`` latest-turn heuristic, and the legacy
 ``tool_call_response`` ``result`` -> ``response`` normalization.

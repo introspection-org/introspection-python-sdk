@@ -25,8 +25,7 @@ __all__ = [
 #: One constant for both streams. Spans used to default to ``"introspection"``
 #: while events defaulted to ``"introspection-client"``, so a single
 #: :func:`~introspection_sdk.otel.init` produced two services in the backend
-#: and nothing tied them together. Matches the Rust SDK's
-#: ``defaults::SERVICE_NAME``.
+#: and nothing tied them together.
 DEFAULT_SERVICE_NAME = "introspection-client"
 
 
@@ -117,7 +116,7 @@ class FeedbackProperties:
         feedback name the event was about. Unreachable through
         ``logs.feedback(name, **extra)`` -- ``name=`` binds to the positional
         parameter -- but reachable by building this public dataclass
-        directly, and the Node, browser, and Rust SDKs all settled on
+        directly, and the settled spelling is
         named-argument-wins for the same field.
         """
         result: dict[str, Any] = dict(self.extra)

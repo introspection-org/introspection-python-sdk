@@ -47,7 +47,7 @@ def resolve_conversation_id(*, trace_key: str | None = None) -> str:
 
     Precedence: OTel baggage (which is what ``conversation()`` sets) >
     stable per-``trace_key`` fallback > a fresh id. The same precedence the
-    JS and Rust SDKs use.
+    backend expects.
     """
     from_baggage = baggage.get_baggage(Baggage.CONVERSATION_ID)
     if isinstance(from_baggage, str) and from_baggage:
@@ -74,7 +74,7 @@ def conversation(conversation_id: str | None = None) -> Iterator[str]:
     carried alongside it and consulted first, but the two were set and
     cleared together by this one function and nothing else could write
     either, so it was a second copy of the same fact -- and one the JS and
-    Rust SDKs do not have. Baggage is also the copy that crosses a process
+    other entry points do not have. Baggage is also the copy that crosses a process
     boundary, which the contextvar never could.
     """
     cid = conversation_id or new_conversation_id()

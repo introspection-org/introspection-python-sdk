@@ -40,8 +40,7 @@ class IntrospectionAPIError(Exception):
         #: On the base class, not on :class:`RateLimitError` alone: the DP
         #: sends the header on a ``503`` while a sandbox is warming up, which
         #: is precisely when a caller most wants it, and that error was
-        #: dropping it on the floor. The JS SDK carries it on its base error
-        #: and the Rust SDK on every HTTP variant.
+        #: dropping it on the floor.
         self.retry_after = retry_after
 
     def __repr__(self) -> str:

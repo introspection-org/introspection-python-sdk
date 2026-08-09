@@ -204,8 +204,7 @@ class IntrospectionLogs:
         # The dist name, per the OTel convention that the scope names the
         # instrumentation library. Deliberately not language-tagged: the SDK
         # language already rides the resource as ``telemetry.sdk.language``
-        # ("python" here), which is the semconv-designated place for it. All
-        # four Introspection SDKs use this same scope name.
+        # ("python" here), which is the semconv-designated place for it.
         self._otel_logger = self._logger_provider.get_logger(
             "introspection-sdk",
             VERSION,
@@ -479,8 +478,7 @@ def _attribute_value(value: Any) -> Any:
     bare ``json.dumps`` did exactly that: a ``datetime``, ``set``, or
     ``bytes`` in a property dict raised ``TypeError`` out of ``track()``
     into the caller's business logic. Anything unserialisable falls back to
-    ``repr`` -- a lossy attribute beats a crash, and the JS SDK's
-    ``JSON.stringify`` never throws here either.
+    ``repr`` -- a lossy attribute beats a crash.
     """
     if isinstance(value, str | int | float | bool):
         return value

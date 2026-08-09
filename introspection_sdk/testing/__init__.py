@@ -69,8 +69,7 @@ class TestSpanExporter(SpanExporter):
         through this exporter, so asserting on it meant reaching past the
         SDK's own testing helper for OpenTelemetry's.
 
-        The Rust SDK's ``otel::testing`` hands back real ``SpanData`` for
-        the same reason.
+        This property hands back the real spans instead.
         """
         return list(self._spans)
 

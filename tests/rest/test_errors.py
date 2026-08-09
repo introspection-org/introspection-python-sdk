@@ -112,8 +112,7 @@ def test_every_error_carries_retry_after_not_just_429():
     """A 503 is when `Retry-After` matters most.
 
     It lived on `RateLimitError` alone, so a sandbox still warming up told
-    the caller exactly when to come back and the SDK dropped it. The JS SDK
-    carries it on its base error and the Rust SDK on every HTTP variant.
+    the caller exactly when to come back and the SDK dropped it.
     """
     err = error_from_response(
         _response(503, json_body={}, headers={"retry-after": "120"})
@@ -184,7 +183,7 @@ def test_repr_includes_status_and_code():
 
 
 def test_a_negative_retry_after_means_now_not_a_negative_delay():
-    """All three SDKs clamp.
+    """A negative delay is clamped.
 
     Unclamped it became a negative floor in the backoff, and then a
     negative sleep.

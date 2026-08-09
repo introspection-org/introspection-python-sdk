@@ -2,7 +2,7 @@
 
 One private home for the pieces the unary clients (:mod:`._http`) and
 the resumable run stream (:mod:`.resumable`) both need — the mirror of
-``backoff.ts`` in the JS SDK and ``api::backoff`` in the Rust SDK:
+the retry policy the DP documents:
 
 * :func:`_retry_delay` — the capped-exponential step with ``Retry-After``
   honoured as a floor when present (never required).

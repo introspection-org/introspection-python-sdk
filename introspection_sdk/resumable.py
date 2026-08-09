@@ -38,7 +38,7 @@ from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.schemas.agui import AGUIEvent, validate_ag_ui_event
 from introspection_sdk.streaming import _parse_sse, _parse_sse_async
 
-# Defaults match the other SDKs. The delay math (capped-exponential with
+# The delay math (capped-exponential with
 # ``Retry-After`` as a floor) is shared with the unary clients via
 # :mod:`introspection_sdk._backoff`; the reconnect *decisions* below are
 # the stream's own.
