@@ -133,6 +133,15 @@ def _export_headers(format: ConversationExportFormat) -> dict[str, str]:
     return JSON_EXPORT_HEADERS
 
 
+ConversationResolution = Literal[
+    "resolved", "blocked", "unresolved", "pending"
+]
+"""``resolution`` filter on the conversations list."""
+
+ConversationSentiment = Literal["positive", "negative", "mixed", "neutral"]
+"""``sentiment`` filter on the conversations list."""
+
+
 def build_conversation_params(
     *,
     limit: int = 100,
@@ -150,6 +159,11 @@ def build_conversation_params(
     runtime_group_id: UUID | None = None,
     experiment_id: UUID | None = None,
     recipe_git_commit_sha: str | None = None,
+    conversation_ids: builtins.list[str] | None = None,
+    share_id: builtins.list[str] | None = None,
+    resolution: ConversationResolution | None = None,
+    sentiment: ConversationSentiment | None = None,
+    owner_key: str | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
 ) -> dict[str, Any]:
@@ -170,6 +184,11 @@ def build_conversation_params(
         "runtime_group_id": runtime_group_id,
         "experiment_id": experiment_id,
         "recipe_git_commit_sha": recipe_git_commit_sha,
+        "conversation_ids": conversation_ids,
+        "share_id": share_id,
+        "resolution": resolution,
+        "sentiment": sentiment,
+        "owner_key": owner_key,
         "start_date": start_date,
         "end_date": end_date,
     }
@@ -370,6 +389,11 @@ class Conversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -412,6 +436,11 @@ class Conversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -450,6 +479,11 @@ class Conversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -486,6 +520,11 @@ class Conversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -812,6 +851,11 @@ class AsyncConversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -851,6 +895,11 @@ class AsyncConversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -889,6 +938,11 @@ class AsyncConversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -925,6 +979,11 @@ class AsyncConversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
