@@ -145,10 +145,22 @@ class _HttpClient:
                 return RawResponse(content=res.content, headers=res.headers)
             return res.json()
 
-    def stream_bytes(self, path: str) -> Iterator[bytes]:
+    def stream_bytes(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> Iterator[bytes]:
+        req_headers = dict(self._auth_headers)
+        if headers:
+            req_headers.update(headers)
         try:
             with self._client.stream(
-                "GET", path, headers=self._auth_headers
+                "GET",
+                path,
+                params=_clean_params(params),
+                headers=req_headers,
             ) as res:
                 if res.status_code >= 400:
                     res.read()
@@ -273,10 +285,22 @@ class _AsyncHttpClient:
                 return RawResponse(content=res.content, headers=res.headers)
             return res.json()
 
-    async def stream_bytes(self, path: str) -> AsyncIterator[bytes]:
+    async def stream_bytes(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> AsyncIterator[bytes]:
+        req_headers = dict(self._auth_headers)
+        if headers:
+            req_headers.update(headers)
         try:
             async with self._client.stream(
-                "GET", path, headers=self._auth_headers
+                "GET",
+                path,
+                params=_clean_params(params),
+                headers=req_headers,
             ) as res:
                 if res.status_code >= 400:
                     await res.aread()

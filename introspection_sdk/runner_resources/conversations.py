@@ -14,7 +14,8 @@ from __future__ import annotations
 import builtins
 from collections.abc import AsyncIterator, Iterator
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict, Unpack
+from urllib.parse import quote
 from uuid import UUID
 
 from pydantic import TypeAdapter
@@ -50,6 +51,24 @@ from introspection_sdk.schemas.trajectory import Trajectory, TrajectoryRecord
 TRAJECTORY_ADAPTER: TypeAdapter[list[TrajectoryRecord]] = TypeAdapter(
     list[TrajectoryRecord]
 )
+
+ConversationExportFormat = Literal["json", "trajectory", "arrow"]
+"""Wire representation accepted by the complete conversation export route."""
+
+
+class ConversationExportParams(TypedDict, total=False):
+    """Filters accepted by the complete conversation export route."""
+
+    agent: str
+    service_name: str
+    operation_name: str
+    lookback_days: int
+    share_id: str | UUID
+    start_date: str | datetime
+    end_date: str | datetime
+
+
+JSON_EXPORT_HEADERS = {"Accept": "application/json"}
 
 
 def build_export_params(
@@ -89,6 +108,18 @@ def build_export_params(
     if end_date is not None:
         params["end_date"] = end_date
     return params
+
+
+def _export_path(conversation_id: str) -> str:
+    return f"/v1/conversations/{quote(conversation_id, safe='')}/export"
+
+
+def _export_headers(format: ConversationExportFormat) -> dict[str, str]:
+    if format == "trajectory":
+        return TRAJECTORY_ACCEPT_HEADERS
+    if format == "arrow":
+        return ARROW_ACCEPT_HEADERS
+    return JSON_EXPORT_HEADERS
 
 
 def build_conversation_params(
@@ -484,6 +515,33 @@ class Conversations:
         )
         return Conversation.model_validate(payload)
 
+    def export_json(
+        self,
+        conversation_id: str,
+        **params: Unpack[ConversationExportParams],
+    ) -> GenAiSpanList:
+        """Export one complete conversation as the standard GenAI-span list."""
+        payload = self._http.request(
+            "GET",
+            _export_path(conversation_id),
+            params=build_export_params(**params),
+            headers=JSON_EXPORT_HEADERS,
+        )
+        return GenAiSpanList.model_validate(payload)
+
+    def export_stream(
+        self,
+        conversation_id: str,
+        format: ConversationExportFormat,
+        **params: Unpack[ConversationExportParams],
+    ) -> Iterator[bytes]:
+        """Stream raw complete-export bytes without buffering them in the SDK."""
+        return self._http.stream_bytes(
+            _export_path(conversation_id),
+            params=build_export_params(**params),
+            headers=_export_headers(format),
+        )
+
     def export_trajectory(
         self,
         conversation_id: str,
@@ -510,7 +568,7 @@ class Conversations:
         """
         payload = self._http.request(
             "GET",
-            f"/v1/conversations/{conversation_id}/export",
+            _export_path(conversation_id),
             params=build_export_params(
                 agent=agent,
                 service_name=service_name,
@@ -547,7 +605,7 @@ class Conversations:
         """
         raw = self._http.request(
             "GET",
-            f"/v1/conversations/{conversation_id}/export",
+            _export_path(conversation_id),
             params=build_export_params(
                 agent=agent,
                 service_name=service_name,
@@ -885,6 +943,33 @@ class AsyncConversations:
         )
         return Conversation.model_validate(payload)
 
+    async def export_json(
+        self,
+        conversation_id: str,
+        **params: Unpack[ConversationExportParams],
+    ) -> GenAiSpanList:
+        """Async twin of :meth:`Conversations.export_json`."""
+        payload = await self._http.request(
+            "GET",
+            _export_path(conversation_id),
+            params=build_export_params(**params),
+            headers=JSON_EXPORT_HEADERS,
+        )
+        return GenAiSpanList.model_validate(payload)
+
+    def export_stream(
+        self,
+        conversation_id: str,
+        format: ConversationExportFormat,
+        **params: Unpack[ConversationExportParams],
+    ) -> AsyncIterator[bytes]:
+        """Async byte-stream twin of :meth:`Conversations.export_stream`."""
+        return self._http.stream_bytes(
+            _export_path(conversation_id),
+            params=build_export_params(**params),
+            headers=_export_headers(format),
+        )
+
     async def export_trajectory(
         self,
         conversation_id: str,
@@ -900,7 +985,7 @@ class AsyncConversations:
         """Async twin of :meth:`Conversations.export_trajectory`."""
         payload = await self._http.request(
             "GET",
-            f"/v1/conversations/{conversation_id}/export",
+            _export_path(conversation_id),
             params=build_export_params(
                 agent=agent,
                 service_name=service_name,
@@ -929,7 +1014,7 @@ class AsyncConversations:
         """Async twin of :meth:`Conversations.export_arrow`."""
         raw = await self._http.request(
             "GET",
-            f"/v1/conversations/{conversation_id}/export",
+            _export_path(conversation_id),
             params=build_export_params(
                 agent=agent,
                 service_name=service_name,

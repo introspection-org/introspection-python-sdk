@@ -3,6 +3,8 @@
 from introspection_sdk.runner_resources.conversations import (
     AsyncConversationItems,
     AsyncConversations,
+    ConversationExportFormat,
+    ConversationExportParams,
     ConversationItems,
     Conversations,
 )
@@ -45,6 +47,8 @@ __all__ = [
     "AsyncTaskRuns",
     "AsyncTasks",
     "ConversationItems",
+    "ConversationExportFormat",
+    "ConversationExportParams",
     "Conversations",
     "Events",
     "Files",
