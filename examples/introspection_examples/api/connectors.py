@@ -51,6 +51,12 @@ def main() -> None:
         #    returns the existing row rather than a duplicate.
         #    `client_secret` is write-only: it goes up here and is absent
         #    from every response.
+        #
+        #    This assumes the Slack app already exists. Registering a new one
+        #    is a second pass: its delivery URL contains the connector id
+        #    ({cp-host}/v1/webhooks/slack/{connector.id}), so the connector
+        #    has to exist first, and the credentials come back afterwards via
+        #    client.connectors.update(connector.id, webhook_url=..., ...).
         connector = client.connectors.create(
             name="Slack (support)",
             slug="slack-support",
