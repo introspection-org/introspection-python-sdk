@@ -56,6 +56,32 @@ def test_refresh_swaps_in_new_spec():
     assert runner.tasks is not old_tasks
 
 
+def test_a_handle_kept_across_refresh_fails_typed(monkeypatch):
+    """`refresh()` closes the client the old handle still points at.
+
+    The next call used to surface httpx's bare ``RuntimeError: Cannot send a
+    request, as the client has been closed``, bypassing the typed-error
+    guarantee the Runner's own `_check_open` exists to give.
+    """
+    specs = iter([_spec(session_id="old"), _spec(session_id="new")])
+    first = next(specs)
+    runner = Runner(first, refresher=lambda: next(specs))
+    stale = runner.tasks
+    runner.refresh()
+
+    with pytest.raises(IntrospectionAPIError, match="has been closed"):
+        stale.get("task-1")
+
+
+def test_a_handle_kept_across_close_fails_typed():
+    runner = _runner()
+    stale = runner.tasks
+    runner.close()
+
+    with pytest.raises(IntrospectionAPIError, match="has been closed"):
+        stale.get("task-1")
+
+
 def test_close_blocks_further_use():
     runner = _runner()
     runner.close()
