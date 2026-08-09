@@ -124,7 +124,10 @@ def _parse_retry_after(value: str | None) -> float | None:
     if not value:
         return None
     try:
-        return float(value)
+        # Clamped, like the date branch below: a negative delay is not a
+        # thing to wait for, and left unclamped it became a negative floor
+        # in the backoff. A nonsense value means "retry now".
+        return max(float(value), 0.0)
     except ValueError:
         pass
     try:

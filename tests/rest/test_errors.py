@@ -181,3 +181,15 @@ def test_repr_includes_status_and_code():
     text = repr(err)
     assert "RunnerExpiredError" in text
     assert "status_code=401" in text
+
+
+def test_a_negative_retry_after_means_now_not_a_negative_delay():
+    """All three SDKs clamp.
+
+    Unclamped it became a negative floor in the backoff, and then a
+    negative sleep.
+    """
+    err = error_from_response(
+        _response(429, json_body={}, headers={"retry-after": "-5"})
+    )
+    assert err.retry_after == 0.0
