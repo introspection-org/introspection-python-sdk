@@ -1,7 +1,7 @@
 """Gen AI Semantic Conventions to OpenInference converter.
 
 Transforms span attributes from OTel GenAI semconv format (used by
-ClaudeTracingProcessor) to OpenInference flattened format (understood by
+IntrospectionSpanProcessor) to OpenInference flattened format (understood by
 Arize Phoenix).
 
 This is the reverse of openinference.py which converts OpenInference → GenAI.
@@ -138,7 +138,7 @@ def convert_genai_to_openinference(
     """Convert gen_ai semconv span attributes to OpenInference flattened format.
 
     Args:
-        attrs: Gen_ai semconv attributes (from ClaudeTracingProcessor spans).
+        attrs: Gen_ai semconv attributes.
 
     Returns:
         Dict of OpenInference flattened attributes for Arize.
@@ -309,9 +309,7 @@ class OpenInferenceSpanProcessor(SpanProcessor):
         arize_processor = BatchSpanProcessor(arize_exporter)
         oi_processor = OpenInferenceSpanProcessor(arize_processor)
 
-        processor = ClaudeTracingProcessor(
-            additional_span_processors=[oi_processor],
-        )
+        provider.add_span_processor(oi_processor)
     """
 
     def __init__(self, downstream: SpanProcessor):

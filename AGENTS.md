@@ -13,8 +13,8 @@ ever again ending up in the state described in
 
 1. **Recordings, never mocks** for anything that crosses a process or network
    boundary. Use `pytest-recording` (VCR cassettes) for HTTP, and the
-   recording transport in `introspection_sdk/testing/` for the Claude Agent
-   SDK subprocess. `MagicMock` / `patch` / `monkeypatch` are reserved for
+   recording transport in `introspection_sdk/testing/` for subprocess SDKs.
+   `MagicMock` / `patch` / `monkeypatch` are reserved for
    pure-unit tests of internal helpers — never for stubbing an SDK or HTTP
    client.
 2. **Coverage cannot go down.** `[tool.coverage.report].fail_under` in
@@ -74,16 +74,11 @@ For new HTTP-backed tests:
      huge transcripts.
 5. Commit the cassette alongside the test.
 
-For Claude Agent SDK tests, use the recording transport (see
-`docs/test-quality-audit-plan.md` Phase 2). Do **not** add new tests that
-mock `claude_agent_sdk` at the module level — extend the transport instead.
-
 ## Coverage expectations per area
 
 | Area | Floor today | Target |
 | --- | --- | --- |
 | `processors/span_processor.py` | 89% | 95% |
-| `processors/claude_tracing_processor.py` | 74% | 95% |
 | `converters/openinference.py` | 62% | 90% |
 | `converters/genai_to_openinference.py` | 25% | 90% |
 | `client.py` | 26% | 90% |
@@ -95,20 +90,17 @@ targets above are guidance for which files to prioritise.
 
 ## When you add a new integration
 
-The existing LLM-framework integrations are experimental. Pi is the supported
-agent framework and is instrumented by the JavaScript SDK.
+The Python SDK ships no framework integrations. Pi is the supported agent
+framework and is instrumented by the JavaScript SDK; everything else reaches
+Introspection through `IntrospectionSpanProcessor`, which converts Logfire
+and OpenInference spans on ingest, or through manual OTel instrumentation.
 
-Adding a new framework or observability backend? Land all of these in the
-same PR:
+Adding a new ingest converter? Land all of these in the same PR:
 
 - [ ] Implementation in `introspection_sdk/`
-- [ ] Unit/recording tests under `tests/framework/` (for instrumented
-      frameworks) or `tests/observability/` (for observability backends)
-- [ ] At least one dual-export integration test where applicable
+- [ ] Unit/recording tests under `tests/framework/`
 - [ ] A working example under `examples/introspection_examples/<area>/`
 - [ ] A row added to the README integration table
-- [ ] A row added to the "framework × observability" matrix in
-      `docs/test-quality-audit-plan.md` — turn the relevant cell green
 
 Single-agent happy-path is not enough. If the SDK supports subagents,
 handoffs, streaming, or tools, the integration must have a test for each.

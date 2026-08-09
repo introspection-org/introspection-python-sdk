@@ -44,14 +44,6 @@ logfire.configure(additional_span_processors=[IntrospectionSpanProcessor()])
 logfire.instrument_openai()
 ```
 
-### Claude Agent SDK
-
-```python
-from introspection_sdk import ClaudeTracingProcessor
-
-ClaudeTracingProcessor().configure()  # all ClaudeSDKClient instances traced
-```
-
 ## Sharing one provider across `init()` and a standalone processor
 
 The processors accept a `tracer_provider=` to run in shared-provider mode: they

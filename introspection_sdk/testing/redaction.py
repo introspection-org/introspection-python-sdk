@@ -1,5 +1,5 @@
 """Single source of truth for the API keys, tokens, and UUIDs that both
-``tests/conftest.py`` (HTTP cassettes) and :mod:`claude_vcr` (subprocess IPC)
+``tests/conftest.py`` (HTTP cassettes)
 must scrub before anything touches disk. Transport-specific ids stay with
 their transport."""
 

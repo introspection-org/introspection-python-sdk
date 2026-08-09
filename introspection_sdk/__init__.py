@@ -9,7 +9,7 @@ to add the OpenTelemetry surface:
 
 * :class:`IntrospectionLogs` — ``track`` / ``feedback`` / ``identify``
   emitted as OTLP log records.
-* :class:`IntrospectionSpanProcessor` / :class:`ClaudeTracingProcessor` —
+* :class:`IntrospectionSpanProcessor` —
   attach to your TracerProvider.
 
 The three surfaces (REST client, logs, traces) are independent —
@@ -61,9 +61,6 @@ if TYPE_CHECKING:
     # install does not need ``opentelemetry`` to be importable.
     from introspection_sdk.config import AdvancedOptions
     from introspection_sdk.otel.logs import IntrospectionLogs
-    from introspection_sdk.otel.processors.claude_tracing_processor import (
-        ClaudeTracingProcessor,
-    )
     from introspection_sdk.otel.processors.span_processor import (
         IntrospectionSpanProcessor,
     )
@@ -78,7 +75,6 @@ _OTEL_REQUIRED_NAMES = {
     "AdvancedOptions",
     "Attr",
     "Baggage",
-    "ClaudeTracingProcessor",
     "EventName",
     "FeedbackProperties",
     "IntrospectionLogs",
@@ -123,12 +119,6 @@ def __getattr__(name: str) -> object:
                     "EventName": EventName,
                     "FeedbackProperties": FeedbackProperties,
                 }[name]
-            if name == "ClaudeTracingProcessor":
-                from introspection_sdk.otel.processors.claude_tracing_processor import (
-                    ClaudeTracingProcessor,
-                )
-
-                return ClaudeTracingProcessor
             if name == "IntrospectionSpanProcessor":
                 from introspection_sdk.otel.processors.span_processor import (
                     IntrospectionSpanProcessor,
@@ -176,7 +166,6 @@ __all__ = [
     "AdvancedOptions",
     "Attr",
     "Baggage",
-    "ClaudeTracingProcessor",
     "EventName",
     "FeedbackProperties",
     "IntrospectionLogs",

@@ -21,9 +21,8 @@ dependencies = [
 # path never imports pyarrow. Install with `pip install introspection-sdk[arrow]`.
 arrow = ["pyarrow>=14.0.0"]
 # Install with `pip install introspection-sdk[otel]` to enable the
-# OpenTelemetry exporter, the span / tracing processors, the LLM SDK
-# processors (IntrospectionSpanProcessor / ClaudeTracingProcessor) and
-# the IntrospectionLogs (track / feedback / identify) surface. Default
+# OpenTelemetry exporter, `IntrospectionSpanProcessor`, and the
+# IntrospectionLogs (track / feedback / identify) surface. Default
 # install is REST-only (client.runtimes / client.experiments / Runner
 # / tasks / files).
 otel = [
@@ -45,24 +44,16 @@ test = [
     "openai>=2.30.0",
     "anthropic>=0.85.0",
     "pydantic-ai>=1.68.0",
-    "claude-agent-sdk>=0.1.0,<=0.1.7",
-    "posthog>=7.9.0",
-    "openinference-instrumentation-anthropic>=0.1.0",
 ]
-# Per-framework convenience installs. init() auto-detects frameworks
-# regardless of how they were installed; these extras are a one-command setup.
-claude-agent = ["claude-agent-sdk>=0.1.0,<=0.1.7"]
+# Convenience installs for the instrumentation libraries whose spans
+# `IntrospectionSpanProcessor` converts on ingest. Detection is by span
+# shape, not by how the package was installed; these extras are just a
+# one-command setup.
 logfire = ["logfire>=4.0.0"]
 pydantic-ai = ["pydantic-ai>=1.68.0"]
 
-# Dual-export to third-party observability platforms.
-langfuse = ["langfuse>=3.0.0"]
-arize = ["arize-phoenix>=8.0.0", "openinference-instrumentation-openai>=0.1.0"]
-braintrust = ["braintrust[otel]>=0.1.0"]
-
 # Convenience bundle for greenfield projects / CI smoke tests.
 all = [
-    "claude-agent-sdk>=0.1.0,<=0.1.7",
     "logfire>=4.0.0",
     "pydantic-ai>=1.68.0",
 ]

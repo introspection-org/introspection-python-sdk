@@ -245,10 +245,10 @@ pip install 'introspection-sdk[otel]'
 
 Both are documented in [**`docs/otel.md`**](docs/otel.md).
 
-Beyond the core processors, the Claude Agent SDK integration
-(`ClaudeTracingProcessor`, `[claude-agent]` extra) is experimental. Agents
-already instrumented with Logfire or OpenInference are converted to GenAI
-semantic conventions by `IntrospectionSpanProcessor` automatically.
+The SDK ships no framework integrations. Agents already instrumented with
+Logfire or OpenInference are converted to GenAI semantic conventions by
+`IntrospectionSpanProcessor` automatically; everything else is manual
+instrumentation against the OTel APIs.
 
 ## Environment variables
 

@@ -19,9 +19,12 @@ __all__ = [
 ]
 
 # Import paths, resolved lazily so a missing framework just skips its shim.
-_BUILTIN_INTEGRATIONS: list[str] = [
-    "introspection_sdk.otel.integrations.claude_agent.ClaudeAgentIntegration",
-]
+# Empty by design: the Python SDK ships no framework integrations. Spans
+# reach Introspection either from an instrumentation library the
+# ``IntrospectionSpanProcessor`` converts on ingest (OpenInference, logfire)
+# or from manual OTel instrumentation. Custom integrations can still be
+# passed to ``init(integrations=[...])``.
+_BUILTIN_INTEGRATIONS: list[str] = []
 
 _installed: set[str] = set()
 _lock = Lock()

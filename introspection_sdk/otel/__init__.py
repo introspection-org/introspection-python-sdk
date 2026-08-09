@@ -8,7 +8,7 @@ Exports the independent telemetry surfaces:
 
 * :class:`IntrospectionLogs` — OTLP logs emitter for
   ``track`` / ``feedback`` / ``identify``.
-* :class:`IntrospectionSpanProcessor` / :class:`ClaudeTracingProcessor` —
+* :class:`IntrospectionSpanProcessor` —
   span/trace processors that forward to the Introspection backend.
 
 Also exposes the one-liner ``init()`` entry point that auto-discovers
@@ -35,9 +35,6 @@ from introspection_sdk.otel.integrations._provider import (
 )
 from introspection_sdk.otel.integrations.base import DidNotEnable, Integration
 from introspection_sdk.otel.logs import IntrospectionLogs
-from introspection_sdk.otel.processors.claude_tracing_processor import (
-    ClaudeTracingProcessor,
-)
 from introspection_sdk.otel.processors.span_processor import (
     IntrospectionSpanProcessor,
 )
@@ -52,7 +49,6 @@ from introspection_sdk.utils import logger
 __all__ = [
     "IntrospectionLogs",
     "IntrospectionSpanProcessor",
-    "ClaudeTracingProcessor",
     "Attr",
     "Baggage",
     "EventName",

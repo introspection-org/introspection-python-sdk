@@ -20,29 +20,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-arize = [
-    "arize-phoenix>=8.0.0",
-    "openinference-instrumentation-openai>=0.1.0",
-    "openinference-instrumentation-anthropic>=0.1.0",
-]
-braintrust = [
-    "braintrust[otel]>=0.1.0",
-    "openinference-instrumentation-openai>=0.1.0",
-]
-langfuse = [
-    "langfuse>=3.0.0",
-    "openinference-instrumentation-openai>=0.1.0",
-]
 logfire = [
     "logfire>=4.23.0",
 ]
-claude-agent-sdk = [
-    "claude-agent-sdk>=0.1.0,<=0.1.7",
-    "anthropic>=0.85.0",
-    "langsmith[claude-agent-sdk]>=0.6.0",
-]
 all = [
-    "introspection-examples[arize,braintrust,langfuse,logfire,claude-agent-sdk]",
+    "introspection-examples[logfire]",
 ]
 
 [tool.hatch.build.targets.wheel]
