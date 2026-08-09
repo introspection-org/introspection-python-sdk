@@ -18,7 +18,7 @@ The pattern:
    ``additional_span_processors=[...]`` seam on
    ``ClaudeTracingProcessor`` is the mechanism.
 
-When adding the next combo (Anthropic native x Langfuse, Gemini x
+When adding the next combo (Claude Agent SDK x Langfuse, Pydantic AI x
 Arize, …), copy this file's structure: build the transport / fixture,
 wire the dual processors, assert ``gen_ai.*`` attributes on the
 captured spans.

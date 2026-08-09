@@ -140,7 +140,7 @@ These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 - Keep PRs focused — one phase of `docs/test-quality-audit-plan.md` per PR
   where possible.
 - Commit messages: imperative present tense, scoped prefix
-  (`feat(gemini):`, `test(claude):`, `docs:`, `ci:`).
+  (`feat(otel):`, `test(claude):`, `docs:`, `ci:`).
 - Never commit `.env`, real API keys, or unscrubbed cassettes. The
   `gitleaks` pre-commit hook catches most of this; don't bypass it.
 

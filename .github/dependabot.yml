@@ -34,7 +34,7 @@ updates:
         patterns:
           - "opentelemetry-*"
 
-      # AI provider SDKs — Anthropic, OpenAI, OpenAI agents, etc.
+      # AI provider SDKs — Anthropic, OpenAI, Claude Agent SDK, etc.
       ai-providers:
         applies-to: version-updates
         patterns:
