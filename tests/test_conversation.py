@@ -14,7 +14,7 @@ def test_new_id_has_prefix():
     assert new_conversation_id().startswith("intro_conv_")
 
 
-def test_conversation_cm_sets_and_clears_contextvar():
+def test_conversation_cm_sets_and_clears_the_scope():
     assert current_conversation_id() is None
     with introspection.conversation("conv_abc"):
         assert current_conversation_id() == "conv_abc"
@@ -92,3 +92,28 @@ def test_trace_fallback_is_stable_across_threads():
     for attempt in range(50):
         ids = race(f"trace-{attempt}")
         assert len(ids) == 1, f"split on attempt {attempt}: {ids}"
+
+
+def test_a_conversation_scope_crosses_a_process_boundary():
+    """Baggage is the copy that propagates; a contextvar never could.
+
+    `conversation()` used to set a ContextVar alongside the baggage and
+    consult it first. Injecting the context into carrier headers -- what
+    happens on every outbound request -- only ever carried the baggage
+    half, so the scope this function opens has to be visible there.
+    """
+    from opentelemetry import context as otel_context
+    from opentelemetry.baggage.propagation import W3CBaggagePropagator
+
+    carrier: dict[str, str] = {}
+    with introspection.conversation("conv_xyz"):
+        W3CBaggagePropagator().inject(carrier)
+    assert "conv_xyz" in carrier["baggage"]
+
+    # And it survives extraction on the far side.
+    extracted = W3CBaggagePropagator().extract(carrier)
+    token = otel_context.attach(extracted)
+    try:
+        assert resolve_conversation_id() == "conv_xyz"
+    finally:
+        otel_context.detach(token)
