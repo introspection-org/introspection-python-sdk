@@ -7,6 +7,7 @@ import pytest
 from dirty_equals import IsStr
 from inline_snapshot import snapshot
 from opentelemetry import baggage, context, trace
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -820,3 +821,48 @@ class TestOnEndHotPath:
             processor.shutdown()
 
         assert rendered["n"] == 0
+
+
+class TestServiceNameResolution:
+    """Where ``service.name`` on an exported span comes from.
+
+    The logs surface has always read ``INTROSPECTION_SERVICE_NAME``. This
+    processor did not, so a process that set the variable got named events
+    and spans still carrying whatever the provider was built with.
+    """
+
+    def _export_one(self, **kwargs) -> ReadableSpan:
+        exporter = InMemorySpanExporter()
+        processor = IntrospectionSpanProcessor(
+            advanced=AdvancedOptions(span_exporter=exporter), **kwargs
+        )
+        provider = TracerProvider(
+            resource=Resource({"service.name": "caller-provider"}),
+            id_generator=IncrementalIdGenerator(),
+        )
+        provider.add_span_processor(processor)
+        with provider.get_tracer("t").start_as_current_span("s") as span:
+            span.set_attribute("gen_ai.request.model", _MODEL)
+        processor.force_flush(1000)
+        (exported,) = exporter.get_finished_spans()
+        provider.shutdown()
+        return exported
+
+    def test_the_environment_names_the_service(self, monkeypatch):
+        monkeypatch.setenv("INTROSPECTION_SERVICE_NAME", "checkout-api")
+        exported = self._export_one()
+        assert exported.resource.attributes["service.name"] == "checkout-api"
+
+    def test_an_explicit_name_beats_the_environment(self, monkeypatch):
+        monkeypatch.setenv("INTROSPECTION_SERVICE_NAME", "from-env")
+        exported = self._export_one(service_name="from-argument")
+        assert exported.resource.attributes["service.name"] == "from-argument"
+
+    def test_naming_nothing_leaves_the_provider_alone(self, monkeypatch):
+        # The processor must not relabel a provider the caller built and
+        # named itself.
+        monkeypatch.delenv("INTROSPECTION_SERVICE_NAME", raising=False)
+        exported = self._export_one()
+        assert (
+            exported.resource.attributes["service.name"] == "caller-provider"
+        )

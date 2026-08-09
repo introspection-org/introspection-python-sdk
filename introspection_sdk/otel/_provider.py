@@ -15,6 +15,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.trace import ProxyTracerProvider
 
 from introspection_sdk.config import AdvancedOptions
+from introspection_sdk.otel.types import DEFAULT_SERVICE_NAME
 from introspection_sdk.utils import logger
 
 _SENTINEL_ATTR = "_introspection_exporter_attached"
@@ -51,7 +52,7 @@ def _get_or_create_tracer_provider(
         return current  # type: ignore[return-value]
 
     resolved_service = service_name or os.getenv(
-        "INTROSPECTION_SERVICE_NAME", "introspection"
+        "INTROSPECTION_SERVICE_NAME", DEFAULT_SERVICE_NAME
     )
     provider = TracerProvider(
         resource=Resource.create({"service.name": resolved_service}),

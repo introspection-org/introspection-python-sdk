@@ -49,6 +49,7 @@ from opentelemetry.semconv.resource import (
 from introspection_sdk.otel._endpoint import otlp_endpoint
 from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.otel.types import (
+    DEFAULT_SERVICE_NAME,
     Attr,
     Baggage,
     EventName,
@@ -142,7 +143,7 @@ class IntrospectionLogs:
         """
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
         self._service_name = service_name or os.getenv(
-            "INTROSPECTION_SERVICE_NAME", "introspection-client"
+            "INTROSPECTION_SERVICE_NAME", DEFAULT_SERVICE_NAME
         )
         self._base_otel_url = base_otel_url or os.getenv(
             "INTROSPECTION_BASE_OTEL_URL",

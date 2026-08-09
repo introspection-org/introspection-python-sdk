@@ -15,9 +15,19 @@ from typing import Any
 __all__ = [
     "Attr",
     "Baggage",
+    "DEFAULT_SERVICE_NAME",
     "EventName",
     "FeedbackProperties",
 ]
+
+#: ``service.name`` for telemetry this SDK emits when the caller names none.
+#:
+#: One constant for both streams. Spans used to default to ``"introspection"``
+#: while events defaulted to ``"introspection-client"``, so a single
+#: :func:`~introspection_sdk.otel.init` produced two services in the backend
+#: and nothing tied them together. Matches the Rust SDK's
+#: ``defaults::SERVICE_NAME``.
+DEFAULT_SERVICE_NAME = "introspection-client"
 
 
 class EventName:

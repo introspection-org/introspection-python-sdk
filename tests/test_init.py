@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import pytest
 from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 
 import introspection_sdk.otel as introspection
 from introspection_sdk.config import AdvancedOptions
 from introspection_sdk.otel import _reset_for_tests
+from introspection_sdk.otel.types import DEFAULT_SERVICE_NAME
 from introspection_sdk.testing import TestSpanExporter
 
 
@@ -116,3 +120,38 @@ def test_reinit_after_shutdown_exports_to_the_new_exporter():
 
     assert [s["name"] for s in second.get_finished_spans()] == ["chat"]
     assert first.get_finished_spans() == []
+
+
+def test_one_init_names_one_service_on_both_streams():
+    """Spans and events must reach the backend as the same service.
+
+    Spans used to default to "introspection" and events to
+    "introspection-client", so a single init() produced two services with
+    nothing tying them together.
+    """
+    # InMemorySpanExporter, not TestSpanExporter: the latter hands back
+    # dicts of name/attributes/context, which cannot carry a resource.
+    spans = InMemorySpanExporter()
+    logs = InMemoryLogRecordExporter()
+    introspection.init(
+        token="t",
+        advanced=AdvancedOptions(span_exporter=spans, log_exporter=logs),
+    )
+
+    tracer = introspection.get_tracer_provider().get_tracer("t")
+    with tracer.start_as_current_span("s") as span:
+        span.set_attribute("gen_ai.request.model", "claude-haiku-4-5")
+    introspection.track("evt")
+    introspection.get_tracer_provider().force_flush()
+    introspection.get_client().flush()
+
+    (exported_span,) = spans.get_finished_spans()
+    (exported_log,) = logs.get_finished_logs()
+    assert (
+        exported_span.resource.attributes["service.name"]
+        == DEFAULT_SERVICE_NAME
+    )
+    assert (
+        exported_log.resource.attributes["service.name"]
+        == DEFAULT_SERVICE_NAME
+    )

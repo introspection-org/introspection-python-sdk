@@ -140,9 +140,11 @@ class IntrospectionSpanProcessor(SpanProcessor):
     Args:
         token: Introspection API token. Falls back to the
             ``INTROSPECTION_TOKEN`` environment variable.
-        service_name: Optional service name. Sets the ``service.name``
+        service_name: Optional service name (env:
+            ``INTROSPECTION_SERVICE_NAME``). Sets the ``service.name``
             resource attribute so it appears correctly as the service name
-            in the Introspection backend.
+            in the Introspection backend. Left unset, the provider's own
+            resource is used unchanged.
         advanced: Optional :class:`AdvancedOptions` for custom exporters,
             headers, batch settings, etc.
 
@@ -200,7 +202,15 @@ class IntrospectionSpanProcessor(SpanProcessor):
                 headers=headers,
             )
 
-        self._service_name = service_name
+        # Left as ``None`` when nothing supplies one, so an unset option
+        # leaves a provider the caller already labelled alone. Reading the
+        # env var here is what makes the two streams agree: the logs surface
+        # has always honoured it, so a process that set it got named events
+        # and anonymous spans. JS and Rust read it in their span processors
+        # for the same reason.
+        self._service_name = service_name or os.getenv(
+            "INTROSPECTION_SERVICE_NAME"
+        )
 
         # Store exporter for debugging
         self._span_exporter = span_exporter

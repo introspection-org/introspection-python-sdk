@@ -89,8 +89,9 @@ def init(
 
     Args:
         token: Auth token. Falls back to ``INTROSPECTION_TOKEN``.
-        service_name: Service name for spans. Falls back to
-            ``INTROSPECTION_SERVICE_NAME``, then ``"introspection"``.
+        service_name: Service name for spans *and* events. Falls back to
+            ``INTROSPECTION_SERVICE_NAME``, then
+            :data:`~introspection_sdk.otel.types.DEFAULT_SERVICE_NAME`.
         base_url: API base URL. Falls back to ``INTROSPECTION_BASE_OTEL_URL``.
         tracer_provider: Use this provider instead of creating/finding one.
         advanced: Advanced configuration (custom exporter, headers, etc.).
