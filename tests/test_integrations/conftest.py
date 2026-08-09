@@ -1,9 +1,9 @@
 """Isolate these tests from any globally-registered TracerProvider.
 
 ``_get_or_create_tracer_provider`` returns the process-global provider when
-one is already registered. Other suites in this repo (the logfire-backed
-framework tests) register one and OTel refuses to replace it, so without a
-reset the get-or-create path here would never run and the assertions would
+one is already registered. Any suite that registers a provider before these
+tests run would win, because OTel refuses to replace one, so without a reset
+the get-or-create path here would never run and the assertions would
 describe someone else's provider.
 """
 

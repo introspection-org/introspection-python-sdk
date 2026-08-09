@@ -17,58 +17,12 @@ from opentelemetry.sdk.trace.export import (
 )
 
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.converters.logfire import (
-    convert_logfire_to_genai,
-    is_logfire_span,
-)
-from introspection_sdk.converters.openinference import (
-    ConvertedReadableSpan,
-    convert_openinference_to_genai,
-    is_openinference_span,
-)
 from introspection_sdk.otel.conversation import resolve_conversation_id
 from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.utils import logger, platform_is_emscripten
 from introspection_sdk.version import VERSION
 
 __all__ = ["IntrospectionSpanProcessor"]
-
-_SPAN_NAME_TO_SYSTEM: tuple[tuple[str, str], ...] = (
-    ("ollama", "ollama"),
-    ("anthropic", "anthropic"),
-    ("gemini", "google"),
-    ("groq", "groq"),
-    ("mistral", "mistral"),
-    ("cohere", "cohere"),
-    ("bedrock", "aws_bedrock"),
-    ("vertexai", "google"),
-    ("openai", "openai"),
-)
-
-
-def _infer_system_from_span_name(span_name: str | None) -> str | None:
-    """Infer gen_ai.system from span name when llm.system is absent.
-
-    Checks the lowercase span name against known provider keywords.
-    """
-    if not span_name:
-        return None
-    lower = span_name.lower()
-    for keyword, system in _SPAN_NAME_TO_SYSTEM:
-        if keyword in lower:
-            return system
-    return None
-
-
-# Generic framework wrapper span names to skip when walking up the span
-# tree to find the actual agent/node name.
-_WRAPPER_SPAN_NAMES: frozenset[str] = frozenset(
-    {
-        # LlamaIndex low-level wrappers — the actual LLM call is the child span
-        "Ollama.predict",
-        "Ollama.complete",
-    }
-)
 
 
 class _AttributeOverrideSpan(ReadableSpan):
@@ -154,7 +108,7 @@ class _AttributeOverrideSpan(ReadableSpan):
 class IntrospectionSpanProcessor(SpanProcessor):
     """Span processor that sends traces to the Introspection API.
 
-    Intercepts OpenTelemetry spans, converts OpenInference or Anthropic logfire
+    Intercepts OpenTelemetry spans, stamps identity baggage onto them
     formats to OTel Gen AI semantic conventions, and exports them via OTLP.
 
     Args:
@@ -224,8 +178,6 @@ class IntrospectionSpanProcessor(SpanProcessor):
             )
 
         self._service_name = service_name
-        # span_id -> (name, parent_span_id) for agent name propagation
-        self._span_names: dict[int, tuple[str, int | None]] = {}
 
         # Store exporter for debugging
         self._span_exporter = span_exporter
@@ -254,17 +206,13 @@ class IntrospectionSpanProcessor(SpanProcessor):
         logger.debug(
             f"Starting introspection span: {span.name} (trace_id={span.context.trace_id:x})"
         )
-        if span.context:
-            parent_id = span.parent.span_id if span.parent else None
-            self._span_names[span.context.span_id] = (span.name, parent_id)
         self._span_processor.on_start(span, parent_context)
 
     def on_end(self, span: ReadableSpan) -> None:
         """Called when a span is ended.
 
-        Detects the span format (OpenInference or Anthropic logfire) and
-        converts its attributes to OTel Gen AI semantic conventions before
-        forwarding to the underlying exporter.
+        Stamps conversation / identity baggage onto the span and forwards it
+        to the underlying exporter.
 
         Args:
             span: The completed span to process.
@@ -275,47 +223,7 @@ class IntrospectionSpanProcessor(SpanProcessor):
         if not span.context.trace_flags.sampled:
             return
 
-        scope = span.instrumentation_scope
-        scope_name = scope.name if scope else None
-
-        extra_attrs: dict[str, int] = {}
-
-        if is_openinference_span(scope_name):
-            converted_attrs = convert_openinference_to_genai(span.attributes)
-            # Inject agent name from span tree walk-up if not already present
-            if converted_attrs.agent_name is None:
-                parent_span_id = span.parent.span_id if span.parent else None
-                agent_name = self._find_agent_name(parent_span_id)
-                if agent_name:
-                    converted_attrs.agent_name = agent_name
-                    logger.debug(
-                        f"Injected agent_name={agent_name!r} for span {span.name!r}"
-                    )
-            # For LLM spans, filter out raw llm./input./output.* (replaced by
-            # structured gen_ai.*). For TOOL/CHAIN/etc. spans, only filter llm.*
-            # so that input.value (args) and output.value (result) are preserved.
-            span_kind = (span.attributes or {}).get("openinference.span.kind")
-            if span_kind == "LLM":
-                # Infer gen_ai.system from span name when the instrumentor
-                # doesn't emit llm.system (e.g. LlamaIndex + Ollama).
-                if converted_attrs.system is None:
-                    converted_attrs.system = _infer_system_from_span_name(
-                        span.name
-                    )
-                span = ConvertedReadableSpan(span, converted_attrs)
-            else:
-                span = ConvertedReadableSpan(
-                    span, converted_attrs, filter_prefixes=("llm.",)
-                )
-        elif is_logfire_span(span.attributes):
-            converted_attrs = convert_logfire_to_genai(span.attributes)
-            span = ConvertedReadableSpan(
-                span,
-                converted_attrs,
-                filter_prefixes=("request_data", "response_data"),
-            )
-
-        span = self._enrich_span(span, extra_override=extra_attrs or None)
+        span = self._enrich_span(span)
         self._span_processor.on_end(span)
 
     def _enrich_span(
@@ -361,30 +269,6 @@ class IntrospectionSpanProcessor(SpanProcessor):
             span = _AttributeOverrideSpan(span, existing, resource=resource)
 
         return span
-
-    def _find_agent_name(self, span_id: int | None) -> str | None:
-        """Walk up the span tree to find the first non-wrapper span name.
-
-        Args:
-            span_id: The span_id to start walking up from.
-
-        Returns:
-            The first non-wrapper ancestor span name, or ``None`` if not found.
-        """
-        visited: set[int] = set()
-        current_id = span_id
-        while current_id is not None:
-            if current_id in visited:
-                break
-            visited.add(current_id)
-            entry = self._span_names.get(current_id)
-            if entry is None:
-                break
-            name, parent_id = entry
-            if name not in _WRAPPER_SPAN_NAMES:
-                return name
-            current_id = parent_id
-        return None
 
     def shutdown(self) -> None:
         """Shut down the underlying batch span processor."""

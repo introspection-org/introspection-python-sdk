@@ -1,25 +1,22 @@
 # Advanced setup
 
-> **Experimental support for other frameworks.**
+Escape hatches for callers who need more control than `init()` gives them.
 
-This page documents experimental framework-specific APIs.
+## Custom integrations
 
-## Controlling auto-discovery
-
-Install only specific integrations, or none:
+The SDK ships no built-in integrations, so auto-discovery finds nothing. If
+you have written your own `Integration`, pass it explicitly:
 
 ```python
 import introspection_sdk as introspection
-from introspection_sdk.integrations.anthropic import AnthropicIntegration
+from my_app.telemetry import MyFrameworkIntegration
 
-# Only Anthropic, nothing else auto-detected.
-introspection.init(auto_discover=False, integrations=[AnthropicIntegration])
+introspection.init(auto_discover=False, integrations=[MyFrameworkIntegration])
 ```
 
 ## Bringing your own TracerProvider
 
-If you already manage an OpenTelemetry `TracerProvider` (e.g. via Logfire or
-your own setup), pass it in. `init()` attaches the Introspection exporter to it
+If you already manage an OpenTelemetry `TracerProvider`, pass it in. `init()` attaches the Introspection exporter to it
 instead of creating its own; you keep ownership of its lifecycle.
 
 ```python
@@ -34,14 +31,17 @@ Each processor works on its own without `init()`. Construct it directly when you
 want explicit control. (Preferred path is `init()`; these remain for custom
 setups and backward compatibility.)
 
-### Logfire / OpenInference span processor
+### Span processor
+
+Attach it to whatever provider you already have; every `gen_ai.*` span that
+reaches the provider is exported to Introspection.
 
 ```python
-import logfire
+from opentelemetry.sdk.trace import TracerProvider
 from introspection_sdk import IntrospectionSpanProcessor
 
-logfire.configure(additional_span_processors=[IntrospectionSpanProcessor()])
-logfire.instrument_openai()
+provider = TracerProvider()
+provider.add_span_processor(IntrospectionSpanProcessor())
 ```
 
 ## Sharing one provider across `init()` and a standalone processor

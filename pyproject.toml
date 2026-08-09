@@ -35,27 +35,10 @@ test = [
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.15.0",
-    "pytest-dotenv>=0.5.2",
-    "pytest-recording>=0.13.4",
     "pydantic>=2.12.0",
     "inline-snapshot>=0.31.0",
     "dirty-equals>=0.11.0",
     "responses>=0.25.8",
-    "openai>=2.30.0",
-    "anthropic>=0.85.0",
-    "pydantic-ai>=1.68.0",
-]
-# Convenience installs for the instrumentation libraries whose spans
-# `IntrospectionSpanProcessor` converts on ingest. Detection is by span
-# shape, not by how the package was installed; these extras are just a
-# one-command setup.
-logfire = ["logfire>=4.0.0"]
-pydantic-ai = ["pydantic-ai>=1.68.0"]
-
-# Convenience bundle for greenfield projects / CI smoke tests.
-all = [
-    "logfire>=4.0.0",
-    "pydantic-ai>=1.68.0",
 ]
 
 [tool.hatch.metadata]

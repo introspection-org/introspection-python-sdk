@@ -424,8 +424,8 @@ class TestIntrospectionSpanProcessor:
 
         provider.shutdown()
 
-    def test_converted_openinference_span_preserves_parent(self):
-        """OpenInference conversion should not drop parent span context."""
+    def test_exported_span_preserves_parent(self):
+        """The exported copy must not drop parent span context."""
         exporter = InMemorySpanExporter()
 
         processor = IntrospectionSpanProcessor(
@@ -439,19 +439,15 @@ class TestIntrospectionSpanProcessor:
 
         provider = TracerProvider(id_generator=IncrementalIdGenerator())
         provider.add_span_processor(processor)
-        tracer = provider.get_tracer("openinference.instrumentation.test")
+        tracer = provider.get_tracer("manual.instrumentation.test")
 
+        # The processor forwards an enriched *copy* of each span, so the
+        # parent/trace linkage has to survive the copy.
         with tracer.start_as_current_span("agent") as parent:
-            parent.set_attribute("openinference.span.kind", "CHAIN")
+            parent.set_attribute("gen_ai.operation.name", "invoke_agent")
             with tracer.start_as_current_span("chat") as child:
-                child.set_attribute("openinference.span.kind", "LLM")
-                child.set_attribute("llm.model_name", "gpt-test")
-                child.set_attribute(
-                    "llm.input_messages.0.message.role", "user"
-                )
-                child.set_attribute(
-                    "llm.input_messages.0.message.content", "hi"
-                )
+                child.set_attribute("gen_ai.operation.name", "chat")
+                child.set_attribute("gen_ai.request.model", "gpt-test")
 
         processor.force_flush(1000)
 
@@ -653,6 +649,7 @@ class TestBaggagePropagation:
             processor.force_flush(5000)
 
             request = rsps.calls[0].request
+            assert request.headers is not None
             assert request.headers["Authorization"] == "Bearer my-secret-token"
             assert "introspection-sdk" in request.headers["User-Agent"]
             assert request.headers["X-Custom"] == "custom-value"

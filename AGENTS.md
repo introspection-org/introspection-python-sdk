@@ -22,7 +22,7 @@ ever again ending up in the state described in
    must keep total coverage at or above the floor, and the floor goes up as
    we close gaps. Do not lower it to make CI green.
 3. **Every new public surface ships with tests in the same PR.** If you add
-   an instrumentor, a converter, a callback handler, or a public method, the
+   an instrumentor or a public method, the
    PR must include cassettes and assertions for the happy path, at least one
    tool/streaming/multi-turn variant where applicable, and at least one error
    path.
@@ -79,10 +79,8 @@ For new HTTP-backed tests:
 | Area | Floor today | Target |
 | --- | --- | --- |
 | `processors/span_processor.py` | 89% | 95% |
-| `converters/openinference.py` | 62% | 90% |
-| `converters/genai_to_openinference.py` | 25% | 90% |
 | `client.py` | 26% | 90% |
-| **Total** | **60%** (ratchet floor) | **95%** |
+| **Total** | **80%** (ratchet floor) | **95%** |
 
 If you touch a file, leave its coverage equal or higher than where you
 found it. The ratchet check in CI will catch regressions; the per-file
@@ -90,17 +88,17 @@ targets above are guidance for which files to prioritise.
 
 ## When you add a new integration
 
-The Python SDK ships no framework integrations. Pi is the supported agent
-framework and is instrumented by the JavaScript SDK; everything else reaches
-Introspection through `IntrospectionSpanProcessor`, which converts Logfire
-and OpenInference spans on ingest, or through manual OTel instrumentation.
+The Python SDK ships no framework integrations and no span converters. Pi is
+the supported agent framework and is instrumented by the JavaScript SDK;
+everything else emits OTel GenAI semconv spans and attaches
+`IntrospectionSpanProcessor`.
 
-Adding a new ingest converter? Land all of these in the same PR:
+Adding a new public surface? Land all of these in the same PR:
 
 - [ ] Implementation in `introspection_sdk/`
-- [ ] Unit/recording tests under `tests/framework/`
+- [ ] Unit tests under `tests/`
 - [ ] A working example under `examples/introspection_examples/<area>/`
-- [ ] A row added to the README integration table
+- [ ] A row added to the README table
 
 Single-agent happy-path is not enough. If the SDK supports subagents,
 handoffs, streaming, or tools, the integration must have a test for each.
