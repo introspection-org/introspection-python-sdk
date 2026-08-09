@@ -18,7 +18,7 @@ updates:
       include: "scope"
     # Restrict alerts/PRs to deps that actually ship to SDK consumers — main
     # `[project] dependencies` plus the user-facing `[project.optional-dependencies]`
-    # extras (langfuse / arize / braintrust / openai-agents). Excludes the
+    # extras (langfuse / arize / braintrust / claude-agent). Excludes the
     # `test` and `dev` extras, which are CI-only and not part of the published
     # surface area.
     allow:
@@ -39,7 +39,6 @@ updates:
         applies-to: version-updates
         patterns:
           - "openai"
-          - "openai-agents"
           - "anthropic"
           - "claude-agent-sdk"
           - "pydantic-ai"
@@ -47,7 +46,6 @@ updates:
         applies-to: security-updates
         patterns:
           - "openai"
-          - "openai-agents"
           - "anthropic"
           - "claude-agent-sdk"
           - "pydantic-ai"
