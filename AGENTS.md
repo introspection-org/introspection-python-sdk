@@ -75,10 +75,9 @@ targets above are guidance for which files to prioritise.
 
 ## When you add a new integration
 
-The Python SDK ships no framework integrations and no span converters. Pi is
-the supported agent framework and is instrumented by the JavaScript SDK;
-everything else emits OTel GenAI semconv spans and attaches
-`IntrospectionSpanProcessor`.
+This SDK ships no framework integrations and no span converters. A framework
+emits OTel GenAI semconv spans and attaches `IntrospectionSpanProcessor`;
+there is no per-framework code here to add.
 
 Adding a new public surface? Land all of these in the same PR:
 
