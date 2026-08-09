@@ -150,11 +150,9 @@ envelope metadata (counts, cursors):
 ```python
 # Stream every summary across all pages.
 async for summary in runner.conversations.list(limit=20):
-    response = await runner.conversations.retrieve(
-        summary.conversation_id or summary.trace_id
-    )
-    if response is not None:
-        print(response.model, len(response.input_messages))
+    span = await runner.conversations.retrieve(summary.id)
+    if span is not None:
+        print(span.model, len(span.input_messages))
 
 # Or just the first page, with totals.
 first = await runner.files.list(include_total=True)
@@ -189,8 +187,8 @@ The token is not auto-refreshed — re-mint once it expires
 When you're a **server broker** handing credentials to a browser client, mint
 the token directly to also read `dp_url` (the Data Plane endpoint the Control
 Plane resolved for the project) and resolve the runtime slug to a concrete
-`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser SDK talks
-to the Data Plane without a hardcoded URL:
+`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser talks to
+the Data Plane without a hardcoded URL:
 
 ```python
 from introspection_sdk import IntrospectionClient, service_account_token
@@ -267,6 +265,9 @@ export INTROSPECTION_DEV_TARGET="roland"                            # optional
 # OTel (IntrospectionLogs + span processors) — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional
 export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
+
+# SDK diagnostics: error, warn, info, debug. Default: warn.
+export INTROSPECTION_LOG_LEVEL="debug"                              # optional
 ```
 
 ### Sharing a Runtime with another developer
