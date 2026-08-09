@@ -2,16 +2,36 @@
 
 from __future__ import annotations
 
+import pytest
+from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from testing import TestSpanExporter
 
 import introspection_sdk.otel as introspection
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.otel.integrations._provider import (
+from introspection_sdk.otel._provider import (
     _SENTINEL_ATTR,
     _attach_exporter,
     _get_or_create_tracer_provider,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_global_tracer_provider(monkeypatch):
+    """Isolate these tests from any globally-registered TracerProvider.
+
+    ``_get_or_create_tracer_provider`` returns the process-global provider
+    when one is already registered, and OTel refuses to replace one. Without
+    a reset, whichever suite registered first would win and the get-or-create
+    path under test would never run.
+    """
+    monkeypatch.setattr(
+        trace,
+        "_TRACER_PROVIDER_SET_ONCE",
+        trace._TRACER_PROVIDER_SET_ONCE.__class__(),
+    )
+    monkeypatch.setattr(trace, "_TRACER_PROVIDER", None)
+    yield
 
 
 def _processor_count(provider: TracerProvider) -> int:

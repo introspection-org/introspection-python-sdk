@@ -25,15 +25,10 @@ from typing import Any
 from opentelemetry.sdk.trace import TracerProvider
 
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.otel.conversation import conversation
-from introspection_sdk.otel.integrations import (
-    discover_integrations,
-    setup_integrations,
-)
-from introspection_sdk.otel.integrations._provider import (
+from introspection_sdk.otel._provider import (
     _get_or_create_tracer_provider,
 )
-from introspection_sdk.otel.integrations.base import DidNotEnable, Integration
+from introspection_sdk.otel.conversation import conversation
 from introspection_sdk.otel.logs import IntrospectionLogs
 from introspection_sdk.otel.processors.span_processor import (
     IntrospectionSpanProcessor,
@@ -57,8 +52,6 @@ __all__ = [
     "get_client",
     "get_tracer_provider",
     "conversation",
-    "Integration",
-    "DidNotEnable",
     "track",
     "feedback",
     "identify",
@@ -77,14 +70,11 @@ def init(
     service_name: str | None = None,
     base_url: str | None = None,
     tracer_provider: TracerProvider | None = None,
-    integrations: list[type[Integration]] | None = None,
-    auto_discover: bool = True,
     advanced: AdvancedOptions | None = None,
 ) -> TracerProvider:
-    """Detect installed LLM frameworks and wire them into one shared provider.
+    """Build (or adopt) the shared provider and start the analytics stream.
 
-    Idempotent: repeated calls return the already-configured provider without
-    re-installing integrations.
+    Idempotent: repeated calls return the already-configured provider.
 
     Args:
         token: Auth token. Falls back to ``INTROSPECTION_TOKEN``.
@@ -92,9 +82,6 @@ def init(
             ``INTROSPECTION_SERVICE_NAME``, then ``"introspection"``.
         base_url: API base URL. Falls back to ``INTROSPECTION_BASE_OTEL_URL``.
         tracer_provider: Use this provider instead of creating/finding one.
-        integrations: Extra integrations to install beyond auto-discovery.
-        auto_discover: Install every importable built-in integration
-            (default True). Set False to install only ``integrations``.
         advanced: Advanced configuration (custom exporter, headers, etc.).
     """
     if _state["provider"] is not None:
@@ -111,13 +98,6 @@ def init(
         advanced=resolved_advanced,
         service_name=service_name,
     )
-
-    to_install: list[type[Integration]] = []
-    if auto_discover:
-        to_install.extend(discover_integrations())
-    if integrations:
-        to_install.extend(integrations)
-    setup_integrations(to_install, tracer_provider=provider)
 
     # The OTel ``track`` / ``feedback`` / ``identify`` surface lives on
     # IntrospectionLogs (logs are a separate OTLP stream from spans).

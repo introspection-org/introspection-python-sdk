@@ -2,18 +2,6 @@
 
 Escape hatches for callers who need more control than `init()` gives them.
 
-## Custom integrations
-
-The SDK ships no built-in integrations, so auto-discovery finds nothing. If
-you have written your own `Integration`, pass it explicitly:
-
-```python
-import introspection_sdk as introspection
-from my_app.telemetry import MyFrameworkIntegration
-
-introspection.init(auto_discover=False, integrations=[MyFrameworkIntegration])
-```
-
 ## Bringing your own TracerProvider
 
 If you already manage an OpenTelemetry `TracerProvider`, pass it in. `init()` attaches the Introspection exporter to it

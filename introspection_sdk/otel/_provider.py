@@ -1,9 +1,8 @@
 """The shared TracerProvider used by ``init()``: built once, exported once.
 
 All spans on the shared provider flow through a single
-:class:`IntrospectionSpanProcessor`, which converts OpenInference/Logfire spans
-to gen_ai semconv, stamps conversation/identity baggage onto every span
-and exports them.
+:class:`IntrospectionSpanProcessor`, which stamps conversation/identity
+baggage onto every span and exports them.
 """
 
 from __future__ import annotations
