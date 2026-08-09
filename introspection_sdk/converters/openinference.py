@@ -112,6 +112,8 @@ def extract_token_usage(attrs: Attributes | None) -> dict[str, int]:
         ]
 
     return usage
+
+
 def extract_response_id(attrs: Attributes | None) -> str | None:
     """Extract ``gen_ai.response.id`` from OpenInference attributes.
 
