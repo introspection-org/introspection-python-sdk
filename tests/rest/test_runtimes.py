@@ -10,6 +10,7 @@ from uuid import UUID
 import httpx
 import pytest
 
+from introspection_sdk import IntrospectionAPIError, NotFoundError
 from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner import Runner
 
@@ -112,10 +113,20 @@ def test_handle_resolves_runtime_via_list(fake_api: FakeAPI):
 
 
 def test_handle_runtime_not_found_raises(fake_api: FakeAPI):
+    """A selector that matches nothing is a 404, not a bare LookupError.
+
+    A caller asking for a runtime that is not there gets the same error
+    whichever way they ask -- `get()` by id, or a selector resolved on the
+    list route -- so `except NotFoundError` covers both. A builtin
+    `LookupError` slipped past every `except IntrospectionAPIError` a
+    caller had written for exactly this case.
+    """
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
     handle = _runtimes(fake_api)("missing")
-    with pytest.raises(LookupError, match="No runtime"):
+    with pytest.raises(NotFoundError, match="No runtime") as excinfo:
         _ = handle.runtime_id
+    assert excinfo.value.status_code == 404
+    assert isinstance(excinfo.value, IntrospectionAPIError)
 
 
 def test_handle_takes_the_newest_of_several_versions(fake_api: FakeAPI):
@@ -150,8 +161,10 @@ def test_resolve_returns_runtime(fake_api: FakeAPI):
 
 def test_resolve_not_found_raises(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/runtimes", json_body=paginated([]))
-    with pytest.raises(LookupError, match="No runtime"):
+    with pytest.raises(NotFoundError, match="No runtime") as excinfo:
         _runtimes(fake_api).resolve("missing")
+    assert excinfo.value.status_code == 404
+    assert excinfo.value.code == "not_found"
 
 
 def test_resolve_takes_the_newest_of_several_versions(fake_api: FakeAPI):
