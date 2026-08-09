@@ -1,6 +1,6 @@
 name: Examples
 
-# Examples burn LLM tokens, so they're NOT run on every push.
+# Examples start real runtime tasks, so they're NOT run on every push.
 #
 # Triggers:
 #   - workflow_dispatch  → manual run from the Actions UI / `gh workflow run`
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       run_examples:
-        description: "Run the OTel examples"
+        description: "Run the REST API examples"
         required: false
         default: false
         type: boolean
@@ -48,15 +48,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-uv-examples-
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-
       - name: Run examples
         if: inputs.run_examples
         working-directory: examples
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
           INTROSPECTION_BASE_URL: ${{ vars.INTROSPECTION_BASE_URL }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: ./introspection_examples/otel/run_all.sh
+        run: |
+          uv run -m introspection_examples.api.runtimes
+          uv run -m introspection_examples.api.async_runtimes
