@@ -25,11 +25,11 @@ from introspection_sdk import IntrospectionLogs
 logs = IntrospectionLogs(
     token="intro_xxx",        # or env: INTROSPECTION_TOKEN
     service_name="my-service",
-    base_url="https://otel.introspection.dev",  # or env: INTROSPECTION_BASE_OTEL_URL
+    base_otel_url="https://otel.introspection.dev",  # or env: INTROSPECTION_BASE_OTEL_URL
 )
 
 with logs.identify("user_123", traits={"plan": "pro"}):
-    with logs.conversation("conv_456", previous_response_id="msg_123"):
+    with logs.set_conversation("conv_456", previous_response_id="msg_123"):
         logs.feedback("thumbs_up", comments="Great response!")
 
 logs.track("checkout_completed", {"amount": 42})
@@ -50,11 +50,11 @@ logs.shutdown()
 
 | Method | Description |
 | ------ | ----------- |
-| `conversation(id?, previous_response_id?)` | Set conversation context |
-| `with_user_id(id)` | Set user context |
-| `with_agent(name, id?)` | Set agent context |
-| `with_anonymous_id(id)` | Set anonymous ID |
-| `with_baggage(**values)` | Set arbitrary baggage values |
+| `set_conversation(id?, previous_response_id?)` | Set conversation context |
+| `set_user_id(id)` | Set user context |
+| `set_agent(name, id?)` | Set agent context |
+| `set_anonymous_id(id)` | Set anonymous ID |
+| `set_baggage(**values)` | Set arbitrary baggage values |
 
 ---
 
@@ -73,10 +73,11 @@ from opentelemetry.sdk.trace import TracerProvider
 from introspection_sdk import IntrospectionSpanProcessor
 
 provider = TracerProvider()
-provider.add_span_processor(IntrospectionSpanProcessor())
+provider.add_span_processor(IntrospectionSpanProcessor(token="intro_xxx"))
 ```
 
-Framework-specific instrumentors are experimental.
+The SDK ships no framework instrumentors. Emit `gen_ai.*` spans yourself (or
+from whatever library already emits them) and the processor exports them.
 
 ## Environment variables (OTel)
 

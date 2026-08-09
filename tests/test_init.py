@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
 from testing import TestSpanExporter
 
 import introspection_sdk.otel as introspection
@@ -15,7 +16,14 @@ def setup_function():
 
 
 def _advanced():
-    return AdvancedOptions(span_exporter=TestSpanExporter())
+    # Both exporters must be in-memory. init() always builds an
+    # IntrospectionLogs, so leaving log_exporter unset points the logs stream
+    # at the production OTLP endpoint and the atexit flush ships whatever
+    # these tests tracked.
+    return AdvancedOptions(
+        span_exporter=TestSpanExporter(),
+        log_exporter=InMemoryLogRecordExporter(),
+    )
 
 
 def test_init_is_idempotent():

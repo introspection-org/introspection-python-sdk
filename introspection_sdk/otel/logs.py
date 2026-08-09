@@ -21,6 +21,8 @@ Example::
 
 from __future__ import annotations
 
+import uuid
+
 __all__ = ["IntrospectionLogs"]
 
 import json
@@ -51,7 +53,6 @@ from introspection_sdk.otel.types import (
     EventName,
     FeedbackProperties,
 )
-from introspection_sdk.types import _generate_message_id
 from introspection_sdk.utils import logger
 from introspection_sdk.version import VERSION
 
@@ -205,8 +206,6 @@ class IntrospectionLogs:
             "introspection-sdk",
             VERSION,
         )
-
-        self._traits: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # Attribute builders
@@ -434,9 +433,6 @@ class IntrospectionLogs:
         anonymous_id: str | None = None,
         event_id: str | None = None,
     ) -> Iterator[None]:
-        if traits:
-            self._traits.update(traits)
-
         baggage_values: dict[str, str] = {Baggage.USER_ID: user_id}
         if anonymous_id:
             baggage_values[Baggage.ANONYMOUS_ID] = anonymous_id
@@ -459,7 +455,6 @@ class IntrospectionLogs:
     # ------------------------------------------------------------------
 
     def reset(self) -> None:
-        self._traits = {}
         logger.debug("IntrospectionLogs state reset")
 
     def flush(self, timeout_ms: int = 30000) -> bool:
@@ -469,3 +464,13 @@ class IntrospectionLogs:
     def shutdown(self) -> None:
         logger.info("Shutting down IntrospectionLogs")
         self._logger_provider.shutdown()
+
+
+def _generate_message_id() -> str:
+    """Generate a unique event ID.
+
+    Format: intro_event_<timestamp>-<random8>
+    """
+    timestamp = hex(int(time.time() * 1000))[2:]
+    random_part = uuid.uuid4().hex[:8]
+    return f"intro_event_{timestamp}-{random_part}"

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import uuid
+from collections import OrderedDict
 from collections.abc import Iterator
 from contextvars import ContextVar
 
@@ -22,8 +23,12 @@ _current_conversation_id: ContextVar[str | None] = ContextVar(
 )
 
 # Stable per-trace fallback ids so spans in one trace share an id even when no
-# explicit conversation() scope is active.
-_trace_fallback: dict[str, str] = {}
+# explicit conversation() scope is active. Bounded and FIFO-evicted: a
+# long-lived process sees one entry per trace, so an unbounded dict here is a
+# slow leak. Traces are short-lived, so the oldest entry is also the one least
+# likely to still be receiving spans.
+_TRACE_FALLBACK_MAX = 4096
+_trace_fallback: OrderedDict[str, str] = OrderedDict()
 
 
 def new_conversation_id() -> str:
@@ -49,7 +54,14 @@ def resolve_conversation_id(*, trace_key: str | None = None) -> str:
         return from_baggage
 
     if trace_key is not None:
-        return _trace_fallback.setdefault(trace_key, new_conversation_id())
+        existing = _trace_fallback.get(trace_key)
+        if existing is not None:
+            return existing
+        cid = new_conversation_id()
+        _trace_fallback[trace_key] = cid
+        while len(_trace_fallback) > _TRACE_FALLBACK_MAX:
+            _trace_fallback.popitem(last=False)
+        return cid
     return new_conversation_id()
 
 

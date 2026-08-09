@@ -7,7 +7,7 @@ place.
 
 Read this before opening a PR. The whole point of this document is to avoid
 ever again ending up in the state described in
-[`docs/test-quality-audit-plan.md`](docs/test-quality-audit-plan.md).
+the coverage ratchet in `pyproject.toml`.
 
 ## Non-negotiables
 
@@ -44,7 +44,7 @@ uv run pytest tests/ --cov=introspection_sdk --cov-report=term-missing
 To enforce the coverage floor locally before pushing:
 
 ```shell
-uv run pytest tests/ --cov=introspection_sdk --cov-fail-under=60
+uv run pytest tests/ --cov=introspection_sdk --cov-fail-under=80
 ```
 
 `prek run --hook-stage pre-push coverage` runs the same check on `git push`
@@ -52,25 +52,14 @@ once you have `prek install --hook-type pre-push` set up.
 
 ## Recording cassettes
 
-For new HTTP-backed tests:
+For new HTTP-backed tests, pin the exchange with `responses` (see
+`tests/rest/`): register the request the SDK should make and the body the
+server would return, then assert on both the outgoing request (method, path,
+params, headers, body) and the parsed result. No live calls, no API keys, and
+nothing to scrub.
 
-1. Add the test with `@pytest.mark.vcr()`.
-2. Make sure the appropriate API key is set in your environment
-   (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …).
-3. Run once with `--record-mode=once`:
-
-   ```shell
-   uv run pytest tests/path/to/new_test.py --record-mode=once
-   ```
-
-4. Inspect the generated cassette under `tests/<area>/cassettes/<test_file>/`
-   and confirm:
-   - No real API keys, bearer tokens, or session IDs leaked through. The
-     scrubbers in `tests/conftest.py` cover the common patterns; if you add
-     a new provider, extend `SENSITIVE_HEADERS` and `_SECRET_PATTERNS`.
-   - The interaction is minimal — trim unused turns rather than recording
-     huge transcripts.
-5. Commit the cassette alongside the test.
+This SDK no longer records VCR cassettes — `pytest-recording` is not a
+dependency. Real-API drift is caught by the `-m integration` job in `ci.yml`.
 
 ## Coverage expectations per area
 
@@ -109,7 +98,7 @@ Examples are documentation, not scratch space. Each example must:
   command documented in its module docstring.
 - `load_dotenv()` and check for required env vars with a helpful error.
 - Use `IntrospectionClient` consistently with the patterns in the README.
-- Be added to `examples/run_all.sh` so the nightly examples workflow
+- Be invoked by `.github/workflows/examples.yml` so the examples workflow
   exercises it.
 
 ## Linting and formatting
@@ -125,7 +114,7 @@ These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 
 ## Commits and PRs
 
-- Keep PRs focused — one phase of `docs/test-quality-audit-plan.md` per PR
+- Keep PRs focused — one area per PR
   where possible.
 - Commit messages: imperative present tense, scoped prefix
   (`feat(otel):`, `test(claude):`, `docs:`, `ci:`).
@@ -134,6 +123,6 @@ These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 
 ## When in doubt
 
-Read [`docs/test-quality-audit-plan.md`](docs/test-quality-audit-plan.md).
+Read the coverage ratchet in `pyproject.toml`.
 If you are an agent and the user's request conflicts with the rules above,
 flag the conflict explicitly instead of silently relaxing a rule.

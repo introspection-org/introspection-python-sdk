@@ -167,7 +167,10 @@ class IntrospectionSpanProcessor(SpanProcessor):
             if base_url.endswith("/v1/traces"):
                 endpoint = base_url
             else:
-                endpoint = urljoin(base_url, "/v1/traces")
+                # Relative join, matching IntrospectionLogs: an absolute
+                # "/v1/traces" would discard a path prefix on the base URL
+                # (…/otlp → …/v1/traces instead of …/otlp/v1/traces).
+                endpoint = urljoin(base_url.rstrip("/") + "/", "v1/traces")
             logger.info(
                 "Initializing introspection with endpoint: %s", endpoint
             )
@@ -226,15 +229,9 @@ class IntrospectionSpanProcessor(SpanProcessor):
         span = self._enrich_span(span)
         self._span_processor.on_end(span)
 
-    def _enrich_span(
-        self,
-        span: ReadableSpan,
-        extra_override: dict | None = None,
-    ) -> ReadableSpan:
+    def _enrich_span(self, span: ReadableSpan) -> ReadableSpan:
         """Add conversation ID, agent name, and service name resource to span."""
         extra: dict[str, str | int] = {}
-        if extra_override:
-            extra.update(extra_override)
 
         # Use conversation ID from baggage if set, otherwise check existing
         # attribute, then auto-generate per trace

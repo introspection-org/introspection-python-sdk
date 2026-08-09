@@ -136,12 +136,14 @@ def test_set_baggage_serialises_non_string_values(logs, exporter):
     assert record.attributes[Attr.CONVERSATION_ID] == "123"
 
 
-def test_reset_clears_traits(logs):
+def test_identify_emits_traits_on_the_record(logs, exporter):
+    # The traits argument is what reaches the record; the client keeps no
+    # accumulated copy of it.
     with logs.identify("u", traits={"a": 1}):
         pass
-    assert logs._traits == {"a": 1}
-    logs.reset()
-    assert logs._traits == {}
+    (record,) = _records(logs, exporter)
+    assert record.attributes[f"{Attr.TRAITS_PREFIX}a"] == 1
+    assert record.attributes[Attr.USER_ID] == "u"
 
 
 def test_shutdown_is_callable(logs):

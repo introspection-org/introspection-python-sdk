@@ -75,7 +75,7 @@ updates:
         update-types:
           - "version-update:semver-major"
 
-  # ── GitHub Actions (used by ci.yml / publish.yml / release-tag.yml) ──
+  # ── GitHub Actions (used by ci.yml / publish.yml / tag.yml) ──
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

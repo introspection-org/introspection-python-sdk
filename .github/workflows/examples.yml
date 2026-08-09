@@ -49,11 +49,13 @@ jobs:
             ${{ runner.os }}-uv-examples-
 
       - name: Run examples
-        if: inputs.run_examples
+        # Also runs on the v* tag push this workflow declares a trigger for,
+        # where `inputs` is empty.
+        if: inputs.run_examples || startsWith(github.ref, 'refs/tags/v')
         working-directory: examples
         env:
           INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
-          INTROSPECTION_BASE_URL: ${{ vars.INTROSPECTION_BASE_URL }}
+          INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL }}
         run: |
           uv run -m introspection_examples.api.runtimes
           uv run -m introspection_examples.api.async_runtimes

@@ -1,6 +1,6 @@
 """OpenTelemetry-only type / constant definitions.
 
-These are extracted from the top-level :mod:`introspection_sdk.types`
+These were extracted from a former top-level ``types`` module
 module so the REST-only install can avoid pulling them in. They cover
 OTel attribute keys, baggage keys, event names, and feedback property
 shapes used by :class:`~introspection_sdk.otel.logs.IntrospectionLogs`

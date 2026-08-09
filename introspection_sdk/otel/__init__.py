@@ -105,6 +105,7 @@ def init(
         token=token,
         service_name=service_name,
         base_otel_url=base_url,
+        additional_headers=resolved_advanced.additional_headers,
         log_exporter=resolved_advanced.log_exporter,
         flush_interval_ms=resolved_advanced.flush_interval_ms,
         max_batch_size=resolved_advanced.max_batch_size,
