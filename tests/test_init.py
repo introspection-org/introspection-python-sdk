@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import pytest
 from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 
 import introspection_sdk.otel as introspection
 from introspection_sdk.config import AdvancedOptions
@@ -129,9 +126,7 @@ def test_one_init_names_one_service_on_both_streams():
     "introspection-client", so a single init() produced two services with
     nothing tying them together.
     """
-    # InMemorySpanExporter, not TestSpanExporter: the latter hands back
-    # dicts of name/attributes/context, which cannot carry a resource.
-    spans = InMemorySpanExporter()
+    spans = TestSpanExporter()
     logs = InMemoryLogRecordExporter()
     introspection.init(
         token="t",
@@ -145,7 +140,9 @@ def test_one_init_names_one_service_on_both_streams():
     introspection.get_tracer_provider().force_flush()
     introspection.get_client().flush()
 
-    (exported_span,) = spans.get_finished_spans()
+    # `.spans`, not `get_finished_spans()`: the latter is the lossy
+    # snapshot view and carries no resource.
+    (exported_span,) = spans.spans
     (exported_log,) = logs.get_finished_logs()
     assert (
         exported_span.resource.attributes["service.name"]

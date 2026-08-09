@@ -58,6 +58,22 @@ class TestSpanExporter(SpanExporter):
         """
         return [self._span_to_dict(s) for s in self._spans]
 
+    @property
+    def spans(self) -> list[ReadableSpan]:
+        """The exported spans themselves, unconverted.
+
+        :meth:`get_finished_spans` is lossy by design -- it keeps the
+        handful of fields that make a readable snapshot. Anything outside
+        that set, ``resource`` above all (which is where ``service.name``
+        and the ``telemetry.sdk.*`` attributes live), was unreachable
+        through this exporter, so asserting on it meant reaching past the
+        SDK's own testing helper for OpenTelemetry's.
+
+        The Rust SDK's ``otel::testing`` hands back real ``SpanData`` for
+        the same reason.
+        """
+        return list(self._spans)
+
     @staticmethod
     def _span_to_dict(span: ReadableSpan) -> dict[str, Any]:
         attrs: dict[str, Any] = dict(span.attributes or {})
