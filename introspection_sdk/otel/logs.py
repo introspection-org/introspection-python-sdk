@@ -200,8 +200,11 @@ class IntrospectionLogs:
 
         self._logger_provider = LoggerProvider(resource=resource)
         self._logger_provider.add_log_record_processor(processor)
+        # Scope name identifies which client produced a record. The bare
+        # "introspection-sdk" was ambiguous against the Node, browser, and
+        # Rust surfaces, which all name themselves specifically.
         self._otel_logger = self._logger_provider.get_logger(
-            "introspection-sdk",
+            "introspection-sdk-python",
             VERSION,
         )
 

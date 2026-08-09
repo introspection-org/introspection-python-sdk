@@ -179,6 +179,22 @@ def test_identify_emits_traits_on_the_record(logs, exporter):
     assert record.attributes[Attr.USER_ID] == "u"
 
 
+def test_every_record_names_this_sdk_and_its_version_as_the_scope(
+    logs, exporter
+):
+    # The scope rides every record and is how ingest attributes an event to a
+    # client and a release. "introspection-sdk" alone did not say which of the
+    # four surfaces sent it.
+    from introspection_sdk.version import VERSION
+
+    logs.track("E")
+    logs.flush()
+    (data,) = exporter.get_finished_logs()
+    scope = data.instrumentation_scope
+    assert scope.name == "introspection-sdk-python"
+    assert scope.version == VERSION
+
+
 def test_shutdown_is_callable(logs):
     logs.shutdown()
 
