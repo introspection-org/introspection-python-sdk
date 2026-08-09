@@ -2,7 +2,7 @@
 
 Bound to a :class:`~introspection_sdk.runner.Runner` — every call targets
 the runner's DP endpoint with its short-lived JWT. The surface is
-read-only and mirrors the shipped JS Runner's ``conversations`` namespace.
+read-only.
 
 Both conversation summaries and conversation items walk opaque ``next``
 cursors. The item envelope retains OpenAI-style ``first_id`` / ``last_id``
