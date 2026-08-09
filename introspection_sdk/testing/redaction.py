@@ -21,11 +21,6 @@ SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"sk-ant-api\d+-[A-Za-z0-9_-]{20,}"),
         "REDACTED_ANTHROPIC_KEY",
     ),
-    (re.compile(r"sk-D8K[A-Za-z0-9_-]{20,}"), "REDACTED_BRAINTRUST_KEY"),
-    (re.compile(r"lsv2_pt_[a-f0-9]{32}_[a-f0-9]+"), "REDACTED_LANGSMITH_KEY"),
-    (re.compile(r"sk-lf-[a-f0-9-]{36}"), "REDACTED_LANGFUSE_SECRET"),
-    (re.compile(r"pk-lf-[a-f0-9-]{36}"), "REDACTED_LANGFUSE_PUBLIC"),
-    (re.compile(r"ak-[a-f0-9-]{36}-[A-Za-z0-9_-]+"), "REDACTED_ARIZE_KEY"),
     (
         re.compile(r"intro_dev_[A-Za-z0-9_-]{20,}"),
         "REDACTED_INTROSPECTION_TOKEN",

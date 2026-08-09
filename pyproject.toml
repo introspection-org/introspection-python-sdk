@@ -103,7 +103,6 @@ filterwarnings = [
     "ignore::DeprecationWarning:lia.*",
     "ignore::DeprecationWarning:phoenix.*",
     "ignore::DeprecationWarning:pyasn1.*",
-    "ignore::DeprecationWarning:langsmith.*",
     "ignore::pandas.errors.Pandas4Warning",
 ]
 

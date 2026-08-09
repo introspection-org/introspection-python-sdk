@@ -34,7 +34,7 @@ __all__ = [
 class UsageCostAttr:
     """Span attribute keys for provider-reported usage cost.
 
-    Cost keys use a ``_usd`` suffix to align with the Claude Agent
+    Cost keys use a ``_usd`` suffix to align with the agent
     SDK's ``total_cost_usd`` result field.
     """
 

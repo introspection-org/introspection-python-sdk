@@ -35,7 +35,6 @@ SENSITIVE_HEADERS = {
     "anthropic-organization-id",
     "x-goog-api-key",
     "x-goog-user-project",
-    "x-langfuse-public-key",
     "space_id",
     "cookie",
     "set-cookie",
@@ -66,7 +65,7 @@ def _scrub_response(response):
     for key in list(headers):
         if _is_sensitive_header(key):
             del headers[key]
-    # Scrub secrets from response body (e.g. Braintrust eval traces embed env vars)
+    # Scrub secrets from response bodies that embed env vars
     body = response.get("body", {})
     if (
         isinstance(body, dict)
