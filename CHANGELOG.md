@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.15.0...v0.15.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **ci:** remove competing release tagger ([#127](https://github.com/introspection-org/introspection-python-sdk/issues/127)) ([18aa376](https://github.com/introspection-org/introspection-python-sdk/commit/18aa376666102f3c52c1b527a769ac7e8bc06b4d))
+
 ## [0.15.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.14.0...v0.15.0) (2026-08-10)
 
 
