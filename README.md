@@ -18,7 +18,6 @@
 </div>
 
 <br>
-
 [Introspection](https://introspection.dev) is the infrastructure for
 long-horizon vertical agents, powered by Pi. Define an agent as a
 [Recipe](https://pi.recipes) — agents, skills, policies, and evals in plain
@@ -26,12 +25,8 @@ source you own in Git — deploy it to a governed per-customer Runtime, and
 improve it in production with conversations, observations, judges, and
 experiments.
 
-This is the Python platform SDK. Use it to open a runner against a deployed
-runtime, start and stream tasks, and manage files, conversations, recipes,
-experiments, and shares. It provides both an async-first client and a matching
-synchronous client. See the [SDK overview](https://docs.introspection.dev/sdk)
-and [Python guide](https://docs.introspection.dev/sdk/python) for the product
-workflow.
+This is the Python SDK: run tasks against a deployed runtime, stream their
+output, and record what users thought of the result.
 
 ## Install
 
@@ -41,17 +36,7 @@ uv add introspection-sdk
 pip install introspection-sdk
 ```
 
-The default install is everything you need for the Introspection API
-(runtimes, tasks, files, conversations) — no OpenTelemetry pulled in. To also
-emit analytics events and export traces, add the `[otel]` extra; see
-[**OpenTelemetry**](#opentelemetry-analytics--tracing) below.
-
-## Introspection API (runtimes, tasks, files)
-
-The main Introspection API. Open a `Runner` against a runtime, spawn tasks, and
-stream their output; manage `files` and read `conversations` on the same Runner.
-`AsyncIntrospectionClient` is the recommended entry point — everything that
-touches the network is awaitable, and run output streams with `async for`:
+## Run a task
 
 ```python
 import asyncio
@@ -61,241 +46,104 @@ from introspection_sdk import AsyncIntrospectionClient
 
 async def main() -> None:
     async with AsyncIntrospectionClient() as client:  # token from INTROSPECTION_TOKEN
-        runner = await client.runtimes("customer-agent").run(
-            agent_name="support-agent",
-            scope="tasks:read tasks:write",
-        )
+        runner = await client.runtimes("customer-agent").run()
 
         async with runner:
             run = await runner.tasks.start(prompt="Say hello in one sentence.")
 
             async for event in run.stream():
-                print(event.model_dump_json(by_alias=True, exclude_none=True))
+                print(event)
 
 
 asyncio.run(main())
 ```
 
-Runner creation also accepts `identity`, `caller`, and `ttl_seconds`. The
-resolved `runner.context` includes the runtime or experiment selection,
-runtime group, flat recipe revision fields, agent name, identity, and caller.
-
-Existing bodyless `await run.cancel()` remains supported and aborts
-immediately. Pass `{"mode": "abort"}` to make that explicit, or
-`{"mode": "drain", "drain_within_seconds": 60}` for graceful teardown.
-Interrupted runs resume through
-`await runner.tasks.runs.resume(task_id, resume=entries)`.
-
-### Resilient streaming
-
-`run.stream()` **resumes transparently** across a mid-turn disconnect — gateway
-idle-timeout, load-balancer recycle, network blip. On a drop it re-attaches with
-the SSE-standard `Last-Event-ID` so the server replays the frames you missed,
-and the iterator yields one gap-free `AGUIEvent` sequence. There is no
-consumer-visible change: the `async for` above just keeps working, completing
-when the turn finishes and raising only if recovery is exhausted. Keyword args
-tune the recovery bounds:
+Or wait for the finished answer instead of streaming:
 
 ```python
-async for event in run.stream(max_reconnects=5, timeout=300.0):
-    ...
+run = await runner.tasks.start(prompt="Summarize my open tickets.")
+print(await run.text())
 ```
 
-Readiness folds in the same way: while a run is not yet attachable the server
-answers with `429` + `Retry-After`, which the stream honours as a backoff floor
-and retries — never surfaced to the caller.
-
-### Retries (429 / 502 / 503 / 504)
-
-The unary calls — `tasks.get` (status polling), lists, create, cancel, delete,
-file metadata/content — **auto-retry on `429 Too Many Requests`** for every
-method, and on `502`/`503`/`504` for idempotent `GET` calls only. A `429` means
-the request was rejected before it was processed, so re-sending is safe even
-for writes; a `502`/`503`/`504` may have been processed upstream, so only reads
-are retried. When the server sends `Retry-After` it is honoured as the floor of
-a capped-exponential backoff, but it is not required — the retry decision is
-status-based. Retries are bounded (`max_retries`, default 2; `0` disables) and
-once the budget is spent the error surfaces as usual (a `429` as a
-`RateLimitError` with `retry_after`, a `503`/`504` as a
-`SandboxUnavailableError`) so you can back off further. The same applies to the
-async client. Streaming has its own resume budget (above); multipart uploads
-are not auto-retried.
-
-A Runner exposes three DP-bound namespaces side by side: `runner.tasks`,
-`runner.files`, and the read-only `runner.conversations`. The conversations
-namespace lists conversation summaries (`runner.conversations.list()`), loads
-the latest LLM turn of a conversation as a Responses-API-style view
-(`await runner.conversations.retrieve(conversation_id)`), and walks a
-conversation's per-turn items (`runner.conversations.items.list(...)`).
-
-Complete exports are server-paginated in 1,000-row storage pages. Use a typed
-helper when you need the parsed result, or `export_stream` to forward raw JSON,
-trajectory, or Arrow bytes without retaining the full response in SDK memory:
+Continue the same task with a follow-up run:
 
 ```python
-async for chunk in runner.conversations.export_stream(
-    conversation_id, "trajectory", agent="root"
-):
-    await destination.write(chunk)
-
-spans = await runner.conversations.export_json(conversation_id)
-trajectory = await runner.conversations.export_trajectory(conversation_id)
-table = await runner.conversations.export_arrow(conversation_id)  # [arrow] extra
-```
-
-Every `list()` returns an `AsyncPager`: `async for` it to stream every item
-across pages (fetched lazily), or `await` it for the first page with its
-envelope metadata (counts, cursors):
-
-```python
-# Stream every summary across all pages.
-async for summary in runner.conversations.list(limit=20):
-    span = await runner.conversations.retrieve(summary.id)
-    if span is not None:
-        print(span.model, len(span.input_messages))
-
-# Or just the first page, with totals.
-first = await runner.files.list(include_total=True)
-print(first.total_count, len(first.records))
-```
-
-See [`examples/api/async_runtimes.py`](examples/introspection_examples/api/async_runtimes.py)
-for an end-to-end walkthrough.
-
-### Service-account (machine) auth
-
-A long-lived `INTROSPECTION_TOKEN` is the simplest credential. For headless /
-CI callers that should not ship a static key, authenticate as a confidential
-**service-account** Application instead — `from_service_account` mints a
-short-lived, project-scoped token via the OAuth `client_credentials` grant and
-wires it in, so the runtime flow is unchanged:
-
-```python
-from introspection_sdk import IntrospectionClient
-
-client = IntrospectionClient.from_service_account(
-    client_id="intro_app_…",      # confidential Application
-    client_secret="intro_sk_…",   # minted once, kept server-side
-    project="my-project",         # slug or UUID; the token is project-scoped
+follow_up = await runner.tasks.runs.create(
+    str(run.run.task_id),
+    kind="prompt",
+    prompt={"text": "Now draft the reply."},
 )
-runner = client.runtimes("customer-agent").run()
+print(await follow_up.text())
 ```
 
-The token is not auto-refreshed — re-mint once it expires
-(`AsyncIntrospectionClient.from_service_account` is the awaitable twin).
+`IntrospectionClient` is the synchronous twin with the same surface — drop the
+`await`s and use `for` instead of `async for`.
 
-When you're a **server broker** handing credentials to a browser client, mint
-the token directly to also read `dp_url` (the Data Plane endpoint the Control
-Plane resolved for the project) and resolve the runtime slug to a concrete
-`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser talks to
-the Data Plane without a hardcoded URL:
+See [Tasks and streaming](https://docs.introspection.dev/sdk/python/tasks-and-streaming) for reconnects,
+interrupts, and cancellation.
 
-```python
-from introspection_sdk import IntrospectionClient, service_account_token
+## Record feedback
 
-token = service_account_token(
-    client_id="intro_app_…",
-    client_secret="intro_sk_…",
-    project="my-project",
-)
-client = IntrospectionClient(token=token.access_token)
-runtime = client.runtimes.resolve("customer-agent")
-# -> hand { token.access_token, runtime.id, token.dp_url } to the browser
-```
-
-`token_exchange` (RFC 8693 partner-IdP federation) and
-`authorization_code_token` (PKCE hosted-login callback) are the matching
-server-side helpers for end-user auth — each returns the same `OAuthToken`
-shape, carrying `dp_url`. See
-[`examples/api/service_account.py`](examples/introspection_examples/api/service_account.py).
-
-### Sync client
-
-Not on `asyncio`? `IntrospectionClient` is the synchronous twin with an
-identical surface — drop the `await`s, use `for` instead of `async for`, and
-`with` instead of `async with` ([`examples/api/runtimes.py`](examples/introspection_examples/api/runtimes.py)):
-
-```python
-from introspection_sdk import IntrospectionClient
-
-client = IntrospectionClient()  # token from INTROSPECTION_TOKEN
-runner = client.runtimes("customer-agent").run()
-
-run = runner.tasks.start(prompt="Say hello in one sentence.")
-for event in run.stream():
-    print(event.model_dump_json(by_alias=True, exclude_none=True))
-
-runner.close()
-client.shutdown()
-```
-
-## OpenTelemetry (analytics & tracing)
-
-Two optional OTel-based surfaces live behind the `[otel]` extra, independent of
-the Introspection API above:
+Install the OpenTelemetry extra, then attach the outcome to the conversation
+the agent produced:
 
 ```shell
 pip install 'introspection-sdk[otel]'
 ```
 
-- **Analytics events** — `track` / `feedback` / `identify` via `IntrospectionLogs`.
-- **Traces** — export OpenTelemetry spans with `IntrospectionSpanProcessor`.
+```python
+from introspection_sdk import IntrospectionLogs
 
-Both are documented in [**`docs/otel.md`**](docs/otel.md).
+logs = IntrospectionLogs(service_name="support-api")
 
-The SDK ships no framework integrations and performs no span conversion.
-Emit spans in OTel GenAI semantic conventions — by hand, or from any
-instrumentation that already speaks them — and attach
-`IntrospectionSpanProcessor` to your provider to export them.
+with logs.identify("user_123", traits={"plan": "pro"}):
+    with logs.set_conversation(conversation_id):
+        logs.feedback("thumbs_up", comments="The answer solved it")
+
+logs.track("case_closed", {"source": "web"})
+logs.shutdown()
+```
+
+`feedback` records how a result landed, `track` records a product event, and
+`identify` attaches who it was.
+
+See [Product signals](https://docs.introspection.dev/sdk/python/product-signals) for the full surface, and
+[**`docs/otel.md`**](docs/otel.md) for the OTel wiring.
+
+## Read what happened
+
+A finished task leaves a durable conversation:
+
+```python
+async for summary in runner.conversations.list(limit=20):
+    print(summary.id, summary.usage.total_tokens, summary.cost.usd)
+```
+
+The runner also exposes `files`, `shares`, `events`, and `metrics`.
+
+See [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence) for transcripts,
+typed events, and metrics queries, [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
+for durable inputs and grants, and [`examples/`](examples/introspection_examples/)
+for end-to-end scripts.
 
 ## Environment variables
 
 ```shell
-# Introspection API (IntrospectionClient / AsyncIntrospectionClient)
 export INTROSPECTION_TOKEN="intro_xxx"
-export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
-# The project is scoped by the API key. Pass project per call only to override
-# it with a slug or UUID.
-
-# Development only: route this process's tasks to your own `introspection dev`
-# server when several developers share one Runtime. `introspection dev` prints
-# the line to copy. No default — see "Sharing a Runtime" below.
-export INTROSPECTION_DEV_TARGET="roland"                            # optional
-
-# OTel (IntrospectionLogs + span processors) — see docs/otel.md
-export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional
-export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
-
-# SDK diagnostics: error, warn, info, debug. Default: warn.
-export INTROSPECTION_LOG_LEVEL="debug"                              # optional
+export INTROSPECTION_SERVICE_NAME="my-service"   # optional
+export INTROSPECTION_LOG_LEVEL="debug"           # optional
 ```
-
-### Sharing a Runtime with another developer
-
-When two people run `introspection dev` against one Runtime, a task created by
-a shared application credential carries no developer, so the platform cannot
-tell their machines apart. Name one:
-
-```shell
-# introspection dev prints the line to copy
-export INTROSPECTION_DEV_TARGET="roland"
-```
-
-The SDK reads it and sends it as a request header on every call, so this
-process's tasks reach that dev server — prompts, working tree, and local MCP
-servers. There is no default: a target names *someone else's* machine, and
-guessing it from the local username would be right on a laptop and quietly
-wrong in a shared development deployment. Set it explicitly, or leave it unset
-and keep today's behaviour.
-
-It travels as a header, not on `caller`. `caller` stays what it is documented
-to be: descriptive metadata you attach to a session that the platform never
-acts on. Nothing changes outside the development environment, where the value
-is ignored.
 
 ## Documentation
 
-Full documentation is available at [docs.introspection.dev](https://docs.introspection.dev).
+- [Python quickstart](https://docs.introspection.dev/sdk/python/quickstart)
+- [Tasks and streaming](https://docs.introspection.dev/sdk/python/tasks-and-streaming)
+- [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
+- [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence)
+- [Product signals](https://docs.introspection.dev/sdk/python/product-signals)
+- [Platform operations](https://docs.introspection.dev/sdk/python/platform-operations)
+- [Python SDK reference](https://docs.introspection.dev/sdk/python/reference)
+- [Authentication](https://docs.introspection.dev/sdk/authentication)
 
 ## License
 
