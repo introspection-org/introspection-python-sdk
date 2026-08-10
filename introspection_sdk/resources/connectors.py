@@ -409,7 +409,10 @@ class Connectors:
         connection's ``created_by_member_id``, so a partner can associate
         the connection with their own caller rather than the agent member
         that made the API call. Omit to attribute the grant to the
-        authenticated principal.
+        authenticated principal. Asserting one mints a ``customer``
+        member, so it can raise
+        :class:`~introspection_sdk.ConflictError` (409) when the org has
+        reached its member limit — a plan conflict, not back-pressure.
         """
         payload = self._http.request(
             "POST",
@@ -666,7 +669,10 @@ class AsyncConnectors:
         connection's ``created_by_member_id``, so a partner can associate
         the connection with their own caller rather than the agent member
         that made the API call. Omit to attribute the grant to the
-        authenticated principal.
+        authenticated principal. Asserting one mints a ``customer``
+        member, so it can raise
+        :class:`~introspection_sdk.ConflictError` (409) when the org has
+        reached its member limit — a plan conflict, not back-pressure.
         """
         payload = await self._http.request(
             "POST",
