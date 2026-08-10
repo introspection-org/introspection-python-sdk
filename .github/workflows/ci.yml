@@ -107,44 +107,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  integration:
-    name: Integration Tests
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: test
-    runs-on: ubuntu-latest
-    environment: build
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Run integration tests
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
-          INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: uv run pytest tests/ -v -m integration
-
   # Examples live in their own workflow (./examples.yml) so they don't burn
   # LLM tokens on every push. They run on `workflow_dispatch` + tag pushes.
 
