@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.15.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.14.0...v0.15.0) (2026-08-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* AnthropicInstrumentor, GeminiInstrumentor, IntrospectionTracingProcessor, IntrospectionCallbackHandler, IntrospectionConversationsSession, traced_embeddings_create, async_traced_embeddings_create, REDACTED_THINKING_CONTENT, and the convert_responses_* converters are removed, along with the per-framework install extras for those SDKs.
+* experiments.create/update/delete and recipes.create/update/delete are removed. Use the CLI to author definitions.
+
+### Features
+
+* add complete conversation export parity ([#121](https://github.com/introspection-org/introspection-python-sdk/issues/121)) ([990760b](https://github.com/introspection-org/introspection-python-sdk/commit/990760be3db9a112856ba8316ad64dc6a9494f62))
+* align the SDK with the current API and the runner-plane boundary ([#116](https://github.com/introspection-org/introspection-python-sdk/issues/116)) ([490c92d](https://github.com/introspection-org/introspection-python-sdk/commit/490c92d99a4fc4bb6b48c06af1af41645ebb132c))
+
+
+### Bug Fixes
+
+* stop resolve() depending on a filter the API never had ([#119](https://github.com/introspection-org/introspection-python-sdk/issues/119)) ([8c3e900](https://github.com/introspection-org/introspection-python-sdk/commit/8c3e90078e86f29782894af333d3a0103c8d1dd2))
+
+
+### Code Refactoring
+
+* minimal REST + OTel surface, and the defect pass over it ([#120](https://github.com/introspection-org/introspection-python-sdk/issues/120)) ([4569eb1](https://github.com/introspection-org/introspection-python-sdk/commit/4569eb1b28113132157a6523310aeccb2ccdeb88))
+
 ## [0.14.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.13.0...v0.14.0) (2026-08-08)
 
 
