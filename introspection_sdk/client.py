@@ -8,9 +8,10 @@ OpenTelemetry.
 
 For OpenTelemetry-based emission of ``track`` / ``feedback`` /
 ``identify`` events, install the ``[otel]`` extra and use
-:class:`introspection_sdk.IntrospectionLogs`. For trace export
-(span / tracing processors, LLM SDK instrumentors), pick the relevant
-processors from :mod:`introspection_sdk.otel`.
+:class:`introspection_sdk.IntrospectionLogs`. For trace export, attach
+:class:`introspection_sdk.IntrospectionSpanProcessor` to your
+``TracerProvider`` — or call :func:`introspection_sdk.otel.init` to get
+both surfaces at once.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from introspection_sdk.auth import (
     async_service_account_token,
     service_account_token,
 )
-from introspection_sdk.dev_target import dev_target_headers
+from introspection_sdk.dev_target import client_headers
 from introspection_sdk.resources import (
     AsyncExperiments,
     AsyncRecipes,
@@ -71,7 +72,7 @@ class IntrospectionClient:
         # the paths a runner cannot: a bare `POST /v1/tasks` with a dev API key
         # mints its JWT from the key row and has no per-request claim to carry.
         # Resolved once here so every resource client below inherits it.
-        self._additional_headers = dev_target_headers(additional_headers)
+        self._additional_headers = client_headers(additional_headers)
         self._http = _HttpClient(
             api_url=self._base_api_url,
             token=self._token,
@@ -85,10 +86,7 @@ class IntrospectionClient:
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.recipes = Recipes(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
+        self.recipes = Recipes(self._http)
 
     @classmethod
     def from_service_account(
@@ -184,7 +182,7 @@ class AsyncIntrospectionClient:
         # the paths a runner cannot: a bare `POST /v1/tasks` with a dev API key
         # mints its JWT from the key row and has no per-request claim to carry.
         # Resolved once here so every resource client below inherits it.
-        self._additional_headers = dev_target_headers(additional_headers)
+        self._additional_headers = client_headers(additional_headers)
         self._http = _AsyncHttpClient(
             api_url=self._base_api_url,
             token=self._token,
@@ -198,10 +196,7 @@ class AsyncIntrospectionClient:
             self._http,
             additional_headers=self._additional_headers,
         )
-        self.recipes = AsyncRecipes(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
+        self.recipes = AsyncRecipes(self._http)
 
     @classmethod
     async def from_service_account(

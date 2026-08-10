@@ -6,6 +6,7 @@ targets the runner's DP endpoint with its short-lived JWT.
 
 from __future__ import annotations
 
+import contextlib
 import mimetypes
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
@@ -29,11 +30,18 @@ from introspection_sdk.schemas.pagination import Paginated
 FileLike = Path | IO[bytes] | bytes
 
 
+@contextlib.contextmanager
 def _materialise_upload(
     file: FileLike,
     name: str | None,
     content_type: str | None,
-) -> tuple[str, IO[bytes] | bytes, str]:
+) -> Iterator[tuple[str, IO[bytes] | bytes, str]]:
+    """Yield the multipart tuple for ``file``, closing anything it opened.
+
+    A context manager because the ``Path`` branch opens a handle that used to
+    be handed to httpx and never closed -- one leaked descriptor per upload,
+    and one that stays open if the request raises.
+    """
     if isinstance(file, Path):
         guessed_name = name or file.name
         guessed_ct = (
@@ -41,14 +49,17 @@ def _materialise_upload(
             or mimetypes.guess_type(guessed_name)[0]
             or "application/octet-stream"
         )
-        return guessed_name, file.open("rb"), guessed_ct
+        with file.open("rb") as handle:
+            yield guessed_name, handle, guessed_ct
+        return
     if isinstance(file, (bytes, bytearray)):
         if not name:
             raise ValueError("`name` is required when uploading raw bytes")
         ct = content_type or (
             mimetypes.guess_type(name)[0] or "application/octet-stream"
         )
-        return name, bytes(file), ct
+        yield name, bytes(file), ct
+        return
     # file-like object
     if not name:
         raise ValueError(
@@ -57,7 +68,7 @@ def _materialise_upload(
     ct = content_type or (
         mimetypes.guess_type(name)[0] or "application/octet-stream"
     )
-    return name, file, ct
+    yield name, file, ct
 
 
 class FileVersions:
@@ -104,22 +115,26 @@ class FileVersions:
         file_type: FileType | str = FileType.OTHER,
         content_type: str | None = None,
     ) -> File:
-        n, body, ct = _materialise_upload(file, name, content_type)
-        files = {"file": (n, body, ct)}
-        data = {
-            "name": n,
-            "file_type": (
-                file_type.value
-                if isinstance(file_type, FileType)
-                else file_type
-            ),
-        }
-        payload = self._http.request(
-            "POST",
-            f"/v1/files/{file_id}/versions",
-            files=files,
-            data=data,
-        )
+        with _materialise_upload(file, name, content_type) as (
+            n,
+            body,
+            ct,
+        ):
+            files = {"file": (n, body, ct)}
+            data = {
+                "name": n,
+                "file_type": (
+                    file_type.value
+                    if isinstance(file_type, FileType)
+                    else file_type
+                ),
+            }
+            payload = self._http.request(
+                "POST",
+                f"/v1/files/{file_id}/versions",
+                files=files,
+                data=data,
+            )
         return File.model_validate(payload)
 
 
@@ -175,19 +190,23 @@ class Files:
             ...     file_type="upload",
             ... )
         """
-        n, body, ct = _materialise_upload(file, name, content_type)
-        files = {"file": (n, body, ct)}
-        data = {
-            "name": n,
-            "file_type": (
-                file_type.value
-                if isinstance(file_type, FileType)
-                else file_type
-            ),
-        }
-        payload = self._http.request(
-            "POST", "/v1/files", files=files, data=data
-        )
+        with _materialise_upload(file, name, content_type) as (
+            n,
+            body,
+            ct,
+        ):
+            files = {"file": (n, body, ct)}
+            data = {
+                "name": n,
+                "file_type": (
+                    file_type.value
+                    if isinstance(file_type, FileType)
+                    else file_type
+                ),
+            }
+            payload = self._http.request(
+                "POST", "/v1/files", files=files, data=data
+            )
         return File.model_validate(payload)
 
     def create_text(
@@ -281,22 +300,26 @@ class AsyncFileVersions:
         file_type: FileType | str = FileType.OTHER,
         content_type: str | None = None,
     ) -> File:
-        n, body, ct = _materialise_upload(file, name, content_type)
-        files = {"file": (n, body, ct)}
-        data = {
-            "name": n,
-            "file_type": (
-                file_type.value
-                if isinstance(file_type, FileType)
-                else file_type
-            ),
-        }
-        payload = await self._http.request(
-            "POST",
-            f"/v1/files/{file_id}/versions",
-            files=files,
-            data=data,
-        )
+        with _materialise_upload(file, name, content_type) as (
+            n,
+            body,
+            ct,
+        ):
+            files = {"file": (n, body, ct)}
+            data = {
+                "name": n,
+                "file_type": (
+                    file_type.value
+                    if isinstance(file_type, FileType)
+                    else file_type
+                ),
+            }
+            payload = await self._http.request(
+                "POST",
+                f"/v1/files/{file_id}/versions",
+                files=files,
+                data=data,
+            )
         return File.model_validate(payload)
 
 
@@ -354,19 +377,23 @@ class AsyncFiles:
             ...     file_type="upload",
             ... )
         """
-        n, body, ct = _materialise_upload(file, name, content_type)
-        files = {"file": (n, body, ct)}
-        data = {
-            "name": n,
-            "file_type": (
-                file_type.value
-                if isinstance(file_type, FileType)
-                else file_type
-            ),
-        }
-        payload = await self._http.request(
-            "POST", "/v1/files", files=files, data=data
-        )
+        with _materialise_upload(file, name, content_type) as (
+            n,
+            body,
+            ct,
+        ):
+            files = {"file": (n, body, ct)}
+            data = {
+                "name": n,
+                "file_type": (
+                    file_type.value
+                    if isinstance(file_type, FileType)
+                    else file_type
+                ),
+            }
+            payload = await self._http.request(
+                "POST", "/v1/files", files=files, data=data
+            )
         return File.model_validate(payload)
 
     async def create_text(

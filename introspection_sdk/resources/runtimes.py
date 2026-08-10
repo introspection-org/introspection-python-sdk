@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
+from introspection_sdk._errors import NotFoundError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -135,8 +136,10 @@ class Runtimes:
         been published more than once resolves to its newest runtime
         rather than failing as ambiguous.
 
-        Raises ``LookupError`` if nothing matches the slug or runtime
-        group id.
+        Raises :class:`~introspection_sdk.NotFoundError` if nothing matches
+        the slug or runtime group id — the same error
+        :meth:`get` raises for a runtime that is not there, so one
+        ``except`` covers both ways of asking for one.
         """
         page = self.list(
             runtime=str(runtime),
@@ -144,7 +147,7 @@ class Runtimes:
             project=project,
         ).page()
         if not page.records:
-            raise LookupError(f"No runtime {runtime!r}")
+            raise _no_runtime(runtime)
         return page.records[0]
 
     # --- /run --------------------------------------------------------
@@ -342,7 +345,7 @@ class AsyncRuntimes:
         standalone form of ``client.runtimes(runtime)`` resolution, handy
         for a server broker that resolves a concrete ``runtime_id`` to hand to a
         browser client. Resolves to the newest runtime for the selector;
-        raises ``LookupError`` if nothing matches.
+        raises :class:`~introspection_sdk.NotFoundError` if nothing matches.
         """
         page = await self.list(
             runtime=str(runtime),
@@ -350,7 +353,7 @@ class AsyncRuntimes:
             project=project,
         ).page()
         if not page.records:
-            raise LookupError(f"No runtime {runtime!r}")
+            raise _no_runtime(runtime)
         return page.records[0]
 
     # --- /run --------------------------------------------------------
@@ -389,6 +392,17 @@ class AsyncRuntimeHandle:
         self._project = project
         self._raw = runtime
         self._resolved = resolved
+
+    async def runtime_id(self) -> UUID:
+        """Resolve the concrete runtime id this handle currently serves.
+
+        The async twin of :attr:`RuntimeHandle.runtime_id`. A coroutine
+        rather than a property because resolving costs a request, and a
+        property cannot be awaited. Without it the async client had no
+        public way to read the id a handle resolves to — the broker case
+        the sync property exists for.
+        """
+        return await self._resolve()
 
     async def _resolve(self) -> UUID:
         if self._resolved:
@@ -447,3 +461,20 @@ __all__ = [
     "RuntimeHandle",
     "Runtimes",
 ]
+
+
+def _no_runtime(runtime: str | UUID) -> NotFoundError:
+    """The error a resolve-by-selector miss raises.
+
+    A miss here is an empty list page rather than a ``404`` from the route,
+    so the status has to be supplied. It is still a 404: the caller named a
+    runtime the project does not serve, which is the same answer
+    ``GET /v1/runtimes/{id}`` gives, and a caller handling "not there"
+    should not have to catch a second, unrelated exception type to cover
+    the selector form.
+    """
+    return NotFoundError(
+        f"No runtime {str(runtime)!r}",
+        status_code=404,
+        code="not_found",
+    )

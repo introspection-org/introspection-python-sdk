@@ -218,9 +218,9 @@ class GenAiCost(_SpanModel):
     """``gen_ai.cost.usd``.
 
     Not part of the published semantic conventions, but this is the name the
-    span is *written* with — the platform's ClickHouse cost column is
-    materialized from ``gen_ai.cost.usd``, so the read returns the attribute
-    under the name it was stored as rather than relocating it.
+    span is *written* with — the platform's cost column is derived from
+    ``gen_ai.cost.usd``, so the read returns the attribute under the name it
+    was stored as rather than relocating it.
 
     Scoped by which read returned the span, the same way ``gen_ai.usage.*`` is:
     this operation's cost on an item, the conversation total on a summary.

@@ -8,59 +8,35 @@ Exports the independent telemetry surfaces:
 
 * :class:`IntrospectionLogs` — OTLP logs emitter for
   ``track`` / ``feedback`` / ``identify``.
-* :class:`IntrospectionSpanProcessor` / :class:`IntrospectionTracingProcessor` /
-  :class:`ClaudeTracingProcessor` — span/trace processors that
-  forward to the Introspection backend.
-* :class:`AnthropicInstrumentor` / :class:`GeminiInstrumentor` and the
-  privacy-preserving OpenAI embeddings wrappers — LLM SDK instrumentation.
-* :class:`IntrospectionCallbackHandler` — LangChain callback handler.
-* :class:`IntrospectionConversationsSession` — OpenAI Agents
-  conversation session helper.
+* :class:`IntrospectionSpanProcessor` —
+  span/trace processors that forward to the Introspection backend.
 
-Also exposes the one-liner ``init()`` entry point that auto-discovers
-installed LLM frameworks and wires them into a shared
-:class:`~opentelemetry.sdk.trace.TracerProvider`.
+Also exposes the one-liner ``init()`` entry point, which wires both surfaces
+onto a shared :class:`~opentelemetry.sdk.trace.TracerProvider`, plus the
+context managers that scope conversation / agent / identity baggage onto
+everything emitted inside them.
 """
 
 from __future__ import annotations
 
 import atexit
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from opentelemetry.sdk.trace import TracerProvider
 
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.otel.anthropic import (
-    REDACTED_THINKING_CONTENT,
-    AnthropicInstrumentor,
+from introspection_sdk.otel._conversation import (
+    conversation,
+    new_conversation_id,
 )
-from introspection_sdk.otel.conversation import conversation
-from introspection_sdk.otel.gemini import GeminiInstrumentor
-from introspection_sdk.otel.integrations import (
-    discover_integrations,
-    setup_integrations,
-)
-from introspection_sdk.otel.integrations._provider import (
+from introspection_sdk.otel._provider import (
+    _detach_exporter,
     _get_or_create_tracer_provider,
 )
-from introspection_sdk.otel.integrations.base import DidNotEnable, Integration
 from introspection_sdk.otel.logs import IntrospectionLogs
-from introspection_sdk.otel.openai import (
-    async_traced_embeddings_create,
-    traced_embeddings_create,
-)
-from introspection_sdk.otel.processors.claude_tracing_processor import (
-    ClaudeTracingProcessor,
-)
-from introspection_sdk.otel.processors.langchain_callback_handler import (
-    IntrospectionCallbackHandler,
-)
 from introspection_sdk.otel.processors.span_processor import (
     IntrospectionSpanProcessor,
-)
-from introspection_sdk.otel.processors.tracing_processor import (
-    IntrospectionTracingProcessor,
 )
 from introspection_sdk.otel.types import (
     Attr,
@@ -70,36 +46,26 @@ from introspection_sdk.otel.types import (
 )
 from introspection_sdk.utils import logger
 
-if TYPE_CHECKING:
-    from introspection_sdk.otel.sessions import (
-        IntrospectionConversationsSession,
-    )
-
 __all__ = [
     "IntrospectionLogs",
     "IntrospectionSpanProcessor",
-    "IntrospectionTracingProcessor",
-    "ClaudeTracingProcessor",
-    "IntrospectionCallbackHandler",
-    "AnthropicInstrumentor",
-    "GeminiInstrumentor",
-    "async_traced_embeddings_create",
-    "traced_embeddings_create",
-    "IntrospectionConversationsSession",
     "Attr",
     "Baggage",
     "EventName",
     "FeedbackProperties",
-    "REDACTED_THINKING_CONTENT",
     "init",
+    "shutdown",
     "get_client",
     "get_tracer_provider",
     "conversation",
-    "Integration",
-    "DidNotEnable",
+    "new_conversation_id",
     "track",
     "feedback",
     "identify",
+    "with_agent",
+    "with_conversation",
+    "with_user_id",
+    "with_anonymous_id",
 ]
 
 _state: dict[str, Any] = {
@@ -109,46 +75,25 @@ _state: dict[str, Any] = {
 }
 
 
-def __getattr__(name: str) -> object:
-    """Load framework-specific helpers only when their extra is installed."""
-    if name == "IntrospectionConversationsSession":
-        try:
-            from introspection_sdk.otel.sessions import (
-                IntrospectionConversationsSession,
-            )
-        except ImportError as exc:
-            raise ImportError(
-                "IntrospectionConversationsSession requires the "
-                "'introspection-sdk[openai-agents]' extra"
-            ) from exc
-        return IntrospectionConversationsSession
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
 def init(
     token: str | None = None,
     *,
     service_name: str | None = None,
     base_url: str | None = None,
     tracer_provider: TracerProvider | None = None,
-    integrations: list[type[Integration]] | None = None,
-    auto_discover: bool = True,
     advanced: AdvancedOptions | None = None,
 ) -> TracerProvider:
-    """Detect installed LLM frameworks and wire them into one shared provider.
+    """Build (or adopt) the shared provider and start the analytics stream.
 
-    Idempotent: repeated calls return the already-configured provider without
-    re-installing integrations.
+    Idempotent: repeated calls return the already-configured provider.
 
     Args:
         token: Auth token. Falls back to ``INTROSPECTION_TOKEN``.
-        service_name: Service name for spans. Falls back to
-            ``INTROSPECTION_SERVICE_NAME``, then ``"introspection"``.
+        service_name: Service name for spans *and* events. Falls back to
+            ``INTROSPECTION_SERVICE_NAME``, then
+            :data:`~introspection_sdk.otel.types.DEFAULT_SERVICE_NAME`.
         base_url: API base URL. Falls back to ``INTROSPECTION_BASE_OTEL_URL``.
         tracer_provider: Use this provider instead of creating/finding one.
-        integrations: Extra integrations to install beyond auto-discovery.
-        auto_discover: Install every importable built-in integration
-            (default True). Set False to install only ``integrations``.
         advanced: Advanced configuration (custom exporter, headers, etc.).
     """
     if _state["provider"] is not None:
@@ -166,19 +111,16 @@ def init(
         service_name=service_name,
     )
 
-    to_install: list[type[Integration]] = []
-    if auto_discover:
-        to_install.extend(discover_integrations())
-    if integrations:
-        to_install.extend(integrations)
-    setup_integrations(to_install, tracer_provider=provider)
-
     # The OTel ``track`` / ``feedback`` / ``identify`` surface lives on
     # IntrospectionLogs (logs are a separate OTLP stream from spans).
     client = IntrospectionLogs(
         token=token,
         service_name=service_name,
-        base_otel_url=base_url,
+        # resolved_advanced, not the bare parameter: a caller who configured
+        # only `advanced.base_url` would otherwise point spans at their
+        # collector while logs still went to the default production endpoint.
+        base_otel_url=resolved_advanced.base_url,
+        additional_headers=resolved_advanced.additional_headers,
         log_exporter=resolved_advanced.log_exporter,
         flush_interval_ms=resolved_advanced.flush_interval_ms,
         max_batch_size=resolved_advanced.max_batch_size,
@@ -213,6 +155,30 @@ def get_tracer_provider() -> TracerProvider:
     return provider
 
 
+def shutdown() -> None:
+    """Flush and tear down the telemetry configured by :func:`init`.
+
+    Clears the module state and the provider's "already attached" marker, so
+    a later :func:`init` builds a fresh logs client and attaches a fresh span
+    processor. Without clearing the marker the second :func:`init` found the
+    same global provider, short-circuited, and silently exported nothing --
+    including ignoring a new ``advanced.span_exporter``.
+
+    Note the *provider* itself is reused: OpenTelemetry Python refuses to
+    replace an already-set global ``TracerProvider``, so a re-``init`` can
+    only reconfigure the one that is there.
+
+    Registered as an ``atexit`` hook by :func:`init`; call it directly when
+    you need the flush to happen at a known point.
+    """
+    provider = _state["provider"]
+    _shutdown()
+    if provider is not None:
+        _detach_exporter(provider)
+    _state["provider"] = None
+    _state["client"] = None
+
+
 def _shutdown() -> None:
     client = _state["client"]
     if client is not None:
@@ -230,6 +196,9 @@ def _shutdown() -> None:
 
 def _reset_for_tests() -> None:
     # atexit registrations can't be cleanly removed, so leave that flag set.
+    provider = _state["provider"]
+    if provider is not None:
+        _detach_exporter(provider)
     _state["provider"] = None
     _state["client"] = None
 
@@ -253,11 +222,42 @@ def identify(
     traits: dict[str, Any] | None = None,
     anonymous_id: str | None = None,
     event_id: str | None = None,
-) -> Any:
-    """Proxy to the global IntrospectionLogs.identify() context manager."""
-    return get_client().identify(
+) -> None:
+    """Proxy to the global IntrospectionLogs.identify(). Requires init() first."""
+    get_client().identify(
         user_id,
         traits=traits,
         anonymous_id=anonymous_id,
         event_id=event_id,
     )
+
+
+# The baggage-scoping context managers below set the same baggage keys the
+# span processor reads, so scoping with these stamps both the events and
+# every span emitted inside the block.
+
+
+def with_agent(agent_name: str, agent_id: str | None = None) -> Any:
+    """Proxy to the global IntrospectionLogs.set_agent() context manager."""
+    return get_client().set_agent(agent_name, agent_id=agent_id)
+
+
+def with_conversation(
+    conversation_id: str | None = None,
+    previous_response_id: str | None = None,
+) -> Any:
+    """Proxy to the global IntrospectionLogs.set_conversation() manager."""
+    return get_client().set_conversation(
+        conversation_id=conversation_id,
+        previous_response_id=previous_response_id,
+    )
+
+
+def with_user_id(user_id: str) -> Any:
+    """Proxy to the global IntrospectionLogs.set_user_id() context manager."""
+    return get_client().set_user_id(user_id)
+
+
+def with_anonymous_id(anonymous_id: str) -> Any:
+    """Proxy to the global IntrospectionLogs.set_anonymous_id() manager."""
+    return get_client().set_anonymous_id(anonymous_id)

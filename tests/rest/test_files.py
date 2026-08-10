@@ -26,32 +26,41 @@ def _files(fake_api: FakeAPI) -> Files:
 def test_materialise_path_guesses_name_and_type(tmp_path: Path):
     p = tmp_path / "data.json"
     p.write_text("{}")
-    name, body, ct = _materialise_upload(p, None, None)
-    assert name == "data.json"
-    assert ct == "application/json"
-    assert not isinstance(body, bytes)
-    body.close()
+    with _materialise_upload(p, None, None) as (name, body, ct):
+        assert name == "data.json"
+        assert ct == "application/json"
+        assert not isinstance(body, bytes)
+        handle = body
+    # The handle it opened is closed on the way out; it used to be handed to
+    # httpx and leaked, one descriptor per upload.
+    assert handle.closed
 
 
 def test_materialise_bytes_requires_name():
     with pytest.raises(ValueError, match="name` is required"):
-        _materialise_upload(b"abc", None, None)
+        with _materialise_upload(b"abc", None, None):
+            pass
 
 
 def test_materialise_bytes_with_explicit_content_type():
-    name, body, ct = _materialise_upload(b"abc", "x.bin", "text/plain")
-    assert (name, body, ct) == ("x.bin", b"abc", "text/plain")
+    with _materialise_upload(b"abc", "x.bin", "text/plain") as triple:
+        assert triple == ("x.bin", b"abc", "text/plain")
 
 
 def test_materialise_filelike_requires_name():
     with pytest.raises(ValueError, match="name` is required"):
-        _materialise_upload(io.BytesIO(b"x"), None, None)
+        with _materialise_upload(io.BytesIO(b"x"), None, None):
+            pass
 
 
-def test_materialise_filelike_guesses_octet_stream_default():
-    name, body, ct = _materialise_upload(io.BytesIO(b"x"), "blob", None)
-    assert name == "blob"
-    assert ct == "application/octet-stream"
+def test_materialise_filelike_is_not_closed_for_the_caller(tmp_path: Path):
+    # The SDK did not open it, so it does not own it.
+    stream = io.BytesIO(b"x")
+    with _materialise_upload(stream, "blob", None) as (name, body, ct):
+        assert name == "blob"
+        assert ct == "application/octet-stream"
+        assert body is stream
+    assert not stream.closed
 
 
 # --- Files CRUD ------------------------------------------------------

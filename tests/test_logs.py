@@ -6,6 +6,7 @@ constructor hook exists precisely for this) — no mocks.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -50,11 +51,12 @@ def test_track_emits_event_with_properties(logs, exporter):
 
 
 def test_track_serialises_complex_property_values(logs, exporter):
-    logs.track("E", {"payload": {"a": 1}})
+    logs.track("E", {"payload": {"a": 1}, "tags": ["a", "b"]})
     (record,) = _records(logs, exporter)
-    assert record.attributes[f"{Attr.PROPERTIES_PREFIX}payload"] == (
-        '{"a": 1}'
-    )
+    # Compact separators, so one logical value is one byte sequence
+    # whichever SDK emitted it.
+    assert record.attributes[f"{Attr.PROPERTIES_PREFIX}payload"] == '{"a":1}'
+    assert record.attributes[f"{Attr.PROPERTIES_PREFIX}tags"] == '["a","b"]'
 
 
 def test_track_uses_explicit_event_id(logs, exporter):
@@ -79,9 +81,29 @@ def test_feedback_emits_feedback_event(logs, exporter):
     assert attrs[f"{Attr.PROPERTIES_PREFIX}rating"] == 5
 
 
+def test_feedback_named_fields_win_over_extra_of_the_same_key(exporter):
+    # FeedbackProperties is public, so `extra` can carry a key that collides
+    # with a named field. Merging extra last let it replace the feedback name
+    # the event was about; every other entry point resolves this
+    # the same way.
+    from introspection_sdk.otel.types import FeedbackProperties
+
+    props = FeedbackProperties(
+        name="thumbs_up",
+        comments="great",
+        extra={"name": "not the name", "comments": "not the comments", "n": 1},
+    )
+    assert props.to_dict() == {
+        "name": "thumbs_up",
+        "comments": "great",
+        "n": 1,
+    }
+
+
 def test_identify_sets_user_and_emits(logs, exporter):
-    with logs.identify("user_42", traits={"plan": "pro"}):
-        pass
+    # A bare call emits. While identify() was a
+    # context manager this line built a generator and sent nothing.
+    logs.identify("user_42", traits={"plan": "pro"})
     (record,) = _records(logs, exporter)
     attrs = record.attributes
     assert attrs[Attr.EVENT_NAME] == EventName.IDENTIFY
@@ -89,14 +111,27 @@ def test_identify_sets_user_and_emits(logs, exporter):
     assert attrs[f"{Attr.TRAITS_PREFIX}plan"] == "pro"
 
 
-def test_identify_baggage_visible_to_nested_track(logs, exporter):
-    with logs.identify("user_99", anonymous_id="anon_1"):
-        logs.track("Inside")
+def test_identify_does_not_leak_onto_later_events(logs, exporter):
+    logs.identify("user_99", anonymous_id="anon_1")
+    logs.track("After")
     records = _records(logs, exporter)
-    # identify + the nested track event.
-    track_rec = next(
-        r for r in records if r.attributes[Attr.EVENT_NAME] == "Inside"
+    identify_rec = next(
+        r
+        for r in records
+        if r.attributes[Attr.EVENT_NAME] == EventName.IDENTIFY
     )
+    assert identify_rec.attributes[Attr.USER_ID] == "user_99"
+    assert identify_rec.attributes[Attr.ANONYMOUS_ID] == "anon_1"
+    after_rec = next(
+        r for r in records if r.attributes[Attr.EVENT_NAME] == "After"
+    )
+    assert Attr.USER_ID not in after_rec.attributes
+
+
+def test_set_user_id_scopes_identity_across_events(logs, exporter):
+    with logs.set_user_id("user_99"), logs.set_anonymous_id("anon_1"):
+        logs.track("Inside")
+    (track_rec,) = _records(logs, exporter)
     assert track_rec.attributes[Attr.USER_ID] == "user_99"
     assert track_rec.attributes[Attr.ANONYMOUS_ID] == "anon_1"
 
@@ -136,12 +171,33 @@ def test_set_baggage_serialises_non_string_values(logs, exporter):
     assert record.attributes[Attr.CONVERSATION_ID] == "123"
 
 
-def test_reset_clears_traits(logs):
-    with logs.identify("u", traits={"a": 1}):
-        pass
-    assert logs._traits == {"a": 1}
-    logs.reset()
-    assert logs._traits == {}
+def test_identify_emits_traits_on_the_record(logs, exporter):
+    # The traits argument is what reaches the record; the client keeps no
+    # accumulated copy of it.
+    logs.identify("u", traits={"a": 1})
+    (record,) = _records(logs, exporter)
+    assert record.attributes[f"{Attr.TRAITS_PREFIX}a"] == 1
+    assert record.attributes[Attr.USER_ID] == "u"
+
+
+def test_every_record_names_this_sdk_and_its_version_as_the_scope(
+    logs, exporter
+):
+    # The scope rides every record and is how ingest attributes an event to
+    # the SDK and release that produced it.
+    from introspection_sdk.version import VERSION
+
+    logs.track("E")
+    logs.flush()
+    (data,) = exporter.get_finished_logs()
+    scope = data.instrumentation_scope
+    assert scope.name == "introspection-sdk"
+    assert scope.version == VERSION
+
+    # The language is deliberately absent from the scope name: it rides the
+    # resource, which is where semconv puts it. The scope name's brevity
+    # depends on that, so assert it here.
+    assert data.resource.attributes["telemetry.sdk.language"] == "python"
 
 
 def test_shutdown_is_callable(logs):
@@ -162,3 +218,53 @@ def test_missing_token_warns(caplog: pytest.LogCaptureFixture, exporter):
 # extract a pure `_derive_otlp_endpoint()` helper that can be unit-tested
 # directly; that belongs in a change that touches introspection_sdk, not
 # this test-only PR.
+
+
+def test_unserialisable_property_does_not_abort_the_caller(logs, exporter):
+    # A telemetry call must never take down the operation it is measuring.
+    # A bare json.dumps raised TypeError out of track() on any datetime,
+    # set, or bytes in the property dict.
+    logs.track("evt", {"when": datetime(2026, 1, 1), "tags": {"a"}})
+    (record,) = _records(logs, exporter)
+    assert f"{Attr.PROPERTIES_PREFIX}when" in record.attributes
+    assert f"{Attr.PROPERTIES_PREFIX}tags" in record.attributes
+
+
+def test_serialisable_property_still_becomes_json(logs, exporter):
+    logs.track("evt", {"meta": {"a": 1}, "n": 5, "ok": True})
+    (record,) = _records(logs, exporter)
+    attrs = record.attributes
+    assert attrs[f"{Attr.PROPERTIES_PREFIX}meta"] == '{"a":1}'
+    assert attrs[f"{Attr.PROPERTIES_PREFIX}n"] == 5
+    assert attrs[f"{Attr.PROPERTIES_PREFIX}ok"] is True
+
+
+def test_wide_event_keeps_event_name_and_id(logs, exporter):
+    """An event with more properties than OTel's attribute cap still names
+    itself.
+
+    OTel caps a log record at ``OTEL_ATTRIBUTE_COUNT_LIMIT`` attributes (128
+    by default) and ``BoundedAttributes`` evicts the *oldest* entry on every
+    insertion past the cap. With the SDK's own identity written before the
+    caller's properties, a wide event was exported with ``event.name`` and
+    ``event.id`` among the evicted: the collector accepted a record that
+    named no event and joined to nothing, and the caller saw no error.
+    Truncation has to cost properties, never identity.
+    """
+    logs.track("stress.wide", {f"k{i}": i for i in range(200)})
+    (record,) = _records(logs, exporter)
+    attrs = record.attributes
+    assert attrs[Attr.EVENT_NAME] == "stress.wide"
+    assert attrs[Attr.EVENT_ID]
+    # The cap still applies -- properties are what it costs.
+    assert len(attrs) <= 128
+
+
+def test_wide_event_keeps_identity_from_baggage(logs, exporter):
+    with logs.set_user_id("u-1"), logs.set_agent("a", "a-1"):
+        logs.track("stress.wide", {f"k{i}": i for i in range(200)})
+    (record,) = _records(logs, exporter)
+    attrs = record.attributes
+    assert attrs[Attr.EVENT_NAME] == "stress.wide"
+    assert attrs[Attr.USER_ID] == "u-1"
+    assert attrs[Attr.AGENT_NAME] == "a"

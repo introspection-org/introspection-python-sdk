@@ -108,6 +108,24 @@ def test_429_with_invalid_retry_after_is_none():
     assert err.retry_after is None
 
 
+def test_every_error_carries_retry_after_not_just_429():
+    """A 503 is when `Retry-After` matters most.
+
+    It lived on `RateLimitError` alone, so a sandbox still warming up told
+    the caller exactly when to come back and the SDK dropped it.
+    """
+    err = error_from_response(
+        _response(503, json_body={}, headers={"retry-after": "120"})
+    )
+    assert isinstance(err, SandboxUnavailableError)
+    assert err.retry_after == 120.0
+
+    # And it is simply absent when the server sent no header.
+    assert (
+        error_from_response(_response(404, json_body={})).retry_after is None
+    )
+
+
 @pytest.mark.parametrize("status", [503, 504])
 def test_5xx_maps_to_sandbox_unavailable(status: int):
     assert isinstance(
@@ -162,3 +180,15 @@ def test_repr_includes_status_and_code():
     text = repr(err)
     assert "RunnerExpiredError" in text
     assert "status_code=401" in text
+
+
+def test_a_negative_retry_after_means_now_not_a_negative_delay():
+    """A negative delay is clamped.
+
+    Unclamped it became a negative floor in the backoff, and then a
+    negative sleep.
+    """
+    err = error_from_response(
+        _response(429, json_body={}, headers={"retry-after": "-5"})
+    )
+    assert err.retry_after == 0.0

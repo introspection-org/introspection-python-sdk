@@ -8,7 +8,7 @@
   </a>
 </div>
 
-<h4 align="center">Deploy vertical agents that improve in production.</h4>
+<h4 align="center">The infrastructure for long-horizon vertical agents.</h4>
 
 <div align="center">
   <a href="https://introspection.dev"><img src="https://img.shields.io/badge/website-introspection.dev-blue" alt="Website"></a>
@@ -19,10 +19,12 @@
 
 <br>
 
-[Introspection](https://introspection.dev) is the managed cloud for vertical
-agents, powered by Pi. Define an agent as a recipe, deploy it to a
-commit-pinned runtime, and improve it in production with conversations,
-patterns, judges, and experiments.
+[Introspection](https://introspection.dev) is the infrastructure for
+long-horizon vertical agents, powered by Pi. Define an agent as a
+[Recipe](https://pi.recipes) — agents, skills, policies, and evals in plain
+source you own in Git — deploy it to a governed per-customer Runtime, and
+improve it in production with conversations, observations, judges, and
+experiments.
 
 This is the Python platform SDK. Use it to open a runner against a deployed
 runtime, start and stream tasks, and manage files, conversations, recipes,
@@ -148,11 +150,9 @@ envelope metadata (counts, cursors):
 ```python
 # Stream every summary across all pages.
 async for summary in runner.conversations.list(limit=20):
-    response = await runner.conversations.retrieve(
-        summary.conversation_id or summary.trace_id
-    )
-    if response is not None:
-        print(response.model, len(response.input_messages))
+    span = await runner.conversations.retrieve(summary.id)
+    if span is not None:
+        print(span.model, len(span.input_messages))
 
 # Or just the first page, with totals.
 first = await runner.files.list(include_total=True)
@@ -187,8 +187,8 @@ The token is not auto-refreshed — re-mint once it expires
 When you're a **server broker** handing credentials to a browser client, mint
 the token directly to also read `dp_url` (the Data Plane endpoint the Control
 Plane resolved for the project) and resolve the runtime slug to a concrete
-`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser SDK talks
-to the Data Plane without a hardcoded URL:
+`runtime_id` — return `{ token, runtime_id, dp_url }` so the browser talks to
+the Data Plane without a hardcoded URL:
 
 ```python
 from introspection_sdk import IntrospectionClient, service_account_token
@@ -243,7 +243,10 @@ pip install 'introspection-sdk[otel]'
 
 Both are documented in [**`docs/otel.md`**](docs/otel.md).
 
-Support for other LLM frameworks is experimental.
+The SDK ships no framework integrations and performs no span conversion.
+Emit spans in OTel GenAI semantic conventions — by hand, or from any
+instrumentation that already speaks them — and attach
+`IntrospectionSpanProcessor` to your provider to export them.
 
 ## Environment variables
 
@@ -259,9 +262,12 @@ export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"   # optional
 # the line to copy. No default — see "Sharing a Runtime" below.
 export INTROSPECTION_DEV_TARGET="roland"                            # optional
 
-# OTel (IntrospectionLogs + span processors + instrumentors) — see docs/otel.md
+# OTel (IntrospectionLogs + span processors) — see docs/otel.md
 export INTROSPECTION_BASE_OTEL_URL="https://otel.introspection.dev" # optional
 export INTROSPECTION_SERVICE_NAME="my-service"                      # optional
+
+# SDK diagnostics: error, warn, info, debug. Default: warn.
+export INTROSPECTION_LOG_LEVEL="debug"                              # optional
 ```
 
 ### Sharing a Runtime with another developer

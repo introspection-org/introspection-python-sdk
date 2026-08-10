@@ -1,6 +1,6 @@
 name: Examples
 
-# Examples burn LLM tokens, so they're NOT run on every push.
+# Examples start real runtime tasks, so they're NOT run on every push.
 #
 # Triggers:
 #   - workflow_dispatch  → manual run from the Actions UI / `gh workflow run`
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       run_examples:
-        description: "Run the OTel examples"
+        description: "Run the REST API examples"
         required: false
         default: false
         type: boolean
@@ -48,23 +48,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-uv-examples-
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-
       - name: Run examples
-        if: inputs.run_examples
+        # Also runs on the v* tag push this workflow declares a trigger for,
+        # where `inputs` is empty.
+        if: inputs.run_examples || startsWith(github.ref, 'refs/tags/v')
         working-directory: examples
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
-          INTROSPECTION_BASE_URL: ${{ vars.INTROSPECTION_BASE_URL }}
-          ARIZE_API_KEY: ${{ secrets.ARIZE_API_KEY }}
-          ARIZE_SPACE_KEY: ${{ secrets.ARIZE_SPACE_KEY }}
-          BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
-          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
-          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
-          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: ./introspection_examples/otel/run_all.sh
+          INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL }}
+        run: |
+          uv run -m introspection_examples.api.runtimes
+          uv run -m introspection_examples.api.async_runtimes

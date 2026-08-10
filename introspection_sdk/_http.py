@@ -15,6 +15,7 @@ import asyncio
 import time
 from collections.abc import AsyncIterator, Iterator, Mapping
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
 
 import httpx
@@ -22,6 +23,7 @@ import httpx
 from introspection_sdk._backoff import _is_retryable_status, _retry_delay
 from introspection_sdk._errors import (
     NetworkError,
+    RunnerExpiredError,
     _parse_retry_after,
     error_from_response,
 )
@@ -70,6 +72,7 @@ class _HttpClient:
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base: float = DEFAULT_RETRY_BASE,
     ) -> None:
+        self._closed = False
         self._client = httpx.Client(
             base_url=api_url.rstrip("/"),
             timeout=timeout,
@@ -84,7 +87,25 @@ class _HttpClient:
         self._retry_base = retry_base
 
     def close(self) -> None:
+        self._closed = True
         self._client.close()
+
+    def _check_open(self) -> None:
+        """Raise a typed error once this client has been closed.
+
+        ``Runner.refresh()`` closes the client it replaces, and
+        ``Runner.close()`` closes the live one, but a namespace handle the
+        caller already holds keeps a reference to it. Without this the next
+        call surfaced httpx's bare ``RuntimeError: Cannot send a request, as
+        the client has been closed``, bypassing the typed-error guarantee
+        ``_check_open`` on the Runner exists to give.
+        """
+        if self._closed:
+            raise RunnerExpiredError(
+                "This client has been closed (the Runner was closed or "
+                "refreshed); take a fresh namespace handle from the Runner.",
+                status_code=0,
+            )
 
     def request(
         self,
@@ -98,6 +119,7 @@ class _HttpClient:
         headers: Mapping[str, str] | None = None,
         expect: str = "json",
     ) -> Any:
+        self._check_open()
         req_headers = dict(self._auth_headers)
         if headers:
             req_headers.update(headers)
@@ -176,6 +198,7 @@ class _HttpClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> Iterator[str]:
+        self._check_open()
         req_headers = dict(self._auth_headers)
         req_headers["Accept"] = "text/event-stream"
         if headers:
@@ -212,6 +235,7 @@ class _AsyncHttpClient:
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base: float = DEFAULT_RETRY_BASE,
     ) -> None:
+        self._closed = False
         self._client = httpx.AsyncClient(
             base_url=api_url.rstrip("/"),
             timeout=timeout,
@@ -226,7 +250,17 @@ class _AsyncHttpClient:
         self._retry_base = retry_base
 
     async def aclose(self) -> None:
+        self._closed = True
         await self._client.aclose()
+
+    def _check_open(self) -> None:
+        """Async twin of :meth:`_HttpClient._check_open`."""
+        if self._closed:
+            raise RunnerExpiredError(
+                "This client has been closed (the Runner was closed or "
+                "refreshed); take a fresh namespace handle from the Runner.",
+                status_code=0,
+            )
 
     async def request(
         self,
@@ -240,6 +274,7 @@ class _AsyncHttpClient:
         headers: Mapping[str, str] | None = None,
         expect: str = "json",
     ) -> Any:
+        self._check_open()
         req_headers = dict(self._auth_headers)
         if headers:
             req_headers.update(headers)
@@ -317,6 +352,7 @@ class _AsyncHttpClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[str]:
+        self._check_open()
         req_headers = dict(self._auth_headers)
         req_headers["Accept"] = "text/event-stream"
         if headers:
@@ -343,5 +379,22 @@ def _clean_params(
     for k, v in params.items():
         if v is None:
             continue
-        out[k] = v
+        out[k] = _param_value(v)
     return out
+
+
+def _param_value(value: Any) -> Any:
+    """Render one query-parameter value the way the API expects it.
+
+    ``httpx`` falls back to ``str()`` for anything it does not know, and
+    ``str(datetime)`` is the space-separated form ``2025-01-01 12:30:00+00:00``
+    -- not ISO-8601. The window parameters (``start`` / ``end`` /
+    ``start_date`` / ``end_date``, and the ``start_date`` a ``lookback``
+    resolves to) accept ``datetime`` by design, so every one of them went out
+    malformed. ``isoformat()`` puts the ``T`` back.
+    """
+    if isinstance(value, datetime | date):
+        return value.isoformat()
+    if isinstance(value, list | tuple):
+        return [_param_value(item) for item in value]
+    return value

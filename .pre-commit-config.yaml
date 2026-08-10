@@ -46,7 +46,7 @@ repos:
       # Run before pushing with: prek run --hook-stage manual coverage
       - id: coverage
         name: pytest coverage ratchet
-        entry: uv run pytest tests/ --cov=introspection_sdk --cov-report=term --cov-fail-under=60 -q
+        entry: uv run pytest tests/ --cov=introspection_sdk --cov-report=term --cov-fail-under=80 -q
         language: system
         types: [python]
         pass_filenames: false

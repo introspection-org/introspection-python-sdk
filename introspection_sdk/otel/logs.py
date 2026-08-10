@@ -13,13 +13,16 @@ Example::
     from introspection_sdk import IntrospectionLogs
 
     logs = IntrospectionLogs(token="intro_xxx", service_name="my-app")
-    with logs.identify("user_42"):
+    logs.identify("user_42", traits={"plan": "pro"})
+    with logs.set_user_id("user_42"):
         logs.track("Button Clicked", {"button_id": "submit"})
         logs.feedback("thumbs_up", conversation_id="conv_456")
     logs.shutdown()
 """
 
 from __future__ import annotations
+
+import uuid
 
 __all__ = ["IntrospectionLogs"]
 
@@ -30,7 +33,6 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urljoin
 
 from opentelemetry import baggage, context
 from opentelemetry._logs import SeverityNumber
@@ -44,16 +46,17 @@ from opentelemetry.semconv.resource import (
     ResourceAttributes,  # ty: ignore[deprecated]  # OpenTelemetry deprecated ResourceAttributes but new API not available yet
 )
 
+from introspection_sdk.otel._endpoint import otlp_endpoint
 from introspection_sdk.otel.processors._batch import batch_processor_options
 from introspection_sdk.otel.types import (
+    DEFAULT_SERVICE_NAME,
     Attr,
     Baggage,
     EventName,
     FeedbackProperties,
 )
-from introspection_sdk.types import _generate_message_id
 from introspection_sdk.utils import logger
-from introspection_sdk.version import VERSION
+from introspection_sdk.version import USER_AGENT, VERSION
 
 if TYPE_CHECKING:
     from opentelemetry.sdk._logs.export import LogRecordExporter
@@ -92,7 +95,8 @@ class IntrospectionLogs:
 
         logs.track("Button Clicked", {"button_id": "submit"})
         logs.feedback("thumbs_up", conversation_id="conv_456")
-        with logs.identify("user_42"):
+        logs.identify("user_42", traits={"plan": "pro"})
+        with logs.set_user_id("user_42"):
             logs.track("Page Viewed", {"path": "/pricing"})
 
         logs.shutdown()
@@ -139,7 +143,7 @@ class IntrospectionLogs:
         """
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
         self._service_name = service_name or os.getenv(
-            "INTROSPECTION_SERVICE_NAME", "introspection-client"
+            "INTROSPECTION_SERVICE_NAME", DEFAULT_SERVICE_NAME
         )
         self._base_otel_url = base_otel_url or os.getenv(
             "INTROSPECTION_BASE_OTEL_URL",
@@ -160,12 +164,7 @@ class IntrospectionLogs:
         if log_exporter is not None:
             exporter: LogRecordExporter = log_exporter
         else:
-            if self._base_otel_url.endswith("/v1/logs"):
-                endpoint = self._base_otel_url
-            else:
-                endpoint = urljoin(
-                    self._base_otel_url.rstrip("/") + "/", "v1/logs"
-                )
+            endpoint = otlp_endpoint(self._base_otel_url, "logs")
 
             logger.info(
                 "IntrospectionLogs initialized: "
@@ -173,7 +172,8 @@ class IntrospectionLogs:
             )
 
             headers: dict[str, str] = {
-                "Authorization": f"Bearer {self._token}"
+                "User-Agent": USER_AGENT,
+                "Authorization": f"Bearer {self._token}",
             }
             if self._additional_headers:
                 headers.update(self._additional_headers)
@@ -201,12 +201,14 @@ class IntrospectionLogs:
 
         self._logger_provider = LoggerProvider(resource=resource)
         self._logger_provider.add_log_record_processor(processor)
+        # The dist name, per the OTel convention that the scope names the
+        # instrumentation library. Deliberately not language-tagged: the SDK
+        # language already rides the resource as ``telemetry.sdk.language``
+        # ("python" here), which is the semconv-designated place for it.
         self._otel_logger = self._logger_provider.get_logger(
             "introspection-sdk",
             VERSION,
         )
-
-        self._traits: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # Attribute builders
@@ -225,10 +227,28 @@ class IntrospectionLogs:
         previous_response_id: str | None = None,
         event_id: str | None = None,
     ) -> dict[str, Any]:
-        attributes: dict[str, Any] = {
-            Attr.EVENT_NAME: event_name,
-            Attr.EVENT_ID: event_id or _generate_message_id(),
-        }
+        # Caller-supplied values go in first and the SDK's own identity keys
+        # last. The order matters on the wire: OTel caps a log record at
+        # ``OTEL_ATTRIBUTE_COUNT_LIMIT`` attributes (128 by default) and
+        # ``BoundedAttributes`` evicts the *oldest* entry on each insertion
+        # past the cap. With identity written first, an event carrying more
+        # than ~126 properties reached the collector with ``event.name`` and
+        # ``event.id`` evicted -- an accepted, exported record that named no
+        # event and could not be joined to anything, and the caller saw no
+        # error. Written last, truncation costs properties instead, which is
+        # what a cap on an attribute count is for.
+        attributes: dict[str, Any] = {}
+
+        for prefix, source in (
+            (Attr.PROPERTIES_PREFIX, properties),
+            (Attr.TRAITS_PREFIX, traits),
+        ):
+            if not source:
+                continue
+            for key, value in source.items():
+                if value is None:
+                    continue
+                attributes[f"{prefix}{key}"] = _attribute_value(value)
 
         identity_ctx = self._get_identity_from_context()
         user_id = identity_ctx.user_id
@@ -236,42 +256,29 @@ class IntrospectionLogs:
 
         gen_ai_ctx = self._get_gen_ai_from_context()
 
-        if user_id:
-            attributes[Attr.USER_ID] = user_id
-        if anonymous_id:
-            attributes[Attr.ANONYMOUS_ID] = anonymous_id
-
         final_conversation_id = conversation_id or gen_ai_ctx.conversation_id
         final_previous_response_id = (
             previous_response_id or gen_ai_ctx.previous_response_id
         )
 
-        if final_conversation_id:
-            attributes[Attr.CONVERSATION_ID] = final_conversation_id
-        if final_previous_response_id:
-            attributes[Attr.PREVIOUS_RESPONSE_ID] = final_previous_response_id
-        if gen_ai_ctx.agent_name:
-            attributes[Attr.AGENT_NAME] = gen_ai_ctx.agent_name
         if gen_ai_ctx.agent_id:
             attributes[Attr.AGENT_ID] = gen_ai_ctx.agent_id
+        if gen_ai_ctx.agent_name:
+            attributes[Attr.AGENT_NAME] = gen_ai_ctx.agent_name
+        if final_previous_response_id:
+            attributes[Attr.PREVIOUS_RESPONSE_ID] = final_previous_response_id
+        if final_conversation_id:
+            attributes[Attr.CONVERSATION_ID] = final_conversation_id
+        if anonymous_id:
+            attributes[Attr.ANONYMOUS_ID] = anonymous_id
+        if user_id:
+            attributes[Attr.USER_ID] = user_id
 
-        if properties:
-            for key, value in properties.items():
-                if value is not None:
-                    attr_key = f"{Attr.PROPERTIES_PREFIX}{key}"
-                    if isinstance(value, str | int | float | bool):
-                        attributes[attr_key] = value
-                    else:
-                        attributes[attr_key] = json.dumps(value)
-
-        if traits:
-            for key, value in traits.items():
-                if value is not None:
-                    attr_key = f"{Attr.TRAITS_PREFIX}{key}"
-                    if isinstance(value, str | int | float | bool):
-                        attributes[attr_key] = value
-                    else:
-                        attributes[attr_key] = json.dumps(value)
+        # Last of all, so these two are the last things a truncating
+        # ``BoundedAttributes`` would ever drop: without them the record
+        # names no event and joins to nothing.
+        attributes[Attr.EVENT_ID] = event_id or _generate_message_id()
+        attributes[Attr.EVENT_NAME] = event_name
 
         return attributes
 
@@ -393,6 +400,7 @@ class IntrospectionLogs:
             timestamp=self._get_timestamp(),
             context=context.get_current(),
             severity_number=SeverityNumber.INFO,
+            severity_text="INFO",
             attributes=attributes,
         )
         logger.debug(f"Tracked: {event_name}")
@@ -422,25 +430,33 @@ class IntrospectionLogs:
             timestamp=self._get_timestamp(),
             context=context.get_current(),
             severity_number=SeverityNumber.INFO,
+            severity_text="INFO",
             attributes=attributes,
         )
         logger.debug(f"Feedback: {props.name}")
 
-    @contextmanager
     def identify(
         self,
         user_id: str,
         traits: dict[str, Any] | None = None,
         anonymous_id: str | None = None,
         event_id: str | None = None,
-    ) -> Iterator[None]:
-        if traits:
-            self._traits.update(traits)
+    ) -> None:
+        """Emit an ``identify`` event associating ``user_id`` with ``traits``.
 
+        The identity lands on this event only. To scope it across several
+        events, wrap them in :meth:`set_user_id`.
+
+        This used to be a context manager, which made the bare call
+        ``logs.identify("u1")`` -- the form every other Introspection SDK
+        takes -- construct a generator and emit nothing at all.
+        """
         baggage_values: dict[str, str] = {Baggage.USER_ID: user_id}
         if anonymous_id:
             baggage_values[Baggage.ANONYMOUS_ID] = anonymous_id
 
+        # The identity attributes are read off the context, so the ids this
+        # call is about have to be on it while the record is built.
         with self.set_baggage(**baggage_values):
             attributes = self._build_attributes(
                 EventName.IDENTIFY, traits=traits, event_id=event_id
@@ -449,18 +465,14 @@ class IntrospectionLogs:
                 timestamp=self._get_timestamp(),
                 context=context.get_current(),
                 severity_number=SeverityNumber.INFO,
+                severity_text="INFO",
                 attributes=attributes,
             )
-            logger.debug(f"Identified: {user_id}")
-            yield
+        logger.debug(f"Identified: {user_id}")
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
-
-    def reset(self) -> None:
-        self._traits = {}
-        logger.debug("IntrospectionLogs state reset")
 
     def flush(self, timeout_ms: int = 30000) -> bool:
         logger.info("Flushing IntrospectionLogs")
@@ -469,3 +481,36 @@ class IntrospectionLogs:
     def shutdown(self) -> None:
         logger.info("Shutting down IntrospectionLogs")
         self._logger_provider.shutdown()
+
+
+def _attribute_value(value: Any) -> Any:
+    """Coerce a property/trait value into something OTLP can carry.
+
+    A telemetry call must never abort the operation it is measuring, and a
+    bare ``json.dumps`` did exactly that: a ``datetime``, ``set``, or
+    ``bytes`` in a property dict raised ``TypeError`` out of ``track()``
+    into the caller's business logic. Anything unserialisable falls back to
+    ``repr`` -- a lossy attribute beats a crash.
+
+    Encoded with compact separators. ``json.dumps`` pads with ``", "`` and
+    ``": "`` by default, so the same list reached the collector as
+    ``["a", "b"]`` from here and ``["a","b"]`` from the other SDKs -- one
+    logical value, two byte sequences, which anything grouping or hashing on
+    a property value sees as two distinct values.
+    """
+    if isinstance(value, str | int | float | bool):
+        return value
+    try:
+        return json.dumps(value, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return repr(value)
+
+
+def _generate_message_id() -> str:
+    """Generate a unique event ID.
+
+    Format: intro_event_<timestamp>-<random8>
+    """
+    timestamp = hex(int(time.time() * 1000))[2:]
+    random_part = uuid.uuid4().hex[:8]
+    return f"intro_event_{timestamp}-{random_part}"

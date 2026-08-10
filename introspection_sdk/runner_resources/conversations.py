@@ -2,7 +2,7 @@
 
 Bound to a :class:`~introspection_sdk.runner.Runner` — every call targets
 the runner's DP endpoint with its short-lived JWT. The surface is
-read-only and mirrors the shipped JS Runner's ``conversations`` namespace.
+read-only.
 
 Both conversation summaries and conversation items walk opaque ``next``
 cursors. The item envelope retains OpenAI-style ``first_id`` / ``last_id``
@@ -70,6 +70,17 @@ class ConversationExportParams(TypedDict, total=False):
 
 JSON_EXPORT_HEADERS = {"Accept": "application/json"}
 
+#: How many items ``retrieve()`` scans, newest-first, looking for the latest
+#: LLM turn. The scan used to be unbounded: it drove the auto-paging
+#: ``Pager`` and, on a conversation whose recent items are all tool or
+#: retrieval spans, walked every turn ever recorded -- one request per page,
+#: for a lookup the caller expects to cost one or two. The turn it wants is
+#: at the head of a descending list; if it is not in the first page, the
+#: caller wants ``items.list()`` and their own predicate, not this heuristic.
+#: Deliberately below the list route's default page size, so the bound is the
+#: request the SDK asks for and not just a local slice of a larger page.
+LATEST_TURN_SCAN_LIMIT = 50
+
 
 def build_export_params(
     *,
@@ -122,6 +133,15 @@ def _export_headers(format: ConversationExportFormat) -> dict[str, str]:
     return JSON_EXPORT_HEADERS
 
 
+ConversationResolution = Literal[
+    "resolved", "blocked", "unresolved", "pending"
+]
+"""``resolution`` filter on the conversations list."""
+
+ConversationSentiment = Literal["positive", "negative", "mixed", "neutral"]
+"""``sentiment`` filter on the conversations list."""
+
+
 def build_conversation_params(
     *,
     limit: int = 100,
@@ -139,6 +159,11 @@ def build_conversation_params(
     runtime_group_id: UUID | None = None,
     experiment_id: UUID | None = None,
     recipe_git_commit_sha: str | None = None,
+    conversation_ids: builtins.list[str] | None = None,
+    share_id: builtins.list[str] | None = None,
+    resolution: ConversationResolution | None = None,
+    sentiment: ConversationSentiment | None = None,
+    owner_key: str | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
 ) -> dict[str, Any]:
@@ -159,6 +184,11 @@ def build_conversation_params(
         "runtime_group_id": runtime_group_id,
         "experiment_id": experiment_id,
         "recipe_git_commit_sha": recipe_git_commit_sha,
+        "conversation_ids": conversation_ids,
+        "share_id": share_id,
+        "resolution": resolution,
+        "sentiment": sentiment,
+        "owner_key": owner_key,
         "start_date": start_date,
         "end_date": end_date,
     }
@@ -359,6 +389,11 @@ class Conversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -401,6 +436,11 @@ class Conversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -439,6 +479,11 @@ class Conversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -475,6 +520,11 @@ class Conversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -651,10 +701,16 @@ class Conversations:
         ``node_type`` was a precomputed UI tree hint with no semantic-convention
         equivalent and is gone from the wire. ``gen_ai.operation.name`` is the
         attribute that actually carried the meaning.
+
+        Bounded by :data:`LATEST_TURN_SCAN_LIMIT`: see its note for why an
+        unbounded scan was the wrong shape for this lookup.
         """
         fallback: GenAiSpan | None = None
+        scanned = 0
         # The route is descending-only, so the first match is the latest.
-        for item in self.items.list(conversation_id):
+        for item in self.items.list(
+            conversation_id, limit=LATEST_TURN_SCAN_LIMIT
+        ):
             gen_ai = item.attributes.gen_ai
             operation = (
                 gen_ai.operation.name if gen_ai and gen_ai.operation else None
@@ -663,6 +719,11 @@ class Conversations:
                 return item.span_id
             if fallback is None and item.output_messages:
                 fallback = item
+            # Counted after the body, so the loop stops on the last item of
+            # the page rather than asking the pager for the next one.
+            scanned += 1
+            if scanned >= LATEST_TURN_SCAN_LIMIT:
+                break
         return fallback.span_id if fallback else None
 
 
@@ -790,6 +851,11 @@ class AsyncConversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -829,6 +895,11 @@ class AsyncConversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -867,6 +938,11 @@ class AsyncConversations:
         runtime_group_id: UUID | None = None,
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        share_id: builtins.list[str] | None = None,
+        resolution: ConversationResolution | None = None,
+        sentiment: ConversationSentiment | None = None,
+        owner_key: str | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -903,6 +979,11 @@ class AsyncConversations:
                 runtime_group_id=runtime_group_id,
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
+                conversation_ids=conversation_ids,
+                share_id=share_id,
+                resolution=resolution,
+                sentiment=sentiment,
+                owner_key=owner_key,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -1060,10 +1141,15 @@ class AsyncConversations:
         ``node_type`` was a precomputed UI tree hint with no semantic-convention
         equivalent and is gone from the wire. ``gen_ai.operation.name`` is the
         attribute that actually carried the meaning.
+
+        Bounded by :data:`LATEST_TURN_SCAN_LIMIT`, exactly as the sync twin.
         """
         fallback: GenAiSpan | None = None
+        scanned = 0
         # The route is descending-only, so the first match is the latest.
-        async for item in self.items.list(conversation_id):
+        async for item in self.items.list(
+            conversation_id, limit=LATEST_TURN_SCAN_LIMIT
+        ):
             gen_ai = item.attributes.gen_ai
             operation = (
                 gen_ai.operation.name if gen_ai and gen_ai.operation else None
@@ -1072,4 +1158,7 @@ class AsyncConversations:
                 return item.span_id
             if fallback is None and item.output_messages:
                 fallback = item
+            scanned += 1
+            if scanned >= LATEST_TURN_SCAN_LIMIT:
+                break
         return fallback.span_id if fallback else None

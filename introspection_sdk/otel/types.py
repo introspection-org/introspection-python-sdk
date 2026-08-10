@@ -1,6 +1,6 @@
 """OpenTelemetry-only type / constant definitions.
 
-These are extracted from the top-level :mod:`introspection_sdk.types`
+These were extracted from a former top-level ``types`` module
 module so the REST-only install can avoid pulling them in. They cover
 OTel attribute keys, baggage keys, event names, and feedback property
 shapes used by :class:`~introspection_sdk.otel.logs.IntrospectionLogs`
@@ -15,14 +15,18 @@ from typing import Any
 __all__ = [
     "Attr",
     "Baggage",
+    "DEFAULT_SERVICE_NAME",
     "EventName",
     "FeedbackProperties",
-    "REDACTED_THINKING_CONTENT",
 ]
 
-
-REDACTED_THINKING_CONTENT = "[redacted]"
-"""Placeholder used in place of redacted/encrypted thinking content."""
+#: ``service.name`` for telemetry this SDK emits when the caller names none.
+#:
+#: One constant for both streams. Spans used to default to ``"introspection"``
+#: while events defaulted to ``"introspection-client"``, so a single
+#: :func:`~introspection_sdk.otel.init` produced two services in the backend
+#: and nothing tied them together.
+DEFAULT_SERVICE_NAME = "introspection-client"
 
 
 class EventName:
@@ -51,6 +55,16 @@ class Attr:
     PREVIOUS_RESPONSE_ID = "gen_ai.request.previous_response_id"
     AGENT_NAME = "gen_ai.agent.name"
     AGENT_ID = "gen_ai.agent.id"
+
+    # Introspection-namespaced span attributes. The SDK emits no spans of its
+    # own, so nothing here writes them — they are the names hand-written and
+    # harness instrumentation must use to stay consistent with the other
+    # SDKs. TERMINATION_REASON="cancelled" alongside
+    # gen_ai.response.finish_reasons=["aborted"] and an Unset status is how a
+    # caller-requested abort is distinguished from a failure.
+    TERMINATION_REASON = "introspection.termination_reason"
+    LLM_COST_USD = "introspection.llm.cost_usd"
+    LLM_UPSTREAM_COST_USD = "introspection.llm.upstream_cost_usd"
 
     # Prefixes for dynamic keys
     PROPERTIES_PREFIX = "properties."
@@ -96,9 +110,17 @@ class FeedbackProperties:
         Returns:
             Dict with ``"name"`` always present, optional ``"comments"``,
             plus any keys from :attr:`extra` merged in.
+
+        :attr:`extra` is seeded first so the named fields win. It used to be
+        merged last, which let ``extra={"name": ...}`` silently replace the
+        feedback name the event was about. Unreachable through
+        ``logs.feedback(name, **extra)`` -- ``name=`` binds to the positional
+        parameter -- but reachable by building this public dataclass
+        directly, and the settled spelling is
+        named-argument-wins for the same field.
         """
-        result: dict[str, Any] = {"name": self.name}
+        result: dict[str, Any] = dict(self.extra)
+        result["name"] = self.name
         if self.comments is not None:
             result["comments"] = self.comments
-        result.update(self.extra)
         return result

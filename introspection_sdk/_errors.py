@@ -10,6 +10,8 @@ optional body ``code`` field.
 from __future__ import annotations
 
 import json as _json
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx
@@ -26,12 +28,20 @@ class IntrospectionAPIError(Exception):
         code: str | None = None,
         request_id: str | None = None,
         body: Any = None,
+        retry_after: float | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.request_id = request_id
         self.body = body
+        #: Seconds the server asked the caller to wait, from ``Retry-After``.
+        #:
+        #: On the base class, not on :class:`RateLimitError` alone: the DP
+        #: sends the header on a ``503`` while a sandbox is warming up, which
+        #: is precisely when a caller most wants it, and that error was
+        #: dropping it on the floor.
+        self.retry_after = retry_after
 
     def __repr__(self) -> str:
         return (
@@ -45,25 +55,20 @@ class AuthenticationError(IntrospectionAPIError):
 
 
 class InsufficientScopeError(IntrospectionAPIError):
-    """403 with ``code=insufficient_scope`` — token lacks a capability."""
+    """403 with ``code=insufficient_scope`` — token lacks a capability.
+
+    Adds ``missing_capability``; everything else is forwarded, so a field
+    added to the base is not silently dropped here.
+    """
 
     def __init__(
         self,
         message: str,
         *,
-        status_code: int,
-        code: str | None = None,
-        request_id: str | None = None,
-        body: Any = None,
         missing_capability: str | None = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(
-            message,
-            status_code=status_code,
-            code=code,
-            request_id=request_id,
-            body=body,
-        )
+        super().__init__(message, **kwargs)
         self.missing_capability = missing_capability
 
 
@@ -84,81 +89,55 @@ class ValidationError(IntrospectionAPIError):
 
 
 class RateLimitError(IntrospectionAPIError):
-    """429 — caller has been rate-limited."""
+    """429 — caller has been rate-limited.
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        status_code: int,
-        code: str | None = None,
-        request_id: str | None = None,
-        body: Any = None,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message,
-            status_code=status_code,
-            code=code,
-            request_id=request_id,
-            body=body,
-        )
-        self.retry_after = retry_after
+    ``retry_after`` comes from the base class, which every error carries.
+    """
 
 
 class SandboxUnavailableError(IntrospectionAPIError):
     """503 / 504 — sandbox or upstream is unavailable."""
 
 
-class StreamError(IntrospectionAPIError):
-    """SSE transport failure (malformed frames, mid-stream disconnect)."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        status_code: int = 0,
-        code: str | None = None,
-        request_id: str | None = None,
-        body: Any = None,
-    ) -> None:
-        super().__init__(
-            message,
-            status_code=status_code,
-            code=code,
-            request_id=request_id,
-            body=body,
-        )
-
-
 class NetworkError(IntrospectionAPIError):
-    """Transport-level failure (DNS, TCP, TLS, timeout)."""
+    """Transport-level failure (DNS, TCP, TLS, timeout).
+
+    There was no response, so ``status_code`` defaults to ``0``. That
+    default is the only reason this overrides ``__init__``; everything else
+    is forwarded, so a field added to the base is not silently dropped here.
+    """
 
     def __init__(
-        self,
-        message: str,
-        *,
-        status_code: int = 0,
-        code: str | None = None,
-        request_id: str | None = None,
-        body: Any = None,
+        self, message: str, *, status_code: int = 0, **kwargs: Any
     ) -> None:
-        super().__init__(
-            message,
-            status_code=status_code,
-            code=code,
-            request_id=request_id,
-            body=body,
-        )
+        super().__init__(message, status_code=status_code, **kwargs)
 
 
 def _parse_retry_after(value: str | None) -> float | None:
+    """Seconds to wait, from either RFC 9110 ``Retry-After`` form.
+
+    The header may be a delay in seconds *or* an HTTP-date. Only the numeric
+    form used to be understood, so a date-form header silently produced no
+    backoff floor at all.
+    """
     if not value:
         return None
     try:
-        return float(value)
+        # Clamped, like the date branch below: a negative delay is not a
+        # thing to wait for, and left unclamped it became a negative floor
+        # in the backoff. A nonsense value means "retry now".
+        return max(float(value), 0.0)
     except ValueError:
+        pass
+    try:
+        parsed = parsedate_to_datetime(value.strip())
+    except (TypeError, ValueError):
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    delay = (parsed - datetime.now(UTC)).total_seconds()
+    # A date already in the past means "retry now", not "retry in the past".
+    return max(delay, 0.0)
 
 
 def error_from_response(res: httpx.Response) -> IntrospectionAPIError:
@@ -198,6 +177,10 @@ def error_from_response(res: httpx.Response) -> IntrospectionAPIError:
         "code": code,
         "request_id": request_id,
         "body": body,
+        # Read for every status, not just 429: a 503 carrying `Retry-After`
+        # (a sandbox still warming up) is the other case where the server
+        # has told us exactly when to come back.
+        "retry_after": _parse_retry_after(res.headers.get("retry-after")),
     }
 
     if status == 401:
@@ -222,8 +205,7 @@ def error_from_response(res: httpx.Response) -> IntrospectionAPIError:
     if status in (400, 422):
         return ValidationError(message, **kwargs)
     if status == 429:
-        retry_after = _parse_retry_after(res.headers.get("retry-after"))
-        return RateLimitError(message, retry_after=retry_after, **kwargs)
+        return RateLimitError(message, **kwargs)
     if status in (503, 504):
         return SandboxUnavailableError(message, **kwargs)
     return IntrospectionAPIError(message, **kwargs)
@@ -239,7 +221,6 @@ __all__ = [
     "RateLimitError",
     "RunnerExpiredError",
     "SandboxUnavailableError",
-    "StreamError",
     "ValidationError",
     "error_from_response",
 ]

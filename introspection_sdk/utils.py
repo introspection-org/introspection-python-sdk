@@ -6,26 +6,19 @@ import platform
 
 logger = logging.getLogger("introspection-sdk")
 
-# Configure logger if not already configured
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-    )
-    logger.addHandler(handler)
-    # Set log level from environment variable or root logger
-    log_level_str = os.getenv("INTROSPECTION_LOG_LEVEL", "").upper()
-    if log_level_str and hasattr(logging, log_level_str):
-        logger.setLevel(getattr(logging, log_level_str))
-    else:
-        root_logger = logging.getLogger()
-        logger.setLevel(
-            root_logger.getEffectiveLevel()
-            if root_logger.level != logging.NOTSET
-            else logging.INFO
-        )
+# A library configures no output of its own. Attaching a StreamHandler and
+# forcing INFO at import meant merely calling ``init()`` printed the SDK's
+# own log lines to the application's stderr, and duplicated them into
+# whatever handlers the application had already set up. ``NullHandler``
+# keeps the "no handlers could be found" warning away and leaves the
+# decision where it belongs.
+logger.addHandler(logging.NullHandler())
+
+# ``INTROSPECTION_LOG_LEVEL`` remains an opt-in for the SDK's own logger; if
+# it is unset the level is inherited from the application's configuration.
+_log_level_str = os.getenv("INTROSPECTION_LOG_LEVEL", "").upper()
+if _log_level_str and hasattr(logging, _log_level_str):
+    logger.setLevel(getattr(logging, _log_level_str))
 
 
 def platform_is_emscripten() -> bool:

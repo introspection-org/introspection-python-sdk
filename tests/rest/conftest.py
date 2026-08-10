@@ -10,7 +10,7 @@ from the SDK's own typed schemas, so they are schema-valid by
 construction.
 
 Scope and honesty about what this does *not* do: ``MockTransport`` is
-not a ``pytest-recording`` cassette, so these tests do **not** verify
+not a recording of a live exchange, so these tests do **not** verify
 the live Introspection wire contract — only that the SDK builds the
 right request (method / path / params / body / headers) and parses a
 well-formed response correctly. The canned bodies encode our assumption
@@ -24,10 +24,13 @@ contract tests rather than recordings.
 from __future__ import annotations
 
 import json as _json
-from collections.abc import Callable
+import threading
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import httpx
@@ -174,6 +177,129 @@ class FakeAPI:
 @pytest.fixture
 def fake_api() -> FakeAPI:
     return FakeAPI()
+
+
+# --- Real loopback server standing in for a DP deployment -----------
+#
+# ``MockTransport`` cannot serve the Runner: the Runner builds its own
+# ``httpx.Client`` from ``spec.deployment.endpoint`` and there is no
+# transport seam to inject (deliberately — the endpoint the Runner talks
+# to must come from the spec, not from the caller). To prove the Runner
+# really points its traffic at the endpoint the CP handed back, and
+# re-points it after ``refresh()``, the DP side has to be a real origin
+# with a real port. These fixtures start one per deployment on
+# 127.0.0.1, so the endpoint in the spec is the thing under test rather
+# than an assertion about a mock.
+
+
+@dataclass
+class LocalRequest:
+    """A request a :class:`LocalDP` server actually received."""
+
+    method: str
+    path: str
+    query: str
+    headers: dict[str, str]
+    body: bytes
+
+    @property
+    def authorization(self) -> str | None:
+        return self.headers.get("authorization")
+
+
+class LocalDP:
+    """A real HTTP origin on 127.0.0.1 standing in for a DP deployment."""
+
+    def __init__(self) -> None:
+        self.routes: dict[tuple[str, str], tuple[int, Any]] = {}
+        self.requests: list[LocalRequest] = []
+        self._server = ThreadingHTTPServer(
+            ("127.0.0.1", 0), self._handler_class()
+        )
+        self._thread = threading.Thread(
+            target=self._server.serve_forever, daemon=True
+        )
+        self._thread.start()
+
+    @property
+    def endpoint(self) -> str:
+        host, port = self._server.server_address[:2]
+        return f"http://{host}:{port}"
+
+    def add(
+        self, method: str, path: str, body: Any, status: int = 200
+    ) -> None:
+        self.routes[(method.upper(), path)] = (status, body)
+
+    def close(self) -> None:
+        self._server.shutdown()
+        self._server.server_close()
+        self._thread.join(timeout=5)
+
+    def _handler_class(self) -> type[BaseHTTPRequestHandler]:
+        dp = self
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def log_message(self, format: str, *args: Any) -> None:
+                """Keep the test output clean."""
+
+            def _serve(self) -> None:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = self.rfile.read(length) if length else b""
+                parsed = urlsplit(self.path)
+                dp.requests.append(
+                    LocalRequest(
+                        method=self.command or "",
+                        path=parsed.path,
+                        query=parsed.query,
+                        headers={
+                            k.lower(): v for k, v in self.headers.items()
+                        },
+                        body=body,
+                    )
+                )
+                route = dp.routes.get(
+                    ((self.command or "").upper(), parsed.path)
+                )
+                if route is None:
+                    status, payload = (
+                        404,
+                        {
+                            "detail": f"no route for {self.command} {parsed.path}"
+                        },
+                    )
+                else:
+                    status, payload = route
+                encoded = _json.dumps(to_jsonable(payload)).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(encoded)))
+                self.end_headers()
+                self.wfile.write(encoded)
+
+            do_GET = _serve
+            do_POST = _serve
+            do_PATCH = _serve
+            do_DELETE = _serve
+
+        return Handler
+
+
+@pytest.fixture
+def local_dp() -> Iterator[Callable[[], LocalDP]]:
+    """Factory starting loopback DP origins, torn down after the test."""
+    started: list[LocalDP] = []
+
+    def make() -> LocalDP:
+        dp = LocalDP()
+        started.append(dp)
+        return dp
+
+    yield make
+    for dp in started:
+        dp.close()
 
 
 # --- Sample wire payloads -------------------------------------------

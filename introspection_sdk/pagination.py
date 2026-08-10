@@ -1,6 +1,6 @@
 """Lazy, auto-paging collection returned by every ``list()`` method.
 
-The Python sibling of the JS SDK's ``Paginator`` (``pagination.ts``).
+Cursor pagination over the DP's list endpoints.
 A :class:`Pager` is the single object every ``list()`` returns. It is
 
 * **iterable** — iterate it (``for item in listing``) to stream every
@@ -8,19 +8,14 @@ A :class:`Pager` is the single object every ``list()`` returns. It is
   it; stop early to stop fetching; and
 * **a first-page handle** — call :meth:`Pager.page` to get the first page
   with its wire-envelope metadata intact (counts, cursors, ``has_more``,
-  …). This mirrors ``await listing`` in the async JS SDK; the first page
+  …). Awaiting the listing yields the first page;
   is fetched once and cached.
 
-Two wire protocols are adapted through the same :class:`Pager` via the
-``items`` / ``next_cursor`` callbacks:
-
-* the standard Introspection cursor envelope
-  (:class:`~introspection_sdk.schemas.pagination.Paginated`) — items live
-  in ``records`` and the next page is the opaque ``next`` token
-  (:func:`cursor_paginate`); and
-* the OpenAI-style ``after`` / ``has_more`` envelope — items live in
-  ``data`` and the next cursor is the previous page's ``last_id`` while
-  ``has_more`` is true (:func:`after_paginate`).
+Every list endpoint speaks the standard Introspection cursor envelope
+(:class:`~introspection_sdk.schemas.pagination.Paginated`): items live in
+``records`` and the next page is the opaque ``next`` token. The
+:func:`cursor_paginate` / :func:`async_cursor_paginate` adapters bind that
+shape to the ``items`` / ``next_cursor`` callbacks a :class:`Pager` takes.
 """
 
 from __future__ import annotations
@@ -96,7 +91,7 @@ class AsyncPager(Generic[T, TPage]):
     * **awaitable** — ``await listing`` resolves to the first page with
       its wire-envelope metadata intact (counts, cursors, ``has_more``,
       …), fetched once and cached. This mirrors ``await listing`` in the
-      async JS SDK and the sync :meth:`Pager.page`; and
+      sync :meth:`Pager.page`; and
     * **async-iterable** — ``async for item in listing`` streams every
       item across all pages, fetching each page only as the iterator
       reaches it; stop early to stop fetching.
@@ -128,7 +123,7 @@ class AsyncPager(Generic[T, TPage]):
 
     def __await__(self) -> Generator[Any, None, TPage]:
         # Lets callers ``await listing`` to get the first page directly,
-        # mirroring the async JS SDK's ``await listing``.
+        # so ``await listing`` yields the first page.
         return self.page().__await__()
 
     async def __aiter__(self) -> AsyncIterator[T]:
@@ -157,25 +152,6 @@ def cursor_paginate(
     )
 
 
-def after_paginate(
-    fetch: Callable[[str | None], TPage],
-    *,
-    items: Callable[[TPage], list[T]],
-    last_id: Callable[[TPage], str | None],
-    has_more: Callable[[TPage], bool],
-    start: str | None = None,
-) -> Pager[T, TPage]:
-    """Build a :class:`Pager` over an OpenAI-style ``after`` / ``has_more``
-    envelope: page forward by passing the previous page's ``last_id`` as
-    ``after`` while ``has_more`` is true."""
-
-    def next_cursor(page: TPage) -> str | None:
-        tail = last_id(page)
-        return tail if has_more(page) and tail is not None else None
-
-    return Pager(fetch, items=items, next_cursor=next_cursor, start=start)
-
-
 def async_cursor_paginate(
     fetch: Callable[[str | None], Awaitable[Paginated[T]]],
     *,
@@ -191,30 +167,9 @@ def async_cursor_paginate(
     )
 
 
-def async_after_paginate(
-    fetch: Callable[[str | None], Awaitable[TPage]],
-    *,
-    items: Callable[[TPage], list[T]],
-    last_id: Callable[[TPage], str | None],
-    has_more: Callable[[TPage], bool],
-    start: str | None = None,
-) -> AsyncPager[T, TPage]:
-    """Build an :class:`AsyncPager` over an OpenAI-style ``after`` /
-    ``has_more`` envelope: page forward by passing the previous page's
-    ``last_id`` as ``after`` while ``has_more`` is true."""
-
-    def next_cursor(page: TPage) -> str | None:
-        tail = last_id(page)
-        return tail if has_more(page) and tail is not None else None
-
-    return AsyncPager(fetch, items=items, next_cursor=next_cursor, start=start)
-
-
 __all__ = [
     "AsyncPager",
     "Pager",
-    "after_paginate",
-    "async_after_paginate",
     "async_cursor_paginate",
     "cursor_paginate",
 ]

@@ -1,7 +1,6 @@
 """OpenTelemetry SpanProcessor for the Introspection backend."""
 
 import os
-from urllib.parse import urljoin
 
 from opentelemetry import baggage as otel_baggage
 from opentelemetry.context import Context
@@ -17,68 +16,38 @@ from opentelemetry.sdk.trace.export import (
 )
 
 from introspection_sdk.config import AdvancedOptions
-from introspection_sdk.converters.logfire import (
-    convert_logfire_to_genai,
-    is_logfire_span,
-)
-from introspection_sdk.converters.openinference import (
-    ConvertedReadableSpan,
-    convert_openinference_to_genai,
-    is_openinference_span,
-)
-from introspection_sdk.otel.conversation import resolve_conversation_id
+from introspection_sdk.otel._conversation import resolve_conversation_id
+from introspection_sdk.otel._endpoint import otlp_endpoint
 from introspection_sdk.otel.processors._batch import batch_processor_options
+from introspection_sdk.otel.types import Attr, Baggage
 from introspection_sdk.utils import logger, platform_is_emscripten
-from introspection_sdk.version import VERSION
+from introspection_sdk.version import USER_AGENT
 
 __all__ = ["IntrospectionSpanProcessor"]
 
-_SPAN_NAME_TO_SYSTEM: tuple[tuple[str, str], ...] = (
-    ("ollama", "ollama"),
-    ("anthropic", "anthropic"),
-    ("gemini", "google"),
-    ("groq", "groq"),
-    ("mistral", "mistral"),
-    ("cohere", "cohere"),
-    ("bedrock", "aws_bedrock"),
-    ("vertexai", "google"),
-    ("openai", "openai"),
+#: A span carrying any of these is LLM-relevant and gets exported. Everything
+#: else in the process (HTTP clients, web-framework routing, database drivers)
+#: reaches this processor too once it is attached to the global provider, and
+#: must not be shipped to Introspection.
+_GEN_AI_MARKERS = (
+    "gen_ai.provider.name",
+    "gen_ai.operation.name",
+    "gen_ai.request.model",
+    "gen_ai.input.messages",
+    "gen_ai.output.messages",
 )
 
+#: End-user identity baggage keys -> their semconv span-attribute keys. The
+#: baggage keys use the ``identify()`` underscore form; the span attributes use
+#: the dotted semconv form.
+_IDENTITY_BAGGAGE_TO_ATTRIBUTE = {
+    Baggage.USER_ID: Attr.USER_ID,
+    Baggage.ANONYMOUS_ID: Attr.ANONYMOUS_ID,
+}
 
-def _infer_system_from_span_name(span_name: str | None) -> str | None:
-    """Infer gen_ai.system from span name when llm.system is absent.
-
-    Checks the lowercase span name against known provider keywords.
-    """
-    if not span_name:
-        return None
-    lower = span_name.lower()
-    for keyword, system in _SPAN_NAME_TO_SYSTEM:
-        if keyword in lower:
-            return system
-    return None
-
-
-# LangChain/LangGraph internal wrapper span names to skip when walking up
-# the span tree to find the actual agent/node name.
-_LANGCHAIN_WRAPPER_NAMES: frozenset[str] = frozenset(
-    {
-        "RunnableSequence",
-        "RunnableParallel",
-        "RunnableMap",
-        "RunnableLambda",
-        "RunnableRetry",
-        "_ConfigurableModel",
-        "ChatOpenAI",
-        "ChatAnthropic",
-        "ChatGoogleGenerativeAI",
-        "ChatGroq",
-        # LlamaIndex low-level wrappers — the actual LLM call is the child span
-        "Ollama.predict",
-        "Ollama.complete",
-    }
-)
+#: Deprecated pre-1.27 provider key. ``gen_ai.provider.name`` supersedes it and
+#: an emitter that still writes it would ship both.
+_DEPRECATED_SYSTEM_KEY = "gen_ai.system"
 
 
 class _AttributeOverrideSpan(ReadableSpan):
@@ -164,15 +133,18 @@ class _AttributeOverrideSpan(ReadableSpan):
 class IntrospectionSpanProcessor(SpanProcessor):
     """Span processor that sends traces to the Introspection API.
 
-    Intercepts OpenTelemetry spans, converts OpenInference or Anthropic logfire
-    formats to OTel Gen AI semantic conventions, and exports them via OTLP.
+    Intercepts OpenTelemetry spans, drops the ones with no ``gen_ai.*`` data,
+    stamps conversation / agent / identity baggage onto the rest, and exports
+    them via OTLP.
 
     Args:
         token: Introspection API token. Falls back to the
             ``INTROSPECTION_TOKEN`` environment variable.
-        service_name: Optional service name. Sets the ``service.name``
+        service_name: Optional service name (env:
+            ``INTROSPECTION_SERVICE_NAME``). Sets the ``service.name``
             resource attribute so it appears correctly as the service name
-            in the Introspection backend.
+            in the Introspection backend. Left unset, the provider's own
+            resource is used unchanged.
         advanced: Optional :class:`AdvancedOptions` for custom exporters,
             headers, batch settings, etc.
 
@@ -214,16 +186,13 @@ class IntrospectionSpanProcessor(SpanProcessor):
             if not token:
                 raise ValueError("INTROSPECTION_TOKEN is not set")
             headers = {
-                "User-Agent": f"introspection-sdk/{VERSION}",
+                "User-Agent": USER_AGENT,
                 "Authorization": f"Bearer {token}",
                 **(
                     self._advanced.additional_headers or {}
                 ),  # TODO: Add validation for headers
             }
-            if base_url.endswith("/v1/traces"):
-                endpoint = base_url
-            else:
-                endpoint = urljoin(base_url, "/v1/traces")
+            endpoint = otlp_endpoint(base_url, "traces")
             logger.info(
                 "Initializing introspection with endpoint: %s", endpoint
             )
@@ -233,9 +202,15 @@ class IntrospectionSpanProcessor(SpanProcessor):
                 headers=headers,
             )
 
-        self._service_name = service_name
-        # span_id -> (name, parent_span_id) for agent name propagation
-        self._span_names: dict[int, tuple[str, int | None]] = {}
+        # Left as ``None`` when nothing supplies one, so an unset option
+        # leaves a provider the caller already labelled alone. Reading the
+        # env var here is what makes the two streams agree: the logs surface
+        # has always honoured it, so a process that set it got named events
+        # and anonymous spans. JS and Rust read it in their span processors
+        # for the same reason.
+        self._service_name = service_name or os.getenv(
+            "INTROSPECTION_SERVICE_NAME"
+        )
 
         # Store exporter for debugging
         self._span_exporter = span_exporter
@@ -264,99 +239,83 @@ class IntrospectionSpanProcessor(SpanProcessor):
         logger.debug(
             f"Starting introspection span: {span.name} (trace_id={span.context.trace_id:x})"
         )
-        if span.context:
-            parent_id = span.parent.span_id if span.parent else None
-            self._span_names[span.context.span_id] = (span.name, parent_id)
         self._span_processor.on_start(span, parent_context)
 
     def on_end(self, span: ReadableSpan) -> None:
         """Called when a span is ended.
 
-        Detects the span format (OpenInference or Anthropic logfire) and
-        converts its attributes to OTel Gen AI semantic conventions before
-        forwarding to the underlying exporter.
+        Drops spans with no LLM-relevant data, then stamps conversation /
+        agent / identity baggage onto the rest and forwards them to the
+        underlying exporter.
 
         Args:
             span: The completed span to process.
         """
+        # Lazy `%`-args, not an f-string: this runs on every span the
+        # provider ends, and the f-string built the message -- formatting
+        # the name and the 128-bit trace id -- before `logging` got the
+        # chance to throw it away, which it does on any level above DEBUG.
         logger.debug(
-            f"Ending introspection span: {span.name} (trace_id={span.context.trace_id:x})"
+            "Ending introspection span: %s (trace_id=%x)",
+            span.name,
+            span.context.trace_id,
         )
         if not span.context.trace_flags.sampled:
             return
 
-        scope = span.instrumentation_scope
-        scope_name = scope.name if scope else None
+        attributes = span.attributes or {}
+        if not any(attributes.get(key) is not None for key in _GEN_AI_MARKERS):
+            # An infrastructure span: HTTP, routing, database. Exporting it
+            # would also mint a synthetic conversation id for a span that has
+            # nothing to do with a conversation.
+            return
 
-        extra_attrs: dict[str, int] = {}
+        self._span_processor.on_end(self._enrich_span(span))
 
-        if is_openinference_span(scope_name):
-            converted_attrs = convert_openinference_to_genai(span.attributes)
-            # Inject agent name from span tree walk-up if not already present
-            if converted_attrs.agent_name is None:
-                parent_span_id = span.parent.span_id if span.parent else None
-                agent_name = self._find_agent_name(parent_span_id)
-                if agent_name:
-                    converted_attrs.agent_name = agent_name
-                    logger.debug(
-                        f"Injected agent_name={agent_name!r} for span {span.name!r}"
-                    )
-            # For LLM spans, filter out raw llm./input./output.* (replaced by
-            # structured gen_ai.*). For TOOL/CHAIN/etc. spans, only filter llm.*
-            # so that input.value (args) and output.value (result) are preserved.
-            span_kind = (span.attributes or {}).get("openinference.span.kind")
-            if span_kind == "LLM":
-                # Infer gen_ai.system from span name when the instrumentor
-                # doesn't emit llm.system (e.g. LlamaIndex + Ollama).
-                if converted_attrs.system is None:
-                    converted_attrs.system = _infer_system_from_span_name(
-                        span.name
-                    )
-                span = ConvertedReadableSpan(span, converted_attrs)
-            else:
-                span = ConvertedReadableSpan(
-                    span, converted_attrs, filter_prefixes=("llm.",)
-                )
-        elif is_logfire_span(span.attributes):
-            converted_attrs = convert_logfire_to_genai(span.attributes)
-            span = ConvertedReadableSpan(
-                span,
-                converted_attrs,
-                filter_prefixes=("request_data", "response_data"),
-            )
+    def _enrich_span(self, span: ReadableSpan) -> ReadableSpan:
+        """Add conversation, agent, and identity attributes plus service name."""
+        attrs = dict(span.attributes or {})
+        attrs.pop(_DEPRECATED_SYSTEM_KEY, None)
 
-        span = self._enrich_span(span, extra_override=extra_attrs or None)
-        self._span_processor.on_end(span)
-
-    def _enrich_span(
-        self,
-        span: ReadableSpan,
-        extra_override: dict | None = None,
-    ) -> ReadableSpan:
-        """Add conversation ID, agent name, and service name resource to span."""
-        extra: dict[str, str | int] = {}
-        if extra_override:
-            extra.update(extra_override)
-
-        # Use conversation ID from baggage if set, otherwise check existing
-        # attribute, then auto-generate per trace
-        baggage_conv_id = otel_baggage.get_baggage("gen_ai.conversation.id")
-        existing_conv_id = (span.attributes or {}).get(
-            "gen_ai.conversation.id"
-        )
+        # Conversation id: baggage > existing attribute > auto-generate per
+        # trace.
+        baggage_conv_id = otel_baggage.get_baggage(Baggage.CONVERSATION_ID)
         if baggage_conv_id:
-            extra["gen_ai.conversation.id"] = str(baggage_conv_id)
-        elif not existing_conv_id:
-            extra["gen_ai.conversation.id"] = resolve_conversation_id(
+            attrs[Attr.CONVERSATION_ID] = str(baggage_conv_id)
+        elif not attrs.get(Attr.CONVERSATION_ID):
+            attrs[Attr.CONVERSATION_ID] = resolve_conversation_id(
                 trace_key=str(span.context.trace_id)
             )
 
-        # Propagate agent name from baggage if not already on span
-        baggage_agent_name = otel_baggage.get_baggage("gen_ai.agent.name")
-        if baggage_agent_name and not (span.attributes or {}).get(
-            "gen_ai.agent.name"
+        # An emitter that recorded messages without naming the operation is
+        # doing a chat completion.
+        if not attrs.get("gen_ai.operation.name") and (
+            attrs.get("gen_ai.input.messages")
+            or attrs.get("gen_ai.output.messages")
         ):
-            extra["gen_ai.agent.name"] = str(baggage_agent_name)
+            attrs["gen_ai.operation.name"] = "chat"
+
+        # Agent name / id from baggage. Baggage wins so per-call agent
+        # identity overrides any default stamped by the emitter.
+        for baggage_key, attribute_key in (
+            (Baggage.AGENT_NAME, Attr.AGENT_NAME),
+            (Baggage.AGENT_ID, Attr.AGENT_ID),
+        ):
+            value = otel_baggage.get_baggage(baggage_key)
+            if value:
+                attrs[attribute_key] = str(value)
+
+        # End-user identity, set once at the run root by ``identify()`` and
+        # inherited by every child span through context propagation. Without
+        # this, spans and the events emitted alongside them disagree about who
+        # the user was.
+        for (
+            baggage_key,
+            attribute_key,
+        ) in _IDENTITY_BAGGAGE_TO_ATTRIBUTE.items():
+            value = otel_baggage.get_baggage(baggage_key)
+            if value:
+                attrs[attribute_key] = str(value)
 
         # Build a new resource with service.name if provided
         resource: Resource | None = None
@@ -365,39 +324,7 @@ class IntrospectionSpanProcessor(SpanProcessor):
                 Resource({"service.name": self._service_name})
             )
 
-        if extra or resource is not None:
-            existing = dict(span.attributes or {})
-            existing.update(extra)
-            span = _AttributeOverrideSpan(span, existing, resource=resource)
-
-        return span
-
-    def _find_agent_name(self, span_id: int | None) -> str | None:
-        """Walk up the span tree to find the first non-wrapper span name.
-
-        Skips generic LangChain wrapper names (RunnableSequence, etc.) to
-        surface the actual LangGraph node name as the agent name.
-
-        Args:
-            span_id: The span_id to start walking up from.
-
-        Returns:
-            The first non-wrapper ancestor span name, or ``None`` if not found.
-        """
-        visited: set[int] = set()
-        current_id = span_id
-        while current_id is not None:
-            if current_id in visited:
-                break
-            visited.add(current_id)
-            entry = self._span_names.get(current_id)
-            if entry is None:
-                break
-            name, parent_id = entry
-            if name not in _LANGCHAIN_WRAPPER_NAMES:
-                return name
-            current_id = parent_id
-        return None
+        return _AttributeOverrideSpan(span, attrs, resource=resource)
 
     def shutdown(self) -> None:
         """Shut down the underlying batch span processor."""

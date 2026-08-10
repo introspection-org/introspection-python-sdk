@@ -1,133 +1,70 @@
 # Advanced setup
 
-> **Experimental support for other frameworks.**
+Escape hatches for callers who need more control than `init()` gives them.
 
-This page documents experimental framework-specific APIs.
-
-## Controlling auto-discovery
-
-Install only specific integrations, or none:
+`init()` lives on the `otel` submodule, not the package root — the root only
+lazily re-exports `AdvancedOptions`, `Attr`, `Baggage`, `EventName`,
+`FeedbackProperties`, `IntrospectionLogs`, and `IntrospectionSpanProcessor`.
 
 ```python
-import introspection_sdk as introspection
-from introspection_sdk.integrations.anthropic import AnthropicIntegration
-
-# Only Anthropic, nothing else auto-detected.
-introspection.init(auto_discover=False, integrations=[AnthropicIntegration])
+from introspection_sdk import otel as introspection
 ```
+
+All of this requires the `otel` extra: `pip install introspection-sdk[otel]`.
 
 ## Bringing your own TracerProvider
 
-If you already manage an OpenTelemetry `TracerProvider` (e.g. via Logfire or
-your own setup), pass it in. `init()` attaches the Introspection exporter to it
-instead of creating its own; you keep ownership of its lifecycle.
+If you already manage an OpenTelemetry `TracerProvider`, pass it in. `init()`
+attaches the Introspection exporter to it instead of creating its own; you keep
+ownership of its lifecycle.
 
 ```python
-import introspection_sdk as introspection
-
 introspection.init(tracer_provider=my_provider)
 ```
 
-## Standalone processors and instrumentors
+## Standalone span processor
 
-Each processor works on its own without `init()`. Construct it directly when you
-want explicit control. (Preferred path is `init()`; these remain for custom
-setups and backward compatibility.)
-
-### Logfire / OpenInference span processor
+`IntrospectionSpanProcessor` works on its own without `init()`. Attach it to
+whatever provider you already have; every `gen_ai.*` span that reaches the
+provider is exported to Introspection, and everything else is dropped (see
+[otel.md](otel.md) for the exact gate).
 
 ```python
-import logfire
+from opentelemetry.sdk.trace import TracerProvider
 from introspection_sdk import IntrospectionSpanProcessor
 
-logfire.configure(additional_span_processors=[IntrospectionSpanProcessor()])
-logfire.instrument_openai()
+provider = TracerProvider()
+provider.add_span_processor(IntrospectionSpanProcessor(token="intro_..."))
 ```
 
-### OpenAI Agents SDK
+The constructor takes `token`, `service_name`, and `advanced` only. It owns the
+exporter it builds, so `shutdown()` and `force_flush()` on your provider reach
+it normally.
+
+Note that `init()` also starts the `IntrospectionLogs` stream (the `track` /
+`feedback` / `identify` surface) and registers an `atexit` flush; constructing
+the processor yourself does not. If you want both, either call `init()` or
+construct `IntrospectionLogs` alongside the processor.
+
+## Testing with in-memory exporters
+
+Pass exporters via `AdvancedOptions` to capture telemetry without a network.
+Set **both**: `init()` always builds a logs stream, so leaving `log_exporter`
+unset points it at the real OTLP endpoint.
 
 ```python
-from agents import set_trace_processors
-from introspection_sdk import IntrospectionTracingProcessor
-
-set_trace_processors([IntrospectionTracingProcessor()])
-```
-
-Some reasoning models emit items the OpenAI Conversations API rejects;
-`IntrospectionConversationsSession` strips them transparently:
-
-```python
-from introspection_sdk import IntrospectionConversationsSession
-
-session = IntrospectionConversationsSession(conversation_id="conv_123")
-result = await Runner.run(agent, "Hello!", session=session)
-```
-
-### Claude Agent SDK
-
-```python
-from introspection_sdk import ClaudeTracingProcessor
-
-ClaudeTracingProcessor().configure()  # all ClaudeSDKClient instances traced
-```
-
-### Anthropic SDK
-
-```python
-from introspection_sdk.anthropic import AnthropicInstrumentor
-
-AnthropicInstrumentor().instrument(tracer_provider=provider)
-```
-
-### Gemini (google-genai)
-
-```python
-from introspection_sdk.gemini import GeminiInstrumentor
-
-GeminiInstrumentor().instrument(tracer_provider=provider)
-```
-
-### LangChain / LangGraph
-
-```python
-from introspection_sdk import IntrospectionCallbackHandler
-
-handler = IntrospectionCallbackHandler(service_name="my-app")
-response = model.invoke("Hello!", config={"callbacks": [handler]})
-```
-
-For LangGraph, pass the app's session id as `thread_id`; the handler maps it to
-`gen_ai.conversation.id`:
-
-```python
-response = graph.invoke(
-    {"messages": [{"role": "user", "content": "Hello!"}]},
-    config={"callbacks": [handler], "configurable": {"thread_id": "user-123"}},
-)
-```
-
-## Sharing one provider across `init()` and a standalone processor
-
-The processors accept a `tracer_provider=` to run in shared-provider mode: they
-use the passed provider and treat `shutdown()`/`force_flush()` as no-ops, since
-the caller owns its lifecycle. This is exactly how `init()` wires each
-integration.
-
-```python
-provider = introspection.get_tracer_provider()
-processor = IntrospectionTracingProcessor(tracer_provider=provider)
-```
-
-## Testing with an in-memory exporter
-
-Pass a `span_exporter` via `AdvancedOptions` to capture spans without network:
-
-```python
+from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
 from introspection_sdk import AdvancedOptions
 from introspection_sdk.testing import TestSpanExporter
 
-exporter = TestSpanExporter()
-introspection.init(advanced=AdvancedOptions(span_exporter=exporter))
+spans = TestSpanExporter()
+introspection.init(
+    token="test",
+    advanced=AdvancedOptions(
+        span_exporter=spans,
+        log_exporter=InMemoryLogRecordExporter(),
+    ),
+)
 # ... run code ...
-spans = exporter.get_finished_spans()
+finished = spans.get_finished_spans()
 ```

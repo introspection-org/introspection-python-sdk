@@ -18,9 +18,8 @@ updates:
       include: "scope"
     # Restrict alerts/PRs to deps that actually ship to SDK consumers — main
     # `[project] dependencies` plus the user-facing `[project.optional-dependencies]`
-    # extras (langfuse / arize / braintrust / openai-agents). Excludes the
-    # `test` and `dev` extras, which are CI-only and not part of the published
-    # surface area.
+    # extras (otel / arrow). Excludes the `test` and `dev` extras, which are
+    # CI-only and not part of the published surface area.
     allow:
       - dependency-type: "production"
     groups:
@@ -33,24 +32,6 @@ updates:
         applies-to: security-updates
         patterns:
           - "opentelemetry-*"
-
-      # AI provider SDKs — Anthropic, OpenAI, OpenAI agents, etc.
-      ai-providers:
-        applies-to: version-updates
-        patterns:
-          - "openai"
-          - "openai-agents"
-          - "anthropic"
-          - "claude-agent-sdk"
-          - "pydantic-ai"
-      ai-providers-security:
-        applies-to: security-updates
-        patterns:
-          - "openai"
-          - "openai-agents"
-          - "anthropic"
-          - "claude-agent-sdk"
-          - "pydantic-ai"
 
       # Test toolchain — pytest family + helpers.
       test-tooling:
@@ -84,24 +65,6 @@ updates:
           - "ty"
           - "pre-commit"
 
-      # Observability backends used by the optional integrations.
-      observability-vendors:
-        applies-to: version-updates
-        patterns:
-          - "arize-phoenix"
-          - "openinference-*"
-          - "langfuse"
-          - "braintrust"
-          - "posthog"
-      observability-vendors-security:
-        applies-to: security-updates
-        patterns:
-          - "arize-phoenix"
-          - "openinference-*"
-          - "langfuse"
-          - "braintrust"
-          - "posthog"
-
       # Catch-all for security alerts not matching a more specific group.
       security-rollup:
         applies-to: security-updates
@@ -112,7 +75,7 @@ updates:
         update-types:
           - "version-update:semver-major"
 
-  # ── GitHub Actions (used by ci.yml / publish.yml / release-tag.yml) ──
+  # ── GitHub Actions (used by ci.yml / publish.yml / tag.yml) ──
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

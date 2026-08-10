@@ -394,6 +394,31 @@ async def test_runtime_handle_resolves_slug(fake_api: FakeAPI):
     await runner.close()
 
 
+async def test_runtime_handle_exposes_the_resolved_runtime_id(
+    fake_api: FakeAPI,
+):
+    """Parity with the sync `RuntimeHandle.runtime_id` property.
+
+    The async handle resolved its selector privately and exposed nothing,
+    so a broker on the async client could not read the concrete runtime id
+    it was about to hand a browser — the exact case the sync accessor
+    exists for. A coroutine, not a property: resolving costs a request.
+    """
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
+    runtimes = AsyncRuntimes(fake_api.async_client())
+
+    assert await runtimes("checkout-agent").runtime_id() == UUID(RUNTIME_ID)
+    assert fake_api.last_request.params.get("runtime") == "checkout-agent"
+
+    # A handle bound to a concrete id answers without a lookup.
+    before = len(fake_api.requests)
+    handle = runtimes.handle(UUID(RUNTIME_ID))
+    assert await handle.runtime_id() == UUID(RUNTIME_ID)
+    assert len(fake_api.requests) == before
+
+
 async def test_async_runtime_surface_excludes_operator_controls(
     fake_api: FakeAPI,
 ):
