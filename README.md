@@ -79,6 +79,9 @@ print(await follow_up.text())
 `IntrospectionClient` is the synchronous twin with the same surface — drop the
 `await`s and use `for` instead of `async for`.
 
+See [Tasks and streaming](https://docs.introspection.dev/sdk/python/tasks-and-streaming) for reconnects,
+interrupts, and cancellation.
+
 ## Record feedback
 
 Install the OpenTelemetry extra, then attach the outcome to the conversation
@@ -102,7 +105,10 @@ logs.shutdown()
 ```
 
 `feedback` records how a result landed, `track` records a product event, and
-`identify` attaches who it was. See [**`docs/otel.md`**](docs/otel.md).
+`identify` attaches who it was.
+
+See [Product signals](https://docs.introspection.dev/sdk/python/product-signals) for the full surface, and
+[**`docs/otel.md`**](docs/otel.md) for the OTel wiring.
 
 ## Read what happened
 
@@ -113,8 +119,12 @@ async for summary in runner.conversations.list(limit=20):
     print(summary.id, summary.usage.total_tokens, summary.cost.usd)
 ```
 
-The runner also exposes `files`, `shares`, `events`, and `metrics`. See
-[`examples/`](examples/introspection_examples/) for end-to-end scripts.
+The runner also exposes `files`, `shares`, `events`, and `metrics`.
+
+See [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence) for transcripts,
+typed events, and metrics queries, [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
+for durable inputs and grants, and [`examples/`](examples/introspection_examples/)
+for end-to-end scripts.
 
 ## Environment variables
 
@@ -126,7 +136,14 @@ export INTROSPECTION_LOG_LEVEL="debug"           # optional
 
 ## Documentation
 
-Full documentation is available at [docs.introspection.dev](https://docs.introspection.dev).
+- [Python quickstart](https://docs.introspection.dev/sdk/python/quickstart)
+- [Tasks and streaming](https://docs.introspection.dev/sdk/python/tasks-and-streaming)
+- [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
+- [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence)
+- [Product signals](https://docs.introspection.dev/sdk/python/product-signals)
+- [Platform operations](https://docs.introspection.dev/sdk/python/platform-operations)
+- [Python SDK reference](https://docs.introspection.dev/sdk/python/reference)
+- [Authentication](https://docs.introspection.dev/sdk/authentication)
 
 ## License
 
