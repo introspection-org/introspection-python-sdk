@@ -18,6 +18,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from introspection_sdk.schemas.runner import RunnerIdentity
+
 
 class _ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -130,6 +132,11 @@ class Connection(_ApiModel):
     member_id: UUID | None = None
     """``None`` = org-owned (app subject); for a Slack workspace install
     this points at the workspace customer member."""
+    created_by_member_id: UUID | None = None
+    """The member who performed the grant, as distinct from ``member_id``
+    (whose credential this is). For ``app`` and ``workspace`` subjects those
+    are never the same principal. ``None`` for grants made before the
+    column existed."""
     runtime_group_id: UUID | None = None
     """Runtime group answering this connection's channels."""
     subject_type: ConnectionSubjectType = ConnectionSubjectType.APP
@@ -217,6 +224,13 @@ class ConnectorAuthorizeRequest(_ApiModel):
     subject: ConnectionSubjectType | None = None
     return_url: str | None = None
     expires_in: int | None = None
+    identity: RunnerIdentity | None = None
+    """The end customer this grant is being made for, asserted by the
+    caller. Its ``user_id`` resolves a ``customer`` member recorded as the
+    connection's ``created_by_member_id``, so a partner can associate the
+    connection with their own caller rather than the agent member that made
+    the API call. Omit to attribute the grant to the authenticated
+    principal."""
 
 
 class ConnectorAuthorization(_ApiModel):

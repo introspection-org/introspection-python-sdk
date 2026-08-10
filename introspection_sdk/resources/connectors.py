@@ -40,6 +40,7 @@ from introspection_sdk.schemas.connectors import (
     ConnectorUpdateRequest,
 )
 from introspection_sdk.schemas.pagination import Paginated
+from introspection_sdk.schemas.runner import RunnerIdentity
 
 
 def _create_body(
@@ -126,6 +127,7 @@ def _authorize_body(
     subject: ConnectionSubjectType | str | None,
     return_url: str | None,
     expires_in: int | None,
+    identity: RunnerIdentity | dict[str, Any] | None,
 ) -> dict[str, Any]:
     return ConnectorAuthorizeRequest.model_validate(
         {
@@ -134,6 +136,7 @@ def _authorize_body(
             "subject": subject,
             "return_url": return_url,
             "expires_in": expires_in,
+            "identity": identity,
         }
     ).model_dump(mode="json", exclude_none=True)
 
@@ -389,6 +392,7 @@ class Connectors:
         subject: ConnectionSubjectType | str | None = None,
         return_url: str | None = None,
         expires_in: int | None = None,
+        identity: RunnerIdentity | dict[str, Any] | None = None,
     ) -> ConnectorAuthorization:
         """Mint a consent URL for the connector
         (``POST /v1/oauth/connections/authorize``).
@@ -399,6 +403,13 @@ class Connectors:
         600) — raise it when handing the link to someone else to open. A
         connector with ``requires_runtime=True`` 422s unless ``runtime``
         (slug or runtime group id) names the agent that replies.
+
+        ``identity`` asserts the end customer the grant is for: its
+        ``user_id`` resolves a ``customer`` member recorded as the
+        connection's ``created_by_member_id``, so a partner can associate
+        the connection with their own caller rather than the agent member
+        that made the API call. Omit to attribute the grant to the
+        authenticated principal.
         """
         payload = self._http.request(
             "POST",
@@ -409,6 +420,7 @@ class Connectors:
                 subject=subject,
                 return_url=return_url,
                 expires_in=expires_in,
+                identity=identity,
             ),
         )
         return ConnectorAuthorization.model_validate(payload)
@@ -637,6 +649,7 @@ class AsyncConnectors:
         subject: ConnectionSubjectType | str | None = None,
         return_url: str | None = None,
         expires_in: int | None = None,
+        identity: RunnerIdentity | dict[str, Any] | None = None,
     ) -> ConnectorAuthorization:
         """Mint a consent URL for the connector
         (``POST /v1/oauth/connections/authorize``).
@@ -647,6 +660,13 @@ class AsyncConnectors:
         600) — raise it when handing the link to someone else to open. A
         connector with ``requires_runtime=True`` 422s unless ``runtime``
         (slug or runtime group id) names the agent that replies.
+
+        ``identity`` asserts the end customer the grant is for: its
+        ``user_id`` resolves a ``customer`` member recorded as the
+        connection's ``created_by_member_id``, so a partner can associate
+        the connection with their own caller rather than the agent member
+        that made the API call. Omit to attribute the grant to the
+        authenticated principal.
         """
         payload = await self._http.request(
             "POST",
@@ -657,6 +677,7 @@ class AsyncConnectors:
                 subject=subject,
                 return_url=return_url,
                 expires_in=expires_in,
+                identity=identity,
             ),
         )
         return ConnectorAuthorization.model_validate(payload)

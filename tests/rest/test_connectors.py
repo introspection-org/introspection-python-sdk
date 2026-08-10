@@ -232,6 +232,10 @@ def test_connections_list_targets_the_nested_path(fake_api: FakeAPI):
 
     assert page.records[0].subject_type == "workspace"
     assert page.records[0].runtime_group_id is not None
+    # The installer is recorded apart from the subject: for a workspace
+    # install they are never the same principal.
+    assert page.records[0].created_by_member_id is not None
+    assert page.records[0].created_by_member_id != page.records[0].member_id
     assert fake_api.last_request.path == CONNECTIONS_PATH
     assert fake_api.last_request.params["limit"] == "25"
 

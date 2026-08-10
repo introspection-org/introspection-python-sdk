@@ -77,6 +77,7 @@ FILE_ID = "66666666-6666-6666-6666-666666666666"
 CONNECTOR_ID = "77777777-7777-7777-7777-777777777777"
 CONNECTION_ID = "88888888-8888-8888-8888-888888888888"
 RUNTIME_GROUP_ID = "99999999-9999-9999-9999-999999999999"
+INSTALLER_MEMBER_ID = "00000000-0000-0000-0000-0000000000dd"
 
 
 # --- In-process transport -------------------------------------------
@@ -408,6 +409,7 @@ def connection_payload(**over: Any) -> Connection:
         "updated_at": _NOW_DT,
         "connector_id": CONNECTOR_ID,
         "member_id": MEMBER_ID,
+        "created_by_member_id": INSTALLER_MEMBER_ID,
         "runtime_group_id": RUNTIME_GROUP_ID,
         "subject_type": "workspace",
         "scopes_granted": ["chat:write"],
