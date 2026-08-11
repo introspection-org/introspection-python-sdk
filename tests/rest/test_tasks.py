@@ -20,6 +20,7 @@ from .conftest import (
     task_payload,
     task_run_payload,
     task_run_response,
+    to_jsonable,
 )
 
 
@@ -369,3 +370,38 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
     ] == ["hel", "lo"]
     # text() re-streams and concatenates AG-UI text deltas.
     assert handle.text() == "hello"
+
+
+def test_create_forwards_grouping_tags(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/tasks",
+        json_body=task_create_response(),
+    )
+    Tasks(fake_api.client()).create(
+        prompt="go", tags=["customer:acme", "env:prod"]
+    )
+
+    assert fake_api.last_request.json()["tags"] == [
+        "customer:acme",
+        "env:prod",
+    ]
+
+
+def test_list_sends_the_tag_filter(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/tasks", json_body=paginated([task_payload()]))
+    Tasks(fake_api.client()).list(tag="customer:acme").page()
+
+    assert fake_api.last_request.params["tag"] == "customer:acme"
+
+
+def test_update_clears_tags_with_an_explicit_empty_list(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        f"/v1/tasks/{TASK_ID}",
+        json_body=to_jsonable(task_payload()),
+    )
+    Tasks(fake_api.client()).update(TASK_ID, tags=[])
+
+    # Replaces wholesale, so [] must reach the wire rather than be dropped.
+    assert fake_api.last_request.json() == {"tags": []}

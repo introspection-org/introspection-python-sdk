@@ -252,6 +252,7 @@ class Tasks:
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
+        tag: str | None = None,
     ) -> Pager[Task, Paginated[Task]]:
         """List tasks. Iterate the returned :class:`Pager` to stream every
         task across pages, or call ``.page()`` for the first page only."""
@@ -261,6 +262,7 @@ class Tasks:
                 "limit": limit,
                 "next": cursor,
                 "include_total": include_total,
+                "tag": tag,
             }
             if statuses:
                 params["statuses"] = statuses
@@ -283,6 +285,7 @@ class Tasks:
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -293,6 +296,7 @@ class Tasks:
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,
             "repositories": _repo_refs(repositories) if repositories else None,
+            "tags": tags,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)
@@ -309,6 +313,7 @@ class Tasks:
         title: str | None = None,
         is_archived: bool | None = None,
         metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> Task:
         body: dict[str, Any] = {}
         if title is not None:
@@ -317,6 +322,10 @@ class Tasks:
             body["is_archived"] = is_archived
         if metadata is not None:
             body["metadata"] = metadata
+        if tags is not None:
+            # Replaces wholesale, so an explicit [] must reach the wire to
+            # clear — `if tags:` would silently drop it.
+            body["tags"] = tags
         payload = self._http.request(
             "PATCH", f"/v1/tasks/{task_id}", json=body
         )
@@ -537,6 +546,7 @@ class AsyncTasks:
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
         require_automation_id: bool | None = None,
+        tag: str | None = None,
     ) -> AsyncPager[Task, Paginated[Task]]:
         """List tasks. ``await`` the returned :class:`AsyncPager` for the
         first page, or ``async for`` it to stream every task across pages."""
@@ -546,6 +556,7 @@ class AsyncTasks:
                 "limit": limit,
                 "next": cursor,
                 "include_total": include_total,
+                "tag": tag,
             }
             if statuses:
                 params["statuses"] = statuses
@@ -570,6 +581,7 @@ class AsyncTasks:
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> TaskCreateResponse:
         body: dict[str, Any] = {
             "title": title,
@@ -580,6 +592,7 @@ class AsyncTasks:
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,
             "repositories": _repo_refs(repositories) if repositories else None,
+            "tags": tags,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
@@ -596,6 +609,7 @@ class AsyncTasks:
         title: str | None = None,
         is_archived: bool | None = None,
         metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> Task:
         body: dict[str, Any] = {}
         if title is not None:
@@ -604,6 +618,10 @@ class AsyncTasks:
             body["is_archived"] = is_archived
         if metadata is not None:
             body["metadata"] = metadata
+        if tags is not None:
+            # Replaces wholesale, so an explicit [] must reach the wire to
+            # clear — `if tags:` would silently drop it.
+            body["tags"] = tags
         payload = await self._http.request(
             "PATCH", f"/v1/tasks/{task_id}", json=body
         )

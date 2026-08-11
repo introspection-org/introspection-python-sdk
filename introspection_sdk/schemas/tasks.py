@@ -71,6 +71,8 @@ class Task(_ApiModel):
     metadata: dict[str, Any] | None = None
     agent: AgentInfo | None = None
     identity_key: str | None = None
+    tags: list[str] = []
+    """``key:value`` grouping tags stamped on this task."""
 
 
 class TaskFileRef(_ApiModel):
