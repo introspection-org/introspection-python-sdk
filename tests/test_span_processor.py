@@ -2,6 +2,7 @@
 
 import logging
 import os
+import threading
 import time
 
 import pytest
@@ -17,6 +18,9 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 from opentelemetry.trace import SpanContext, TraceFlags
 
 from introspection_sdk import AdvancedOptions, IntrospectionSpanProcessor
+from introspection_sdk.otel.processors import (
+    span_processor as span_processor_module,
+)
 from introspection_sdk.utils import logger as sdk_logger
 
 from .test_utils import IncrementalIdGenerator, spans_to_dict
@@ -869,31 +873,34 @@ class TestServiceNameResolution:
         )
 
 
+def _flush_harness(debounce_ms: int):
+    """A processor whose scheduled flush is far away, so anything that
+    gets exported can only have come from the eager path."""
+    exporter = InMemorySpanExporter()
+    processor = IntrospectionSpanProcessor(
+        token="test-token",
+        advanced=AdvancedOptions(
+            span_exporter=exporter,
+            flush_interval_ms=60_000,
+            message_flush_debounce_ms=debounce_ms,
+        ),
+    )
+    provider = TracerProvider(id_generator=IncrementalIdGenerator())
+    provider.add_span_processor(processor)
+    return exporter, provider, processor
+
+
+def _record_message(provider) -> None:
+    provider.get_tracer("test").start_span(
+        "chat", attributes={"gen_ai.request.model": _MODEL}
+    ).end()
+
+
 class TestEagerMessageFlush:
     """The debounced flush that gets a logged message out without waiting."""
 
-    @staticmethod
-    def _harness(debounce_ms: int):
-        """A processor whose scheduled flush is far away, so anything that
-        gets exported can only have come from the eager path."""
-        exporter = InMemorySpanExporter()
-        processor = IntrospectionSpanProcessor(
-            token="test-token",
-            advanced=AdvancedOptions(
-                span_exporter=exporter,
-                flush_interval_ms=60_000,
-                message_flush_debounce_ms=debounce_ms,
-            ),
-        )
-        provider = TracerProvider(id_generator=IncrementalIdGenerator())
-        provider.add_span_processor(processor)
-        return exporter, provider, processor
-
-    @staticmethod
-    def _record_message(provider) -> None:
-        provider.get_tracer("test").start_span(
-            "chat", attributes={"gen_ai.request.model": _MODEL}
-        ).end()
+    _harness = staticmethod(_flush_harness)
+    _record_message = staticmethod(_record_message)
 
     def test_exports_without_waiting_for_the_scheduled_flush(self):
         exporter, provider, processor = self._harness(20)
@@ -983,5 +990,174 @@ class TestEagerMessageFlush:
             worker = processor._flush_worker
             assert worker is not None
             assert worker.daemon is True
+        finally:
+            processor.shutdown()
+
+
+class _HoldableProcessor:
+    """Stands in for the batch processor, with a flush we can hold open.
+
+    What matters here is the order in which the wrapped processor is called,
+    not what an exporter received: an eager flush that is still inside the
+    exporter has already taken its spans off the queue, so a shutdown that
+    races it destroys the exporter with those spans in flight and the drain
+    has nothing left to find.
+    """
+
+    def __init__(self) -> None:
+        self.flush_entered = threading.Event()
+        self.release = threading.Event()
+        self.calls: list[str] = []
+
+    def on_start(self, span, parent_context=None) -> None:
+        pass
+
+    def on_end(self, span) -> None:
+        pass
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        self.calls.append("flush_start")
+        self.flush_entered.set()
+        self.release.wait(10)
+        self.calls.append("flush_end")
+        return True
+
+    def shutdown(self) -> None:
+        self.calls.append("shutdown")
+
+
+class TestShutdownWithAFlushInFlight:
+    """`shutdown()` against the eager worker mid-flush."""
+
+    @staticmethod
+    def _harness():
+        exporter, provider, processor = _flush_harness(10)
+        # The real batch processor is not wanted here, only the ordering, so
+        # retire it before putting the stand-in in its place.
+        processor._span_processor.shutdown()
+        inner = _HoldableProcessor()
+        processor._span_processor = inner
+        return inner, provider, processor
+
+    def test_an_in_flight_flush_finishes_before_the_processor_closes(self):
+        inner, provider, processor = self._harness()
+        _record_message(provider)
+        assert inner.flush_entered.wait(5)
+
+        releaser = threading.Timer(0.2, inner.release.set)
+        releaser.start()
+        try:
+            processor.shutdown()
+        finally:
+            releaser.cancel()
+            inner.release.set()
+
+        assert inner.calls == ["flush_start", "flush_end", "shutdown"]
+        assert processor._flush_worker is not None
+        assert not processor._flush_worker.is_alive()
+
+    def test_a_flush_that_never_returns_does_not_hold_shutdown_open(
+        self, monkeypatch
+    ):
+        """A wedged exporter must not keep the process from exiting."""
+        monkeypatch.setattr(
+            span_processor_module, "_FLUSH_JOIN_TIMEOUT_S", 0.1
+        )
+        inner, provider, processor = self._harness()
+        _record_message(provider)
+        assert inner.flush_entered.wait(5)
+
+        started = time.monotonic()
+        try:
+            processor.shutdown()
+            elapsed = time.monotonic() - started
+        finally:
+            inner.release.set()
+
+        assert elapsed < 2
+        assert inner.calls == ["flush_start", "shutdown"]
+
+
+class TestForkedProcesses:
+    """Pre-forking servers initialize the SDK in the parent.
+
+    Threads do not survive `fork()`, so the child inherits a handle to a
+    worker that no longer runs. Left alone, the child never starts a
+    replacement and every message it logs waits for the scheduled flush.
+    """
+
+    def test_the_reset_drops_a_lock_the_child_could_never_release(self):
+        """A fork can land while another thread holds the flush lock."""
+        _, _, processor = _flush_harness(50_000)
+        try:
+            inherited = processor._flush_lock
+            inherited.acquire()
+            processor._flush_worker = threading.current_thread()
+
+            processor._reset_flush_state_after_fork()
+
+            assert not processor._flush_lock.locked()
+            assert processor._flush_lock is not inherited
+            assert processor._flush_worker is None
+            assert processor._flush_due_at is None
+            assert processor._flush_hard_deadline is None
+            inherited.release()
+        finally:
+            processor.shutdown()
+
+    def test_a_stale_worker_handle_does_not_block_a_new_one(self):
+        """The pid re-check covers a fork the at-fork hook did not see."""
+        _, provider, processor = _flush_harness(50_000)
+        try:
+            _record_message(provider)
+            inherited = processor._flush_worker
+            assert inherited is not None
+
+            processor._flush_worker_pid = -1
+            _record_message(provider)
+
+            assert processor._flush_worker is not inherited
+            assert processor._flush_worker.is_alive()
+        finally:
+            processor.shutdown()
+
+    @pytest.mark.skipif(
+        not hasattr(os, "fork"), reason="platform has no fork()"
+    )
+    def test_a_forked_child_still_flushes_eagerly(self):
+        exporter, provider, processor = _flush_harness(20)
+        try:
+            _record_message(provider)
+            deadline = time.monotonic() + 5
+            while (
+                not exporter.get_finished_spans()
+                and time.monotonic() < deadline
+            ):
+                time.sleep(0.01)
+            assert len(exporter.get_finished_spans()) == 1
+
+            pid = os.fork()
+            if pid == 0:
+                # The child reports through its exit code and leaves with
+                # `os._exit`, so it never runs the test session's teardown.
+                code = 1
+                try:
+                    if processor._flush_worker is None:
+                        _record_message(provider)
+                        child_deadline = time.monotonic() + 10
+                        while (
+                            len(exporter.get_finished_spans()) < 2
+                            and time.monotonic() < child_deadline
+                        ):
+                            time.sleep(0.01)
+                        if len(exporter.get_finished_spans()) == 2:
+                            code = 0
+                except BaseException:
+                    code = 1
+                finally:
+                    os._exit(code)
+
+            _, status = os.waitpid(pid, 0)
+            assert os.waitstatus_to_exitcode(status) == 0
         finally:
             processor.shutdown()

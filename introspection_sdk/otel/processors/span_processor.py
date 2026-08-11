@@ -3,6 +3,7 @@
 import os
 import threading
 import time
+import weakref
 
 from opentelemetry import baggage as otel_baggage
 from opentelemetry.context import Context
@@ -33,6 +34,20 @@ _DEFAULT_MESSAGE_FLUSH_DEBOUNCE_MS = 250
 #: OpenTelemetry's own ``schedule_delay_millis`` default, which is the cap on
 #: the debounce when the caller has not set ``flush_interval_ms``.
 _DEFAULT_SCHEDULE_DELAY_MS = 5000
+
+#: How long ``shutdown()`` waits for an in-flight eager flush, in seconds.
+#:
+#: The wait exists so the flush worker is not still inside the exporter when
+#: the batch processor tears that exporter down: those spans have already left
+#: the queue, so the shutdown drain cannot find them again and they would be
+#: lost. The bound exists because shutdown usually runs at process exit, often
+#: from ``atexit``, where a hung exporter must not hold the process open.
+#: Two seconds covers an OTLP round trip with room to spare while staying far
+#: below the export timeout (30s by default) that would otherwise bound the
+#: wait, and it is a cap rather than a delay: the join returns the moment the
+#: flush completes. If it does expire, the batch processor's own shutdown
+#: still runs and drains whatever is left in the queue.
+_FLUSH_JOIN_TIMEOUT_S = 2.0
 
 #: A span carrying any of these is LLM-relevant and gets exported. Everything
 #: else in the process (HTTP clients, web-framework routing, database drivers)
@@ -253,6 +268,42 @@ class IntrospectionSpanProcessor(SpanProcessor):
         self._flush_wake = threading.Event()
         self._flush_stop = threading.Event()
         self._flush_worker: threading.Thread | None = None
+        self._flush_worker_pid = os.getpid()
+
+        if hasattr(os, "register_at_fork"):
+            # A child of `fork()` inherits no threads, so the worker handle it
+            # inherits points at a thread that does not exist and nothing ever
+            # starts a replacement: eager flush would be silently dead in every
+            # child of a pre-forking server. The same reasoning is why the
+            # OpenTelemetry batch processor registers this hook.
+            #
+            # Weak, so an otherwise unreachable processor is not kept alive by
+            # the fork registry, which has no way to unregister.
+            weak_reset = weakref.WeakMethod(self._reset_flush_state_after_fork)
+
+            def _after_fork_in_child() -> None:
+                reset = weak_reset()
+                if reset is not None:
+                    reset()
+
+            os.register_at_fork(after_in_child=_after_fork_in_child)
+
+    def _reset_flush_state_after_fork(self) -> None:
+        """Rebuild the flush machinery for a freshly forked child process.
+
+        The lock and the events are replaced rather than reused: a fork that
+        landed while another thread held ``_flush_lock`` leaves the child
+        holding a lock no surviving thread can release, so the first ``on_end``
+        would block forever. Replacing them is safe because only one thread
+        exists at this point.
+        """
+        self._flush_lock = threading.Lock()
+        self._flush_due_at = None
+        self._flush_hard_deadline = None
+        self._flush_wake = threading.Event()
+        self._flush_stop = threading.Event()
+        self._flush_worker = None
+        self._flush_worker_pid = os.getpid()
 
     def on_start(
         self, span: Span, parent_context: Context | None = None
@@ -314,6 +365,13 @@ class IntrospectionSpanProcessor(SpanProcessor):
         """
         if self._flush_debounce_ms <= 0:
             return
+
+        if self._flush_worker_pid != os.getpid():
+            # Normally the at-fork hook has already done this. This covers the
+            # child of a fork the hook did not see, and it has to happen before
+            # the lock is taken, because an inherited lock may be held by a
+            # thread that did not survive.
+            self._reset_flush_state_after_fork()
 
         now = time.monotonic()
         with self._flush_lock:
@@ -433,6 +491,18 @@ class IntrospectionSpanProcessor(SpanProcessor):
         self._cancel_message_flush()
         self._flush_stop.set()
         self._flush_wake.set()
+        worker = self._flush_worker
+        if worker is not None and worker is not threading.current_thread():
+            # Let a flush that is already inside the exporter finish before the
+            # exporter is taken away from underneath it. See
+            # ``_FLUSH_JOIN_TIMEOUT_S`` for why the wait is bounded.
+            worker.join(_FLUSH_JOIN_TIMEOUT_S)
+            if worker.is_alive():
+                logger.warning(
+                    "Eager message flush still running after %ss; "
+                    "shutting down anyway",
+                    _FLUSH_JOIN_TIMEOUT_S,
+                )
         try:
             self._span_processor.shutdown()
         except Exception as e:
