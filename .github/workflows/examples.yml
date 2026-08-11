@@ -55,7 +55,12 @@ jobs:
         working-directory: examples
         env:
           INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
-          INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL }}
+          # An unset repository variable expands to an empty string, which
+          # overrides the SDK's documented production default and leaves httpx
+          # with a URL that has no scheme. Preserve the configurable target,
+          # but make an unconfigured release workflow use the same default as
+          # the examples themselves.
+          INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL || 'https://api.introspection.dev' }}
         run: |
           uv run -m introspection_examples.api.runtimes
           uv run -m introspection_examples.api.async_runtimes
