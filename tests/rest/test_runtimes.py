@@ -238,3 +238,24 @@ def test_runtime_surface_excludes_operator_controls(fake_api: FakeAPI):
         assert not hasattr(runtimes, method)
     for method in ("pin", "activate"):
         assert not hasattr(handle, method)
+
+
+def test_run_forwards_identity_tags(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/runtimes/{RUNTIME_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    runtimes = _runtimes(fake_api)
+    runtimes(RUNTIME_ID).run(
+        identity={"user_id": "u_demo", "tags": ["project:x"]}
+    )
+
+    body = fake_api.last_request.json()
+    assert body["identity"] == {
+        "user_id": "u_demo",
+        "tags": ["project:x"],
+    }
