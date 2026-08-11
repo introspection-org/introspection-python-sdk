@@ -1,6 +1,8 @@
 """OpenTelemetry SpanProcessor for the Introspection backend."""
 
 import os
+import threading
+import time
 
 from opentelemetry import baggage as otel_baggage
 from opentelemetry.context import Context
@@ -24,6 +26,13 @@ from introspection_sdk.utils import logger, platform_is_emscripten
 from introspection_sdk.version import USER_AGENT
 
 __all__ = ["IntrospectionSpanProcessor"]
+
+#: Wait after the last conversation span before flushing it, in milliseconds.
+_DEFAULT_MESSAGE_FLUSH_DEBOUNCE_MS = 250
+
+#: OpenTelemetry's own ``schedule_delay_millis`` default, which is the cap on
+#: the debounce when the caller has not set ``flush_interval_ms``.
+_DEFAULT_SCHEDULE_DELAY_MS = 5000
 
 #: A span carrying any of these is LLM-relevant and gets exported. Everything
 #: else in the process (HTTP clients, web-framework routing, database drivers)
@@ -227,6 +236,24 @@ class IntrospectionSpanProcessor(SpanProcessor):
                 ),
             )
 
+        debounce_ms = self._advanced.message_flush_debounce_ms
+        self._flush_debounce_ms = (
+            _DEFAULT_MESSAGE_FLUSH_DEBOUNCE_MS
+            if debounce_ms is None
+            else max(0, debounce_ms)
+        )
+        self._flush_max_wait_ms = (
+            self._advanced.flush_interval_ms or _DEFAULT_SCHEDULE_DELAY_MS
+        )
+        # Guards the two deadlines and the worker handle together: `on_end`
+        # runs on whatever thread ended the span, so several can race here.
+        self._flush_lock = threading.Lock()
+        self._flush_due_at: float | None = None
+        self._flush_hard_deadline: float | None = None
+        self._flush_wake = threading.Event()
+        self._flush_stop = threading.Event()
+        self._flush_worker: threading.Thread | None = None
+
     def on_start(
         self, span: Span, parent_context: Context | None = None
     ) -> None:
@@ -271,6 +298,80 @@ class IntrospectionSpanProcessor(SpanProcessor):
             return
 
         self._span_processor.on_end(self._enrich_span(span))
+        # Everything reaching here is a conversation row (the marker check
+        # above rejects infrastructure spans), so this is exactly "a message
+        # was logged".
+        self._schedule_message_flush()
+
+    def _schedule_message_flush(self) -> None:
+        """Bring the export of a just-ended conversation span forward.
+
+        Debounced so a turn's spans still leave together -- see
+        :attr:`~introspection_sdk.config.AdvancedOptions.message_flush_debounce_ms`
+        for why batching them matters downstream -- and capped at the batch
+        processor's own interval so a steady span stream can't reset the timer
+        indefinitely.
+        """
+        if self._flush_debounce_ms <= 0:
+            return
+
+        now = time.monotonic()
+        with self._flush_lock:
+            if self._flush_hard_deadline is None:
+                self._flush_hard_deadline = (
+                    now + self._flush_max_wait_ms / 1000
+                )
+            self._flush_due_at = min(
+                now + self._flush_debounce_ms / 1000,
+                self._flush_hard_deadline,
+            )
+            if self._flush_worker is None:
+                # One daemon thread for the life of the processor, rather than
+                # a `threading.Timer` per span: spans arrive in bursts, and
+                # thread-per-span would cost more than the flush it schedules.
+                # Daemon so a pending flush never holds up interpreter exit --
+                # `shutdown()` is what guarantees the drain.
+                self._flush_worker = threading.Thread(
+                    target=self._run_flush_worker,
+                    name="introspection-message-flush",
+                    daemon=True,
+                )
+                self._flush_worker.start()
+        self._flush_wake.set()
+
+    def _run_flush_worker(self) -> None:
+        """Flush once the debounce settles, re-waiting whenever it is reset."""
+        while not self._flush_stop.is_set():
+            with self._flush_lock:
+                due = self._flush_due_at
+            if due is None:
+                self._flush_wake.wait()
+                self._flush_wake.clear()
+                continue
+
+            remaining = due - time.monotonic()
+            if remaining > 0:
+                # Waking early means a newer span pushed the deadline out;
+                # loop and re-read it rather than flushing on the stale one.
+                if self._flush_wake.wait(remaining):
+                    self._flush_wake.clear()
+                continue
+
+            with self._flush_lock:
+                self._flush_due_at = None
+                self._flush_hard_deadline = None
+            try:
+                self._span_processor.force_flush()
+            except Exception as e:  # pragma: no cover - defensive
+                # The batch processor still holds the span either way, so a
+                # failed early flush just falls back to the scheduled one.
+                logger.debug("Eager message flush failed: %s", e)
+
+    def _cancel_message_flush(self) -> None:
+        """Drop a pending eager flush -- a real flush is already happening."""
+        with self._flush_lock:
+            self._flush_due_at = None
+            self._flush_hard_deadline = None
 
     def _enrich_span(self, span: ReadableSpan) -> ReadableSpan:
         """Add conversation, agent, and identity attributes plus service name."""
@@ -329,6 +430,9 @@ class IntrospectionSpanProcessor(SpanProcessor):
     def shutdown(self) -> None:
         """Shut down the underlying batch span processor."""
         logger.info("Shutting down introspection span processor")
+        self._cancel_message_flush()
+        self._flush_stop.set()
+        self._flush_wake.set()
         try:
             self._span_processor.shutdown()
         except Exception as e:
@@ -344,4 +448,5 @@ class IntrospectionSpanProcessor(SpanProcessor):
             ``True`` if the flush completed within the timeout.
         """
         logger.info("Flushing introspection span processor")
+        self._cancel_message_flush()
         return self._span_processor.force_flush(timeout_millis)

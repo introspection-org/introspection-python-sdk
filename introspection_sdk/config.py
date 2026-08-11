@@ -83,6 +83,25 @@ class AdvancedOptions:
     ``None`` leaves the OpenTelemetry processor default unchanged.
     """
 
+    message_flush_debounce_ms: int | None = None
+    """How long to wait after the last conversation span ends before flushing
+    it, in milliseconds. ``None`` uses 250; ``0`` disables the eager flush and
+    exports on :attr:`flush_interval_ms` alone.
+
+    Spans are emitted on span *end*, so a logged message is exportable the
+    moment it completes -- but the batch processor would still sit on it for
+    the flush interval. This shortens that wait so a message reaches the
+    platform (and any live view of it) about as fast as it was produced.
+
+    It is a debounce rather than a flush-per-span so a turn's spans still
+    export together: single-span batches are wasteful on the wire, and the
+    ingest processor deduplicates provider spans that share a
+    ``gen_ai.response.id`` within one batch, which it can only do when they
+    arrive together. A continuous span stream can keep resetting the debounce,
+    so the flush is capped at :attr:`flush_interval_ms` after the first pending
+    span -- this option only ever makes an export sooner, never later.
+    """
+
     export_timeout_ms: int | None = None
     """Maximum time allowed for a batch export, in milliseconds.
 

@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 
 import pytest
 from dirty_equals import IsStr
@@ -866,3 +867,121 @@ class TestServiceNameResolution:
         assert (
             exported.resource.attributes["service.name"] == "caller-provider"
         )
+
+
+class TestEagerMessageFlush:
+    """The debounced flush that gets a logged message out without waiting."""
+
+    @staticmethod
+    def _harness(debounce_ms: int):
+        """A processor whose scheduled flush is far away, so anything that
+        gets exported can only have come from the eager path."""
+        exporter = InMemorySpanExporter()
+        processor = IntrospectionSpanProcessor(
+            token="test-token",
+            advanced=AdvancedOptions(
+                span_exporter=exporter,
+                flush_interval_ms=60_000,
+                message_flush_debounce_ms=debounce_ms,
+            ),
+        )
+        provider = TracerProvider(id_generator=IncrementalIdGenerator())
+        provider.add_span_processor(processor)
+        return exporter, provider, processor
+
+    @staticmethod
+    def _record_message(provider) -> None:
+        provider.get_tracer("test").start_span(
+            "chat", attributes={"gen_ai.request.model": _MODEL}
+        ).end()
+
+    def test_exports_without_waiting_for_the_scheduled_flush(self):
+        exporter, provider, processor = self._harness(20)
+        try:
+            self._record_message(provider)
+            assert exporter.get_finished_spans() == ()
+
+            deadline = time.monotonic() + 5
+            while (
+                not exporter.get_finished_spans()
+                and time.monotonic() < deadline
+            ):
+                time.sleep(0.01)
+            assert len(exporter.get_finished_spans()) == 1
+        finally:
+            processor.shutdown()
+
+    def test_disabled_leaves_the_span_to_the_scheduled_flush(self):
+        exporter, provider, processor = self._harness(0)
+        try:
+            self._record_message(provider)
+            time.sleep(0.3)
+            assert exporter.get_finished_spans() == ()
+        finally:
+            processor.shutdown()
+
+    def test_batches_a_burst_into_one_export(self):
+        exporter, provider, processor = self._harness(50)
+        try:
+            for _ in range(5):
+                self._record_message(provider)
+
+            deadline = time.monotonic() + 5
+            while (
+                len(exporter.get_finished_spans()) < 5
+                and time.monotonic() < deadline
+            ):
+                time.sleep(0.01)
+            # All five arrive, and they arrive together -- the ingest processor
+            # deduplicates provider spans sharing a response id only within a
+            # batch.
+            assert len(exporter.get_finished_spans()) == 5
+        finally:
+            processor.shutdown()
+
+    def test_ignores_infrastructure_spans(self):
+        exporter, provider, processor = self._harness(20)
+        try:
+            provider.get_tracer("test").start_span("GET /health").end()
+            time.sleep(0.3)
+            assert exporter.get_finished_spans() == ()
+        finally:
+            processor.shutdown()
+
+    def test_debounce_is_capped_by_the_flush_interval(self):
+        """A span stream arriving faster than the debounce still exports."""
+        exporter = InMemorySpanExporter()
+        processor = IntrospectionSpanProcessor(
+            token="test-token",
+            advanced=AdvancedOptions(
+                span_exporter=exporter,
+                # Cap well below the debounce, so only the cap can fire.
+                flush_interval_ms=100,
+                message_flush_debounce_ms=10_000,
+            ),
+        )
+        provider = TracerProvider(id_generator=IncrementalIdGenerator())
+        provider.add_span_processor(processor)
+        try:
+            self._record_message(provider)
+            deadline = time.monotonic() + 5
+            while (
+                not exporter.get_finished_spans()
+                and time.monotonic() < deadline
+            ):
+                self._record_message(provider)
+                time.sleep(0.01)
+            assert exporter.get_finished_spans()
+        finally:
+            processor.shutdown()
+
+    def test_worker_thread_is_a_daemon(self):
+        """A pending flush must never hold up interpreter exit."""
+        _, provider, processor = self._harness(50_000)
+        try:
+            self._record_message(provider)
+            worker = processor._flush_worker
+            assert worker is not None
+            assert worker.daemon is True
+        finally:
+            processor.shutdown()
