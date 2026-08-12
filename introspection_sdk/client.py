@@ -29,9 +29,11 @@ from introspection_sdk.auth import (
 )
 from introspection_sdk.dev_target import client_headers
 from introspection_sdk.resources import (
+    AsyncConnectors,
     AsyncExperiments,
     AsyncRecipes,
     AsyncRuntimes,
+    Connectors,
     Experiments,
     Recipes,
     Runtimes,
@@ -55,6 +57,7 @@ class IntrospectionClient:
     runtimes: Runtimes
     experiments: Experiments
     recipes: Recipes
+    connectors: Connectors
 
     def __init__(
         self,
@@ -87,6 +90,7 @@ class IntrospectionClient:
             additional_headers=self._additional_headers,
         )
         self.recipes = Recipes(self._http)
+        self.connectors = Connectors(self._http)
 
     @classmethod
     def from_service_account(
@@ -165,6 +169,7 @@ class AsyncIntrospectionClient:
     runtimes: AsyncRuntimes
     experiments: AsyncExperiments
     recipes: AsyncRecipes
+    connectors: AsyncConnectors
 
     def __init__(
         self,
@@ -197,6 +202,7 @@ class AsyncIntrospectionClient:
             additional_headers=self._additional_headers,
         )
         self.recipes = AsyncRecipes(self._http)
+        self.connectors = AsyncConnectors(self._http)
 
     @classmethod
     async def from_service_account(

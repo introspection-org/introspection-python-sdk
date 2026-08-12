@@ -49,6 +49,10 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from introspection_sdk.resources.connectors import (
+    Connections,
+    Connectors,
+)
 from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.resources.recipes import Recipes
 from introspection_sdk.resources.runtimes import Runtimes
@@ -379,6 +383,80 @@ SURFACES = (
         missing_is_fatal=True,
         extra_means="sent as a query parameter the API does not accept",
         missing_means="accepted by the API but not exposed here",
+    ),
+    # --- connectors --------------------------------------------------------
+    Surface(
+        name="connector list filters",
+        where="GET /v1/connectors query parameters",
+        plane="cp",
+        sdk=lambda: signature_params(Connectors.list),
+        server=lambda spec: query_parameters(spec, "/v1/connectors", "get"),
+        # Project scope comes from the authenticated credential.
+        exempt=frozenset({"project", "project_id"}),
+        missing_is_fatal=False,
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    Surface(
+        name="connection list filters",
+        where="GET /v1/connectors/{id}/connections query parameters",
+        plane="cp",
+        sdk=lambda: signature_params(Connections.list),
+        server=lambda spec: query_parameters(
+            spec, "/v1/connectors/{connector_id}/connections", "get"
+        ),
+        # Addressed by connector id in the path, not filtered on.
+        client_side=frozenset({"connector_id"}),
+        missing_is_fatal=False,
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    Surface(
+        name="ConnectorCreate",
+        where="POST /v1/connectors body",
+        plane="cp",
+        sdk=lambda: signature_params(Connectors.create),
+        server=lambda spec: schema_properties(spec, "ConnectorCreate"),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="ConnectorUpdate",
+        where="PATCH /v1/connectors/{id} body",
+        plane="cp",
+        sdk=lambda: signature_params(Connectors.update),
+        server=lambda spec: schema_properties(spec, "ConnectorUpdate"),
+        client_side=frozenset({"connector_id"}),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="ConnectionCreate",
+        where="POST /v1/connectors/{id}/connections body",
+        plane="cp",
+        sdk=lambda: signature_params(Connections.create),
+        server=lambda spec: schema_properties(spec, "ConnectionCreate"),
+        client_side=frozenset({"connector_id"}),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="ConnectAuthorizeRequest",
+        where="POST /v1/oauth/connections/authorize body",
+        plane="cp",
+        sdk=lambda: signature_params(Connectors.authorize),
+        server=lambda spec: schema_properties(spec, "ConnectAuthorizeRequest"),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="BrokerTokenRequest",
+        where="POST /v1/oauth/connections/token body",
+        plane="cp",
+        sdk=lambda: signature_params(Connections.get_token),
+        server=lambda spec: schema_properties(spec, "BrokerTokenRequest"),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
     ),
     # --- metrics -----------------------------------------------------------
     Surface(

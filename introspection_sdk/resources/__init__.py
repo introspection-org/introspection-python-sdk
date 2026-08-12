@@ -1,5 +1,11 @@
 """CP-bound namespaces hung off :class:`IntrospectionClient`."""
 
+from introspection_sdk.resources.connectors import (
+    AsyncConnections,
+    AsyncConnectors,
+    Connections,
+    Connectors,
+)
 from introspection_sdk.resources.experiments import (
     AsyncExperimentHandle,
     AsyncExperiments,
@@ -15,11 +21,15 @@ from introspection_sdk.resources.runtimes import (
 )
 
 __all__ = [
+    "AsyncConnections",
+    "AsyncConnectors",
     "AsyncExperimentHandle",
     "AsyncExperiments",
     "AsyncRecipes",
     "AsyncRuntimeHandle",
     "AsyncRuntimes",
+    "Connections",
+    "Connectors",
     "ExperimentHandle",
     "Experiments",
     "Recipes",

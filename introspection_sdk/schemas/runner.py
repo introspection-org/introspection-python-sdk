@@ -25,6 +25,12 @@ class RunnerIdentity(_ApiModel):
     user_id: str | None = None
     anonymous_id: str | None = None
     conversation_id: str | None = None
+    tags: list[str] | None = None
+    """Tags to stamp on the ``customer`` member this identity mints, **if
+    that member is new**. Access-bearing, and bounded on both sides:
+    attenuated to the asserting agent member's own tags, and applied on
+    create only — an existing member's tags are never changed here. Same
+    ``key:value`` grammar as every other tag write."""
 
 
 class RunCallerLibrary(_ApiModel):
