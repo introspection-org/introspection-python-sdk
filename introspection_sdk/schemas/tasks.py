@@ -133,10 +133,11 @@ class TaskCreateRequest(_ApiModel):
     )
     repositories: list[TaskRepoRequest] | None = Field(
         default=None,
-        max_length=10,
         description=(
             "Workspace repositories to clone into the sandbox's "
-            "workspace/repos/ before the first turn, at most 10."
+            "workspace/repos/ before the first turn. No count limit — the "
+            "server refuses a statically wrong list (duplicate slugs, folder "
+            "collisions), not a long one."
         ),
     )
     metadata: dict[str, Any] | None = None
