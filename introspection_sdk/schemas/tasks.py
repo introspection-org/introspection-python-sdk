@@ -102,8 +102,10 @@ class TaskRepoRequest(_ApiModel):
     ref: str | None = Field(
         default=None,
         description=(
-            "Branch, tag, or commit to check out. Omitted uses the "
-            "repository's registered default branch."
+            "Branch, tag, or full 40-character commit sha to check out. Omitted "
+            "uses the repository's default branch — the clone takes the remote's "
+            "HEAD, so nothing is stored or has to be kept in sync. An abbreviated sha "
+            "is read as a branch name, so the clone fails and the repo is dropped."
         ),
     )
     depth: int | None = Field(
@@ -133,10 +135,11 @@ class TaskCreateRequest(_ApiModel):
     )
     repositories: list[TaskRepoRequest] | None = Field(
         default=None,
-        max_length=10,
         description=(
             "Workspace repositories to clone into the sandbox's "
-            "workspace/repos/ before the first turn, at most 10."
+            "workspace/repos/ before the first turn. No count limit — the "
+            "server refuses a statically wrong list (duplicate slugs, folder "
+            "collisions), not a long one."
         ),
     )
     metadata: dict[str, Any] | None = None
