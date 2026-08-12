@@ -8,10 +8,8 @@ connector operation even though the route lives under ``/v1/oauth/``.
 
 ``client_secret`` / ``signing_secret`` are write-only: accepted on
 create and update, absent from every response, and omitting them on
-update means "unchanged". The whole family sits behind a server-side
-flag — when off, every route 404s with detail "Connectors are not
-enabled" (distinct from "connector not found"); the SDK surfaces that
-detail as the error message.
+update means "unchanged". Project scope comes from the authenticated
+credential; connector calls do not take a separate project selector.
 """
 
 from __future__ import annotations
@@ -29,13 +27,21 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.schemas.connectors import (
     Connection,
+    ConnectionAuthorizationPending,
+    ConnectionBrokerSubjectType,
     ConnectionCreateRequest,
-    ConnectionSubjectType,
+    ConnectionCreateSubjectType,
+    ConnectionMissionConstraints,
+    ConnectionToken,
+    ConnectionTokenRequest,
+    ConnectionTokenResult,
     Connector,
+    ConnectorApprovalPolicy,
     ConnectorAuthMode,
     ConnectorAuthorization,
     ConnectorAuthorizeRequest,
     ConnectorCreateRequest,
+    ConnectorPersonServerMode,
     ConnectorStatus,
     ConnectorUpdateRequest,
 )
@@ -60,6 +66,9 @@ def _create_body(
     signing_secret: str | None,
     metadata: dict[str, Any] | None,
     issuer: str | None,
+    person_server_mode: ConnectorPersonServerMode | str | None,
+    person_server_url: str | None,
+    approval_policy: ConnectorApprovalPolicy | str | None,
     application_id: UUID | None,
     assertion_audience: str | None,
     webhook_url: str | None,
@@ -84,6 +93,9 @@ def _create_body(
             "signing_secret": signing_secret,
             "metadata": metadata,
             "issuer": issuer,
+            "person_server_mode": person_server_mode,
+            "person_server_url": person_server_url,
+            "approval_policy": approval_policy,
             "application_id": application_id,
             "assertion_audience": assertion_audience,
             "webhook_url": webhook_url,
@@ -124,7 +136,7 @@ def _authorize_body(
     *,
     connector_id: UUID,
     runtime: str | UUID | None,
-    subject: ConnectionSubjectType | str | None,
+    subject: ConnectionBrokerSubjectType | str | None,
     return_url: str | None,
     expires_in: int | None,
     identity: RunnerIdentity | dict[str, Any] | None,
@@ -144,7 +156,7 @@ def _authorize_body(
 def _connection_create_body(
     *,
     access_token: str,
-    subject_type: ConnectionSubjectType | str | None,
+    subject_type: ConnectionCreateSubjectType | str | None,
     scopes_granted: list[str] | None,
     refresh_token: str | None,
     token_expires_at: Any,
@@ -158,6 +170,34 @@ def _connection_create_body(
             "token_expires_at": token_expires_at,
         }
     ).model_dump(mode="json", exclude_none=True)
+
+
+def _token_body(
+    *,
+    connector_id: UUID,
+    subject: ConnectionBrokerSubjectType | str | None,
+    action: str | None,
+    requested_permissions: ConnectionMissionConstraints
+    | dict[str, Any]
+    | None,
+) -> dict[str, Any]:
+    return ConnectionTokenRequest.model_validate(
+        {
+            "connector_id": connector_id,
+            "subject": subject,
+            "action": action,
+            "requested_permissions": requested_permissions,
+        }
+    ).model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+
+
+def _token_result(payload: Any) -> ConnectionTokenResult:
+    if (
+        isinstance(payload, dict)
+        and payload.get("status") == "authorization_pending"
+    ):
+        return ConnectionAuthorizationPending.model_validate(payload)
+    return ConnectionToken.model_validate(payload)
 
 
 class Connections:
@@ -197,7 +237,7 @@ class Connections:
         connector_id: UUID,
         *,
         access_token: str,
-        subject_type: ConnectionSubjectType | str | None = None,
+        subject_type: ConnectionCreateSubjectType | str | None = None,
         scopes_granted: builtins.list[str] | None = None,
         refresh_token: str | None = None,
         token_expires_at: Any = None,
@@ -218,6 +258,29 @@ class Connections:
         )
         return Connection.model_validate(payload)
 
+    def get_token(
+        self,
+        connector_id: UUID,
+        *,
+        subject: ConnectionBrokerSubjectType | str | None = None,
+        action: str | None = None,
+        requested_permissions: ConnectionMissionConstraints
+        | dict[str, Any]
+        | None = None,
+    ) -> ConnectionTokenResult:
+        """Resolve a provider token, or a pending human-approval mission."""
+        payload = self._http.request(
+            "POST",
+            "/v1/oauth/connections/token",
+            json=_token_body(
+                connector_id=connector_id,
+                subject=subject,
+                action=action,
+                requested_permissions=requested_permissions,
+            ),
+        )
+        return _token_result(payload)
+
     def get(self, connector_id: UUID, connection_id: UUID) -> Connection:
         payload = self._http.request(
             "GET",
@@ -237,10 +300,9 @@ class Connections:
 class Connectors:
     """CP ``/v1/connectors`` namespace.
 
-    Connector CRUD is project-scoped: pass ``project`` (slug or UUID)
-    unless the credential is already project-scoped. Nested
-    ``connections`` and ``authorize`` are addressed by connector id
-    alone.
+    Connector CRUD uses the project carried by the authenticated
+    credential. Nested ``connections`` and ``authorize`` are addressed
+    by connector id alone.
     """
 
     def __init__(self, http: _HttpClient) -> None:
@@ -250,7 +312,6 @@ class Connectors:
     def list(
         self,
         *,
-        project: str | UUID | None = None,
         limit: int | None = None,
         next: str | None = None,
     ) -> Pager[Connector, Paginated[Connector]]:
@@ -260,7 +321,6 @@ class Connectors:
 
         def fetch(cursor: str | None) -> Paginated[Connector]:
             params: dict[str, Any] = {
-                "project": str(project) if project else None,
                 "limit": limit,
                 "next": cursor,
             }
@@ -289,10 +349,12 @@ class Connectors:
         signing_secret: str | None = None,
         metadata: dict[str, Any] | None = None,
         issuer: str | None = None,
+        person_server_mode: ConnectorPersonServerMode | str | None = None,
+        person_server_url: str | None = None,
+        approval_policy: ConnectorApprovalPolicy | str | None = None,
         application_id: UUID | None = None,
         assertion_audience: str | None = None,
         webhook_url: str | None = None,
-        project: str | UUID | None = None,
     ) -> Connector:
         """Create a connector (idempotent on ``slug``).
 
@@ -303,7 +365,6 @@ class Connectors:
         payload = self._http.request(
             "POST",
             "/v1/connectors",
-            params={"project": str(project) if project else None},
             json=_create_body(
                 name=name,
                 provider=provider,
@@ -320,6 +381,9 @@ class Connectors:
                 signing_secret=signing_secret,
                 metadata=metadata,
                 issuer=issuer,
+                person_server_mode=person_server_mode,
+                person_server_url=person_server_url,
+                approval_policy=approval_policy,
                 application_id=application_id,
                 assertion_audience=assertion_audience,
                 webhook_url=webhook_url,
@@ -327,13 +391,10 @@ class Connectors:
         )
         return Connector.model_validate(payload)
 
-    def get(
-        self, connector_id: UUID, *, project: str | UUID | None = None
-    ) -> Connector:
+    def get(self, connector_id: UUID) -> Connector:
         payload = self._http.request(
             "GET",
             f"/v1/connectors/{connector_id}",
-            params={"project": str(project) if project else None},
         )
         return Connector.model_validate(payload)
 
@@ -350,7 +411,6 @@ class Connectors:
         webhook_url: str | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
-        project: str | UUID | None = None,
     ) -> Connector:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
@@ -358,7 +418,6 @@ class Connectors:
         payload = self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
-            params={"project": str(project) if project else None},
             json=_update_body(
                 name=name,
                 agent_member_id=agent_member_id,
@@ -373,14 +432,11 @@ class Connectors:
         )
         return Connector.model_validate(payload)
 
-    def delete(
-        self, connector_id: UUID, *, project: str | UUID | None = None
-    ) -> None:
+    def delete(self, connector_id: UUID) -> None:
         """Soft-delete a connector; its connections are revoked."""
         self._http.request(
             "DELETE",
             f"/v1/connectors/{connector_id}",
-            params={"project": str(project) if project else None},
             expect="empty",
         )
 
@@ -389,7 +445,7 @@ class Connectors:
         connector_id: UUID,
         *,
         runtime: str | UUID | None = None,
-        subject: ConnectionSubjectType | str | None = None,
+        subject: ConnectionBrokerSubjectType | str | None = None,
         return_url: str | None = None,
         expires_in: int | None = None,
         identity: RunnerIdentity | dict[str, Any] | None = None,
@@ -463,7 +519,7 @@ class AsyncConnections:
         connector_id: UUID,
         *,
         access_token: str,
-        subject_type: ConnectionSubjectType | str | None = None,
+        subject_type: ConnectionCreateSubjectType | str | None = None,
         scopes_granted: builtins.list[str] | None = None,
         refresh_token: str | None = None,
         token_expires_at: Any = None,
@@ -483,6 +539,29 @@ class AsyncConnections:
             ),
         )
         return Connection.model_validate(payload)
+
+    async def get_token(
+        self,
+        connector_id: UUID,
+        *,
+        subject: ConnectionBrokerSubjectType | str | None = None,
+        action: str | None = None,
+        requested_permissions: ConnectionMissionConstraints
+        | dict[str, Any]
+        | None = None,
+    ) -> ConnectionTokenResult:
+        """Resolve a provider token, or a pending human-approval mission."""
+        payload = await self._http.request(
+            "POST",
+            "/v1/oauth/connections/token",
+            json=_token_body(
+                connector_id=connector_id,
+                subject=subject,
+                action=action,
+                requested_permissions=requested_permissions,
+            ),
+        )
+        return _token_result(payload)
 
     async def get(self, connector_id: UUID, connection_id: UUID) -> Connection:
         payload = await self._http.request(
@@ -510,7 +589,6 @@ class AsyncConnectors:
     def list(
         self,
         *,
-        project: str | UUID | None = None,
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Connector, Paginated[Connector]]:
@@ -520,7 +598,6 @@ class AsyncConnectors:
 
         async def fetch(cursor: str | None) -> Paginated[Connector]:
             params: dict[str, Any] = {
-                "project": str(project) if project else None,
                 "limit": limit,
                 "next": cursor,
             }
@@ -549,10 +626,12 @@ class AsyncConnectors:
         signing_secret: str | None = None,
         metadata: dict[str, Any] | None = None,
         issuer: str | None = None,
+        person_server_mode: ConnectorPersonServerMode | str | None = None,
+        person_server_url: str | None = None,
+        approval_policy: ConnectorApprovalPolicy | str | None = None,
         application_id: UUID | None = None,
         assertion_audience: str | None = None,
         webhook_url: str | None = None,
-        project: str | UUID | None = None,
     ) -> Connector:
         """Create a connector (idempotent on ``slug``).
 
@@ -563,7 +642,6 @@ class AsyncConnectors:
         payload = await self._http.request(
             "POST",
             "/v1/connectors",
-            params={"project": str(project) if project else None},
             json=_create_body(
                 name=name,
                 provider=provider,
@@ -580,6 +658,9 @@ class AsyncConnectors:
                 signing_secret=signing_secret,
                 metadata=metadata,
                 issuer=issuer,
+                person_server_mode=person_server_mode,
+                person_server_url=person_server_url,
+                approval_policy=approval_policy,
                 application_id=application_id,
                 assertion_audience=assertion_audience,
                 webhook_url=webhook_url,
@@ -587,13 +668,10 @@ class AsyncConnectors:
         )
         return Connector.model_validate(payload)
 
-    async def get(
-        self, connector_id: UUID, *, project: str | UUID | None = None
-    ) -> Connector:
+    async def get(self, connector_id: UUID) -> Connector:
         payload = await self._http.request(
             "GET",
             f"/v1/connectors/{connector_id}",
-            params={"project": str(project) if project else None},
         )
         return Connector.model_validate(payload)
 
@@ -610,7 +688,6 @@ class AsyncConnectors:
         webhook_url: str | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
-        project: str | UUID | None = None,
     ) -> Connector:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
@@ -618,7 +695,6 @@ class AsyncConnectors:
         payload = await self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
-            params={"project": str(project) if project else None},
             json=_update_body(
                 name=name,
                 agent_member_id=agent_member_id,
@@ -633,14 +709,11 @@ class AsyncConnectors:
         )
         return Connector.model_validate(payload)
 
-    async def delete(
-        self, connector_id: UUID, *, project: str | UUID | None = None
-    ) -> None:
+    async def delete(self, connector_id: UUID) -> None:
         """Soft-delete a connector; its connections are revoked."""
         await self._http.request(
             "DELETE",
             f"/v1/connectors/{connector_id}",
-            params={"project": str(project) if project else None},
             expect="empty",
         )
 
@@ -649,7 +722,7 @@ class AsyncConnectors:
         connector_id: UUID,
         *,
         runtime: str | UUID | None = None,
-        subject: ConnectionSubjectType | str | None = None,
+        subject: ConnectionBrokerSubjectType | str | None = None,
         return_url: str | None = None,
         expires_in: int | None = None,
         identity: RunnerIdentity | dict[str, Any] | None = None,

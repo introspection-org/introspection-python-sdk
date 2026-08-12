@@ -15,6 +15,10 @@ from introspection_sdk.resources.connectors import (
     Connections,
     Connectors,
 )
+from introspection_sdk.schemas.connectors import (
+    ConnectionAuthorizationPending,
+    ConnectionToken,
+)
 
 from .conftest import (
     CONNECTION_ID,
@@ -31,6 +35,7 @@ CONNECTOR_PATH = f"/v1/connectors/{CONNECTOR_ID}"
 CONNECTIONS_PATH = f"{CONNECTOR_PATH}/connections"
 CONNECTION_PATH = f"{CONNECTIONS_PATH}/{CONNECTION_ID}"
 AUTHORIZE_PATH = "/v1/oauth/connections/authorize"
+TOKEN_PATH = "/v1/oauth/connections/token"
 
 # The wire ids are strings (paths, bodies); the methods take UUIDs.
 CONNECTOR_UUID = UUID(CONNECTOR_ID)
@@ -51,7 +56,6 @@ def test_create_sends_only_the_fields_given(fake_api: FakeAPI):
         scopes=["chat:write"],
         client_id="client-abc",
         client_secret="secret-xyz",
-        project="proj-1",
     )
 
     assert created.slug == "slack-support"
@@ -65,10 +69,34 @@ def test_create_sends_only_the_fields_given(fake_api: FakeAPI):
         "client_id": "client-abc",
         "client_secret": "secret-xyz",
     }
-    assert fake_api.last_request.params["project"] == "proj-1"
+    assert "project" not in fake_api.last_request.params
 
 
-def test_list_scopes_by_project_and_follows_the_cursor(fake_api: FakeAPI):
+def test_create_carries_person_server_configuration(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/connectors", json_body=connector_payload())
+
+    Connectors(fake_api.client()).create(
+        name="Bookings",
+        provider="booking",
+        auth_mode="person_authorized",
+        person_server_mode="byo",
+        person_server_url="https://person.example.com",
+        approval_policy="judge_advises_human",
+    )
+
+    assert fake_api.last_request.json() == {
+        "name": "Bookings",
+        "provider": "booking",
+        "auth_mode": "person_authorized",
+        "person_server_mode": "byo",
+        "person_server_url": "https://person.example.com",
+        "approval_policy": "judge_advises_human",
+    }
+
+
+def test_list_uses_authenticated_project_and_follows_the_cursor(
+    fake_api: FakeAPI,
+):
     pages = iter(
         [
             paginated([connector_payload()], next="cursor-2"),
@@ -82,11 +110,11 @@ def test_list_scopes_by_project_and_follows_the_cursor(fake_api: FakeAPI):
     )
     connectors = Connectors(fake_api.client())
 
-    streamed = [c.slug for c in connectors.list(project="proj-1", limit=50)]
+    streamed = [c.slug for c in connectors.list(limit=50)]
 
     assert streamed == ["slack-support", "gmail-ops"]
     first, second = fake_api.requests[0], fake_api.requests[1]
-    assert first.params["project"] == "proj-1"
+    assert "project" not in first.params
     assert first.params["limit"] == "50"
     assert "next" not in first.params
     # The cursor from page 1 must be sent on the page-2 request.
@@ -98,20 +126,12 @@ def test_get_and_delete_round_trip(fake_api: FakeAPI):
     fake_api.add("DELETE", CONNECTOR_PATH, status=204)
     connectors = Connectors(fake_api.client())
 
-    fetched = connectors.get(CONNECTOR_UUID, project="proj-1")
+    fetched = connectors.get(CONNECTOR_UUID)
     assert str(fetched.id) == CONNECTOR_ID
     assert fetched.requires_runtime is True
 
-    assert connectors.delete(CONNECTOR_UUID, project="proj-1") is None
+    assert connectors.delete(CONNECTOR_UUID) is None
     assert fake_api.last_request.method == "DELETE"
-
-
-def test_project_is_dropped_when_not_supplied(fake_api: FakeAPI):
-    fake_api.add("GET", CONNECTOR_PATH, json_body=connector_payload())
-
-    Connectors(fake_api.client()).get(CONNECTOR_UUID)
-
-    assert "project" not in fake_api.last_request.params
 
 
 def test_update_sends_only_the_mutable_fields_given(fake_api: FakeAPI):
@@ -122,9 +142,7 @@ def test_update_sends_only_the_mutable_fields_given(fake_api: FakeAPI):
     )
     connectors = Connectors(fake_api.client())
 
-    updated = connectors.update(
-        CONNECTOR_UUID, name="Slack (renamed)", project="proj-1"
-    )
+    updated = connectors.update(CONNECTOR_UUID, name="Slack (renamed)")
 
     assert updated.name == "Slack (renamed)"
     # An omitted secret is "unchanged", so it must not ride along as null.
@@ -274,6 +292,56 @@ def test_connections_get_and_revoke(fake_api: FakeAPI):
     assert fake_api.last_request.path == CONNECTION_PATH
 
 
+def test_connections_get_token_returns_provider_token(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        TOKEN_PATH,
+        json_body={
+            "token": "provider-token",
+            "token_type": "bearer",
+            "expires_at": None,
+            "scopes": ["calendar.read"],
+        },
+    )
+    result = Connections(fake_api.client()).get_token(
+        CONNECTOR_UUID,
+        subject="user",
+        action="calendar.list",
+        requested_permissions={"host": "calendar.example.com"},
+    )
+
+    assert isinstance(result, ConnectionToken)
+    assert result.token == "provider-token"
+    assert fake_api.last_request.json() == {
+        "connector_id": CONNECTOR_ID,
+        "subject": "user",
+        "action": "calendar.list",
+        "requested_permissions": {"host": "calendar.example.com"},
+    }
+
+
+def test_connections_get_token_preserves_pending_mission(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        TOKEN_PATH,
+        status=202,
+        json_body={
+            "status": "authorization_pending",
+            "mission_id": "33333333-3333-3333-3333-333333333333",
+            "approval_url": "https://consent.example/m/333?cap=secret",
+        },
+    )
+    result = Connections(fake_api.client()).get_token(
+        CONNECTOR_UUID,
+        subject="person",
+        action="booking.reserve",
+    )
+
+    assert isinstance(result, ConnectionAuthorizationPending)
+    assert result.status == "authorization_pending"
+    assert str(result.mission_id) == "33333333-3333-3333-3333-333333333333"
+
+
 # --- async twins ----------------------------------------------------
 
 
@@ -288,7 +356,6 @@ async def test_async_create_and_authorize(fake_api: FakeAPI):
         name="Slack (support)",
         provider="slack",
         auth_mode="oauth_stored",
-        project="proj-1",
     )
     assert created.provider == "slack"
 
@@ -312,7 +379,7 @@ async def test_async_list_get_update_delete(fake_api: FakeAPI):
     fake_api.add("DELETE", CONNECTOR_PATH, status=204)
     connectors = AsyncConnectors(fake_api.async_client())
 
-    page = await connectors.list(project="proj-1")
+    page = await connectors.list()
     assert page.records[0].slug == "slack-support"
 
     assert (await connectors.get(CONNECTOR_UUID)).requires_runtime is True
@@ -349,6 +416,24 @@ async def test_async_connections_create(fake_api: FakeAPI):
 
     assert str(created.connector_id) == CONNECTOR_ID
     assert fake_api.last_request.json() == {"access_token": "xoxb-token"}
+
+
+async def test_async_connections_get_token(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        TOKEN_PATH,
+        json_body={
+            "token": "provider-token",
+            "token_type": "bearer",
+            "scopes": [],
+        },
+    )
+    result = await AsyncConnections(fake_api.async_client()).get_token(
+        CONNECTOR_UUID
+    )
+
+    assert isinstance(result, ConnectionToken)
+    assert result.token == "provider-token"
 
 
 async def test_async_authorize_surfaces_the_422(fake_api: FakeAPI):

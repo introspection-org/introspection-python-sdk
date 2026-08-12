@@ -14,8 +14,6 @@ Run with:
         uv run python -m introspection_examples.api.connectors
 
 Optional env:
-    INTROSPECTION_PROJECT       - project slug or id, when the key is not
-                                  already project-scoped
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
     REVOKE_FIRST_CONNECTION=1   - revoke the first listed connection (destructive)
 
@@ -41,9 +39,6 @@ def main() -> None:
         )
 
     client = IntrospectionClient()
-    # Only needed when the API key is not already scoped to one project.
-    project = os.getenv("INTROSPECTION_PROJECT")
-
     try:
         # 1) Create the connector — the org-level definition of the
         #    provider: your Slack app's credentials and the scopes it asks
@@ -66,7 +61,6 @@ def main() -> None:
             api_hosts=["slack.com"],
             client_id=client_id,
             client_secret=client_secret,
-            project=project,
         )
         print(
             f"connector -> {connector.slug} ({connector.id}), "

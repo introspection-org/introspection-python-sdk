@@ -391,7 +391,8 @@ SURFACES = (
         plane="cp",
         sdk=lambda: signature_params(Connectors.list),
         server=lambda spec: query_parameters(spec, "/v1/connectors", "get"),
-        exempt=frozenset({"project_id"}),
+        # Project scope comes from the authenticated credential.
+        exempt=frozenset({"project", "project_id"}),
         missing_is_fatal=False,
         extra_means="sent as a query parameter the API does not accept",
         missing_means="accepted by the API but not exposed here",
@@ -416,13 +417,6 @@ SURFACES = (
         plane="cp",
         sdk=lambda: signature_params(Connectors.create),
         server=lambda spec: schema_properties(spec, "ConnectorCreate"),
-        # `project` scopes the route on the query string, not in the body.
-        client_side=frozenset({"project"}),
-        # The `person_authorized` fields (person_server_mode /
-        # person_server_url / approval_policy) are accepted by the API but
-        # belong to a phase the broker does not serve yet, so they are
-        # deliberately not surfaced. Report them, don't fail on them.
-        missing_is_fatal=False,
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
     ),
@@ -432,7 +426,7 @@ SURFACES = (
         plane="cp",
         sdk=lambda: signature_params(Connectors.update),
         server=lambda spec: schema_properties(spec, "ConnectorUpdate"),
-        client_side=frozenset({"connector_id", "project"}),
+        client_side=frozenset({"connector_id"}),
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
     ),
@@ -452,6 +446,15 @@ SURFACES = (
         plane="cp",
         sdk=lambda: signature_params(Connectors.authorize),
         server=lambda spec: schema_properties(spec, "ConnectAuthorizeRequest"),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="BrokerTokenRequest",
+        where="POST /v1/oauth/connections/token body",
+        plane="cp",
+        sdk=lambda: signature_params(Connections.get_token),
+        server=lambda spec: schema_properties(spec, "BrokerTokenRequest"),
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
     ),

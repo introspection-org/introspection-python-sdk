@@ -13,10 +13,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from introspection_sdk.schemas.runner import RunnerIdentity
 
@@ -60,6 +60,21 @@ class ConnectionSubjectType(StrEnum):
     FEDERATED = "federated"
     PERSON = "person"
     WORKSPACE = "workspace"
+
+
+class ConnectionCreateSubjectType(StrEnum):
+    """Subjects accepted by registered connection creation."""
+
+    APP = "app"
+    USER = "user"
+
+
+class ConnectionBrokerSubjectType(StrEnum):
+    """Subjects accepted by authorize and token-broker operations."""
+
+    APP = "app"
+    USER = "user"
+    PERSON = "person"
 
 
 class ConnectorPersonServerMode(StrEnum):
@@ -205,7 +220,7 @@ class ConnectionCreateRequest(_ApiModel):
     """
 
     access_token: str
-    subject_type: ConnectionSubjectType | None = None
+    subject_type: ConnectionCreateSubjectType | None = None
     scopes_granted: list[str] | None = None
     refresh_token: str | None = None
     token_expires_at: datetime | None = None
@@ -221,7 +236,7 @@ class ConnectorAuthorizeRequest(_ApiModel):
 
     connector_id: UUID
     runtime: str | None = None
-    subject: ConnectionSubjectType | None = None
+    subject: ConnectionBrokerSubjectType | None = None
     return_url: str | None = None
     expires_in: int | None = None
     identity: RunnerIdentity | None = None
@@ -245,11 +260,52 @@ class ConnectorAuthorization(_ApiModel):
     expires_at: datetime
 
 
+class ConnectionMissionConstraints(_ApiModel):
+    """Deterministic, non-PII envelope for a person-authorized action."""
+
+    host: str | None = None
+    resource: str | None = None
+    limits: dict[str, Any] = Field(default_factory=dict)
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    payload_binding: str | None = None
+
+
+class ConnectionTokenRequest(_ApiModel):
+    connector_id: UUID
+    subject: ConnectionBrokerSubjectType | None = None
+    action: str | None = None
+    requested_permissions: ConnectionMissionConstraints | None = None
+
+
+class ConnectionToken(_ApiModel):
+    token: str
+    token_type: str = "bearer"
+    expires_at: datetime | None = None
+    scopes: list[str] = Field(default_factory=list)
+
+
+class ConnectionAuthorizationPending(_ApiModel):
+    status: Literal["authorization_pending"]
+    mission_id: UUID
+    approval_url: str
+
+
+ConnectionTokenResult = ConnectionToken | ConnectionAuthorizationPending
+
+
 __all__ = [
     "Connection",
+    "ConnectionAuthorizationPending",
+    "ConnectionBrokerSubjectType",
     "ConnectionCreateRequest",
+    "ConnectionCreateSubjectType",
+    "ConnectionMissionConstraints",
     "ConnectionStatus",
     "ConnectionSubjectType",
+    "ConnectionToken",
+    "ConnectionTokenRequest",
+    "ConnectionTokenResult",
     "Connector",
     "ConnectorApprovalPolicy",
     "ConnectorAuthMode",
