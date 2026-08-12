@@ -103,9 +103,8 @@ class TaskRepoRequest(_ApiModel):
         default=None,
         description=(
             "Branch, tag, or full 40-character commit sha to check out. Omitted "
-            "uses `main` — registration never records the repository's real "
-            "default branch, so pass this explicitly when it is not `main`. "
-            "An abbreviated sha "
+            "uses the repository's default branch — the clone takes the remote's "
+            "HEAD, so nothing is stored or has to be kept in sync. An abbreviated sha "
             "is read as a branch name, so the clone fails and the repo is dropped."
         ),
     )
