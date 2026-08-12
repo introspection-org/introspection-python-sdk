@@ -102,8 +102,9 @@ class TaskRepoRequest(_ApiModel):
     ref: str | None = Field(
         default=None,
         description=(
-            "Branch, tag, or commit to check out. Omitted uses the "
-            "repository's registered default branch."
+            "Branch, tag, or full 40-character commit sha to check out. Omitted "
+            "uses the repository's registered default branch. An abbreviated sha "
+            "is read as a branch name, so the clone fails and the repo is dropped."
         ),
     )
     depth: int | None = Field(
