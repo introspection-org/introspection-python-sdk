@@ -471,7 +471,6 @@ def task_payload(**over: Any) -> Task:
         "updated_at": _NOW_DT,
         "title": "Summarize repo",
         "status": TaskStatus.PENDING,
-        "identity_key": "user:u-1",
     }
     defaults.update(over)
     return Task(**defaults)

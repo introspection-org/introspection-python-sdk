@@ -49,7 +49,6 @@ def test_create_sends_agent_name_and_drops_none(fake_api: FakeAPI):
         prompt="hello", agent_name="reviewer", metadata=None
     )
     assert str(res.task.id) == TASK_ID
-    assert res.task.identity_key == "user:u-1"
     body = fake_api.last_request.json()
     assert body["agent_name"] == "reviewer"
     assert "metadata" not in body  # None dropped
@@ -111,7 +110,6 @@ def test_get(fake_api: FakeAPI):
     fake_api.add("GET", f"/v1/tasks/{TASK_ID}", json_body=task_payload())
     task = _tasks(fake_api).get(TASK_ID)
     assert task.title == "Summarize repo"
-    assert task.identity_key == "user:u-1"
 
 
 def test_update(fake_api: FakeAPI):

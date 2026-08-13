@@ -11,8 +11,6 @@ from pydantic import (
     BaseModel,
     BeforeValidator,
     ConfigDict,
-    Field,
-    model_validator,
 )
 
 
@@ -38,18 +36,17 @@ class ResourceShare(_ApiModel):
     resource_type: ShareResourceType
     resource_id: str
     granted_member_id: UUID | None = None
-    """Member target; ``None`` also covers identity/project-wide grants."""
-    granted_identity_key: str | None = None
+    """Member target; ``None`` is a project-wide grant."""
     created_by_member_id: UUID
     """Grantor (always a member) — the revoke gate."""
-    created_by_identity_key: str | None = None
     url: str | None = None
     """Canonical resource URL, populated by the API on share reads."""
 
 
 class ShareCreateRequest(_ApiModel):
     """Create a grant. Omit ``granted_member_id`` for a project-wide grant; set
-    it to target one member."""
+    it to target one member. An end customer is a member, so there is no
+    separate identity target."""
 
     resource_type: ShareResourceType
     # A conversation id is not a uuid, so the wire type is a plain string.
@@ -58,17 +55,3 @@ class ShareCreateRequest(_ApiModel):
     # its own input instead of raising a validation error.
     resource_id: Annotated[str, BeforeValidator(str)]
     granted_member_id: UUID | None = None
-    granted_identity_key: str | None = Field(
-        default=None, min_length=1, max_length=320
-    )
-
-    @model_validator(mode="after")
-    def _one_target(self) -> ShareCreateRequest:
-        if (
-            self.granted_member_id is not None
-            and self.granted_identity_key is not None
-        ):
-            raise ValueError(
-                "a grant targets a member or an identity, not both"
-            )
-        return self

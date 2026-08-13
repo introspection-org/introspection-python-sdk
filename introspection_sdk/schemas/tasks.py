@@ -70,7 +70,6 @@ class Task(_ApiModel):
     last_user_message_at: datetime | None = None
     metadata: dict[str, Any] | None = None
     agent: AgentInfo | None = None
-    identity_key: str | None = None
     tags: list[str] = []
     """``key:value`` grouping tags stamped on this task."""
 

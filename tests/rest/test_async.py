@@ -144,7 +144,6 @@ async def test_tasks_create_and_get(fake_api: FakeAPI):
     assert str(res.task.id) == TASK_ID
     got = await tasks.get(TASK_ID)
     assert got.title == "Summarize repo"
-    assert got.identity_key == "user:u-1"
 
 
 async def test_tasks_start_returns_async_handle(fake_api: FakeAPI):
