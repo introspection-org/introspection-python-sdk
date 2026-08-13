@@ -40,11 +40,26 @@ class File(_ApiModel):
     identity_key: str | None = None
     #: Task this file was created from (accounting only).
     task_id: UUID | None = None
+    tags: list[str] = []
+    """Grouping tags stamped on this file. Tags belong to the file rather
+    than to a version, so they carry forward when a new version is written."""
 
 
 class FileUpdateRequest(_ApiModel):
     name: str | None = Field(default=None, min_length=1, max_length=512)
     metadata: dict[str, Any] | None = None
+    tags: list[str] | None = None
+    """Replaces the tag list wholesale (unlike ``metadata``, which is merged).
+    ``None`` leaves tags untouched; ``[]`` clears them.
+
+    A tag is an opaque, exact, case-sensitive string: ``key:value`` is a
+    convention, not a grammar. Each tag is 1–128 characters with no whitespace
+    or control characters; at most 64 tags. Duplicates collapse.
+
+    Tags are access-bearing: a caller whose member tags intersect a file's tags
+    can read and write it, so a tag shared with a member cohort hands them the
+    file. Shared writers may not replace the tags themselves; that remains
+    owner/privileged-only."""
 
 
 class FileCreateTextRequest(_ApiModel):

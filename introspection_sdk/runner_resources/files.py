@@ -6,6 +6,7 @@ targets the runner's DP endpoint with its short-lived JWT.
 
 from __future__ import annotations
 
+import builtins
 import contextlib
 import mimetypes
 from collections.abc import AsyncIterator, Iterator
@@ -152,6 +153,7 @@ class Files:
         name: str | None = None,
         file_type: FileType | str | None = None,
         storage_path: str | None = None,
+        tag: str | None = None,
     ) -> Pager[File, Paginated[File]]:
         """List files. Iterate the returned :class:`Pager` to stream every
         file across pages, or call ``.page()`` for the first page only."""
@@ -168,6 +170,7 @@ class Files:
                     else file_type
                 ),
                 "storage_path": storage_path,
+                "tag": tag,
             }
             payload = self._http.request("GET", "/v1/files", params=params)
             return Paginated[File].model_validate(payload)
@@ -235,10 +238,13 @@ class Files:
         *,
         name: str | None = None,
         metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> File:
-        body = FileUpdateRequest(name=name, metadata=metadata).model_dump(
-            exclude_none=True
-        )
+        # `exclude_none` drops an omitted tag list but keeps an explicit [],
+        # which is what clears the tags — they replace wholesale.
+        body = FileUpdateRequest(
+            name=name, metadata=metadata, tags=tags
+        ).model_dump(exclude_none=True)
         payload = self._http.request(
             "PATCH", f"/v1/files/{file_id}", json=body
         )
@@ -337,6 +343,7 @@ class AsyncFiles:
         name: str | None = None,
         file_type: FileType | str | None = None,
         storage_path: str | None = None,
+        tag: str | None = None,
     ) -> AsyncPager[File, Paginated[File]]:
         """List files. ``await`` the returned :class:`AsyncPager` for the
         first page, or ``async for`` it to stream every file across pages."""
@@ -353,6 +360,7 @@ class AsyncFiles:
                     else file_type
                 ),
                 "storage_path": storage_path,
+                "tag": tag,
             }
             payload = await self._http.request(
                 "GET", "/v1/files", params=params
@@ -422,10 +430,13 @@ class AsyncFiles:
         *,
         name: str | None = None,
         metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> File:
-        body = FileUpdateRequest(name=name, metadata=metadata).model_dump(
-            exclude_none=True
-        )
+        # `exclude_none` drops an omitted tag list but keeps an explicit [],
+        # which is what clears the tags — they replace wholesale.
+        body = FileUpdateRequest(
+            name=name, metadata=metadata, tags=tags
+        ).model_dump(exclude_none=True)
         payload = await self._http.request(
             "PATCH", f"/v1/files/{file_id}", json=body
         )
