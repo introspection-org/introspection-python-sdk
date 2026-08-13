@@ -173,3 +173,36 @@ def test_versions_create_uploads(fake_api: FakeAPI):
     assert (
         "multipart/form-data" in fake_api.last_request.headers["content-type"]
     )
+
+
+def test_list_sends_the_tag_filter(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    Files(fake_api.client()).list(tag="customer:acme").page()
+
+    assert fake_api.last_request.params["tag"] == "customer:acme"
+
+
+def test_update_sends_tags(fake_api: FakeAPI):
+    fake_api.add("PATCH", f"/v1/files/{FILE_ID}", json_body=file_payload())
+    Files(fake_api.client()).update(FILE_ID, tags=["customer:acme"])
+
+    assert fake_api.last_request.json()["tags"] == ["customer:acme"]
+
+
+def test_update_clears_tags_with_an_explicit_empty_list(fake_api: FakeAPI):
+    fake_api.add("PATCH", f"/v1/files/{FILE_ID}", json_body=file_payload())
+    Files(fake_api.client()).update(FILE_ID, tags=[])
+
+    # Replaces wholesale, so [] must reach the wire rather than be dropped
+    # as an empty value the way an omitted tag list is.
+    assert fake_api.last_request.json() == {"tags": []}
+
+
+def test_reads_tags_back_off_a_file(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        f"/v1/files/{FILE_ID}",
+        json_body=file_payload(tags=["customer:acme"]),
+    )
+
+    assert Files(fake_api.client()).get(FILE_ID).tags == ["customer:acme"]

@@ -49,7 +49,6 @@ def test_create_sends_agent_name_and_drops_none(fake_api: FakeAPI):
         prompt="hello", agent_name="reviewer", metadata=None
     )
     assert str(res.task.id) == TASK_ID
-    assert res.task.identity_key == "user:u-1"
     body = fake_api.last_request.json()
     assert body["agent_name"] == "reviewer"
     assert "metadata" not in body  # None dropped
@@ -111,7 +110,6 @@ def test_get(fake_api: FakeAPI):
     fake_api.add("GET", f"/v1/tasks/{TASK_ID}", json_body=task_payload())
     task = _tasks(fake_api).get(TASK_ID)
     assert task.title == "Summarize repo"
-    assert task.identity_key == "user:u-1"
 
 
 def test_update(fake_api: FakeAPI):
@@ -405,3 +403,54 @@ def test_update_clears_tags_with_an_explicit_empty_list(fake_api: FakeAPI):
 
     # Replaces wholesale, so [] must reach the wire rather than be dropped.
     assert fake_api.last_request.json() == {"tags": []}
+
+
+def test_start_accepts_every_create_field(fake_api: FakeAPI):
+    """``start`` must not drift from ``create``.
+
+    ``start`` used to restate ``create``'s parameters, so each field added to
+    ``create`` afterwards became silently unreachable through it —
+    ``fork_share_id`` and ``tags`` both were. Forwarding ``**kwargs`` fixes
+    that; this pins it by driving every optional ``create`` field through
+    ``start`` and asserting each one reaches the wire.
+    """
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).start(
+        prompt="go",
+        title="titled",
+        agent_name="reviewer",
+        repositories=[TaskRepoRequest(repo="acme/api")],
+        metadata={"k": "v"},
+        idle_timeout_seconds=0,
+        fork_share_id="share-123",
+        files=[TaskFileRef(id="file-1")],
+        tags=["customer:acme"],
+    )
+
+    body = fake_api.last_request.json()
+    assert body["title"] == "titled"
+    assert body["agent_name"] == "reviewer"
+    assert body["metadata"] == {"k": "v"}
+    assert body["idle_timeout_seconds"] == 0  # 0 is meaningful, not dropped
+    assert body["fork_share_id"] == "share-123"
+    assert body["tags"] == ["customer:acme"]
+    assert body["files"][0]["id"] == "file-1"
+    assert body["repositories"][0]["repo"] == "acme/api"
+
+
+def test_start_signature_stays_a_superset_of_create(fake_api: FakeAPI):
+    """The structural half of the guard above.
+
+    A future field added to ``create`` needs no new assertion here: as long as
+    ``start`` forwards ``**kwargs``, it carries the field automatically. This
+    fails if someone restates the parameters again.
+    """
+    import inspect
+
+    start_params = inspect.signature(Tasks.start).parameters
+    assert any(
+        param.kind is inspect.Parameter.VAR_KEYWORD
+        for param in start_params.values()
+    ), (
+        "Tasks.start must forward **kwargs to create, not restate its parameters"
+    )

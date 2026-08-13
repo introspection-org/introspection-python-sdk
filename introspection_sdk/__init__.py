@@ -47,6 +47,7 @@ from introspection_sdk.client import (
     IntrospectionClient,
 )
 from introspection_sdk.runner import AsyncRunner, Runner
+from introspection_sdk.runner_resources.tasks import AsyncRunHandle, RunHandle
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
     EventType,
@@ -135,6 +136,7 @@ def __getattr__(name: str) -> object:
 __all__ = [
     # Always-available REST surface
     "AsyncIntrospectionClient",
+    "AsyncRunHandle",
     "AsyncRunner",
     "AGUIEvent",
     "AuthenticationError",
@@ -149,6 +151,7 @@ __all__ = [
     "OAuthToken",
     "RateLimitError",
     "ResumeEntry",
+    "RunHandle",
     "Runner",
     "RunnerExpiredError",
     "SandboxUnavailableError",
