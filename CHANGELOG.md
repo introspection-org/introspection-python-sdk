@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.15.1...v0.16.0) (2026-08-13)
+
+
+### Features
+
+* **connectors:** add connectors, connections, and the install link ([#129](https://github.com/introspection-org/introspection-python-sdk/issues/129)) ([dd62d31](https://github.com/introspection-org/introspection-python-sdk/commit/dd62d31bcdb0b4746021bd61da6aac2026f9bf22))
+
+
+### Bug Fixes
+
+* drop the client-side ten-repository cap; correct the `ref` field doc ([#131](https://github.com/introspection-org/introspection-python-sdk/issues/131)) ([d54f5dc](https://github.com/introspection-org/introspection-python-sdk/commit/d54f5dc97196ce2ea1c87e60f97c4fe4594438a6))
+* stop start() drifting from create(), expose file tags, and drop identity_key ([#133](https://github.com/introspection-org/introspection-python-sdk/issues/133)) ([c6840ca](https://github.com/introspection-org/introspection-python-sdk/commit/c6840cadb717ee0ce745e686391789ab9458c7c2))
+
 ## [0.15.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.15.0...v0.15.1) (2026-08-10)
 
 
