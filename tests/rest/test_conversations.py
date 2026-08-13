@@ -50,6 +50,7 @@ EXPERIMENT_ID = "33333333-3333-3333-3333-333333333333"
 SUMMARY_FIXTURE: dict[str, Any] = {
     "object": "conversation",
     "id": "conv-1",
+    "task_title": "Map Australian fintech leaders",
     "created_at": "2025-01-01T00:00:00Z",
     "updated_at": "2025-01-01T00:00:05Z",
     "usage": {
@@ -233,6 +234,7 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
 
     summary = page.records[0]
     assert summary.id == "conv-1"
+    assert summary.task_title == "Map Australian fintech leaders"
     assert summary.usage.total_tokens == 30
     assert summary.cost.usd == 0.01
     assert summary.metrics.tool_use_count == 2
@@ -363,6 +365,7 @@ def test_list_arrow_decodes_body_and_headers(fake_api: FakeAPI):
     )
     assert [s.id for s in page.records] == ["conv-1", "conv-2"]
     assert isinstance(page.records[0], Conversation)
+    assert page.records[0].task_title == "Map Australian fintech leaders"
     assert page.records[0].usage.total_tokens == 30
     assert page.next == "cursor-2"
     assert page.count == 2

@@ -57,6 +57,7 @@ class ConversationMetrics(OmitNoneModel):
 class Conversation(OmitNoneModel):
     object: Literal["conversation"] = "conversation"
     id: str
+    task_title: str | None = None
     created_at: datetime
     updated_at: datetime
     agents: list[ConversationAgent] | None = None
