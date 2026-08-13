@@ -351,33 +351,21 @@ class Tasks:
             "POST", f"/v1/tasks/{task_id}/unarchive", expect="empty"
         )
 
-    def start(
-        self,
-        *,
-        prompt: str,
-        title: str | None = None,
-        agent_name: str | None = None,
-        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
-        | None = None,
-        metadata: dict[str, Any] | None = None,
-        idle_timeout_seconds: int | None = None,
-        files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
-    ) -> RunHandle:
+    def start(self, *, prompt: str, **kwargs: Any) -> RunHandle:
         """Cursor-style sugar: create a task + return a handle on its initial run.
+
+        Takes everything :meth:`create` takes, with ``prompt`` required —
+        ``start`` exists to stream a turn, and a task with no prompt has no
+        turn to stream. Forwarding ``**kwargs`` rather than restating the
+        parameters is deliberate: a hand-copied subset silently drops every
+        field added to ``create`` afterwards, which is how ``fork_share_id``
+        and ``tags`` became unreachable from here.
 
         Example:
             >>> run = runner.tasks.start(prompt="Summarize this repo")
             >>> print(run.text())
         """
-        res = self.create(
-            title=title,
-            prompt=prompt,
-            agent_name=agent_name,
-            repositories=repositories,
-            metadata=metadata,
-            idle_timeout_seconds=idle_timeout_seconds,
-            files=files,
-        )
+        res = self.create(prompt=prompt, **kwargs)
         return RunHandle(res.task, res.run, self.runs)
 
 
@@ -649,32 +637,20 @@ class AsyncTasks:
             "POST", f"/v1/tasks/{task_id}/unarchive", expect="empty"
         )
 
-    async def start(
-        self,
-        *,
-        prompt: str,
-        title: str | None = None,
-        agent_name: str | None = None,
-        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
-        | None = None,
-        metadata: dict[str, Any] | None = None,
-        idle_timeout_seconds: int | None = None,
-        files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
-    ) -> AsyncRunHandle:
+    async def start(self, *, prompt: str, **kwargs: Any) -> AsyncRunHandle:
         """Cursor-style sugar: create a task + return a handle on its initial
         run.
+
+        Takes everything :meth:`create` takes, with ``prompt`` required —
+        ``start`` exists to stream a turn, and a task with no prompt has no
+        turn to stream. Forwarding ``**kwargs`` rather than restating the
+        parameters is deliberate: a hand-copied subset silently drops every
+        field added to ``create`` afterwards, which is how ``fork_share_id``
+        and ``tags`` became unreachable from here.
 
         Example:
             >>> run = await runner.tasks.start(prompt="Summarize this repo")
             >>> print(await run.text())
         """
-        res = await self.create(
-            title=title,
-            prompt=prompt,
-            agent_name=agent_name,
-            repositories=repositories,
-            metadata=metadata,
-            idle_timeout_seconds=idle_timeout_seconds,
-            files=files,
-        )
+        res = await self.create(prompt=prompt, **kwargs)
         return AsyncRunHandle(res.task, res.run, self.runs)
