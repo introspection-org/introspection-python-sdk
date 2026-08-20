@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.16.0...v0.17.0) (2026-08-20)
+
+
+### Features
+
+* **conversations:** add conversation metadata ([#136](https://github.com/introspection-org/introspection-python-sdk/issues/136)) ([e91e3f4](https://github.com/introspection-org/introspection-python-sdk/commit/e91e3f4b4eda124f3d82a0038ccbd141f0fb02a2))
+
+
+### Bug Fixes
+
+* expose conversation task titles ([2144e6c](https://github.com/introspection-org/introspection-python-sdk/commit/2144e6ce07fa7eba928ea5a7b672177bacfd0cd1))
+
 ## [0.16.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.15.1...v0.16.0) (2026-08-13)
 
 
