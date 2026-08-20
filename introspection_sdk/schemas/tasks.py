@@ -69,6 +69,7 @@ class Task(_ApiModel):
     completed_at: datetime | None = None
     last_user_message_at: datetime | None = None
     metadata: dict[str, Any] | None = None
+    conversation_metadata: dict[str, str] | None = None
     agent: AgentInfo | None = None
     tags: list[str] = []
     """``key:value`` grouping tags stamped on this task."""
@@ -144,6 +145,13 @@ class TaskCreateRequest(_ApiModel):
         ),
     )
     metadata: dict[str, Any] | None = None
+    conversation_metadata: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            "Immutable, filter-only metadata stamped onto every span in the "
+            "conversation. Keys and values are validated by the server."
+        ),
+    )
     files: list[TaskFileRef] | None = Field(
         default=None,
         description=(

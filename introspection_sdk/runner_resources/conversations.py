@@ -164,6 +164,7 @@ def build_conversation_params(
     resolution: ConversationResolution | None = None,
     sentiment: ConversationSentiment | None = None,
     owner_key: str | None = None,
+    metadata: dict[str, str] | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
 ) -> dict[str, Any]:
@@ -189,6 +190,11 @@ def build_conversation_params(
         "resolution": resolution,
         "sentiment": sentiment,
         "owner_key": owner_key,
+        "metadata": (
+            [f"{key}:{value}" for key, value in metadata.items()]
+            if metadata
+            else None
+        ),
         "start_date": start_date,
         "end_date": end_date,
     }
@@ -394,6 +400,7 @@ class Conversations:
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
+        metadata: dict[str, str] | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -441,6 +448,7 @@ class Conversations:
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
+                metadata=metadata,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -484,6 +492,7 @@ class Conversations:
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
+        metadata: dict[str, str] | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -525,6 +534,7 @@ class Conversations:
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
+                metadata=metadata,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -856,6 +866,7 @@ class AsyncConversations:
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
+        metadata: dict[str, str] | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -900,6 +911,7 @@ class AsyncConversations:
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
+                metadata=metadata,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )
@@ -943,6 +955,7 @@ class AsyncConversations:
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
+        metadata: dict[str, str] | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
         order: Literal["asc", "desc"] | None = None,
@@ -984,6 +997,7 @@ class AsyncConversations:
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
+                metadata=metadata,
                 start_date=resolved_start,
                 end_date=resolved_end,
             )

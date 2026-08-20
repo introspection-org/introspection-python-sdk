@@ -111,10 +111,19 @@ See [Product signals](https://docs.introspection.dev/sdk/python/product-signals)
 
 ## Read what happened
 
-A finished task leaves a durable conversation:
+A finished task leaves a durable conversation. Add immutable, filter-only
+metadata when creating the task, then use the same keys to find it later:
 
 ```python
-async for summary in runner.conversations.list(limit=20):
+await runner.tasks.create(
+    prompt="Handle this checkout",
+    conversation_metadata={"flow": "checkout", "tenant": "acme"},
+)
+
+async for summary in runner.conversations.list(
+    limit=20,
+    metadata={"flow": "checkout"},
+):
     print(summary.id, summary.usage.total_tokens, summary.cost.usd)
 ```
 

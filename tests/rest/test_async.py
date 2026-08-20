@@ -140,8 +140,14 @@ async def test_tasks_create_and_get(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
     fake_api.add("GET", f"/v1/tasks/{TASK_ID}", json_body=task_payload())
     tasks = AsyncTasks(fake_api.async_client())
-    res = await tasks.create(prompt="hello")
+    res = await tasks.create(
+        prompt="hello",
+        conversation_metadata={"flow": "checkout"},
+    )
     assert str(res.task.id) == TASK_ID
+    assert fake_api.last_request.json()["conversation_metadata"] == {
+        "flow": "checkout"
+    }
     got = await tasks.get(TASK_ID)
     assert got.title == "Summarize repo"
 
