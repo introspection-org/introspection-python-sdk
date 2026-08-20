@@ -38,7 +38,10 @@ def main() -> None:
     print(f"runner -> dp={runner.dp_endpoint}, ctx={runner.context}")
 
     try:
-        run = runner.tasks.start(prompt="Say hello in one sentence.")
+        run = runner.tasks.start(
+            prompt="Say hello in one sentence.",
+            conversation_metadata={"flow": "runner_example"},
+        )
         task_id = run.task.id if run.task else None
         print(f"spawned task={task_id}, run={run.run.id}")
 
@@ -98,7 +101,10 @@ def main() -> None:
         # Read-only conversations namespace: list recent conversations,
         # then load the latest LLM turn of one as a Responses-API-style
         # view and walk its per-turn transcript.
-        convos_page = runner.conversations.list(limit=5).page()
+        convos_page = runner.conversations.list(
+            limit=5,
+            metadata={"flow": "runner_example"},
+        ).page()
         print(f"recent conversations (first page): {len(convos_page.records)}")
         if convos_page.records:
             summary = convos_page.records[0]

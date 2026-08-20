@@ -282,6 +282,7 @@ class Tasks:
         repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
         | None = None,
         metadata: dict[str, Any] | None = None,
+        conversation_metadata: dict[str, str] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
@@ -292,6 +293,7 @@ class Tasks:
             "prompt": prompt,
             "agent_name": agent_name,
             "metadata": metadata,
+            "conversation_metadata": conversation_metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,
@@ -566,6 +568,7 @@ class AsyncTasks:
         repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
         | None = None,
         metadata: dict[str, Any] | None = None,
+        conversation_metadata: dict[str, str] | None = None,
         idle_timeout_seconds: int | None = None,
         fork_share_id: str | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
@@ -576,6 +579,7 @@ class AsyncTasks:
             "prompt": prompt,
             "agent_name": agent_name,
             "metadata": metadata,
+            "conversation_metadata": conversation_metadata,
             "idle_timeout_seconds": idle_timeout_seconds,
             "fork_share_id": fork_share_id,
             "files": _file_refs(files) if files else None,

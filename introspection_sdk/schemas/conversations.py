@@ -71,6 +71,7 @@ class Conversation(OmitNoneModel):
     experiment_id: UUID | None = None
     recipe_git_commit_sha: str | None = None
     owner_key: str | None = None
+    metadata: dict[str, str] | None = None
 
 
 SpanStatus = Literal["Ok", "Error", "Unset"]

@@ -72,6 +72,7 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     "runtime_id": RUNTIME_ID,
     "experiment_id": EXPERIMENT_ID,
     "recipe_git_commit_sha": "abc123",
+    "metadata": {"flow": "checkout", "tenant": "acme"},
 }
 
 SUMMARY_WITH_AGENTS = {
@@ -205,6 +206,7 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
         experiment_id=UUID(EXPERIMENT_ID),
         recipe_git_commit_sha="abc123",
+        metadata={"flow": "checkout", "route": "checkout:retry"},
         start_date="2026-07-01T00:00:00Z",
         end_date="2026-07-02T00:00:00Z",
     )
@@ -225,6 +227,10 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     assert req.params.get("runtime_group_id") == RUNTIME_GROUP_ID
     assert req.params.get("experiment_id") == EXPERIMENT_ID
     assert req.params.get("recipe_git_commit_sha") == "abc123"
+    assert req.url.params.get_list("metadata") == [
+        "flow:checkout",
+        "route:checkout:retry",
+    ]
     assert req.params.get("start_date") == "2026-07-01T00:00:00Z"
     assert req.params.get("end_date") == "2026-07-02T00:00:00Z"
     assert req.url.params.get_list("service_names") == [
@@ -239,6 +245,19 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     assert summary.cost.usd == 0.01
     assert summary.metrics.tool_use_count == 2
     assert summary.metrics.failed_tool_use_count == 1
+    assert summary.metadata == {"flow": "checkout", "tenant": "acme"}
+
+
+def test_list_omits_empty_metadata_filter(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations",
+        json_body=cursor_page([], None),
+    )
+
+    _conversations(fake_api).list(metadata={}).page()
+
+    assert fake_api.last_request.params.get("metadata") is None
 
 
 def test_get_returns_complete_agent_index(fake_api: FakeAPI):

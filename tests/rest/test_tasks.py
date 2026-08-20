@@ -43,15 +43,30 @@ def test_iter(fake_api: FakeAPI):
     assert len(list(_tasks(fake_api).list())) == 1
 
 
-def test_create_sends_agent_name_and_drops_none(fake_api: FakeAPI):
+def test_create_sends_agent_name_and_conversation_metadata(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
     res = _tasks(fake_api).create(
-        prompt="hello", agent_name="reviewer", metadata=None
+        prompt="hello",
+        agent_name="reviewer",
+        metadata=None,
+        conversation_metadata={"flow": "checkout", "tenant": "acme"},
     )
     assert str(res.task.id) == TASK_ID
     body = fake_api.last_request.json()
     assert body["agent_name"] == "reviewer"
     assert "metadata" not in body  # None dropped
+    assert body["conversation_metadata"] == {
+        "flow": "checkout",
+        "tenant": "acme",
+    }
+
+
+def test_create_preserves_explicit_empty_conversation_metadata(
+    fake_api: FakeAPI,
+):
+    fake_api.add("POST", "/v1/tasks", json_body=task_create_response())
+    _tasks(fake_api).create(prompt="hello", conversation_metadata={})
+    assert fake_api.last_request.json()["conversation_metadata"] == {}
 
 
 def test_create_sends_repositories_and_omits_platform_defaults(
