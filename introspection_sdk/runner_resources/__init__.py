@@ -1,5 +1,9 @@
 """DP-bound namespaces hung off a :class:`Runner` instance."""
 
+from introspection_sdk.runner_resources.annotations import (
+    Annotations,
+    AsyncAnnotations,
+)
 from introspection_sdk.runner_resources.conversations import (
     AsyncConversationItems,
     AsyncConversations,
@@ -7,6 +11,10 @@ from introspection_sdk.runner_resources.conversations import (
     ConversationExportParams,
     ConversationItems,
     Conversations,
+)
+from introspection_sdk.runner_resources.datasets import (
+    AsyncDatasets,
+    Datasets,
 )
 from introspection_sdk.runner_resources.events import (
     AsyncEvents,
@@ -36,8 +44,11 @@ from introspection_sdk.runner_resources.tasks import (
 )
 
 __all__ = [
+    "Annotations",
+    "AsyncAnnotations",
     "AsyncConversationItems",
     "AsyncConversations",
+    "AsyncDatasets",
     "AsyncEvents",
     "AsyncFileVersions",
     "AsyncFiles",
@@ -50,6 +61,7 @@ __all__ = [
     "ConversationExportFormat",
     "ConversationExportParams",
     "Conversations",
+    "Datasets",
     "Events",
     "Files",
     "FileVersions",

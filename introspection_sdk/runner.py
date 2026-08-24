@@ -22,13 +22,17 @@ from datetime import datetime
 from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.runner_resources import (
+    Annotations,
+    AsyncAnnotations,
     AsyncConversations,
+    AsyncDatasets,
     AsyncEvents,
     AsyncFiles,
     AsyncMetrics,
     AsyncShares,
     AsyncTasks,
     Conversations,
+    Datasets,
     Events,
     Files,
     Metrics,
@@ -73,6 +77,8 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
+        self._annotations = Annotations(self._http)
+        self._datasets = Datasets(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _HttpClient:
         return _HttpClient(
@@ -127,6 +133,18 @@ class Runner:
         return self._shares
 
     @property
+    def annotations(self) -> Annotations:
+        """DP ``/v1/annotations`` namespace bound to this Runner."""
+        self._check_open()
+        return self._annotations
+
+    @property
+    def datasets(self) -> Datasets:
+        """DP ``/v1/datasets`` namespace bound to this Runner."""
+        self._check_open()
+        return self._datasets
+
+    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -174,6 +192,8 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
+        self._annotations = Annotations(self._http)
+        self._datasets = Datasets(self._http)
         try:
             old_http.close()
         except Exception:  # noqa: BLE001 — best-effort cleanup
@@ -232,6 +252,8 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
+        self._annotations = AsyncAnnotations(self._http)
+        self._datasets = AsyncDatasets(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
         return _AsyncHttpClient(
@@ -287,6 +309,18 @@ class AsyncRunner:
         return self._shares
 
     @property
+    def annotations(self) -> AsyncAnnotations:
+        """DP ``/v1/annotations`` namespace bound to this Runner."""
+        self._check_open()
+        return self._annotations
+
+    @property
+    def datasets(self) -> AsyncDatasets:
+        """DP ``/v1/datasets`` namespace bound to this Runner."""
+        self._check_open()
+        return self._datasets
+
+    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -334,6 +368,8 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
+        self._annotations = AsyncAnnotations(self._http)
+        self._datasets = AsyncDatasets(self._http)
         try:
             await old_http.aclose()
         except Exception:  # noqa: BLE001 — best-effort cleanup
