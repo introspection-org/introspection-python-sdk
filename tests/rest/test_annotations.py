@@ -1,4 +1,4 @@
-"""Contract tests for runner-bound expert-distillation annotations."""
+"""Contract tests for runner-bound span annotations."""
 
 from __future__ import annotations
 
@@ -8,17 +8,15 @@ from introspection_sdk.runner_resources.annotations import (
     Annotations,
     AsyncAnnotations,
 )
-from introspection_sdk.schemas.annotations import (
-    Annotation,
-    AnnotationKind,
-)
+from introspection_sdk.schemas.annotations import Annotation
 
 from .conftest import FakeAPI, paginated
 
 ANNOTATION_ID = "aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 MEMBER_ID = "00000000-0000-0000-0000-0000000000cc"
 DATASET_ID = "ddddddd1-dddd-dddd-dddd-dddddddddddd"
-CONVERSATION_ID = "conv-1"
+TRACE_ID = "0af7651916cd43dd8448eb211c80319c"
+SPAN_ID = "b7ad6b7169203331"
 
 
 def annotation_payload(**over: Any) -> dict[str, Any]:
@@ -26,23 +24,12 @@ def annotation_payload(**over: Any) -> dict[str, Any]:
         "id": ANNOTATION_ID,
         "org_id": "00000000-0000-0000-0000-0000000000aa",
         "project_id": "00000000-0000-0000-0000-0000000000bb",
-        "conversation_id": CONVERSATION_ID,
-        "kind": "mark",
-        "parent_id": None,
-        "selection": {
-            "message_id": "msg-1",
-            "start": 3,
-            "end": 17,
-            "quoted_text": "the quoted span",
-        },
-        "labels": ["tone", "hallucination"],
+        "trace_id": TRACE_ID,
+        "span_id": SPAN_ID,
+        "labels": ["hallucination", "tone"],
         "comment": "flagged during review",
         "member_id": MEMBER_ID,
-        "actor_member_id": None,
-        "actor_type": None,
-        "share_id": None,
-        "dataset_id": DATASET_ID,
-        "completed_at": None,
+        "completed_at": "2026-01-01T00:00:00Z",
         "created_at": "2026-01-01T00:00:00Z",
         "updated_at": "2026-01-01T00:00:00Z",
     }
@@ -55,53 +42,45 @@ def test_annotations_create_sends_only_provided_fields(fake_api: FakeAPI):
     annotations = Annotations(fake_api.client())
 
     created = annotations.create(
-        conversation_id=CONVERSATION_ID,
-        kind="mark",
-        selection={
-            "message_id": "msg-1",
-            "start": 3,
-            "end": 17,
-            "quoted_text": "the quoted span",
-        },
-        labels=["tone", "hallucination"],
+        trace_id=TRACE_ID,
+        span_id=SPAN_ID,
+        labels=["hallucination", "tone"],
         comment="flagged during review",
-        dataset_id=DATASET_ID,
     )
-    assert created.kind is AnnotationKind.MARK
-    assert created.selection is not None
-    assert created.selection.quoted_text == "the quoted span"
-    # Omitted optionals (member_id, parent_id) must not be smuggled onto
-    # the wire as nulls; the selection's omitted anchors stay off too.
+    assert created.span_id == SPAN_ID
+    assert created.completed_at is not None
+    # Omitted optionals (member_id, completed) must not be smuggled
+    # onto the wire as nulls — the server's completed default (true)
+    # only applies when the field is absent.
     assert fake_api.last_request.json() == {
-        "conversation_id": CONVERSATION_ID,
-        "kind": "mark",
-        "selection": {
-            "message_id": "msg-1",
-            "start": 3,
-            "end": 17,
-            "quoted_text": "the quoted span",
-        },
-        "labels": ["tone", "hallucination"],
+        "trace_id": TRACE_ID,
+        "span_id": SPAN_ID,
+        "labels": ["hallucination", "tone"],
         "comment": "flagged during review",
-        "dataset_id": DATASET_ID,
     }
 
 
-def test_annotations_create_review_assignee(fake_api: FakeAPI):
+def test_annotations_create_pending_review_assignment(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         "/v1/annotations",
-        json_body=annotation_payload(kind="review", member_id=MEMBER_ID),
+        json_body=annotation_payload(labels=[], comment="", completed_at=None),
     )
-    Annotations(fake_api.client()).create(
-        conversation_id=CONVERSATION_ID,
-        kind=AnnotationKind.REVIEW,
+    created = Annotations(fake_api.client()).create(
+        trace_id=TRACE_ID,
+        span_id=SPAN_ID,
         member_id=MEMBER_ID,
+        completed=False,
     )
+    # A row without completed_at is a pending review.
+    assert created.completed_at is None
+    # An explicit completed=False must survive the dump — it is what
+    # asks for a pending review instead of the server default (true).
     assert fake_api.last_request.json() == {
-        "conversation_id": CONVERSATION_ID,
-        "kind": "review",
+        "trace_id": TRACE_ID,
+        "span_id": SPAN_ID,
         "member_id": MEMBER_ID,
+        "completed": False,
     }
 
 
@@ -112,9 +91,9 @@ def test_annotations_list_with_filters(fake_api: FakeAPI):
         json_body=paginated([Annotation.model_validate(annotation_payload())]),
     )
     listed = Annotations(fake_api.client()).list(
-        kind="review",
         member_id=MEMBER_ID,
-        conversation_id=CONVERSATION_ID,
+        trace_id=TRACE_ID,
+        span_id=SPAN_ID,
         dataset_id=DATASET_ID,
         pending=True,
         label="tone",
@@ -122,15 +101,32 @@ def test_annotations_list_with_filters(fake_api: FakeAPI):
     assert str(listed.records[0].member_id) == MEMBER_ID
 
     params = fake_api.last_request.params
-    assert params["kind"] == "review"
     assert params["member_id"] == MEMBER_ID
-    assert params["conversation_id"] == CONVERSATION_ID
+    assert params["trace_id"] == TRACE_ID
+    assert params["span_id"] == SPAN_ID
     assert params["dataset_id"] == DATASET_ID
     assert params["pending"] == "true"
     assert params["label"] == "tone"
     assert params["include_total"] == "false"
-    # Unused filters stay off the wire entirely.
-    assert "parent_id" not in params
+
+
+def test_annotations_list_omits_unused_filters(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/annotations",
+        json_body=paginated([]),
+    )
+    Annotations(fake_api.client()).list().page()
+    params = fake_api.last_request.params
+    for name in (
+        "member_id",
+        "trace_id",
+        "span_id",
+        "dataset_id",
+        "pending",
+        "label",
+    ):
+        assert name not in params
 
 
 def test_annotations_get(fake_api: FakeAPI):
@@ -185,22 +181,22 @@ async def test_async_annotations_create_and_update(fake_api: FakeAPI):
     fake_api.add(
         "PATCH",
         f"/v1/annotations/{ANNOTATION_ID}",
-        json_body=annotation_payload(completed_at="2026-01-02T00:00:00Z"),
+        json_body=annotation_payload(completed_at=None),
     )
     annotations = AsyncAnnotations(fake_api.async_client())
 
     created = await annotations.create(
-        conversation_id=CONVERSATION_ID,
-        kind="membership",
-        dataset_id=DATASET_ID,
+        trace_id=TRACE_ID,
+        span_id=SPAN_ID,
+        labels=["tone"],
     )
-    assert str(created.dataset_id) == DATASET_ID
+    assert created.trace_id == TRACE_ID
     assert fake_api.last_request.json() == {
-        "conversation_id": CONVERSATION_ID,
-        "kind": "membership",
-        "dataset_id": DATASET_ID,
+        "trace_id": TRACE_ID,
+        "span_id": SPAN_ID,
+        "labels": ["tone"],
     }
 
-    updated = await annotations.update(ANNOTATION_ID, completed=True)
-    assert updated.completed_at is not None
-    assert fake_api.last_request.json() == {"completed": True}
+    updated = await annotations.update(ANNOTATION_ID, completed=False)
+    assert updated.completed_at is None
+    assert fake_api.last_request.json() == {"completed": False}

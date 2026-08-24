@@ -1,9 +1,10 @@
-"""`runner.annotations.*` namespace: expert-distillation open coding.
+"""`runner.annotations.*` namespace: span annotations.
 
 Bound to a :class:`~introspection_sdk.runner.Runner` — every call
-targets the runner's DP endpoint with its short-lived JWT. Annotations
-are open-coding rows over conversations: reviews, marks and dataset
-memberships, each optionally anchored to a text selection.
+targets the runner's DP endpoint with its short-lived JWT. An
+annotation is one member's labels + comment on one OpenTelemetry
+span (addressed by ``trace_id`` + ``span_id``); a row with no
+``completed_at`` is a pending review.
 """
 
 from __future__ import annotations
@@ -21,8 +22,6 @@ from introspection_sdk.pagination import (
 from introspection_sdk.schemas.annotations import (
     Annotation,
     AnnotationCreateRequest,
-    AnnotationKind,
-    AnnotationSelection,
     AnnotationUpdateRequest,
 )
 from introspection_sdk.schemas.pagination import Paginated
@@ -33,11 +32,10 @@ def _list_params(
     limit: int,
     cursor: str | None,
     include_total: bool,
-    kind: AnnotationKind | str | None,
     member_id: str | None,
-    conversation_id: str | None,
+    trace_id: str | None,
+    span_id: str | None,
     dataset_id: str | None,
-    parent_id: str | None,
     pending: bool | None,
     label: str | None,
 ) -> dict[str, Any]:
@@ -45,11 +43,10 @@ def _list_params(
         "limit": limit,
         "next": cursor,
         "include_total": include_total,
-        "kind": (kind.value if isinstance(kind, AnnotationKind) else kind),
         "member_id": member_id,
-        "conversation_id": conversation_id,
+        "trace_id": trace_id,
+        "span_id": span_id,
         "dataset_id": dataset_id,
-        "parent_id": parent_id,
         "pending": pending,
         "label": label,
     }
@@ -57,28 +54,26 @@ def _list_params(
 
 def _create_body(
     *,
-    conversation_id: str,
-    kind: AnnotationKind | str,
+    trace_id: str,
+    span_id: str,
     member_id: str | None,
-    parent_id: str | None,
-    selection: AnnotationSelection | dict[str, Any] | None,
     labels: list[str] | None,
     comment: str | None,
-    dataset_id: str | None,
+    completed: bool | None,
 ) -> dict[str, Any]:
-    # Loose public inputs (plain str / enum / dict) are coerced by
-    # validation: str -> AnnotationKind, str -> UUID for the id fields,
-    # dict -> AnnotationSelection.
+    # Loose public inputs are coerced by validation (str -> UUID for
+    # member_id). `exclude_none` keeps omitted optionals off the wire,
+    # so the server's defaults apply (notably `completed`, which
+    # defaults to true there — an explicit False creates a pending
+    # review and must survive the dump).
     return AnnotationCreateRequest.model_validate(
         {
-            "conversation_id": conversation_id,
-            "kind": kind,
+            "trace_id": trace_id,
+            "span_id": span_id,
             "member_id": member_id,
-            "parent_id": parent_id,
-            "selection": selection,
             "labels": labels,
             "comment": comment,
-            "dataset_id": dataset_id,
+            "completed": completed,
         }
     ).model_dump(mode="json", exclude_none=True)
 
@@ -87,7 +82,6 @@ def _update_body(
     *,
     labels: list[str] | None,
     comment: str | None,
-    selection: AnnotationSelection | dict[str, Any] | None,
     completed: bool | None,
 ) -> dict[str, Any]:
     # `exclude_none` drops an omitted label list but keeps an explicit
@@ -96,7 +90,6 @@ def _update_body(
         {
             "labels": labels,
             "comment": comment,
-            "selection": selection,
             "completed": completed,
         }
     ).model_dump(mode="json", exclude_none=True)
@@ -114,17 +107,17 @@ class Annotations:
         limit: int = 100,
         next: str | None = None,
         include_total: bool = False,
-        kind: AnnotationKind | str | None = None,
         member_id: str | None = None,
-        conversation_id: str | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
         dataset_id: str | None = None,
-        parent_id: str | None = None,
         pending: bool | None = None,
         label: str | None = None,
     ) -> Pager[Annotation, Paginated[Annotation]]:
-        """List annotations. Iterate the returned :class:`Pager` to
-        stream every annotation across pages, or call ``.page()`` for
-        the first page only."""
+        """List annotations. ``dataset_id`` applies that dataset's
+        saved label predicate (a filter, not a membership). Iterate
+        the returned :class:`Pager` to stream every annotation across
+        pages, or call ``.page()`` for the first page only."""
 
         def fetch(cursor: str | None) -> Paginated[Annotation]:
             payload = self._http.request(
@@ -134,11 +127,10 @@ class Annotations:
                     limit=limit,
                     cursor=cursor,
                     include_total=include_total,
-                    kind=kind,
                     member_id=member_id,
-                    conversation_id=conversation_id,
+                    trace_id=trace_id,
+                    span_id=span_id,
                     dataset_id=dataset_id,
-                    parent_id=parent_id,
                     pending=pending,
                     label=label,
                 ),
@@ -150,29 +142,29 @@ class Annotations:
     def create(
         self,
         *,
-        conversation_id: str,
-        kind: AnnotationKind | str,
+        trace_id: str,
+        span_id: str,
         member_id: str | None = None,
-        parent_id: str | None = None,
-        selection: AnnotationSelection | dict[str, Any] | None = None,
         labels: builtins.list[str] | None = None,
         comment: str | None = None,
-        dataset_id: str | None = None,
+        completed: bool | None = None,
     ) -> Annotation:
-        """Create an annotation. Pending-review/membership creates are
-        idempotent — a repeat create returns the existing row."""
+        """Annotate a span. ``member_id`` names the assignee — a
+        foreign member requires a privileged caller and empty
+        ``labels``/``comment``, and the row is forced pending.
+        ``completed`` defaults to true server-side; pass ``False`` to
+        create a pending review. Labels are normalized server-side
+        (slugified, deduped, sorted)."""
         payload = self._http.request(
             "POST",
             "/v1/annotations",
             json=_create_body(
-                conversation_id=conversation_id,
-                kind=kind,
+                trace_id=trace_id,
+                span_id=span_id,
                 member_id=member_id,
-                parent_id=parent_id,
-                selection=selection,
                 labels=labels,
                 comment=comment,
-                dataset_id=dataset_id,
+                completed=completed,
             ),
         )
         return Annotation.model_validate(payload)
@@ -187,18 +179,18 @@ class Annotations:
         *,
         labels: builtins.list[str] | None = None,
         comment: str | None = None,
-        selection: AnnotationSelection | dict[str, Any] | None = None,
         completed: bool | None = None,
     ) -> Annotation:
         """Update an annotation (owner-only server-side). ``labels``
-        replaces wholesale — ``[]`` clears, omit to leave alone."""
+        replaces wholesale and is normalized — ``[]`` clears, omit to
+        leave alone. ``completed=True`` stamps ``completed_at``,
+        ``False`` clears it back to pending."""
         payload = self._http.request(
             "PATCH",
             f"/v1/annotations/{annotation_id}",
             json=_update_body(
                 labels=labels,
                 comment=comment,
-                selection=selection,
                 completed=completed,
             ),
         )
@@ -222,17 +214,17 @@ class AsyncAnnotations:
         limit: int = 100,
         next: str | None = None,
         include_total: bool = False,
-        kind: AnnotationKind | str | None = None,
         member_id: str | None = None,
-        conversation_id: str | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
         dataset_id: str | None = None,
-        parent_id: str | None = None,
         pending: bool | None = None,
         label: str | None = None,
     ) -> AsyncPager[Annotation, Paginated[Annotation]]:
-        """List annotations. ``await`` the returned :class:`AsyncPager`
-        for the first page, or ``async for`` it to stream every
-        annotation across pages."""
+        """List annotations. ``dataset_id`` applies that dataset's
+        saved label predicate (a filter, not a membership). ``await``
+        the returned :class:`AsyncPager` for the first page, or
+        ``async for`` it to stream every annotation across pages."""
 
         async def fetch(cursor: str | None) -> Paginated[Annotation]:
             payload = await self._http.request(
@@ -242,11 +234,10 @@ class AsyncAnnotations:
                     limit=limit,
                     cursor=cursor,
                     include_total=include_total,
-                    kind=kind,
                     member_id=member_id,
-                    conversation_id=conversation_id,
+                    trace_id=trace_id,
+                    span_id=span_id,
                     dataset_id=dataset_id,
-                    parent_id=parent_id,
                     pending=pending,
                     label=label,
                 ),
@@ -258,29 +249,29 @@ class AsyncAnnotations:
     async def create(
         self,
         *,
-        conversation_id: str,
-        kind: AnnotationKind | str,
+        trace_id: str,
+        span_id: str,
         member_id: str | None = None,
-        parent_id: str | None = None,
-        selection: AnnotationSelection | dict[str, Any] | None = None,
         labels: builtins.list[str] | None = None,
         comment: str | None = None,
-        dataset_id: str | None = None,
+        completed: bool | None = None,
     ) -> Annotation:
-        """Create an annotation. Pending-review/membership creates are
-        idempotent — a repeat create returns the existing row."""
+        """Annotate a span. ``member_id`` names the assignee — a
+        foreign member requires a privileged caller and empty
+        ``labels``/``comment``, and the row is forced pending.
+        ``completed`` defaults to true server-side; pass ``False`` to
+        create a pending review. Labels are normalized server-side
+        (slugified, deduped, sorted)."""
         payload = await self._http.request(
             "POST",
             "/v1/annotations",
             json=_create_body(
-                conversation_id=conversation_id,
-                kind=kind,
+                trace_id=trace_id,
+                span_id=span_id,
                 member_id=member_id,
-                parent_id=parent_id,
-                selection=selection,
                 labels=labels,
                 comment=comment,
-                dataset_id=dataset_id,
+                completed=completed,
             ),
         )
         return Annotation.model_validate(payload)
@@ -297,18 +288,18 @@ class AsyncAnnotations:
         *,
         labels: builtins.list[str] | None = None,
         comment: str | None = None,
-        selection: AnnotationSelection | dict[str, Any] | None = None,
         completed: bool | None = None,
     ) -> Annotation:
         """Update an annotation (owner-only server-side). ``labels``
-        replaces wholesale — ``[]`` clears, omit to leave alone."""
+        replaces wholesale and is normalized — ``[]`` clears, omit to
+        leave alone. ``completed=True`` stamps ``completed_at``,
+        ``False`` clears it back to pending."""
         payload = await self._http.request(
             "PATCH",
             f"/v1/annotations/{annotation_id}",
             json=_update_body(
                 labels=labels,
                 comment=comment,
-                selection=selection,
                 completed=completed,
             ),
         )

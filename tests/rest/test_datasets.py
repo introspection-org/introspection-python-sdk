@@ -1,8 +1,11 @@
-"""Contract tests for runner-bound annotation datasets."""
+"""Contract tests for runner-bound datasets (saved label filters)."""
 
 from __future__ import annotations
 
 from typing import Any
+
+import pytest
+from pydantic import ValidationError
 
 from introspection_sdk.runner_resources.datasets import (
     AsyncDatasets,
@@ -22,7 +25,8 @@ def dataset_payload(**over: Any) -> dict[str, Any]:
         "org_id": "00000000-0000-0000-0000-0000000000aa",
         "project_id": "00000000-0000-0000-0000-0000000000bb",
         "slug": "golden-set",
-        "description": "Curated review conversations",
+        "description": "Hallucination review spans",
+        "labels": ["hallucination", "tone"],
         "created_by_member_id": MEMBER_ID,
         "created_at": "2026-01-01T00:00:00Z",
         "updated_at": "2026-01-01T00:00:00Z",
@@ -42,12 +46,15 @@ def test_datasets_create_and_list(fake_api: FakeAPI):
 
     created = datasets.create(
         slug="golden-set",
-        description="Curated review conversations",
+        labels=["hallucination", "tone"],
+        description="Hallucination review spans",
     )
     assert created.slug == "golden-set"
+    assert created.labels == ["hallucination", "tone"]
     assert fake_api.last_request.json() == {
         "slug": "golden-set",
-        "description": "Curated review conversations",
+        "description": "Hallucination review spans",
+        "labels": ["hallucination", "tone"],
     }
 
     listed = datasets.list(slug="golden-set", created_by_member_id=MEMBER_ID)
@@ -63,9 +70,22 @@ def test_datasets_create_omits_missing_description(fake_api: FakeAPI):
         "/v1/datasets",
         json_body=dataset_payload(description=None),
     )
-    Datasets(fake_api.client()).create(slug="golden-set")
+    Datasets(fake_api.client()).create(
+        slug="golden-set", labels=["hallucination"]
+    )
     # No description at all must not smuggle a null onto the wire.
-    assert fake_api.last_request.json() == {"slug": "golden-set"}
+    assert fake_api.last_request.json() == {
+        "slug": "golden-set",
+        "labels": ["hallucination"],
+    }
+
+
+def test_datasets_create_rejects_empty_predicate(fake_api: FakeAPI):
+    # The label predicate is what the dataset *is*: at least one label,
+    # rejected client-side before anything reaches the wire.
+    with pytest.raises(ValidationError):
+        Datasets(fake_api.client()).create(slug="golden-set", labels=[])
+    assert fake_api.requests == []
 
 
 def test_datasets_get_update_delete(fake_api: FakeAPI):
@@ -75,7 +95,7 @@ def test_datasets_get_update_delete(fake_api: FakeAPI):
     fake_api.add(
         "PATCH",
         f"/v1/datasets/{DATASET_ID}",
-        json_body=dataset_payload(description="renamed"),
+        json_body=dataset_payload(labels=["latency"]),
     )
     fake_api.add("DELETE", f"/v1/datasets/{DATASET_ID}", status=204)
     datasets = Datasets(fake_api.client())
@@ -83,9 +103,11 @@ def test_datasets_get_update_delete(fake_api: FakeAPI):
     got = datasets.get(DATASET_ID)
     assert str(got.id) == DATASET_ID
 
-    updated = datasets.update(DATASET_ID, description="renamed")
-    assert updated.description == "renamed"
-    assert fake_api.last_request.json() == {"description": "renamed"}
+    updated = datasets.update(DATASET_ID, labels=["latency"])
+    assert updated.labels == ["latency"]
+    # Omitted description stays off the wire; labels replace the
+    # predicate wholesale.
+    assert fake_api.last_request.json() == {"labels": ["latency"]}
 
     datasets.delete(DATASET_ID)
     assert fake_api.last_request.method == "DELETE"
@@ -96,10 +118,12 @@ async def test_async_datasets_create(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/datasets", json_body=dataset_payload())
     created = await AsyncDatasets(fake_api.async_client()).create(
         slug="golden-set",
-        description="Curated review conversations",
+        labels=["hallucination", "tone"],
+        description="Hallucination review spans",
     )
     assert created.slug == "golden-set"
     assert fake_api.last_request.json() == {
         "slug": "golden-set",
-        "description": "Curated review conversations",
+        "description": "Hallucination review spans",
+        "labels": ["hallucination", "tone"],
     }

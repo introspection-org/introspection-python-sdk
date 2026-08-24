@@ -1,14 +1,15 @@
-"""`runner.datasets.*` namespace: named annotation collections.
+"""`runner.datasets.*` namespace: saved label filters over annotations.
 
 Bound to a :class:`~introspection_sdk.runner.Runner` — every call
-targets the runner's DP endpoint with its short-lived JWT. A dataset is
-a named collection; membership rides annotations (an annotation row's
-``dataset_id`` places a conversation in a dataset), so this namespace
-only manages the collections themselves.
+targets the runner's DP endpoint with its short-lived JWT. A dataset
+is a named label predicate (a saved filter) over annotations — there
+are no memberships: passing ``dataset_id`` to
+``runner.annotations.list(...)`` applies the dataset's predicate.
 """
 
 from __future__ import annotations
 
+import builtins
 from typing import Any
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
@@ -44,11 +45,13 @@ def _list_params(
 def _create_body(
     *,
     slug: str,
+    labels: list[str],
     description: str | None,
 ) -> dict[str, Any]:
     return DatasetCreateRequest.model_validate(
         {
             "slug": slug,
+            "labels": labels,
             "description": description,
         }
     ).model_dump(mode="json", exclude_none=True)
@@ -57,9 +60,13 @@ def _create_body(
 def _update_body(
     *,
     description: str | None,
+    labels: list[str] | None,
 ) -> dict[str, Any]:
     return DatasetUpdateRequest.model_validate(
-        {"description": description}
+        {
+            "description": description,
+            "labels": labels,
+        }
     ).model_dump(mode="json", exclude_none=True)
 
 
@@ -100,14 +107,18 @@ class Datasets:
         self,
         *,
         slug: str,
+        labels: builtins.list[str],
         description: str | None = None,
     ) -> Dataset:
-        """Create a dataset. The server slugifies ``slug``; create is
-        idempotent on the live slug."""
+        """Create a dataset. ``labels`` is the saved predicate (at
+        least one, normalized server-side). The server slugifies
+        ``slug``; create is idempotent on the live slug."""
         payload = self._http.request(
             "POST",
             "/v1/datasets",
-            json=_create_body(slug=slug, description=description),
+            json=_create_body(
+                slug=slug, labels=labels, description=description
+            ),
         )
         return Dataset.model_validate(payload)
 
@@ -120,11 +131,14 @@ class Datasets:
         dataset_id: str,
         *,
         description: str | None = None,
+        labels: builtins.list[str] | None = None,
     ) -> Dataset:
+        """Update a dataset. ``labels`` replaces the predicate and must
+        keep at least one entry when passed."""
         payload = self._http.request(
             "PATCH",
             f"/v1/datasets/{dataset_id}",
-            json=_update_body(description=description),
+            json=_update_body(description=description, labels=labels),
         )
         return Dataset.model_validate(payload)
 
@@ -171,14 +185,18 @@ class AsyncDatasets:
         self,
         *,
         slug: str,
+        labels: builtins.list[str],
         description: str | None = None,
     ) -> Dataset:
-        """Create a dataset. The server slugifies ``slug``; create is
-        idempotent on the live slug."""
+        """Create a dataset. ``labels`` is the saved predicate (at
+        least one, normalized server-side). The server slugifies
+        ``slug``; create is idempotent on the live slug."""
         payload = await self._http.request(
             "POST",
             "/v1/datasets",
-            json=_create_body(slug=slug, description=description),
+            json=_create_body(
+                slug=slug, labels=labels, description=description
+            ),
         )
         return Dataset.model_validate(payload)
 
@@ -191,11 +209,14 @@ class AsyncDatasets:
         dataset_id: str,
         *,
         description: str | None = None,
+        labels: builtins.list[str] | None = None,
     ) -> Dataset:
+        """Update a dataset. ``labels`` replaces the predicate and must
+        keep at least one entry when passed."""
         payload = await self._http.request(
             "PATCH",
             f"/v1/datasets/{dataset_id}",
-            json=_update_body(description=description),
+            json=_update_body(description=description, labels=labels),
         )
         return Dataset.model_validate(payload)
 
