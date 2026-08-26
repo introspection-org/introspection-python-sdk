@@ -221,6 +221,7 @@ def test_from_service_account_wires_token(fake_api: FakeAPI):
 
     assert client._token == "minted-access-token"
     assert client._base_api_url == "https://api.test"
+    assert str(client._dp_http._client.base_url) == "https://dp.example.test"
     client.shutdown()
 
 
@@ -288,6 +289,7 @@ async def test_async_from_service_account_wires_token(fake_api: FakeAPI):
     )
 
     assert client._token == "minted-access-token"
+    assert str(client._dp_http._client.base_url) == "https://dp.example.test"
     await client.shutdown()
 
 

@@ -53,7 +53,7 @@ def _materialise_upload(
         with file.open("rb") as handle:
             yield guessed_name, handle, guessed_ct
         return
-    if isinstance(file, (bytes, bytearray)):
+    if isinstance(file, bytes | bytearray):
         if not name:
             raise ValueError("`name` is required when uploading raw bytes")
         ct = content_type or (

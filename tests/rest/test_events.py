@@ -32,6 +32,7 @@ from introspection_sdk.runner_resources._reads import (
 )
 from introspection_sdk.runner_resources.events import UNKNOWN_EVENT_SKIPS
 from introspection_sdk.schemas.events import (
+    AnnotationEvent,
     FeedbackEvent,
     IntrospectionEventName,
     JudgementEvent,
@@ -312,6 +313,34 @@ def test_list_feedback_family_typed_payload(fake_api: FakeAPI):
         fake_api.last_request.params.get("event_name")
         == "introspection.feedback"
     )
+
+
+def test_list_annotation_family_typed_payload(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/events",
+        json_body=cursor_page(
+            [
+                envelope(
+                    "introspection.annotation",
+                    {
+                        "member_id": "00000000-0000-0000-0000-0000000000cc",
+                        "labels": ["needs-review"],
+                        "comment": "Strong evidence",
+                    },
+                    trace_id="0af7651916cd43dd8448eb211c80319c",
+                    span_id="b7ad6b7169203331",
+                )
+            ],
+            None,
+        ),
+    )
+    record = (
+        _events(fake_api).list("introspection.annotation").page().records[0]
+    )
+    assert isinstance(record, AnnotationEvent)
+    assert record.payload.labels == ["needs-review"]
+    assert record.payload.comment == "Strong evidence"
 
 
 def test_list_pattern_assignment_unassignment_null_pattern_id(

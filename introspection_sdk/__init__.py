@@ -54,6 +54,13 @@ from introspection_sdk.schemas.agui import (
     Interrupt,
     ResumeEntry,
 )
+from introspection_sdk.schemas.annotations import (
+    AnnotationState,
+    AnnotationTarget,
+    ProjectLabel,
+    ProjectLabelCreate,
+    ProjectLabelUpdate,
+)
 
 if TYPE_CHECKING:
     # Static type-checkers see the real classes; at runtime they're
@@ -139,6 +146,8 @@ __all__ = [
     "AsyncRunHandle",
     "AsyncRunner",
     "AGUIEvent",
+    "AnnotationState",
+    "AnnotationTarget",
     "AuthenticationError",
     "ConflictError",
     "EventType",
@@ -149,6 +158,9 @@ __all__ = [
     "NetworkError",
     "NotFoundError",
     "OAuthToken",
+    "ProjectLabel",
+    "ProjectLabelCreate",
+    "ProjectLabelUpdate",
     "RateLimitError",
     "ResumeEntry",
     "RunHandle",

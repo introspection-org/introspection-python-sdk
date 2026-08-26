@@ -129,6 +129,40 @@ async for summary in runner.conversations.list(
 
 The runner also exposes `files`, `shares`, `events`, and `metrics`.
 
+## Curate traces with human review
+
+Annotations are append-only events on an OTel trace/span. Each write changes
+exactly one dimension; label and reviewer lists are complete snapshots, so an
+empty list clears that dimension.
+
+```python
+from introspection_sdk import IntrospectionClient
+
+client = IntrospectionClient(
+    token=member_access_token,
+    cp_session=encoded_member_session,
+    base_api_url="https://api.introspection.dev",
+    dp_url="https://dp.example",
+)
+
+client.annotations.create(
+    trace_id="0af7651916cd43dd8448eb211c80319c",
+    span_id="b7ad6b7169203331",
+    reviewer_emails=["expert@example.com"],
+)
+client.annotations.create(
+    trace_id="0af7651916cd43dd8448eb211c80319c",
+    span_id="b7ad6b7169203331",
+    comment="The answer missed the governing exception.",
+)
+
+for item in client.annotations.list(label="needs-review"):
+    print(item.trace_id, item.span_id, item.latest_comment)
+```
+
+Reusable labels live in `client.project_labels`; their slug and color are
+immutable after creation, while the optional description can be updated.
+
 See [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence) for transcripts,
 typed events, and metrics queries, [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
 for durable inputs and grants, and [`examples/`](examples/introspection_examples/)

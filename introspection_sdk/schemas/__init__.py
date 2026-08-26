@@ -6,6 +6,13 @@ from introspection_sdk.schemas.agui import (
     Interrupt,
     ResumeEntry,
 )
+from introspection_sdk.schemas.annotations import (
+    AnnotationState,
+    AnnotationTarget,
+    ProjectLabel,
+    ProjectLabelCreate,
+    ProjectLabelUpdate,
+)
 from introspection_sdk.schemas.conversations import (
     Conversation,
     ConversationAgent,
@@ -16,6 +23,8 @@ from introspection_sdk.schemas.conversations import (
     ConversationUsage,
 )
 from introspection_sdk.schemas.events import (
+    AnnotationEvent,
+    AnnotationPayload,
     ClusteringRunEvent,
     ClusteringRunPayload,
     Event,
@@ -85,6 +94,10 @@ from introspection_sdk.schemas.trajectory import (
 )
 
 __all__ = [
+    "AnnotationEvent",
+    "AnnotationPayload",
+    "AnnotationState",
+    "AnnotationTarget",
     "AGUIEvent",
     "BinaryPart",
     "ClusteringRunEvent",
@@ -135,6 +148,9 @@ __all__ = [
     "PatternAssignmentPayload",
     "PatternEvent",
     "PatternPayload",
+    "ProjectLabel",
+    "ProjectLabelCreate",
+    "ProjectLabelUpdate",
     "ResumeEntry",
     "SpanAttributes",
     "SpanKind",

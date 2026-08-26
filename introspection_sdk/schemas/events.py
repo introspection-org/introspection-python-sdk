@@ -26,6 +26,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
+    "AnnotationEvent",
+    "AnnotationPayload",
     "ClusteringRunEvent",
     "ClusteringRunPayload",
     "Event",
@@ -50,12 +52,13 @@ __all__ = [
 
 
 class IntrospectionEventName(StrEnum):
-    """The six canonical platform event families — a closed, typed set.
+    """The seven canonical platform event families — a closed, typed set.
 
     Legacy verb-suffixed names on stored rows are normalized server-side;
     responses always carry the canonical family name.
     """
 
+    ANNOTATION = "introspection.annotation"
     FEEDBACK = "introspection.feedback"
     OBSERVATION = "introspection.observation"
     OBSERVATION_CLUSTERING_RUN = "introspection.observation_clustering.run"
@@ -214,6 +217,15 @@ class FeedbackPayload(_ApiModel):
     properties: dict[str, Any] | None = None
 
 
+class AnnotationPayload(_ApiModel):
+    """One member-authored annotation mutation."""
+
+    member_id: UUID
+    labels: list[str] | None = None
+    comment: str | None = None
+    assignee_member_ids: list[UUID] | None = None
+
+
 class JudgementPayload(_ApiModel):
     """One judge evaluation result event."""
 
@@ -265,6 +277,13 @@ class FeedbackEvent(IntrospectionEventBase):
     payload: FeedbackPayload
 
 
+class AnnotationEvent(IntrospectionEventBase):
+    """A member-authored annotation event."""
+
+    event_name: Literal[IntrospectionEventName.ANNOTATION]
+    payload: AnnotationPayload
+
+
 class JudgementEvent(IntrospectionEventBase):
     """A judge evaluation (``event_name=introspection.judgement``)."""
 
@@ -272,7 +291,7 @@ class JudgementEvent(IntrospectionEventBase):
     payload: JudgementPayload
 
 
-#: The discriminated union of the six canonical event families. Pydantic
+#: The discriminated union of the seven canonical event families. Pydantic
 #: selects the member from the top-level ``event_name`` tag; the member
 #: fixes the ``payload`` type.
 Event = Annotated[
@@ -281,6 +300,7 @@ Event = Annotated[
     | PatternAssignmentEvent
     | ClusteringRunEvent
     | FeedbackEvent
+    | AnnotationEvent
     | JudgementEvent,
     Field(discriminator="event_name"),
 ]

@@ -20,6 +20,7 @@ from introspection_sdk.resources import (
     Recipes,
     Runtimes,
 )
+from introspection_sdk.runner_resources import Events
 
 
 class _RaisingHttp:
@@ -48,8 +49,39 @@ def test_explicit_args_wire_up_namespaces():
     assert isinstance(client.recipes, Recipes)
     assert isinstance(client.connectors, Connectors)
     assert isinstance(client.connectors.connections, Connections)
+    assert isinstance(client.events, Events)
     assert client._token == "tok"
     assert client._base_api_url == "https://api.example.test"
+
+
+def test_member_session_is_sent_only_to_control_plane():
+    client = IntrospectionClient(
+        token="member-token",
+        cp_session="encoded-session",
+        base_api_url="https://api.example.test",
+        dp_url="https://dp.example.test",
+    )
+    assert client._http._auth_headers["Cookie"] == (
+        "intro_cp_session=encoded-session"
+    )
+    assert "Authorization" not in client._http._auth_headers
+    assert "Cookie" not in client._dp_http._auth_headers
+
+
+@pytest.mark.asyncio
+async def test_async_member_session_is_sent_only_to_control_plane():
+    client = AsyncIntrospectionClient(
+        token="member-token",
+        cp_session="encoded-session",
+        base_api_url="https://api.example.test",
+        dp_url="https://dp.example.test",
+    )
+    assert client._http._auth_headers["Cookie"] == (
+        "intro_cp_session=encoded-session"
+    )
+    assert "Authorization" not in client._http._auth_headers
+    assert "Cookie" not in client._dp_http._auth_headers
+    await client.shutdown()
 
 
 def test_defaults_come_from_environment(monkeypatch: pytest.MonkeyPatch):
