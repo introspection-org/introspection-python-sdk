@@ -23,6 +23,8 @@ from introspection_sdk.schemas.conversations import (
     ConversationUsage,
 )
 from introspection_sdk.schemas.events import (
+    AnnotationEvent,
+    AnnotationPayload,
     ClusteringRunEvent,
     ClusteringRunPayload,
     Event,
@@ -92,6 +94,8 @@ from introspection_sdk.schemas.trajectory import (
 )
 
 __all__ = [
+    "AnnotationEvent",
+    "AnnotationPayload",
     "AnnotationState",
     "AnnotationTarget",
     "AGUIEvent",

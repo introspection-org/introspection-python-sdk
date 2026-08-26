@@ -67,6 +67,33 @@ def test_get_with_project(fake_api: FakeAPI):
     assert fake_api.last_request.params.get("project") == PROJECT_ID
 
 
+def test_create_update_delete_pass_through_documents(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
+    fake_api.add(
+        "PATCH",
+        f"/v1/experiments/{EXPERIMENT_ID}",
+        json_body=experiment_payload(name="renamed"),
+    )
+    fake_api.add("DELETE", f"/v1/experiments/{EXPERIMENT_ID}", status=204)
+    experiments = _experiments(fake_api)
+    document = {
+        "project_id": PROJECT_ID,
+        "name": "created",
+        "custom": {"kept": True},
+    }
+    assert experiments.create(document).id == UUID(EXPERIMENT_ID)
+    assert fake_api.requests[-1].json() == document
+    assert (
+        experiments.update(
+            UUID(EXPERIMENT_ID), {"name": "renamed"}, project=PROJECT_ID
+        ).name
+        == "renamed"
+    )
+    assert fake_api.requests[-1].url.params["project"] == PROJECT_ID
+    experiments.delete(UUID(EXPERIMENT_ID), project=PROJECT_ID)
+    assert fake_api.requests[-1].method == "DELETE"
+
+
 def test_handle_run(fake_api: FakeAPI):
     fake_api.add(
         "POST",

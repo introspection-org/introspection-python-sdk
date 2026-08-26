@@ -31,6 +31,7 @@ from introspection_sdk.streaming import parse_ag_ui_events_async
 from .conftest import (
     EXPERIMENT_ID,
     FILE_ID,
+    PROJECT_ID,
     RUNTIME_ID,
     TASK_ID,
     FakeAPI,
@@ -468,6 +469,31 @@ async def test_experiment_lifecycle(fake_api: FakeAPI):
     ended = await handle.end()
     assert ended.status == "ended"
     assert fake_api.last_request.json() is None
+
+
+async def test_async_experiment_crud(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/experiments", json_body=experiment_payload())
+    fake_api.add(
+        "PATCH",
+        f"/v1/experiments/{EXPERIMENT_ID}",
+        json_body=experiment_payload(name="renamed"),
+    )
+    fake_api.add("DELETE", f"/v1/experiments/{EXPERIMENT_ID}", status=204)
+    experiments = AsyncExperiments(fake_api.async_client())
+    created = await experiments.create(
+        {"project_id": PROJECT_ID, "name": "created"}, project=PROJECT_ID
+    )
+    assert created.id == UUID(EXPERIMENT_ID)
+    assert fake_api.requests[-1].json() == {
+        "project": PROJECT_ID,
+        "name": "created",
+    }
+    updated = await experiments.update(
+        UUID(EXPERIMENT_ID), {"name": "renamed"}, project=PROJECT_ID
+    )
+    assert updated.name == "renamed"
+    await experiments.delete(UUID(EXPERIMENT_ID), project=PROJECT_ID)
+    assert fake_api.last_request.method == "DELETE"
 
 
 async def test_async_request_retries_on_429_then_succeeds(fake_api: FakeAPI):

@@ -20,6 +20,7 @@ from introspection_sdk.resources import (
     Recipes,
     Runtimes,
 )
+from introspection_sdk.runner_resources import Events
 
 
 class _RaisingHttp:
@@ -48,6 +49,7 @@ def test_explicit_args_wire_up_namespaces():
     assert isinstance(client.recipes, Recipes)
     assert isinstance(client.connectors, Connectors)
     assert isinstance(client.connectors.connections, Connections)
+    assert isinstance(client.events, Events)
     assert client._token == "tok"
     assert client._base_api_url == "https://api.example.test"
 

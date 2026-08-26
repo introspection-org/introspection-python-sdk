@@ -42,6 +42,7 @@ from introspection_sdk.resources import (
     Recipes,
     Runtimes,
 )
+from introspection_sdk.runner_resources.events import AsyncEvents, Events
 
 
 class IntrospectionClient:
@@ -64,6 +65,7 @@ class IntrospectionClient:
     connectors: Connectors
     annotations: Annotations
     project_labels: ProjectLabels
+    events: Events
 
     def __init__(
         self,
@@ -107,6 +109,7 @@ class IntrospectionClient:
         self.connectors = Connectors(self._http)
         self.annotations = Annotations(self._http, self._dp_http)
         self.project_labels = ProjectLabels(self._dp_http)
+        self.events = Events(self._dp_http)
 
     @classmethod
     def from_service_account(
@@ -188,6 +191,7 @@ class AsyncIntrospectionClient:
     connectors: AsyncConnectors
     annotations: AsyncAnnotations
     project_labels: AsyncProjectLabels
+    events: AsyncEvents
 
     def __init__(
         self,
@@ -231,6 +235,7 @@ class AsyncIntrospectionClient:
         self.connectors = AsyncConnectors(self._http)
         self.annotations = AsyncAnnotations(self._http, self._dp_http)
         self.project_labels = AsyncProjectLabels(self._dp_http)
+        self.events = AsyncEvents(self._dp_http)
 
     @classmethod
     async def from_service_account(

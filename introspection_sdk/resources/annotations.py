@@ -134,13 +134,40 @@ class Annotations:
         *,
         annotated_by_member_id: UUID | None = None,
         assignee_member_id: UUID | None = None,
+        annotated_by_email: str | None = None,
+        assigned_to_email: str | None = None,
         trace_id: str | None = None,
         span_id: str | None = None,
         conversation_id: str | None = None,
         label: str | None = None,
         limit: int | None = None,
         next: str | None = None,
+        include_total: bool | None = None,
     ) -> Pager[AnnotationState, Paginated[AnnotationState]]:
+        if (
+            annotated_by_member_id is not None
+            and annotated_by_email is not None
+        ):
+            raise ValidationError(
+                "Use annotated_by_member_id or annotated_by_email, not both",
+                status_code=422,
+                code="conflicting_annotation_annotator_filters",
+            )
+        if assignee_member_id is not None and assigned_to_email is not None:
+            raise ValidationError(
+                "Use assignee_member_id or assigned_to_email, not both",
+                status_code=422,
+                code="conflicting_annotation_assignee_filters",
+            )
+        if annotated_by_email is not None:
+            annotated_by_member_id = self._resolve_reviewer_ids(
+                [annotated_by_email]
+            )[0]
+        if assigned_to_email is not None:
+            assignee_member_id = self._resolve_reviewer_ids(
+                [assigned_to_email]
+            )[0]
+
         def fetch(cursor: str | None) -> Paginated[AnnotationState]:
             payload = self._dp_http.request(
                 "GET",
@@ -154,6 +181,7 @@ class Annotations:
                     "label": label,
                     "limit": limit,
                     "next": cursor,
+                    "include_total": include_total,
                 },
             )
             return Paginated[AnnotationState].model_validate(payload)
@@ -313,26 +341,60 @@ class AsyncAnnotations:
         *,
         annotated_by_member_id: UUID | None = None,
         assignee_member_id: UUID | None = None,
+        annotated_by_email: str | None = None,
+        assigned_to_email: str | None = None,
         trace_id: str | None = None,
         span_id: str | None = None,
         conversation_id: str | None = None,
         label: str | None = None,
         limit: int | None = None,
         next: str | None = None,
+        include_total: bool | None = None,
     ) -> AsyncPager[AnnotationState, Paginated[AnnotationState]]:
+        if (
+            annotated_by_member_id is not None
+            and annotated_by_email is not None
+        ):
+            raise ValidationError(
+                "Use annotated_by_member_id or annotated_by_email, not both",
+                status_code=422,
+                code="conflicting_annotation_annotator_filters",
+            )
+        if assignee_member_id is not None and assigned_to_email is not None:
+            raise ValidationError(
+                "Use assignee_member_id or assigned_to_email, not both",
+                status_code=422,
+                code="conflicting_annotation_assignee_filters",
+            )
+        resolved_annotator = annotated_by_member_id
+        resolved_assignee = assignee_member_id
+        filters_resolved = False
+
         async def fetch(cursor: str | None) -> Paginated[AnnotationState]:
+            nonlocal resolved_annotator, resolved_assignee, filters_resolved
+            if not filters_resolved:
+                if annotated_by_email is not None:
+                    resolved_annotator = (
+                        await self._resolve_reviewer_ids([annotated_by_email])
+                    )[0]
+                if assigned_to_email is not None:
+                    resolved_assignee = (
+                        await self._resolve_reviewer_ids([assigned_to_email])
+                    )[0]
+                filters_resolved = True
             payload = await self._dp_http.request(
                 "GET",
                 "/v1/annotations",
                 params={
-                    "annotated_by_member_id": annotated_by_member_id,
-                    "assignee_member_id": assignee_member_id,
+                    "annotated_by_member_id": resolved_annotator,
+                    "assignee_member_id": resolved_assignee,
                     "trace_id": trace_id,
                     "span_id": span_id,
                     "conversation_id": conversation_id,
                     "label": label,
                     "limit": limit,
                     "next": cursor,
+                    "include_total": include_total,
                 },
             )
             return Paginated[AnnotationState].model_validate(payload)

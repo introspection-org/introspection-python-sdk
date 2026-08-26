@@ -1,10 +1,8 @@
-"""``client.experiments`` — CP read + lifecycle + ``.run()`` returning a
+"""``client.experiments`` — CP CRUD + lifecycle + ``.run()`` returning a
 :class:`Runner`.
 
-Lookup and lifecycle only: a runner brackets its own execution, resolving
-the experiment and then ``start`` / ``end`` / ``cancel`` around the work it
-is being measured on. Authoring an experiment is a project-authoring act
-and lives in the CLI.
+Request documents for create/update are passed through to the Control Plane,
+whose experiment schema is the source of truth.
 
 ``client.experiments`` is the :class:`Experiments` instance; calling
 ``client.experiments(id)`` returns an :class:`ExperimentHandle` with
@@ -17,6 +15,7 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
+from introspection_sdk._errors import ValidationError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -98,6 +97,64 @@ class Experiments:
             params=params or None,
         )
         return Experiment.model_validate(payload)
+
+    def create(
+        self,
+        document: Mapping[str, Any],
+        *,
+        project: str | UUID | None = None,
+    ) -> Experiment:
+        body = dict(document)
+        if project is not None:
+            if "project" in body and "project_id" in body:
+                raise ValidationError(
+                    "experiment document must not contain both project and project_id",
+                    status_code=422,
+                    code="conflicting_experiment_project",
+                )
+            supplied = body.get("project", body.get("project_id"))
+            if supplied is not None and str(supplied) != str(project):
+                raise ValidationError(
+                    "experiment document project conflicts with project",
+                    status_code=422,
+                    code="conflicting_experiment_project",
+                )
+            body.pop("project_id", None)
+            body["project"] = str(project)
+        return Experiment.model_validate(
+            self._http.request("POST", "/v1/experiments", json=body)
+        )
+
+    def update(
+        self,
+        experiment_id: UUID,
+        document: Mapping[str, Any],
+        *,
+        project: str | UUID | None = None,
+    ) -> Experiment:
+        return Experiment.model_validate(
+            self._http.request(
+                "PATCH",
+                f"/v1/experiments/{experiment_id}",
+                params={
+                    "project": str(project) if project is not None else None
+                },
+                json=dict(document),
+            )
+        )
+
+    def delete(
+        self,
+        experiment_id: UUID,
+        *,
+        project: str | UUID | None = None,
+    ) -> None:
+        self._http.request(
+            "DELETE",
+            f"/v1/experiments/{experiment_id}",
+            params={"project": str(project) if project is not None else None},
+            expect="empty",
+        )
 
     def _post_run(
         self,
@@ -266,6 +323,64 @@ class AsyncExperiments:
             params=params or None,
         )
         return Experiment.model_validate(payload)
+
+    async def create(
+        self,
+        document: Mapping[str, Any],
+        *,
+        project: str | UUID | None = None,
+    ) -> Experiment:
+        body = dict(document)
+        if project is not None:
+            if "project" in body and "project_id" in body:
+                raise ValidationError(
+                    "experiment document must not contain both project and project_id",
+                    status_code=422,
+                    code="conflicting_experiment_project",
+                )
+            supplied = body.get("project", body.get("project_id"))
+            if supplied is not None and str(supplied) != str(project):
+                raise ValidationError(
+                    "experiment document project conflicts with project",
+                    status_code=422,
+                    code="conflicting_experiment_project",
+                )
+            body.pop("project_id", None)
+            body["project"] = str(project)
+        return Experiment.model_validate(
+            await self._http.request("POST", "/v1/experiments", json=body)
+        )
+
+    async def update(
+        self,
+        experiment_id: UUID,
+        document: Mapping[str, Any],
+        *,
+        project: str | UUID | None = None,
+    ) -> Experiment:
+        return Experiment.model_validate(
+            await self._http.request(
+                "PATCH",
+                f"/v1/experiments/{experiment_id}",
+                params={
+                    "project": str(project) if project is not None else None
+                },
+                json=dict(document),
+            )
+        )
+
+    async def delete(
+        self,
+        experiment_id: UUID,
+        *,
+        project: str | UUID | None = None,
+    ) -> None:
+        await self._http.request(
+            "DELETE",
+            f"/v1/experiments/{experiment_id}",
+            params={"project": str(project) if project is not None else None},
+            expect="empty",
+        )
 
     async def _post_run(
         self,

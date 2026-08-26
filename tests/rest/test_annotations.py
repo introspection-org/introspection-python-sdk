@@ -80,6 +80,33 @@ def test_list_annotations_forwards_folded_state_filters(
     assert fake_api.last_request.params["assignee_member_id"] == MEMBER_ID
 
 
+def test_list_resolves_email_filters_and_forwards_total(
+    fake_api: FakeAPI,
+) -> None:
+    fake_api.add(
+        "GET",
+        "/v1/members",
+        json_body=page(
+            [
+                {
+                    "id": MEMBER_ID,
+                    "email": "expert@example.com",
+                    "is_deactivated": False,
+                }
+            ]
+        ),
+    )
+    fake_api.add("GET", "/v1/annotations", json_body=page([annotation()]))
+    listed = (
+        Annotations(fake_api.client(), fake_api.client())
+        .list(assigned_to_email="expert@example.com", include_total=True)
+        .page()
+    )
+    assert listed.total_count == 1
+    assert fake_api.last_request.params["assignee_member_id"] == MEMBER_ID
+    assert fake_api.last_request.params["include_total"] == "true"
+
+
 def test_create_appends_exactly_one_mutation_with_stable_event_id(
     fake_api: FakeAPI,
 ) -> None:
@@ -180,3 +207,44 @@ async def test_async_create_comment(fake_api: FakeAPI) -> None:
         event_id=EVENT_ID,
     )
     assert fake_api.last_request.json()["comment"] == "Explain why this failed"
+
+
+async def test_async_list_resolves_email_only_once_across_pages(
+    fake_api: FakeAPI,
+) -> None:
+    member_calls = 0
+    annotation_calls = 0
+
+    def members(request):
+        nonlocal member_calls
+        member_calls += 1
+        return __import__("httpx").Response(
+            200,
+            json=page(
+                [
+                    {
+                        "id": MEMBER_ID,
+                        "email": "expert@example.com",
+                        "is_deactivated": False,
+                    }
+                ]
+            ),
+        )
+
+    def annotations(request):
+        nonlocal annotation_calls
+        annotation_calls += 1
+        cursor = request.url.params.get("next")
+        return __import__("httpx").Response(
+            200,
+            json=page([annotation()], "next-page" if cursor is None else None),
+        )
+
+    fake_api.add_handler("GET", "/v1/members", members)
+    fake_api.add_handler("GET", "/v1/annotations", annotations)
+    pager = AsyncAnnotations(
+        fake_api.async_client(), fake_api.async_client()
+    ).list(annotated_by_email="expert@example.com")
+    assert len([record async for record in pager]) == 2
+    assert member_calls == 1
+    assert annotation_calls == 2
