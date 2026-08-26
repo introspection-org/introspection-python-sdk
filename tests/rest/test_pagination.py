@@ -9,7 +9,7 @@ tests exercise that dual-mode behaviour directly through the offline
 
 from __future__ import annotations
 
-import httpx
+import httpx2 as httpx
 
 from introspection_sdk.runner_resources.tasks import Tasks
 

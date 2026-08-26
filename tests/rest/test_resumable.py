@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Iterator
 from unittest import mock
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from introspection_sdk import resumable as resumable_mod

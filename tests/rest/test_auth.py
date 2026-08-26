@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from introspection_sdk import (

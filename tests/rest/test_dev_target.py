@@ -8,6 +8,7 @@ environment variables, never to stub SDK behaviour.
 
 from __future__ import annotations
 
+import httpx2 as httpx
 import pytest
 
 from introspection_sdk.client import (
@@ -146,7 +147,6 @@ def test_encodes_exactly_as_the_node_and_rust_clients_do(monkeypatch) -> None:
 def test_encoded_target_survives_an_httpx_request(monkeypatch) -> None:
     """The reason the encoding exists, asserted against the client that
     rejected the raw value."""
-    import httpx
 
     monkeypatch.setenv(DEV_TARGET_ENV, "andré")
     headers = dev_target_headers(None)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from introspection_sdk._errors import NotFoundError, ValidationError

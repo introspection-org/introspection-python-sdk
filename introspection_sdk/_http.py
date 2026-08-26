@@ -4,7 +4,12 @@
 wraps ``httpx.AsyncClient``; both centralise base-URL joining,
 ``Authorization`` header injection, error translation, and SSE
 streaming. Kept private so the public surface stays the REST namespace
-classes themselves. The two clients are kept deliberately symmetric so
+classes themselves.
+
+``httpx`` throughout this package is ``httpx2`` under an alias --- the
+Pydantic-maintained successor, which the OpenAI, Anthropic and MCP SDKs are
+also built on. Callers passing their own ``transport=`` must pass an httpx2
+one; see docs/advanced.md. The two clients are kept deliberately symmetric so
 the sync and async resource namespaces can mirror each other line for
 line.
 """
@@ -18,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-import httpx
+import httpx2 as httpx
 
 from introspection_sdk._backoff import _is_retryable_status, _retry_delay
 from introspection_sdk._errors import (
