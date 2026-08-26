@@ -69,6 +69,7 @@ class IntrospectionClient:
         self,
         *,
         token: str | None = None,
+        cp_session: str | None = None,
         base_api_url: str | None = None,
         dp_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
@@ -86,6 +87,7 @@ class IntrospectionClient:
         self._http = _HttpClient(
             api_url=self._base_api_url,
             token=self._token,
+            cp_session=cp_session,
             additional_headers=self._additional_headers,
         )
         self._dp_http = _HttpClient(
@@ -191,6 +193,7 @@ class AsyncIntrospectionClient:
         self,
         *,
         token: str | None = None,
+        cp_session: str | None = None,
         base_api_url: str | None = None,
         dp_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
@@ -208,6 +211,7 @@ class AsyncIntrospectionClient:
         self._http = _AsyncHttpClient(
             api_url=self._base_api_url,
             token=self._token,
+            cp_session=cp_session,
             additional_headers=self._additional_headers,
         )
         self._dp_http = _AsyncHttpClient(

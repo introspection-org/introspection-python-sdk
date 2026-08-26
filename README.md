@@ -138,7 +138,12 @@ empty list clears that dimension.
 ```python
 from introspection_sdk import IntrospectionClient
 
-client = IntrospectionClient(token="intro_xxx", dp_url="https://dp.example")
+client = IntrospectionClient(
+    token=member_access_token,
+    cp_session=encoded_member_session,
+    base_api_url="https://api.introspection.dev",
+    dp_url="https://dp.example",
+)
 
 client.annotations.create(
     trace_id="0af7651916cd43dd8448eb211c80319c",

@@ -66,6 +66,7 @@ class _HttpClient:
         *,
         api_url: str,
         token: str,
+        cp_session: str | None = None,
         additional_headers: Mapping[str, str] | None = None,
         timeout: float = 30.0,
         transport: httpx.BaseTransport | None = None,
@@ -78,9 +79,11 @@ class _HttpClient:
             timeout=timeout,
             transport=transport,
         )
-        self._auth_headers: dict[str, str] = {
-            "Authorization": f"Bearer {token}",
-        }
+        self._auth_headers: dict[str, str] = (
+            {"Cookie": f"intro_cp_session={cp_session}"}
+            if cp_session
+            else {"Authorization": f"Bearer {token}"}
+        )
         if additional_headers:
             self._auth_headers.update(additional_headers)
         self._max_retries = max_retries
@@ -229,6 +232,7 @@ class _AsyncHttpClient:
         *,
         api_url: str,
         token: str,
+        cp_session: str | None = None,
         additional_headers: Mapping[str, str] | None = None,
         timeout: float = 30.0,
         transport: httpx.AsyncBaseTransport | None = None,
@@ -241,9 +245,11 @@ class _AsyncHttpClient:
             timeout=timeout,
             transport=transport,
         )
-        self._auth_headers: dict[str, str] = {
-            "Authorization": f"Bearer {token}",
-        }
+        self._auth_headers: dict[str, str] = (
+            {"Cookie": f"intro_cp_session={cp_session}"}
+            if cp_session
+            else {"Authorization": f"Bearer {token}"}
+        )
         if additional_headers:
             self._auth_headers.update(additional_headers)
         self._max_retries = max_retries
