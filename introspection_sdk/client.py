@@ -29,12 +29,16 @@ from introspection_sdk.auth import (
 )
 from introspection_sdk.dev_target import client_headers
 from introspection_sdk.resources import (
+    Annotations,
+    AsyncAnnotations,
     AsyncConnectors,
     AsyncExperiments,
+    AsyncProjectLabels,
     AsyncRecipes,
     AsyncRuntimes,
     Connectors,
     Experiments,
+    ProjectLabels,
     Recipes,
     Runtimes,
 )
@@ -58,12 +62,15 @@ class IntrospectionClient:
     experiments: Experiments
     recipes: Recipes
     connectors: Connectors
+    annotations: Annotations
+    project_labels: ProjectLabels
 
     def __init__(
         self,
         *,
         token: str | None = None,
         base_api_url: str | None = None,
+        dp_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
     ) -> None:
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
@@ -81,6 +88,11 @@ class IntrospectionClient:
             token=self._token,
             additional_headers=self._additional_headers,
         )
+        self._dp_http = _HttpClient(
+            api_url=dp_url or self._base_api_url,
+            token=self._token,
+            additional_headers=self._additional_headers,
+        )
         self.runtimes = Runtimes(
             self._http,
             additional_headers=self._additional_headers,
@@ -91,6 +103,8 @@ class IntrospectionClient:
         )
         self.recipes = Recipes(self._http)
         self.connectors = Connectors(self._http)
+        self.annotations = Annotations(self._http, self._dp_http)
+        self.project_labels = ProjectLabels(self._dp_http)
 
     @classmethod
     def from_service_account(
@@ -122,10 +136,8 @@ class IntrospectionClient:
 
         The token is not auto-refreshed: it lives for ``expires_in``
         seconds, so re-mint (call this again) for long-lived processes
-        once it lapses. Call
-        :func:`~introspection_sdk.auth.service_account_token` directly if
-        you also need the resolved ``dp_url`` (e.g. to hand a browser the
-        Data Plane endpoint).
+        once it lapses. The resolved Data Plane URL is wired into the
+        annotation and project-label namespaces automatically.
         """
         token = service_account_token(
             client_id=client_id,
@@ -138,6 +150,7 @@ class IntrospectionClient:
         return cls(
             token=token.access_token,
             base_api_url=base_api_url,
+            dp_url=token.dp_url,
             additional_headers=additional_headers,
         )
 
@@ -145,6 +158,7 @@ class IntrospectionClient:
         """Graceful shutdown — closes the underlying HTTP client."""
         try:
             self._http.close()
+            self._dp_http.close()
         except Exception:  # noqa: BLE001 — best-effort cleanup
             pass
 
@@ -170,12 +184,15 @@ class AsyncIntrospectionClient:
     experiments: AsyncExperiments
     recipes: AsyncRecipes
     connectors: AsyncConnectors
+    annotations: AsyncAnnotations
+    project_labels: AsyncProjectLabels
 
     def __init__(
         self,
         *,
         token: str | None = None,
         base_api_url: str | None = None,
+        dp_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
     ) -> None:
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
@@ -193,6 +210,11 @@ class AsyncIntrospectionClient:
             token=self._token,
             additional_headers=self._additional_headers,
         )
+        self._dp_http = _AsyncHttpClient(
+            api_url=dp_url or self._base_api_url,
+            token=self._token,
+            additional_headers=self._additional_headers,
+        )
         self.runtimes = AsyncRuntimes(
             self._http,
             additional_headers=self._additional_headers,
@@ -203,6 +225,8 @@ class AsyncIntrospectionClient:
         )
         self.recipes = AsyncRecipes(self._http)
         self.connectors = AsyncConnectors(self._http)
+        self.annotations = AsyncAnnotations(self._http, self._dp_http)
+        self.project_labels = AsyncProjectLabels(self._dp_http)
 
     @classmethod
     async def from_service_account(
@@ -242,6 +266,7 @@ class AsyncIntrospectionClient:
         return cls(
             token=token.access_token,
             base_api_url=base_api_url,
+            dp_url=token.dp_url,
             additional_headers=additional_headers,
         )
 
@@ -249,6 +274,7 @@ class AsyncIntrospectionClient:
         """Graceful shutdown — closes the underlying HTTP client."""
         try:
             await self._http.aclose()
+            await self._dp_http.aclose()
         except Exception:  # noqa: BLE001 — best-effort cleanup
             pass
 
