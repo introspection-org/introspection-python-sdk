@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.17.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.16.0...v0.17.0) (2026-08-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* the public `transport=` argument on IntrospectionClient, AsyncIntrospectionClient and the auth helpers now needs an httpx2 transport; an `httpx` one raises TypeError. The same applies to responses and errors the SDK re-raises (`httpx2.Response`, `httpx2.HTTPError`) and to tests pinning requests with `httpx2.MockTransport`. Plain values (float timeouts, base URLs) are unaffected. httpx2 also verifies TLS against the OS trust store rather than a bundled certifi copy; set SSL_CERT_FILE / SSL_CERT_DIR or pass your own ssl.SSLContext where that matters.
+
+### Features
+
+* Add span annotations and project labels client ([#137](https://github.com/introspection-org/introspection-python-sdk/issues/137)) ([0a76427](https://github.com/introspection-org/introspection-python-sdk/commit/0a76427db201fc1c0f62ab39d1e0a3d29382ef18))
+* build the SDK on httpx2 instead of httpx ([#138](https://github.com/introspection-org/introspection-python-sdk/issues/138)) ([5ceed8d](https://github.com/introspection-org/introspection-python-sdk/commit/5ceed8d7bf5df644a2df4c015e0e7e015815101a))
+* **conversations:** add conversation metadata ([#136](https://github.com/introspection-org/introspection-python-sdk/issues/136)) ([e91e3f4](https://github.com/introspection-org/introspection-python-sdk/commit/e91e3f4b4eda124f3d82a0038ccbd141f0fb02a2))
+
+
+### Bug Fixes
+
+* expose conversation task titles ([2144e6c](https://github.com/introspection-org/introspection-python-sdk/commit/2144e6ce07fa7eba928ea5a7b672177bacfd0cd1))
+
 ## [0.16.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.15.1...v0.16.0) (2026-08-13)
 
 
