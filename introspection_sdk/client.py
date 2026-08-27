@@ -20,7 +20,7 @@ __all__ = ["AsyncIntrospectionClient", "IntrospectionClient"]
 
 import os
 
-import httpx
+import httpx2 as httpx
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.auth import (

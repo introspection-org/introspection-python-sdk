@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from introspection_sdk._backoff import _is_retryable_status

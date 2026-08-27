@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import httpx2 as httpx
 import pytest
 
 from introspection_sdk._errors import IntrospectionAPIError
@@ -500,8 +501,6 @@ async def test_async_request_retries_on_429_then_succeeds(fake_api: FakeAPI):
     calls = {"n": 0}
 
     def handler(_request):
-        import httpx
-
         calls["n"] += 1
         if calls["n"] == 1:
             return httpx.Response(
@@ -542,8 +541,6 @@ async def test_async_get_retries_on_503_without_retry_after(
     calls = {"n": 0}
 
     def handler(_request):
-        import httpx
-
         calls["n"] += 1
         if calls["n"] == 1:
             return httpx.Response(503, json={"detail": "down"})
@@ -559,8 +556,6 @@ async def test_async_get_retries_on_504(fake_api: FakeAPI):
     calls = {"n": 0}
 
     def handler(_request):
-        import httpx
-
         calls["n"] += 1
         if calls["n"] == 1:
             return httpx.Response(504, json={"detail": "timeout"})

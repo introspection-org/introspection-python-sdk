@@ -30,7 +30,7 @@ import json
 import time
 from collections.abc import AsyncIterator, Iterator
 
-import httpx
+import httpx2 as httpx
 
 from introspection_sdk._backoff import _retry_delay
 from introspection_sdk._errors import NetworkError, RateLimitError

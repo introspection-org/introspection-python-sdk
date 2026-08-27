@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-import httpx
+import httpx2 as httpx
 import pytest
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError

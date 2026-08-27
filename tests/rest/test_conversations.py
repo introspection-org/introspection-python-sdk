@@ -15,7 +15,7 @@ import io
 from typing import Any
 from uuid import UUID
 
-import httpx
+import httpx2 as httpx
 import pyarrow as pa
 import pytest
 

@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import os
 
-import httpx
+import httpx2 as httpx
 from pydantic import BaseModel, ConfigDict
 
 from introspection_sdk._errors import NetworkError, error_from_response

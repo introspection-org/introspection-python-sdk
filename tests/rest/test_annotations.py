@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import httpx2 as httpx
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
@@ -133,7 +134,7 @@ def test_create_resolves_active_reviewer_emails_across_pages(
     fake_api.add_handler(
         "GET",
         "/v1/members",
-        lambda request: __import__("httpx").Response(
+        lambda request: httpx.Response(
             200,
             json=page(
                 [
@@ -218,7 +219,7 @@ async def test_async_list_resolves_email_only_once_across_pages(
     def members(request):
         nonlocal member_calls
         member_calls += 1
-        return __import__("httpx").Response(
+        return httpx.Response(
             200,
             json=page(
                 [
@@ -235,7 +236,7 @@ async def test_async_list_resolves_email_only_once_across_pages(
         nonlocal annotation_calls
         annotation_calls += 1
         cursor = request.url.params.get("next")
-        return __import__("httpx").Response(
+        return httpx.Response(
             200,
             json=page([annotation()], "next-page" if cursor is None else None),
         )

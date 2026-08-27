@@ -33,7 +33,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from uuid import UUID
 
-import httpx
+import httpx2 as httpx
 import pytest
 from pydantic import BaseModel
 
