@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.17.0...v0.18.0) (2026-08-31)
+
+
+### Features
+
+* **proxy:** add selectable httpx2 and httpx transports ([#139](https://github.com/introspection-org/introspection-python-sdk/issues/139)) ([3e0e32c](https://github.com/introspection-org/introspection-python-sdk/commit/3e0e32c5a2904f3c9aa92c062f49d95f5ec02feb))
+
 ## [0.17.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.16.0...v0.17.0) (2026-08-27)
 
 
