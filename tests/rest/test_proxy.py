@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+from typing import Any
+
 import httpx2 as httpx
 import pytest
 
@@ -100,8 +103,6 @@ def test_non_endpoint_uses_forward_proxy_unless_no_proxy_matches() -> None:
 
 
 def test_async_selected_host_uses_same_egress_contract() -> None:
-    import asyncio
-
     asyncio.run(_assert_async_selected_host_uses_same_egress_contract())
 
 
@@ -135,7 +136,7 @@ async def _assert_async_selected_host_uses_same_egress_contract() -> None:
     ],
 )
 def test_invalid_egress_configuration_fails_closed(
-    config: dict[str, object],
+    config: dict[str, Any],
 ) -> None:
     with pytest.raises(ValueError):
         ProxyConfig(**config)
