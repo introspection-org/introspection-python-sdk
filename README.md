@@ -35,6 +35,30 @@ uv add introspection-sdk
 pip install introspection-sdk
 ```
 
+### Endpoint-binding proxy transports
+
+The default install includes the native `httpx2` adapter:
+
+```python
+from introspection_sdk.proxy.httpx2 import IntrospectionTransport
+```
+
+Libraries that still use legacy `httpx`, including current Harbor and E2B
+releases, can opt into that dependency and import the matching adapter:
+
+```shell
+pip install "introspection-sdk[proxy-httpx]"
+```
+
+```python
+from introspection_sdk.proxy.httpx import IntrospectionTransport
+```
+
+Both imports use the same routing implementation and the
+`INTROSPECTION_EGRESS_URL`, `INTROSPECTION_ENDPOINT_HOSTS`, and standard proxy
+environment contract. Transport types cannot be shared between the two HTTP
+libraries, so only their thin library-specific wrappers differ.
+
 ## Run a task
 
 ```python

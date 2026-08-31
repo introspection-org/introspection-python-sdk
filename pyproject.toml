@@ -20,6 +20,9 @@ dependencies = [
 # Kept out of the core deps so the default REST install stays light; the JSON
 # path never imports pyarrow. Install with `pip install introspection-sdk[arrow]`.
 arrow = ["pyarrow>=14.0.0"]
+# Compatibility transport for libraries that have not migrated to httpx2 yet
+# (notably Harbor 0.20 and the current E2B Python SDK).
+proxy-httpx = ["httpx>=0.27.0,<1"]
 # Install with `pip install introspection-sdk[otel]` to enable the
 # OpenTelemetry exporter, `IntrospectionSpanProcessor`, and the
 # IntrospectionLogs (track / feedback / identify) surface. Default
