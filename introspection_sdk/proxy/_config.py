@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 
 EGRESS_URL_ENV = "INTROSPECTION_EGRESS_URL"
 ENDPOINT_HOSTS_ENV = "INTROSPECTION_ENDPOINT_HOSTS"
+RELAY_TARGET_ENV = "INTROSPECTION_RELAY_TARGET"
 
 
 def _first(environment: Mapping[str, str], *names: str) -> str | None:
@@ -43,6 +44,7 @@ class ProxyConfig:
     endpoint_hosts: frozenset[str] = frozenset()
     forward_proxy_url: str | None = None
     no_proxy: tuple[str, ...] = ()
+    relay_target: str | None = None
 
     def __post_init__(self) -> None:
         if self.endpoint_hosts and not self.egress_url:
@@ -80,6 +82,7 @@ class ProxyConfig:
                 "http_proxy",
             ),
             no_proxy=_no_proxy_entries(_first(values, "NO_PROXY", "no_proxy")),
+            relay_target=(values.get(RELAY_TARGET_ENV) or "").strip() or None,
         )
 
     def uses_egress(self, host: str) -> bool:
