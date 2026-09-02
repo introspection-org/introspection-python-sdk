@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.19.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.18.0...v0.19.0) (2026-09-02)
+
+
+### Features
+
+* **connectors:** support Pipedream applications ([#141](https://github.com/introspection-org/introspection-python-sdk/issues/141)) ([e77538c](https://github.com/introspection-org/introspection-python-sdk/commit/e77538c74474a817b6e0ce8df80c53e1385325c5))
+
+
+### Bug Fixes
+
+* **proxy:** route scoped egress through development relay ([#143](https://github.com/introspection-org/introspection-python-sdk/issues/143)) ([4b149d6](https://github.com/introspection-org/introspection-python-sdk/commit/4b149d682263667f080d7531c0555709be89d4eb))
+
 ## [0.18.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.17.0...v0.18.0) (2026-08-31)
 
 
