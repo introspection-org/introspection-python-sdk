@@ -35,6 +35,7 @@ CONNECTOR_PATH = f"/v1/connectors/{CONNECTOR_ID}"
 CONNECTIONS_PATH = f"{CONNECTOR_PATH}/connections"
 CONNECTION_PATH = f"{CONNECTIONS_PATH}/{CONNECTION_ID}"
 AUTHORIZE_PATH = "/v1/oauth/connections/authorize"
+APPS_PATH = f"{CONNECTOR_PATH}/apps"
 TOKEN_PATH = "/v1/oauth/connections/token"
 
 # The wire ids are strings (paths, bodies); the methods take UUIDs.
@@ -198,6 +199,48 @@ def test_authorize_sends_only_the_connector_when_told_nothing_else(
     Connectors(fake_api.client()).authorize(CONNECTOR_UUID)
 
     assert fake_api.last_request.json() == {"connector_id": CONNECTOR_ID}
+
+
+def test_pipedream_apps_and_progressive_scope_authorization(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        APPS_PATH,
+        json_body={
+            "data": [
+                {
+                    "slug": "google_sheets",
+                    "name": "Google Sheets",
+                    "icon_url": "https://assets.example/sheets.png",
+                    "auth_type": "oauth",
+                }
+            ]
+        },
+    )
+    connectors = Connectors(fake_api.client())
+
+    apps = connectors.list_apps(CONNECTOR_UUID, query="sheets", limit=5)
+
+    assert apps[0].slug == "google_sheets"
+    assert dict(fake_api.last_request.params) == {
+        "q": "sheets",
+        "limit": "5",
+    }
+
+    fake_api.add(
+        "POST", AUTHORIZE_PATH, json_body=connector_authorization_payload()
+    )
+    connectors.authorize(
+        CONNECTOR_UUID,
+        runtime="coding-agent",
+        app="google_sheets",
+        allow_progressive_scopes=True,
+    )
+    assert fake_api.last_request.json() == {
+        "connector_id": CONNECTOR_ID,
+        "runtime": "coding-agent",
+        "app": "google_sheets",
+        "allow_progressive_scopes": True,
+    }
 
 
 def test_authorize_surfaces_the_missing_runtime_422(fake_api: FakeAPI):

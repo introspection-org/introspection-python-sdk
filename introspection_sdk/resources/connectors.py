@@ -36,6 +36,7 @@ from introspection_sdk.schemas.connectors import (
     ConnectionTokenRequest,
     ConnectionTokenResult,
     Connector,
+    ConnectorApp,
     ConnectorApprovalPolicy,
     ConnectorAuthMode,
     ConnectorAuthorization,
@@ -140,6 +141,8 @@ def _authorize_body(
     return_url: str | None,
     expires_in: int | None,
     identity: RunnerIdentity | dict[str, Any] | None,
+    app: str | None,
+    allow_progressive_scopes: bool,
 ) -> dict[str, Any]:
     return ConnectorAuthorizeRequest.model_validate(
         {
@@ -149,8 +152,10 @@ def _authorize_body(
             "return_url": return_url,
             "expires_in": expires_in,
             "identity": identity,
+            "app": app,
+            "allow_progressive_scopes": allow_progressive_scopes,
         }
-    ).model_dump(mode="json", exclude_none=True)
+    ).model_dump(mode="json", exclude_none=True, exclude_defaults=True)
 
 
 def _connection_create_body(
@@ -391,6 +396,21 @@ class Connectors:
         )
         return Connector.model_validate(payload)
 
+    def list_apps(
+        self,
+        connector_id: UUID,
+        *,
+        query: str | None = None,
+        limit: int | None = None,
+    ) -> builtins.list[ConnectorApp]:
+        """Search a connector's provider application catalogue."""
+        payload = self._http.request(
+            "GET",
+            f"/v1/connectors/{connector_id}/apps",
+            params={"q": query, "limit": limit},
+        )
+        return [ConnectorApp.model_validate(app) for app in payload["data"]]
+
     def get(self, connector_id: UUID) -> Connector:
         payload = self._http.request(
             "GET",
@@ -449,6 +469,8 @@ class Connectors:
         return_url: str | None = None,
         expires_in: int | None = None,
         identity: RunnerIdentity | dict[str, Any] | None = None,
+        app: str | None = None,
+        allow_progressive_scopes: bool = False,
     ) -> ConnectorAuthorization:
         """Mint a consent URL for the connector
         (``POST /v1/oauth/connections/authorize``).
@@ -480,6 +502,8 @@ class Connectors:
                 return_url=return_url,
                 expires_in=expires_in,
                 identity=identity,
+                app=app,
+                allow_progressive_scopes=allow_progressive_scopes,
             ),
         )
         return ConnectorAuthorization.model_validate(payload)
@@ -668,6 +692,21 @@ class AsyncConnectors:
         )
         return Connector.model_validate(payload)
 
+    async def list_apps(
+        self,
+        connector_id: UUID,
+        *,
+        query: str | None = None,
+        limit: int | None = None,
+    ) -> builtins.list[ConnectorApp]:
+        """Search a connector's provider application catalogue."""
+        payload = await self._http.request(
+            "GET",
+            f"/v1/connectors/{connector_id}/apps",
+            params={"q": query, "limit": limit},
+        )
+        return [ConnectorApp.model_validate(app) for app in payload["data"]]
+
     async def get(self, connector_id: UUID) -> Connector:
         payload = await self._http.request(
             "GET",
@@ -726,6 +765,8 @@ class AsyncConnectors:
         return_url: str | None = None,
         expires_in: int | None = None,
         identity: RunnerIdentity | dict[str, Any] | None = None,
+        app: str | None = None,
+        allow_progressive_scopes: bool = False,
     ) -> ConnectorAuthorization:
         """Mint a consent URL for the connector
         (``POST /v1/oauth/connections/authorize``).
@@ -757,6 +798,8 @@ class AsyncConnectors:
                 return_url=return_url,
                 expires_in=expires_in,
                 identity=identity,
+                app=app,
+                allow_progressive_scopes=allow_progressive_scopes,
             ),
         )
         return ConnectorAuthorization.model_validate(payload)
