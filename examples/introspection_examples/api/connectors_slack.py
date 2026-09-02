@@ -11,7 +11,7 @@ Run with:
     SLACK_CLIENT_SECRET=<your Slack app client secret>
     INTROSPECTION_RUNTIME=<runtime slug or runtime group id>
 
-        uv run python -m introspection_examples.api.connectors
+        uv run python -m introspection_examples.api.connectors_slack
 
 Optional env:
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
