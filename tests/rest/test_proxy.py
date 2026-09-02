@@ -40,6 +40,7 @@ def test_config_reads_shared_proxy_environment() -> None:
         {
             "INTROSPECTION_EGRESS_URL": "https://egress.example",
             "INTROSPECTION_ENDPOINT_HOSTS": "api.e2b.app, API.OPENAI.COM ",
+            "INTROSPECTION_RELAY_TARGET": "brightsparc",
             "HTTPS_PROXY": "http://forward.example:8080",
             "NO_PROXY": "localhost,.cluster.local",
         }
@@ -48,6 +49,7 @@ def test_config_reads_shared_proxy_environment() -> None:
         {"api.e2b.app", "api.openai.com"}
     )
     assert config.forward_proxy_url == "http://forward.example:8080"
+    assert config.relay_target == "brightsparc"
     assert config.bypasses_forward_proxy("service.cluster.local")
 
 
@@ -78,6 +80,8 @@ def test_selected_host_uses_egress_and_preserves_upstream_authority() -> None:
     assert str(request.url) == "https://egress.example/sandboxes?team=one"
     assert request.headers["host"] == "api.e2b.app"
     assert request.headers["x-api-key"] == "scoped-session-locator"
+    assert "x-introspection-egress-host" not in request.headers
+    assert "x-introspection-relay-target" not in request.headers
 
 
 def test_non_endpoint_uses_forward_proxy_unless_no_proxy_matches() -> None:
@@ -100,6 +104,30 @@ def test_non_endpoint_uses_forward_proxy_unless_no_proxy_matches() -> None:
         assert client.get("https://api.cluster.local").json() == {
             "route": "direct"
         }
+
+
+def test_relay_egress_routes_with_explicit_headers() -> None:
+    egress = RecordingTransport("egress")
+    transport = IntrospectionTransport(
+        ProxyConfig(
+            egress_url="https://egress.example:8443",
+            endpoint_hosts=frozenset({"api.example.com"}),
+            relay_target="brightsparc",
+        ),
+        _direct=RecordingTransport("direct"),
+        _egress=egress,
+    )
+    with httpx.Client(transport=transport) as client:
+        response = client.get("https://api.example.com:9443/v1/resources")
+
+    assert response.json() == {"route": "egress"}
+    request = egress.requests[0]
+    assert str(request.url) == "https://egress.example:8443/v1/resources"
+    assert request.headers["host"] == "egress.example:8443"
+    assert request.headers["x-introspection-egress-host"] == (
+        "api.example.com:9443"
+    )
+    assert request.headers["x-introspection-relay-target"] == "brightsparc"
 
 
 def test_async_selected_host_uses_same_egress_contract() -> None:

@@ -8,7 +8,12 @@ from typing import Any
 from introspection_sdk.proxy._config import ProxyConfig
 
 
-def egress_request(http: Any, request: Any, egress_url: str) -> Any:
+def egress_request(
+    http: Any,
+    request: Any,
+    egress_url: str,
+    relay_target: str | None = None,
+) -> Any:
     """Rebuild a request for egress while retaining its upstream authority."""
 
     egress = http.URL(egress_url)
@@ -18,7 +23,13 @@ def egress_request(http: Any, request: Any, egress_url: str) -> Any:
         port=egress.port,
     )
     headers = request.headers.copy()
-    headers["Host"] = request.url.netloc.decode("ascii")
+    original_authority = request.url.netloc.decode("ascii")
+    if relay_target:
+        headers["Host"] = egress.netloc.decode("ascii")
+        headers["x-introspection-egress-host"] = original_authority
+        headers["x-introspection-relay-target"] = relay_target
+    else:
+        headers["Host"] = original_authority
     return http.Request(
         request.method,
         target,
@@ -67,7 +78,9 @@ def handle_request(
     )
     if rewrite:
         assert config.egress_url is not None
-        request = egress_request(http, request, config.egress_url)
+        request = egress_request(
+            http, request, config.egress_url, config.relay_target
+        )
     return send(transport, request)
 
 
@@ -90,7 +103,9 @@ async def handle_async_request(
     )
     if rewrite:
         assert config.egress_url is not None
-        request = egress_request(http, request, config.egress_url)
+        request = egress_request(
+            http, request, config.egress_url, config.relay_target
+        )
     return await send(transport, request)
 
 
