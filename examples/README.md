@@ -13,6 +13,8 @@ export INTROSPECTION_TOKEN=your-token
 ```bash
 uv run python -m introspection_examples.api.runtimes                 # Runner: tasks + files end-to-end (sync)
 uv run python -m introspection_examples.api.async_runtimes           # AsyncRunner: same flow on asyncio
+uv run python -m introspection_examples.api.connectors_slack         # Create a Slack connector and authorize a workspace
+uv run python -m introspection_examples.api.connectors_pipedream     # Create a Pipedream connector and authorize one app
 ```
 
 ## Tracing

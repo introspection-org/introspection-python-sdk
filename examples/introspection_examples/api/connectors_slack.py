@@ -11,7 +11,7 @@ Run with:
     SLACK_CLIENT_SECRET=<your Slack app client secret>
     INTROSPECTION_RUNTIME=<runtime slug or runtime group id>
 
-        uv run python -m introspection_examples.api.connectors
+        uv run python -m introspection_examples.api.connectors_slack
 
 Optional env:
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
@@ -91,6 +91,10 @@ def main() -> None:
             # does not open it in ten minutes. The ceiling is one day.
             expires_in=3600,
         )
+        # For a Pipedream connector, first choose an application from
+        # `client.connectors.list_apps(connector.id, query="sheets")`, then
+        # pass `app="google_sheets"`. Set `allow_progressive_scopes=True`
+        # only when the runtime can tolerate a user granting fewer scopes.
         print(f"install link -> {install.authorize_url}")
         print(
             f"  valid for {install.expires_in}s "

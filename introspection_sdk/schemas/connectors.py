@@ -235,6 +235,8 @@ class ConnectorAuthorizeRequest(_ApiModel):
     """
 
     connector_id: UUID
+    app: str | None = None
+    allow_progressive_scopes: bool = False
     runtime: str | None = None
     subject: ConnectionBrokerSubjectType | None = None
     return_url: str | None = None
@@ -258,6 +260,16 @@ class ConnectorAuthorization(_ApiModel):
     authorize_url: str
     expires_in: int
     expires_at: datetime
+
+
+class ConnectorApp(_ApiModel):
+    """An application available from a connector's provider catalogue."""
+
+    slug: str
+    name: str
+    icon_url: str | None = None
+    description: str | None = None
+    auth_type: str | None = None
 
 
 class ConnectionMissionConstraints(_ApiModel):
@@ -308,6 +320,7 @@ __all__ = [
     "ConnectionTokenResult",
     "Connector",
     "ConnectorApprovalPolicy",
+    "ConnectorApp",
     "ConnectorAuthMode",
     "ConnectorAuthorization",
     "ConnectorAuthorizeRequest",
