@@ -1,5 +1,5 @@
 """Browse a project's repositories — list them on the control plane, then
-walk a directory and read a file through the data plane.
+walk a directory, read a file and page recent commits through the data plane.
 
 Run with:
     INTROSPECTION_TOKEN=intro_xxx
@@ -45,6 +45,14 @@ def main() -> None:
         # A Pager: iterating follows the `next` cursor across pages.
         for entry in client.repositories.contents(repo.id, limit=50):
             print(f"  {entry.type:9} {entry.path}")
+
+        recent = client.repositories.commits(repo.id, limit=5).page().records
+        for commit in recent:
+            subject = commit.message.partition("\n")[0]
+            print(f"  {commit.sha[:7]} {subject}")
+        if recent:
+            detail = client.repositories.commit(repo.id, recent[0].sha)
+            print(f"  {recent[0].sha[:7]} changed {len(detail.files)} files")
 
         try:
             content = client.repositories.contents.get(repo.id, "README.md")

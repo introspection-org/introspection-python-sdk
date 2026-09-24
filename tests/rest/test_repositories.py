@@ -1,4 +1,5 @@
-"""Contract tests for ``client.repositories`` (CP) and its contents (DP)."""
+"""Contract tests for ``client.repositories`` (CP) and its contents and
+commits (DP)."""
 
 from __future__ import annotations
 
@@ -14,6 +15,8 @@ from introspection_sdk.resources.repositories import (
     Repositories,
 )
 from introspection_sdk.schemas.repositories import (
+    RepositoryCommit,
+    RepositoryCommitDetail,
     RepositoryDirectory,
     RepositoryEntry,
     RepositoryFile,
@@ -22,6 +25,7 @@ from introspection_sdk.schemas.repositories import (
 from .conftest import PROJECT_ID, REPOSITORY_ID, FakeAPI
 
 CONTENTS = f"/v1/repositories/{REPOSITORY_ID}/contents"
+COMMITS = f"/v1/repositories/{REPOSITORY_ID}/commits"
 COMMIT = "c0ffee"
 
 
@@ -75,6 +79,51 @@ def file_body(path: str = "agents/agent.yaml") -> dict[str, Any]:
         "content": "name: agent\n",
         "truncated": False,
     }
+
+
+def person(name: str = "Ada") -> dict[str, Any]:
+    return {"name": name, "email": None, "date": "2026-09-01T00:00:00Z"}
+
+
+def commit_body(sha: str) -> dict[str, Any]:
+    return {
+        "sha": sha,
+        "parents": ["p0"],
+        "message": f"commit {sha}\n",
+        "author": person(),
+        "committer": person("Bot"),
+    }
+
+
+def commit_detail(sha: str = COMMIT) -> dict[str, Any]:
+    return {
+        **commit_body(sha),
+        "files": [
+            {
+                "filename": "agents/agent.yaml",
+                "status": "modified",
+                "additions": 1,
+                "deletions": 1,
+                "changes": 2,
+            }
+        ],
+        "patch": "diff --git a/agents/agent.yaml b/agents/agent.yaml\n",
+    }
+
+
+def paged_commits(fake_api: FakeAPI) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.params.get("cursor") == "page-2":
+            body = {"records": [commit_body("c2")], "count": 1, "next": None}
+        else:
+            body = {
+                "records": [commit_body("c1")],
+                "count": 1,
+                "next": "page-2",
+            }
+        return httpx.Response(200, json=body)
+
+    fake_api.add_handler("GET", COMMITS, handler)
 
 
 def paged_directory(fake_api: FakeAPI) -> None:
@@ -202,6 +251,65 @@ def test_missing_path_raises_not_found(fake_api: FakeAPI) -> None:
         repositories(fake_api).contents.get(REPOSITORY_ID, "nope")
 
 
+# --- data plane commits -----------------------------------------------
+
+
+def test_commits_page_across_cursor(fake_api: FakeAPI) -> None:
+    paged_commits(fake_api)
+    commits = list(
+        repositories(fake_api).commits(
+            REPOSITORY_ID, sha="main", path="agents", limit=1
+        )
+    )
+    assert [c.sha for c in commits] == ["c1", "c2"]
+    assert all(isinstance(c, RepositoryCommit) for c in commits)
+    assert commits[0].committer.name == "Bot"
+    first, second = fake_api.requests
+    assert first.path == COMMITS
+    assert dict(first.params) == {
+        "sha": "main",
+        "path": "agents",
+        "limit": "1",
+    }
+    assert dict(second.params) == {
+        "sha": "main",
+        "path": "agents",
+        "limit": "1",
+        "cursor": "page-2",
+    }
+
+
+def test_commits_omit_unset_filters(fake_api: FakeAPI) -> None:
+    paged_commits(fake_api)
+    page = repositories(fake_api).commits(UUID(REPOSITORY_ID)).page()
+    assert page.next == "page-2"
+    assert dict(fake_api.last_request.params) == {}
+
+
+def test_commit_detail(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", f"{COMMITS}/{COMMIT}", json_body=commit_detail())
+    detail = repositories(fake_api).commit(UUID(REPOSITORY_ID), COMMIT)
+    assert isinstance(detail, RepositoryCommitDetail)
+    assert detail.parents == ["p0"]
+    assert detail.files[0].status == "modified"
+    assert detail.patch.startswith("diff --git")
+
+
+def test_commit_ref_is_encoded(fake_api: FakeAPI) -> None:
+    fake_api.add_handler(
+        "GET",
+        f"{COMMITS}/feat/x",
+        lambda _r: httpx.Response(200, json=commit_detail()),
+    )
+    repositories(fake_api).commit(REPOSITORY_ID, "feat/x")
+    assert fake_api.last_request.url.raw_path == f"{COMMITS}/feat%2Fx".encode()
+
+
+def test_missing_commit_raises_not_found(fake_api: FakeAPI) -> None:
+    with pytest.raises(NotFoundError):
+        repositories(fake_api).commit(REPOSITORY_ID, "deadbeef")
+
+
 # --- async twins --------------------------------------------------------
 
 
@@ -250,3 +358,23 @@ async def test_async_get_file_encodes_path(fake_api: FakeAPI) -> None:
     assert (
         fake_api.last_request.url.raw_path == f"{CONTENTS}/a%20b.md".encode()
     )
+
+
+async def test_async_commits_page_across_cursor(fake_api: FakeAPI) -> None:
+    paged_commits(fake_api)
+    pager = async_repositories(fake_api).commits(REPOSITORY_ID, sha="v1")
+    first = await pager
+    assert first.next == "page-2"
+    shas = [c.sha async for c in pager]
+    assert shas == ["c1", "c2"]
+    assert dict(fake_api.last_request.params) == {
+        "sha": "v1",
+        "cursor": "page-2",
+    }
+
+
+async def test_async_commit_detail(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", f"{COMMITS}/{COMMIT}", json_body=commit_detail())
+    detail = await async_repositories(fake_api).commit(REPOSITORY_ID, COMMIT)
+    assert detail.sha == COMMIT
+    assert detail.files[0].changes == 2

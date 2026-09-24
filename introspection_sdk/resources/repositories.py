@@ -1,4 +1,5 @@
-"""``client.repositories`` — repository lookup (CP) and contents (DP).
+"""``client.repositories`` — repository lookup (CP), contents and commits
+(DP).
 
 Read-only: a runner resolves the repository behind the recipe it runs, it
 does not register one. Linking a repository to a project is a
@@ -7,7 +8,8 @@ project-authoring act and lives in the CLI.
 Unlike the other CP lists, ``GET /v1/repositories`` answers a bare JSON
 array rather than the cursor envelope, so :meth:`Repositories.list` returns
 a ``list``. Contents are read on the data plane, which resolves ``ref`` to
-one commit and reads every page of a listing at it.
+one commit and reads every page of a listing at it. Commits page the
+history from ``sha`` (the default branch when omitted).
 """
 
 from __future__ import annotations
@@ -20,9 +22,17 @@ from uuid import UUID
 from pydantic import TypeAdapter
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
-from introspection_sdk.pagination import AsyncPager, Pager
+from introspection_sdk.pagination import (
+    AsyncPager,
+    Pager,
+    async_cursor_paginate,
+    cursor_paginate,
+)
+from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.repositories import (
     Repository,
+    RepositoryCommit,
+    RepositoryCommitDetail,
     RepositoryContent,
     RepositoryDirectory,
     RepositoryEntry,
@@ -38,6 +48,14 @@ def _contents_path(repository_id: UUID | str, path: str) -> str:
     base = f"/v1/repositories/{repository_id}/contents"
     segments = [quote(s, safe="") for s in path.strip("/").split("/") if s]
     return f"{base}/{'/'.join(segments)}" if segments else base
+
+
+def _commits_path(repository_id: UUID | str) -> str:
+    return f"/v1/repositories/{repository_id}/commits"
+
+
+def _commit_path(repository_id: UUID | str, sha: str) -> str:
+    return f"{_commits_path(repository_id)}/{quote(sha, safe='')}"
 
 
 def _directory(payload: Any, path: str) -> RepositoryDirectory:
@@ -107,12 +125,14 @@ class RepositoryContents:
 
 
 class Repositories:
-    """CP ``/v1/repositories`` namespace, plus DP :attr:`contents`."""
+    """CP ``/v1/repositories`` namespace, plus DP :attr:`contents` and
+    commits."""
 
     contents: RepositoryContents
 
     def __init__(self, http: _HttpClient, dp_http: _HttpClient) -> None:
         self._http = http
+        self._dp_http = dp_http
         self.contents = RepositoryContents(dp_http)
 
     def list(
@@ -145,6 +165,41 @@ class Repositories:
             params={"project": project},
         )
         return Repository.model_validate(payload)
+
+    def commits(
+        self,
+        repository_id: UUID | str,
+        sha: str | None = None,
+        path: str | None = None,
+        limit: int | None = None,
+    ) -> Pager[RepositoryCommit, Paginated[RepositoryCommit]]:
+        """The history from ``sha`` (a branch, tag or commit; the default
+        branch when omitted) across pages, narrowed to commits touching
+        ``path`` when set."""
+
+        def fetch(cursor: str | None) -> Paginated[RepositoryCommit]:
+            payload = self._dp_http.request(
+                "GET",
+                _commits_path(repository_id),
+                params={
+                    "sha": sha,
+                    "path": path,
+                    "cursor": cursor,
+                    "limit": limit,
+                },
+            )
+            return Paginated[RepositoryCommit].model_validate(payload)
+
+        return cursor_paginate(fetch)
+
+    def commit(
+        self, repository_id: UUID | str, sha: str
+    ) -> RepositoryCommitDetail:
+        """One commit with its changed files and unified diff."""
+        payload = self._dp_http.request(
+            "GET", _commit_path(repository_id, sha)
+        )
+        return RepositoryCommitDetail.model_validate(payload)
 
 
 class AsyncRepositoryContents:
@@ -200,6 +255,7 @@ class AsyncRepositories:
         self, http: _AsyncHttpClient, dp_http: _AsyncHttpClient
     ) -> None:
         self._http = http
+        self._dp_http = dp_http
         self.contents = AsyncRepositoryContents(dp_http)
 
     async def list(
@@ -228,6 +284,39 @@ class AsyncRepositories:
             params={"project": project},
         )
         return Repository.model_validate(payload)
+
+    def commits(
+        self,
+        repository_id: UUID | str,
+        sha: str | None = None,
+        path: str | None = None,
+        limit: int | None = None,
+    ) -> AsyncPager[RepositoryCommit, Paginated[RepositoryCommit]]:
+        """Async twin of :meth:`Repositories.commits`."""
+
+        async def fetch(cursor: str | None) -> Paginated[RepositoryCommit]:
+            payload = await self._dp_http.request(
+                "GET",
+                _commits_path(repository_id),
+                params={
+                    "sha": sha,
+                    "path": path,
+                    "cursor": cursor,
+                    "limit": limit,
+                },
+            )
+            return Paginated[RepositoryCommit].model_validate(payload)
+
+        return async_cursor_paginate(fetch)
+
+    async def commit(
+        self, repository_id: UUID | str, sha: str
+    ) -> RepositoryCommitDetail:
+        """Async twin of :meth:`Repositories.commit`."""
+        payload = await self._dp_http.request(
+            "GET", _commit_path(repository_id, sha)
+        )
+        return RepositoryCommitDetail.model_validate(payload)
 
 
 __all__ = [
