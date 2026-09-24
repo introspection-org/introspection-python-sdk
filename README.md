@@ -187,6 +187,24 @@ for item in client.annotations.list(label="needs-review"):
 Reusable labels live in `client.project_labels`; their slug and color are
 immutable after creation, while the optional description can be updated.
 
+## Browse repositories
+
+`client.repositories` lists the Git repositories linked to a project and reads
+their contents at one resolved commit through the data plane:
+
+```python
+repo = client.repositories.list(slug="acme/support")[0]
+
+for entry in client.repositories.contents(repo.id, "agents", ref="main"):
+    print(entry.type, entry.path)
+
+readme = client.repositories.contents.get(repo.id, "README.md")
+print(readme.type, readme.commit_sha)
+```
+
+Iterating `contents()` follows the page cursor; `contents.get()` returns a
+`RepositoryDirectory` page or a `RepositoryFile`, discriminated on `type`.
+
 See [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence) for transcripts,
 typed events, and metrics queries, [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
 for durable inputs and grants, and [`examples/`](examples/introspection_examples/)

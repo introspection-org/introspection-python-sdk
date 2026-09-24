@@ -61,6 +61,12 @@ from introspection_sdk.schemas.annotations import (
     ProjectLabelCreate,
     ProjectLabelUpdate,
 )
+from introspection_sdk.schemas.repositories import (
+    Repository,
+    RepositoryDirectory,
+    RepositoryEntry,
+    RepositoryFile,
+)
 
 if TYPE_CHECKING:
     # Static type-checkers see the real classes; at runtime they're
@@ -162,6 +168,10 @@ __all__ = [
     "ProjectLabelCreate",
     "ProjectLabelUpdate",
     "RateLimitError",
+    "Repository",
+    "RepositoryDirectory",
+    "RepositoryEntry",
+    "RepositoryFile",
     "ResumeEntry",
     "RunHandle",
     "Runner",

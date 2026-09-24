@@ -458,6 +458,12 @@ SURFACES = (
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
     ),
+    # --- repositories -------------------------------------------------------
+    # TODO(introspection-org/introspection-cloud#2981): add surfaces for the
+    # `GET /v1/repositories` filters (`slug` is not in the published CP
+    # reference yet) and the DP `/v1/repositories/{id}/contents` route and
+    # `Repository*` models once the reference publishes them. Until then a
+    # surface here would fail on the reference lagging, not on the SDK.
     # --- metrics -----------------------------------------------------------
     Surface(
         name="MetricQueryRequest",
