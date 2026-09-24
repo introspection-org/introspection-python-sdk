@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.19.0...v0.20.0) (2026-09-24)
+
+
+### Features
+
+* add repository commits ([#147](https://github.com/introspection-org/introspection-python-sdk/issues/147)) ([3ed44b4](https://github.com/introspection-org/introspection-python-sdk/commit/3ed44b4ef50b96db12ce9aeadee49f80258ed09e))
+* add repository contents ([#145](https://github.com/introspection-org/introspection-python-sdk/issues/145)) ([540eb79](https://github.com/introspection-org/introspection-python-sdk/commit/540eb7993fa73a77a781dd6d89e18a566217ac54))
+
 ## [0.19.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.18.0...v0.19.0) (2026-09-02)
 
 
