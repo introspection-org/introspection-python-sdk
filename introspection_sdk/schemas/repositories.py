@@ -1,4 +1,5 @@
-"""Pydantic mirrors of CP ``/v1/repositories`` and DP repository contents.
+"""Pydantic mirrors of CP ``/v1/repositories`` and DP repository contents
+and commits.
 
 Wire fields are snake_case verbatim and unknown fields are tolerated
 via ``extra="allow"`` so API additions don't break the SDK.
@@ -88,8 +89,48 @@ RepositoryContent = Annotated[
 ]
 
 
+class RepositoryCommitPerson(_ApiModel):
+    """A commit's author or committer."""
+
+    name: str
+    email: str | None = None
+    date: str | None = None
+
+
+class RepositoryCommit(_ApiModel):
+    """One commit of a history listing."""
+
+    sha: str
+    parents: list[str]
+    message: str
+    author: RepositoryCommitPerson
+    committer: RepositoryCommitPerson
+
+
+class RepositoryCommitFile(_ApiModel):
+    """One file a commit changed."""
+
+    filename: str
+    status: Literal["added", "removed", "modified", "renamed"]
+    additions: int
+    deletions: int
+    changes: int
+
+
+class RepositoryCommitDetail(RepositoryCommit):
+    """A commit with its changed files; ``patch`` is the whole commit as a
+    unified git diff."""
+
+    files: list[RepositoryCommitFile]
+    patch: str
+
+
 __all__ = [
     "Repository",
+    "RepositoryCommit",
+    "RepositoryCommitDetail",
+    "RepositoryCommitFile",
+    "RepositoryCommitPerson",
     "RepositoryContent",
     "RepositoryDirectory",
     "RepositoryEntry",

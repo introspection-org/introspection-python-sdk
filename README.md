@@ -205,6 +205,16 @@ print(readme.type, readme.commit_sha)
 Iterating `contents()` follows the page cursor; `contents.get()` returns a
 `RepositoryDirectory` page or a `RepositoryFile`, discriminated on `type`.
 
+History pages the same way, and one commit carries its changed files and diff:
+
+```python
+for commit in client.repositories.commits(repo.id, sha="main", path="agents"):
+    print(commit.sha[:7], commit.message.splitlines()[0])
+
+detail = client.repositories.commit(repo.id, commit.sha)
+print([f.filename for f in detail.files], len(detail.patch))
+```
+
 See [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence) for transcripts,
 typed events, and metrics queries, [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
 for durable inputs and grants, and [`examples/`](examples/introspection_examples/)

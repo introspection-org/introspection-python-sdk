@@ -84,6 +84,10 @@ from introspection_sdk.schemas.metrics import (
 )
 from introspection_sdk.schemas.repositories import (
     Repository,
+    RepositoryCommit,
+    RepositoryCommitDetail,
+    RepositoryCommitFile,
+    RepositoryCommitPerson,
     RepositoryContent,
     RepositoryDirectory,
     RepositoryEntry,
@@ -159,6 +163,10 @@ __all__ = [
     "ProjectLabelCreate",
     "ProjectLabelUpdate",
     "Repository",
+    "RepositoryCommit",
+    "RepositoryCommitDetail",
+    "RepositoryCommitFile",
+    "RepositoryCommitPerson",
     "RepositoryContent",
     "RepositoryDirectory",
     "RepositoryEntry",

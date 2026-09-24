@@ -63,6 +63,10 @@ from introspection_sdk.schemas.annotations import (
 )
 from introspection_sdk.schemas.repositories import (
     Repository,
+    RepositoryCommit,
+    RepositoryCommitDetail,
+    RepositoryCommitFile,
+    RepositoryCommitPerson,
     RepositoryDirectory,
     RepositoryEntry,
     RepositoryFile,
@@ -169,6 +173,10 @@ __all__ = [
     "ProjectLabelUpdate",
     "RateLimitError",
     "Repository",
+    "RepositoryCommit",
+    "RepositoryCommitDetail",
+    "RepositoryCommitFile",
+    "RepositoryCommitPerson",
     "RepositoryDirectory",
     "RepositoryEntry",
     "RepositoryFile",
