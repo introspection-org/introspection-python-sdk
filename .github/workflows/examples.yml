@@ -64,3 +64,4 @@ jobs:
         run: |
           uv run -m introspection_examples.api.runtimes
           uv run -m introspection_examples.api.async_runtimes
+          uv run -m introspection_examples.api.repositories

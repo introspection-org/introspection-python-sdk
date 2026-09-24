@@ -82,6 +82,13 @@ from introspection_sdk.schemas.metrics import (
     MetricTimeDimension,
     MetricView,
 )
+from introspection_sdk.schemas.repositories import (
+    Repository,
+    RepositoryContent,
+    RepositoryDirectory,
+    RepositoryEntry,
+    RepositoryFile,
+)
 from introspection_sdk.schemas.trajectory import (
     Trajectory,
     TrajectoryAssistantRecord,
@@ -151,6 +158,11 @@ __all__ = [
     "ProjectLabel",
     "ProjectLabelCreate",
     "ProjectLabelUpdate",
+    "Repository",
+    "RepositoryContent",
+    "RepositoryDirectory",
+    "RepositoryEntry",
+    "RepositoryFile",
     "ResumeEntry",
     "SpanAttributes",
     "SpanKind",
