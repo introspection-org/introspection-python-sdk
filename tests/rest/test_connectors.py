@@ -7,6 +7,7 @@ from uuid import UUID
 
 import httpx2 as httpx
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 from introspection_sdk._errors import NotFoundError, ValidationError
 from introspection_sdk.resources.connectors import (
@@ -18,6 +19,8 @@ from introspection_sdk.resources.connectors import (
 from introspection_sdk.schemas.connectors import (
     ConnectionAuthorizationPending,
     ConnectionToken,
+    ConnectorAuthorizeBinding,
+    ConnectorOAuthClientRegistration,
 )
 
 from .conftest import (
@@ -37,6 +40,40 @@ CONNECTION_PATH = f"{CONNECTIONS_PATH}/{CONNECTION_ID}"
 AUTHORIZE_PATH = "/v1/oauth/connections/authorize"
 APPS_PATH = f"{CONNECTOR_PATH}/apps"
 TOKEN_PATH = "/v1/oauth/connections/token"
+CUSTOM_APPS_PATH = "/v1/connectors/custom/apps"
+DISCOVER_PATH = "/v1/connectors/discover-oauth"
+LINEAR_MCP = "https://mcp.linear.app/mcp"
+
+
+def linear_listing() -> dict[str, object]:
+    return {
+        "slug": "linear",
+        "name": "Linear",
+        "description": "Issue tracking",
+        "mcp_url": LINEAR_MCP,
+        "docs_url": "https://linear.app/docs/mcp",
+    }
+
+
+def discovery_payload(**over: object) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "issuer": "https://mcp.linear.app",
+        "authorization_endpoint": "https://mcp.linear.app/authorize",
+        "token_endpoint": "https://mcp.linear.app/token",
+        "registration_endpoint": "https://mcp.linear.app/register",
+        "token_endpoint_auth_methods_supported": ["client_secret_post"],
+        "code_challenge_methods_supported": ["S256"],
+        "scopes_supported": ["read", "write"],
+        "client_id_metadata_document_supported": False,
+        "resource": LINEAR_MCP,
+        "redirect_uri": "https://api.test/v1/oauth/connections/callback",
+        "client_id": "dyn-client",
+        "client_secret": "dyn-secret",
+        "client_registration": "dynamic",
+    }
+    payload.update(over)
+    return payload
+
 
 # The wire ids are strings (paths, bodies); the methods take UUIDs.
 CONNECTOR_UUID = UUID(CONNECTOR_ID)
@@ -243,6 +280,186 @@ def test_pipedream_apps_and_progressive_scope_authorization(fake_api: FakeAPI):
     }
 
 
+def test_create_sends_pipedream_provider_workspace_id(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/connectors",
+        json_body=connector_payload(
+            provider="pipedream", auth_mode="client_credentials"
+        ),
+    )
+
+    created = Connectors(fake_api.client()).create(
+        name="Pipedream Connect",
+        provider="pipedream",
+        auth_mode="client_credentials",
+        client_id="pd-client",
+        client_secret="pd-secret",
+        metadata={"provider_workspace_id": "proj_abc"},
+    )
+
+    assert created.auth_mode == "client_credentials"
+    assert fake_api.last_request.json()["metadata"] == {
+        "provider_workspace_id": "proj_abc"
+    }
+
+
+def test_search_custom_apps_reads_the_open_registry(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", CUSTOM_APPS_PATH, json_body={"data": [linear_listing()]}
+    )
+
+    apps = Connectors(fake_api.client()).search_custom_apps("linear", limit=5)
+
+    assert apps[0].mcp_url == LINEAR_MCP
+    assert apps[0].docs_url == "https://linear.app/docs/mcp"
+    # No connector id and no project: the registry precedes any connector.
+    assert fake_api.last_request.path == CUSTOM_APPS_PATH
+    assert dict(fake_api.last_request.params) == {"q": "linear", "limit": "5"}
+
+
+def test_search_custom_apps_omits_an_unset_limit(fake_api: FakeAPI):
+    fake_api.add("GET", CUSTOM_APPS_PATH, json_body={"data": []})
+
+    assert Connectors(fake_api.client()).search_custom_apps("li") == []
+    assert dict(fake_api.last_request.params) == {"q": "li"}
+
+
+def test_search_custom_apps_surfaces_a_short_query_422(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        CUSTOM_APPS_PATH,
+        status=422,
+        json_body={"detail": "String should have at least 2 characters"},
+    )
+
+    with pytest.raises(ValidationError) as excinfo:
+        Connectors(fake_api.client()).search_custom_apps("l")
+
+    assert excinfo.value.status_code == 422
+
+
+def test_discover_oauth_returns_a_registered_client(fake_api: FakeAPI):
+    fake_api.add("POST", DISCOVER_PATH, json_body=discovery_payload())
+
+    discovered = Connectors(fake_api.client()).discover_oauth(LINEAR_MCP)
+
+    assert fake_api.last_request.json() == {"issuer": LINEAR_MCP}
+    assert "project" not in fake_api.last_request.params
+    assert discovered.client_registration is (
+        ConnectorOAuthClientRegistration.DYNAMIC
+    )
+    assert discovered.client_id == "dyn-client"
+    assert discovered.client_secret == "dyn-secret"
+    assert discovered.scopes_supported == ["read", "write"]
+    assert discovered.resource == LINEAR_MCP
+
+
+def test_discover_oauth_without_automatic_registration(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        DISCOVER_PATH,
+        json_body={
+            "issuer": "https://auth.example.com",
+            "authorization_endpoint": "https://auth.example.com/authorize",
+            "token_endpoint": "https://auth.example.com/token",
+            "redirect_uri": "https://api.test/callback",
+        },
+    )
+
+    discovered = Connectors(fake_api.client()).discover_oauth(
+        "https://auth.example.com"
+    )
+
+    assert discovered.client_registration is None
+    assert discovered.client_id is None
+    assert discovered.code_challenge_methods_supported == []
+    assert discovered.client_id_metadata_document_supported is False
+
+
+def test_discover_oauth_surfaces_the_discovery_400(fake_api: FakeAPI):
+    detail = "No OAuth authorization server metadata found"
+    fake_api.add(
+        "POST", DISCOVER_PATH, status=400, json_body={"detail": detail}
+    )
+
+    with pytest.raises(ValidationError) as excinfo:
+        Connectors(fake_api.client()).discover_oauth("https://nope.example")
+
+    assert excinfo.value.status_code == 400
+    assert detail in str(excinfo.value)
+
+
+def test_authorize_sends_an_mcp_binding(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", AUTHORIZE_PATH, json_body=connector_authorization_payload()
+    )
+
+    Connectors(fake_api.client()).authorize(
+        CONNECTOR_UUID,
+        runtime="support-agent",
+        binding={
+            "environment": "production",
+            "mcp_server_id": "linear",
+            "url": LINEAR_MCP,
+        },
+    )
+
+    # Unset optional binding fields stay off the wire.
+    assert fake_api.last_request.json() == {
+        "connector_id": CONNECTOR_ID,
+        "runtime": "support-agent",
+        "binding": {
+            "environment": "production",
+            "mcp_server_id": "linear",
+            "url": LINEAR_MCP,
+        },
+    }
+
+
+def test_authorize_binding_carries_name_and_headers(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", AUTHORIZE_PATH, json_body=connector_authorization_payload()
+    )
+
+    Connectors(fake_api.client()).authorize(
+        CONNECTOR_UUID,
+        runtime="support-agent",
+        binding=ConnectorAuthorizeBinding(
+            environment="staging",
+            mcp_server_id="linear_mcp",
+            url=LINEAR_MCP,
+            name="Linear",
+            headers={"X-Team": "eng"},
+        ),
+    )
+
+    assert fake_api.last_request.json()["binding"] == {
+        "environment": "staging",
+        "mcp_server_id": "linear_mcp",
+        "url": LINEAR_MCP,
+        "name": "Linear",
+        "headers": {"X-Team": "eng"},
+    }
+
+
+def test_authorize_rejects_an_invalid_mcp_server_id_before_sending(
+    fake_api: FakeAPI,
+):
+    with pytest.raises(PydanticValidationError):
+        Connectors(fake_api.client()).authorize(
+            CONNECTOR_UUID,
+            runtime="support-agent",
+            binding={
+                "environment": "production",
+                "mcp_server_id": "Linear!",
+                "url": LINEAR_MCP,
+            },
+        )
+
+    assert fake_api.requests == []
+
+
 def test_authorize_surfaces_the_missing_runtime_422(fake_api: FakeAPI):
     detail = (
         "`runtime` is required for a slack connector — "
@@ -299,6 +516,34 @@ def test_connections_list_targets_the_nested_path(fake_api: FakeAPI):
     assert page.records[0].created_by_member_id != page.records[0].member_id
     assert fake_api.last_request.path == CONNECTIONS_PATH
     assert fake_api.last_request.params["limit"] == "25"
+
+
+def test_connection_carries_the_provider_account(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        CONNECTION_PATH,
+        json_body=connection_payload(
+            provider_app="google_sheets", provider_account_id="apn_123"
+        ),
+    )
+
+    connection = Connections(fake_api.client()).get(
+        CONNECTOR_UUID, CONNECTION_UUID
+    )
+
+    assert connection.provider_app == "google_sheets"
+    assert connection.provider_account_id == "apn_123"
+
+
+def test_connection_provider_fields_default_to_none(fake_api: FakeAPI):
+    fake_api.add("GET", CONNECTION_PATH, json_body=connection_payload())
+
+    connection = Connections(fake_api.client()).get(
+        CONNECTOR_UUID, CONNECTION_UUID
+    )
+
+    assert connection.provider_app is None
+    assert connection.provider_account_id is None
 
 
 def test_connections_create_registers_an_existing_token(fake_api: FakeAPI):
@@ -490,3 +735,55 @@ async def test_async_authorize_surfaces_the_422(fake_api: FakeAPI):
 
     with pytest.raises(ValidationError):
         await connectors.authorize(CONNECTOR_UUID)
+
+
+async def test_async_search_custom_apps_and_discover_oauth(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", CUSTOM_APPS_PATH, json_body={"data": [linear_listing()]}
+    )
+    fake_api.add("POST", DISCOVER_PATH, json_body=discovery_payload())
+    connectors = AsyncConnectors(fake_api.async_client())
+
+    apps = await connectors.search_custom_apps("linear", limit=3)
+    assert apps[0].slug == "linear"
+    assert dict(fake_api.last_request.params) == {"q": "linear", "limit": "3"}
+
+    discovered = await connectors.discover_oauth(LINEAR_MCP)
+    assert discovered.client_id == "dyn-client"
+    assert fake_api.last_request.json() == {"issuer": LINEAR_MCP}
+
+
+async def test_async_discover_oauth_surfaces_the_400(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        DISCOVER_PATH,
+        status=400,
+        json_body={"detail": "discovery failed"},
+    )
+
+    with pytest.raises(ValidationError):
+        await AsyncConnectors(fake_api.async_client()).discover_oauth(
+            "https://nope.example"
+        )
+
+
+async def test_async_authorize_sends_an_mcp_binding(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", AUTHORIZE_PATH, json_body=connector_authorization_payload()
+    )
+
+    await AsyncConnectors(fake_api.async_client()).authorize(
+        CONNECTOR_UUID,
+        runtime="support-agent",
+        binding={
+            "environment": "production",
+            "mcp_server_id": "linear",
+            "url": LINEAR_MCP,
+        },
+    )
+
+    assert fake_api.last_request.json()["binding"] == {
+        "environment": "production",
+        "mcp_server_id": "linear",
+        "url": LINEAR_MCP,
+    }

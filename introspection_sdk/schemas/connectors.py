@@ -30,6 +30,7 @@ class ConnectorAuthMode(StrEnum):
 
     STATIC = "static"
     OAUTH_STORED = "oauth_stored"
+    CLIENT_CREDENTIALS = "client_credentials"
     IDENTITY_ASSERTION = "identity_assertion"
     FEDERATED_EXCHANGE = "federated_exchange"
     PERSON_AUTHORIZED = "person_authorized"
@@ -158,6 +159,11 @@ class Connection(_ApiModel):
     scopes_granted: list[str] = []
     status: ConnectionStatus = ConnectionStatus.ACTIVE
     token_expires_at: datetime | None = None
+    provider_app: str | None = None
+    """Application slug within a multi-application provider (Pipedream);
+    ``None`` otherwise."""
+    provider_account_id: str | None = None
+    """The provider's own identifier for the connected account."""
 
 
 class ConnectorCreateRequest(_ApiModel):
@@ -165,8 +171,12 @@ class ConnectorCreateRequest(_ApiModel):
 
     ``client_secret`` and ``signing_secret`` are write-only: accepted
     here, absent from every response. ``slug`` is derived from ``name``
-    when omitted, and create is idempotent on it. ``issuer`` drives
-    OAuth endpoint discovery and is not persisted.
+    when omitted and is unique per project: a repeat create with the same
+    slug replaces the live connector's configuration (name, environment,
+    endpoints, scopes, api hosts, client id, metadata, ...) and keeps its
+    ``provider``, ``auth_mode`` and stored secrets. ``issuer`` drives
+    OAuth endpoint discovery (and, where the provider supports it, client
+    registration) and is not persisted.
     """
 
     name: str
@@ -183,6 +193,10 @@ class ConnectorCreateRequest(_ApiModel):
     client_secret: str | None = None
     signing_secret: str | None = None
     metadata: dict[str, Any] | None = None
+    """Provider-specific settings. A ``pipedream`` connector requires
+    ``provider_workspace_id`` — its Pipedream Connect project id
+    (``proj_...``); ``provider_environment`` is derived from
+    ``environment`` by the server and need not be sent."""
     issuer: str | None = None
     person_server_mode: ConnectorPersonServerMode | None = None
     person_server_url: str | None = None
@@ -226,6 +240,35 @@ class ConnectionCreateRequest(_ApiModel):
     token_expires_at: datetime | None = None
 
 
+class ConnectorAuthorizeBinding(_ApiModel):
+    """The MCP endpoint binding an authorize completes into.
+
+    On a successful grant the control plane writes this endpoint binding
+    in the same transaction as the connection, so the runtime is never
+    authorized-but-unbound. Requires ``runtime`` on the authorize request.
+    Non-secret: the provider token stays on the connection and is
+    injected at the egress, so ``headers`` cannot set ``Authorization``.
+    """
+
+    environment: str
+    """Runtime environment lane (``development`` / ``staging`` /
+    ``production``) the endpoint belongs to."""
+    mcp_server_id: str = Field(
+        min_length=1,
+        max_length=255,
+        pattern=r"^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?$",
+    )
+    """The Recipe MCP server id this connector backs
+    (``package.json#pi.mcp.servers[].id``)."""
+    url: str = Field(min_length=1, max_length=1024)
+    """Streamable-HTTP MCP resource URL (https)."""
+    name: str | None = Field(default=None, max_length=255)
+    """Display label; defaults to ``mcp_server_id``."""
+    headers: dict[str, str] | None = None
+    """Extra non-``Authorization`` headers sent alongside the connection
+    token."""
+
+
 class ConnectorAuthorizeRequest(_ApiModel):
     """Mint a consent URL (``POST /v1/oauth/connections/authorize`` body).
 
@@ -248,6 +291,8 @@ class ConnectorAuthorizeRequest(_ApiModel):
     connection with their own caller rather than the agent member that made
     the API call. Omit to attribute the grant to the authenticated
     principal."""
+    binding: ConnectorAuthorizeBinding | None = None
+    """MCP endpoint binding written with the grant; requires ``runtime``."""
 
 
 class ConnectorAuthorization(_ApiModel):
@@ -263,13 +308,60 @@ class ConnectorAuthorization(_ApiModel):
 
 
 class ConnectorApp(_ApiModel):
-    """An application available from a connector's provider catalogue."""
+    """An application listing — from a connector's provider catalogue, or
+    from the open MCP registry a custom connector picks from."""
 
     slug: str
     name: str
     icon_url: str | None = None
     description: str | None = None
     auth_type: str | None = None
+    mcp_url: str | None = None
+    """The listing's MCP server, where it has one."""
+    docs_url: str | None = None
+    """The vendor's documentation for this server, where known."""
+
+
+class ConnectorOAuthClientRegistration(StrEnum):
+    """How the platform identified itself to a custom OAuth provider."""
+
+    CLIENT_ID_METADATA_DOCUMENT = "client_id_metadata_document"
+    DYNAMIC = "dynamic"
+    PRE_REGISTERED = "pre_registered"
+
+
+class ConnectorOAuthDiscoveryRequest(_ApiModel):
+    """Resolve OAuth metadata (``POST /v1/connectors/discover-oauth``
+    body). ``issuer`` is an authorization-server issuer URL, or an MCP
+    server URL whose RFC 9728 metadata names its authorization server."""
+
+    issuer: str = Field(min_length=1)
+
+
+class ConnectorOAuthDiscoveryResponse(_ApiModel):
+    """What OAuth discovery learned about a provider.
+
+    ``client_id`` / ``client_secret`` are set when the control plane
+    obtained a client automatically (``client_registration``); pass them
+    to ``create`` so a second client is not registered. ``redirect_uri``
+    is the exact callback a hand-registered client must be given.
+    """
+
+    issuer: str
+    authorization_endpoint: str
+    token_endpoint: str
+    registration_endpoint: str | None = None
+    token_endpoint_auth_methods_supported: list[str] = Field(
+        default_factory=list
+    )
+    code_challenge_methods_supported: list[str] = Field(default_factory=list)
+    scopes_supported: list[str] = Field(default_factory=list)
+    client_id_metadata_document_supported: bool = False
+    resource: str | None = None
+    redirect_uri: str
+    client_id: str | None = None
+    client_secret: str | None = None
+    client_registration: ConnectorOAuthClientRegistration | None = None
 
 
 class ConnectionMissionConstraints(_ApiModel):
@@ -323,8 +415,12 @@ __all__ = [
     "ConnectorApp",
     "ConnectorAuthMode",
     "ConnectorAuthorization",
+    "ConnectorAuthorizeBinding",
     "ConnectorAuthorizeRequest",
     "ConnectorCreateRequest",
+    "ConnectorOAuthClientRegistration",
+    "ConnectorOAuthDiscoveryRequest",
+    "ConnectorOAuthDiscoveryResponse",
     "ConnectorPersonServerMode",
     "ConnectorStatus",
     "ConnectorUpdateRequest",

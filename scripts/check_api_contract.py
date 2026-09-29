@@ -159,8 +159,10 @@ SURFACES = (
         where="POST /v1/tasks/{id}/runs body",
         # The SDK splits one wire body into a create request and a resume
         # request; the API declares them as one schema.
-        sdk=lambda: set(TaskRunCreateRequest.model_fields)
-        | set(TaskRunResumeRequest.model_fields),
+        sdk=lambda: (
+            set(TaskRunCreateRequest.model_fields)
+            | set(TaskRunResumeRequest.model_fields)
+        ),
         server=lambda spec: schema_properties(spec, "TaskRunCreate"),
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
@@ -448,6 +450,32 @@ SURFACES = (
         server=lambda spec: schema_properties(spec, "ConnectAuthorizeRequest"),
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="ConnectorOAuthDiscoveryRequest",
+        where="POST /v1/connectors/discover-oauth body",
+        plane="cp",
+        sdk=lambda: signature_params(Connectors.discover_oauth),
+        server=lambda spec: schema_properties(
+            spec, "ConnectorOAuthDiscoveryRequest"
+        ),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="custom app search parameters",
+        where="GET /v1/connectors/custom/apps query parameters",
+        plane="cp",
+        # The SDK spells the required `q` as `query`, as `list_apps` does.
+        sdk=lambda: {
+            "q" if p == "query" else p
+            for p in signature_params(Connectors.search_custom_apps)
+        },
+        server=lambda spec: query_parameters(
+            spec, "/v1/connectors/custom/apps", "get"
+        ),
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
     ),
     Surface(
         name="BrokerTokenRequest",

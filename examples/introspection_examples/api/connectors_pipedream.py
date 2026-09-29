@@ -49,7 +49,10 @@ def main() -> None:
                 auth_mode="client_credentials",
                 client_id=client_id,
                 client_secret=client_secret,
-                metadata={"pipedream_project_id": project_id},
+                # The Pipedream Connect project id (`proj_...`). The
+                # server derives `provider_environment` from the
+                # connector's environment, so it is not sent.
+                metadata={"provider_workspace_id": project_id},
             )
             connector_id = connector.id
             print(f"connector -> {connector.slug} ({connector.id})")

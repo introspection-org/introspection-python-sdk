@@ -40,8 +40,11 @@ from introspection_sdk.schemas.connectors import (
     ConnectorApprovalPolicy,
     ConnectorAuthMode,
     ConnectorAuthorization,
+    ConnectorAuthorizeBinding,
     ConnectorAuthorizeRequest,
     ConnectorCreateRequest,
+    ConnectorOAuthDiscoveryRequest,
+    ConnectorOAuthDiscoveryResponse,
     ConnectorPersonServerMode,
     ConnectorStatus,
     ConnectorUpdateRequest,
@@ -143,6 +146,7 @@ def _authorize_body(
     identity: RunnerIdentity | dict[str, Any] | None,
     app: str | None,
     allow_progressive_scopes: bool,
+    binding: ConnectorAuthorizeBinding | dict[str, Any] | None,
 ) -> dict[str, Any]:
     return ConnectorAuthorizeRequest.model_validate(
         {
@@ -154,6 +158,7 @@ def _authorize_body(
             "identity": identity,
             "app": app,
             "allow_progressive_scopes": allow_progressive_scopes,
+            "binding": binding,
         }
     ).model_dump(mode="json", exclude_none=True, exclude_defaults=True)
 
@@ -361,11 +366,20 @@ class Connectors:
         assertion_audience: str | None = None,
         webhook_url: str | None = None,
     ) -> Connector:
-        """Create a connector (idempotent on ``slug``).
+        """Create a connector, or replace one with the same ``slug``.
+
+        ``slug`` is unique per project. A repeat create with a live slug
+        replaces that connector's configuration (name, environment,
+        endpoints, scopes, api hosts, client id, metadata, ...) and keeps
+        its ``provider``, ``auth_mode`` and stored secrets, so re-running
+        a create never duplicates the connector.
 
         ``client_secret`` / ``signing_secret`` are write-only — never
         returned on any read. Pass ``issuer`` to have the server resolve
-        the OAuth endpoints from ``.well-known`` discovery.
+        the OAuth endpoints from ``.well-known`` discovery and, where the
+        provider supports it, register an OAuth client on its own. A
+        ``pipedream`` connector requires ``metadata["provider_workspace_id"]``
+        — its Pipedream Connect project id (``proj_...``).
         """
         payload = self._http.request(
             "POST",
@@ -410,6 +424,49 @@ class Connectors:
             params={"q": query, "limit": limit},
         )
         return [ConnectorApp.model_validate(app) for app in payload["data"]]
+
+    def search_custom_apps(
+        self,
+        query: str,
+        *,
+        limit: int | None = None,
+    ) -> builtins.list[ConnectorApp]:
+        """Search the open MCP registry — the catalogue a custom connector
+        picks from (``GET /v1/connectors/custom/apps``).
+
+        Takes no connector and no project: it is read before any
+        connector exists. ``query`` is 2–100 characters; ``limit`` is
+        1–50 (server default 20). A listing's ``mcp_url`` is what to pass
+        to :meth:`discover_oauth` and ``create(issuer=...)``.
+        """
+        payload = self._http.request(
+            "GET",
+            "/v1/connectors/custom/apps",
+            params={"q": query, "limit": limit},
+        )
+        return [ConnectorApp.model_validate(app) for app in payload["data"]]
+
+    def discover_oauth(self, issuer: str) -> ConnectorOAuthDiscoveryResponse:
+        """Resolve a provider's OAuth metadata before creating a connector
+        (``POST /v1/connectors/discover-oauth``).
+
+        ``issuer`` is an authorization-server issuer URL or an MCP server
+        URL. Discovery may REGISTER an OAuth client with the provider
+        (dynamic registration) and return its ``client_id`` /
+        ``client_secret`` — pass those to :meth:`create` so a second
+        client is not registered. ``create`` with only ``issuer`` also
+        discovers and registers on its own. Raises
+        :class:`~introspection_sdk.ValidationError` (400) when discovery
+        fails.
+        """
+        payload = self._http.request(
+            "POST",
+            "/v1/connectors/discover-oauth",
+            json=ConnectorOAuthDiscoveryRequest(issuer=issuer).model_dump(
+                mode="json"
+            ),
+        )
+        return ConnectorOAuthDiscoveryResponse.model_validate(payload)
 
     def get(self, connector_id: UUID) -> Connector:
         payload = self._http.request(
@@ -471,6 +528,7 @@ class Connectors:
         identity: RunnerIdentity | dict[str, Any] | None = None,
         app: str | None = None,
         allow_progressive_scopes: bool = False,
+        binding: ConnectorAuthorizeBinding | dict[str, Any] | None = None,
     ) -> ConnectorAuthorization:
         """Mint a consent URL for the connector
         (``POST /v1/oauth/connections/authorize``).
@@ -491,6 +549,12 @@ class Connectors:
         member, so it can raise
         :class:`~introspection_sdk.ConflictError` (409) when the org has
         reached its member limit — a plan conflict, not back-pressure.
+
+        ``binding`` names the MCP endpoint (environment, Recipe MCP
+        server id, https URL) the grant completes into. It requires
+        ``runtime``; on a successful grant the control plane writes the
+        endpoint binding in the same transaction as the connection, so
+        the runtime is never authorized-but-unbound.
         """
         payload = self._http.request(
             "POST",
@@ -504,6 +568,7 @@ class Connectors:
                 identity=identity,
                 app=app,
                 allow_progressive_scopes=allow_progressive_scopes,
+                binding=binding,
             ),
         )
         return ConnectorAuthorization.model_validate(payload)
@@ -657,11 +722,20 @@ class AsyncConnectors:
         assertion_audience: str | None = None,
         webhook_url: str | None = None,
     ) -> Connector:
-        """Create a connector (idempotent on ``slug``).
+        """Create a connector, or replace one with the same ``slug``.
+
+        ``slug`` is unique per project. A repeat create with a live slug
+        replaces that connector's configuration (name, environment,
+        endpoints, scopes, api hosts, client id, metadata, ...) and keeps
+        its ``provider``, ``auth_mode`` and stored secrets, so re-running
+        a create never duplicates the connector.
 
         ``client_secret`` / ``signing_secret`` are write-only — never
         returned on any read. Pass ``issuer`` to have the server resolve
-        the OAuth endpoints from ``.well-known`` discovery.
+        the OAuth endpoints from ``.well-known`` discovery and, where the
+        provider supports it, register an OAuth client on its own. A
+        ``pipedream`` connector requires ``metadata["provider_workspace_id"]``
+        — its Pipedream Connect project id (``proj_...``).
         """
         payload = await self._http.request(
             "POST",
@@ -706,6 +780,51 @@ class AsyncConnectors:
             params={"q": query, "limit": limit},
         )
         return [ConnectorApp.model_validate(app) for app in payload["data"]]
+
+    async def search_custom_apps(
+        self,
+        query: str,
+        *,
+        limit: int | None = None,
+    ) -> builtins.list[ConnectorApp]:
+        """Search the open MCP registry — the catalogue a custom connector
+        picks from (``GET /v1/connectors/custom/apps``).
+
+        Takes no connector and no project: it is read before any
+        connector exists. ``query`` is 2–100 characters; ``limit`` is
+        1–50 (server default 20). A listing's ``mcp_url`` is what to pass
+        to :meth:`discover_oauth` and ``create(issuer=...)``.
+        """
+        payload = await self._http.request(
+            "GET",
+            "/v1/connectors/custom/apps",
+            params={"q": query, "limit": limit},
+        )
+        return [ConnectorApp.model_validate(app) for app in payload["data"]]
+
+    async def discover_oauth(
+        self, issuer: str
+    ) -> ConnectorOAuthDiscoveryResponse:
+        """Resolve a provider's OAuth metadata before creating a connector
+        (``POST /v1/connectors/discover-oauth``).
+
+        ``issuer`` is an authorization-server issuer URL or an MCP server
+        URL. Discovery may REGISTER an OAuth client with the provider
+        (dynamic registration) and return its ``client_id`` /
+        ``client_secret`` — pass those to :meth:`create` so a second
+        client is not registered. ``create`` with only ``issuer`` also
+        discovers and registers on its own. Raises
+        :class:`~introspection_sdk.ValidationError` (400) when discovery
+        fails.
+        """
+        payload = await self._http.request(
+            "POST",
+            "/v1/connectors/discover-oauth",
+            json=ConnectorOAuthDiscoveryRequest(issuer=issuer).model_dump(
+                mode="json"
+            ),
+        )
+        return ConnectorOAuthDiscoveryResponse.model_validate(payload)
 
     async def get(self, connector_id: UUID) -> Connector:
         payload = await self._http.request(
@@ -767,6 +886,7 @@ class AsyncConnectors:
         identity: RunnerIdentity | dict[str, Any] | None = None,
         app: str | None = None,
         allow_progressive_scopes: bool = False,
+        binding: ConnectorAuthorizeBinding | dict[str, Any] | None = None,
     ) -> ConnectorAuthorization:
         """Mint a consent URL for the connector
         (``POST /v1/oauth/connections/authorize``).
@@ -787,6 +907,12 @@ class AsyncConnectors:
         member, so it can raise
         :class:`~introspection_sdk.ConflictError` (409) when the org has
         reached its member limit — a plan conflict, not back-pressure.
+
+        ``binding`` names the MCP endpoint (environment, Recipe MCP
+        server id, https URL) the grant completes into. It requires
+        ``runtime``; on a successful grant the control plane writes the
+        endpoint binding in the same transaction as the connection, so
+        the runtime is never authorized-but-unbound.
         """
         payload = await self._http.request(
             "POST",
@@ -800,6 +926,7 @@ class AsyncConnectors:
                 identity=identity,
                 app=app,
                 allow_progressive_scopes=allow_progressive_scopes,
+                binding=binding,
             ),
         )
         return ConnectorAuthorization.model_validate(payload)
