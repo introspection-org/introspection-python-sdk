@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.20.0...v0.21.0) (2026-09-29)
+
+
+### Features
+
+* add repository merges ([#149](https://github.com/introspection-org/introspection-python-sdk/issues/149)) ([3104ba6](https://github.com/introspection-org/introspection-python-sdk/commit/3104ba6fb7a9af754a0243d129f153e6a82d9aff))
+* **connectors:** add custom app search, OAuth discovery and authorize binding ([#148](https://github.com/introspection-org/introspection-python-sdk/issues/148)) ([66c05bf](https://github.com/introspection-org/introspection-python-sdk/commit/66c05bf464daa7eb1c5e49d1a27bf67ca6571415))
+
 ## [0.20.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.19.0...v0.20.0) (2026-09-24)
 
 
