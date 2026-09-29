@@ -215,6 +215,16 @@ detail = client.repositories.commit(repo.id, commit.sha)
 print([f.filename for f in detail.files], len(detail.patch))
 ```
 
+Merging mirrors GitHub's merges API: `head` is a branch or a full commit sha,
+and `None` means `base` already contains it. A conflict raises
+`ConflictError` with nothing changed.
+
+```python
+merge = client.repositories.merges.create(repo.id, "main", "feature")
+if merge is not None:
+    print(merge.sha, merge.parents)
+```
+
 See [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence) for transcripts,
 typed events, and metrics queries, [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
 for durable inputs and grants, and [`examples/`](examples/introspection_examples/)

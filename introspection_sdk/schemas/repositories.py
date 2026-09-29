@@ -1,5 +1,5 @@
-"""Pydantic mirrors of CP ``/v1/repositories`` and DP repository contents
-and commits.
+"""Pydantic mirrors of CP ``/v1/repositories`` and DP repository contents,
+commits and merges.
 
 Wire fields are snake_case verbatim and unknown fields are tolerated
 via ``extra="allow"`` so API additions don't break the SDK.
@@ -125,6 +125,20 @@ class RepositoryCommitDetail(RepositoryCommit):
     patch: str
 
 
+class RepositoryMerge(_ApiModel):
+    """The merge commit ``head`` produced on ``base``.
+
+    When ``base`` had no commits, ``sha`` equals ``head_sha`` and
+    ``parents`` is ``[head_sha]``.
+    """
+
+    sha: str
+    base: str
+    head: str
+    head_sha: str
+    parents: list[str]
+
+
 __all__ = [
     "Repository",
     "RepositoryCommit",
@@ -135,4 +149,5 @@ __all__ = [
     "RepositoryDirectory",
     "RepositoryEntry",
     "RepositoryFile",
+    "RepositoryMerge",
 ]

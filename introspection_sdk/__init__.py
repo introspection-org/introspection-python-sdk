@@ -70,6 +70,7 @@ from introspection_sdk.schemas.repositories import (
     RepositoryDirectory,
     RepositoryEntry,
     RepositoryFile,
+    RepositoryMerge,
 )
 
 if TYPE_CHECKING:
@@ -180,6 +181,7 @@ __all__ = [
     "RepositoryDirectory",
     "RepositoryEntry",
     "RepositoryFile",
+    "RepositoryMerge",
     "ResumeEntry",
     "RunHandle",
     "Runner",
