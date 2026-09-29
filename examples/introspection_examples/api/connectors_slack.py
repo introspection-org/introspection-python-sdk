@@ -42,8 +42,9 @@ def main() -> None:
     try:
         # 1) Create the connector — the org-level definition of the
         #    provider: your Slack app's credentials and the scopes it asks
-        #    for. Create is idempotent on `slug`, so re-running this
-        #    returns the existing row rather than a duplicate.
+        #    for. `slug` is unique per project: re-running this replaces
+        #    the live connector's configuration rather than creating a
+        #    duplicate, and keeps its provider, auth mode and stored secrets.
         #    `client_secret` is write-only: it goes up here and is absent
         #    from every response.
         #

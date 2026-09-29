@@ -16,6 +16,7 @@ uv run python -m introspection_examples.api.async_runtimes           # AsyncRunn
 uv run python -m introspection_examples.api.repositories             # Repositories: list, browse contents, read a file, page commits
 uv run python -m introspection_examples.api.connectors_slack         # Create a Slack connector and authorize a workspace
 uv run python -m introspection_examples.api.connectors_pipedream     # Create a Pipedream connector and authorize one app
+uv run python -m introspection_examples.api.connectors_custom_app    # Find a custom MCP app, discover OAuth, create + authorize with a binding
 ```
 
 ## Tracing
