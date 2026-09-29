@@ -22,8 +22,10 @@ from introspection_sdk.resources.recipes import AsyncRecipes, Recipes
 from introspection_sdk.resources.repositories import (
     AsyncRepositories,
     AsyncRepositoryContents,
+    AsyncRepositoryMerges,
     Repositories,
     RepositoryContents,
+    RepositoryMerges,
 )
 from introspection_sdk.resources.runtimes import (
     AsyncRuntimeHandle,
@@ -43,6 +45,7 @@ __all__ = [
     "AsyncRecipes",
     "AsyncRepositories",
     "AsyncRepositoryContents",
+    "AsyncRepositoryMerges",
     "AsyncRuntimeHandle",
     "AsyncRuntimes",
     "Connections",
@@ -53,6 +56,7 @@ __all__ = [
     "Recipes",
     "Repositories",
     "RepositoryContents",
+    "RepositoryMerges",
     "RuntimeHandle",
     "Runtimes",
 ]

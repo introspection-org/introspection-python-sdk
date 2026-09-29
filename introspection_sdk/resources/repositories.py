@@ -1,15 +1,16 @@
-"""``client.repositories`` — repository lookup (CP), contents and commits
-(DP).
+"""``client.repositories`` — repository lookup (CP), contents, commits and
+merges (DP).
 
-Read-only: a runner resolves the repository behind the recipe it runs, it
-does not register one. Linking a repository to a project is a
-project-authoring act and lives in the CLI.
+A runner resolves the repository behind the recipe it runs, it does not
+register one. Linking a repository to a project is a project-authoring act
+and lives in the CLI.
 
 Unlike the other CP lists, ``GET /v1/repositories`` answers a bare JSON
 array rather than the cursor envelope, so :meth:`Repositories.list` returns
 a ``list``. Contents are read on the data plane, which resolves ``ref`` to
 one commit and reads every page of a listing at it. Commits page the
-history from ``sha`` (the default branch when omitted).
+history from ``sha`` (the default branch when omitted). Merges mirror
+GitHub's ``POST /repos/{owner}/{repo}/merges``.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from uuid import UUID
 
 from pydantic import TypeAdapter
 
-from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._http import RawResponse, _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
     Pager,
@@ -37,6 +38,7 @@ from introspection_sdk.schemas.repositories import (
     RepositoryDirectory,
     RepositoryEntry,
     RepositoryFile,
+    RepositoryMerge,
 )
 
 _REPOSITORY_LIST = TypeAdapter(list[Repository])
@@ -56,6 +58,26 @@ def _commits_path(repository_id: UUID | str) -> str:
 
 def _commit_path(repository_id: UUID | str, sha: str) -> str:
     return f"{_commits_path(repository_id)}/{quote(sha, safe='')}"
+
+
+def _merges_path(repository_id: UUID | str) -> str:
+    return f"/v1/repositories/{repository_id}/merges"
+
+
+def _merge_body(
+    base: str, head: str, commit_message: str | None
+) -> dict[str, str]:
+    body = {"base": base, "head": head}
+    if commit_message is not None:
+        body["commit_message"] = commit_message
+    return body
+
+
+def _merge(response: RawResponse) -> RepositoryMerge | None:
+    """``None`` on 204: ``base`` already contains ``head``."""
+    if not response.content:
+        return None
+    return RepositoryMerge.model_validate_json(response.content)
 
 
 def _directory(payload: Any, path: str) -> RepositoryDirectory:
@@ -124,16 +146,49 @@ class RepositoryContents:
         return _CONTENT.validate_python(payload)
 
 
+class RepositoryMerges:
+    """DP ``/v1/repositories/{id}/merges`` namespace."""
+
+    def __init__(self, http: _HttpClient) -> None:
+        self._http = http
+
+    def create(
+        self,
+        repository_id: UUID | str,
+        base: str,
+        head: str,
+        commit_message: str | None = None,
+    ) -> RepositoryMerge | None:
+        """Merge ``head`` (a branch or a full commit sha) into ``base``.
+
+        Returns the merge commit, or ``None`` when ``base`` already contains
+        ``head``. A conflict raises :class:`ConflictError` with nothing
+        changed. A merge still running after 60s raises
+        :class:`SandboxUnavailableError`; calling again with the same
+        ``base`` and ``head`` attaches to it. ``commit_message`` defaults
+        server-side to ``Merge {head} into {base}``.
+        """
+        response = self._http.request(
+            "POST",
+            _merges_path(repository_id),
+            json=_merge_body(base, head, commit_message),
+            expect="raw",
+        )
+        return _merge(response)
+
+
 class Repositories:
-    """CP ``/v1/repositories`` namespace, plus DP :attr:`contents` and
-    commits."""
+    """CP ``/v1/repositories`` namespace, plus DP :attr:`contents`,
+    commits and :attr:`merges`."""
 
     contents: RepositoryContents
+    merges: RepositoryMerges
 
     def __init__(self, http: _HttpClient, dp_http: _HttpClient) -> None:
         self._http = http
         self._dp_http = dp_http
         self.contents = RepositoryContents(dp_http)
+        self.merges = RepositoryMerges(dp_http)
 
     def list(
         self,
@@ -246,10 +301,34 @@ class AsyncRepositoryContents:
         return _CONTENT.validate_python(payload)
 
 
+class AsyncRepositoryMerges:
+    """Async twin of :class:`RepositoryMerges`."""
+
+    def __init__(self, http: _AsyncHttpClient) -> None:
+        self._http = http
+
+    async def create(
+        self,
+        repository_id: UUID | str,
+        base: str,
+        head: str,
+        commit_message: str | None = None,
+    ) -> RepositoryMerge | None:
+        """Async twin of :meth:`RepositoryMerges.create`."""
+        response = await self._http.request(
+            "POST",
+            _merges_path(repository_id),
+            json=_merge_body(base, head, commit_message),
+            expect="raw",
+        )
+        return _merge(response)
+
+
 class AsyncRepositories:
     """Async twin of :class:`Repositories`."""
 
     contents: AsyncRepositoryContents
+    merges: AsyncRepositoryMerges
 
     def __init__(
         self, http: _AsyncHttpClient, dp_http: _AsyncHttpClient
@@ -257,6 +336,7 @@ class AsyncRepositories:
         self._http = http
         self._dp_http = dp_http
         self.contents = AsyncRepositoryContents(dp_http)
+        self.merges = AsyncRepositoryMerges(dp_http)
 
     async def list(
         self,
@@ -322,6 +402,8 @@ class AsyncRepositories:
 __all__ = [
     "AsyncRepositories",
     "AsyncRepositoryContents",
+    "AsyncRepositoryMerges",
     "Repositories",
     "RepositoryContents",
+    "RepositoryMerges",
 ]

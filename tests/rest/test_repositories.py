@@ -1,15 +1,21 @@
-"""Contract tests for ``client.repositories`` (CP) and its contents and
-commits (DP)."""
+"""Contract tests for ``client.repositories`` (CP) and its contents,
+commits and merges (DP)."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
 import httpx2 as httpx
 import pytest
 
-from introspection_sdk._errors import NotFoundError
+from introspection_sdk._errors import (
+    ConflictError,
+    IntrospectionAPIError,
+    NotFoundError,
+    SandboxUnavailableError,
+)
 from introspection_sdk.resources.repositories import (
     AsyncRepositories,
     Repositories,
@@ -20,6 +26,7 @@ from introspection_sdk.schemas.repositories import (
     RepositoryDirectory,
     RepositoryEntry,
     RepositoryFile,
+    RepositoryMerge,
 )
 
 from .conftest import PROJECT_ID, REPOSITORY_ID, FakeAPI
@@ -27,6 +34,8 @@ from .conftest import PROJECT_ID, REPOSITORY_ID, FakeAPI
 CONTENTS = f"/v1/repositories/{REPOSITORY_ID}/contents"
 COMMITS = f"/v1/repositories/{REPOSITORY_ID}/commits"
 COMMIT = "c0ffee"
+MERGES = f"/v1/repositories/{REPOSITORY_ID}/merges"
+HEAD_SHA = "a" * 40
 
 
 def repository(**over: Any) -> dict[str, Any]:
@@ -109,6 +118,18 @@ def commit_detail(sha: str = COMMIT) -> dict[str, Any]:
         ],
         "patch": "diff --git a/agents/agent.yaml b/agents/agent.yaml\n",
     }
+
+
+def merge_body(**over: Any) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "sha": "m" * 40,
+        "base": "main",
+        "head": "feature",
+        "head_sha": HEAD_SHA,
+        "parents": [COMMIT, HEAD_SHA],
+    }
+    body.update(over)
+    return body
 
 
 def paged_commits(fake_api: FakeAPI) -> None:
@@ -310,6 +331,74 @@ def test_missing_commit_raises_not_found(fake_api: FakeAPI) -> None:
         repositories(fake_api).commit(REPOSITORY_ID, "deadbeef")
 
 
+# --- data plane merges ------------------------------------------------
+
+
+def test_merge_returns_merge_commit(fake_api: FakeAPI) -> None:
+    fake_api.add("POST", MERGES, status=201, json_body=merge_body())
+    merge = repositories(fake_api).merges.create(
+        UUID(REPOSITORY_ID), "main", "feature", commit_message="Ship it"
+    )
+    assert isinstance(merge, RepositoryMerge)
+    assert merge.head_sha == HEAD_SHA
+    assert merge.parents == [COMMIT, HEAD_SHA]
+    request = fake_api.last_request
+    assert request.method == "POST"
+    assert request.path == MERGES
+    assert json.loads(request.content) == {
+        "base": "main",
+        "head": "feature",
+        "commit_message": "Ship it",
+    }
+
+
+def test_merge_omits_unset_commit_message(fake_api: FakeAPI) -> None:
+    fake_api.add(
+        "POST",
+        MERGES,
+        status=201,
+        json_body=merge_body(head=HEAD_SHA, sha=HEAD_SHA, parents=[HEAD_SHA]),
+    )
+    merge = repositories(fake_api).merges.create(
+        REPOSITORY_ID, "main", HEAD_SHA
+    )
+    assert merge is not None
+    assert merge.sha == merge.head_sha
+    assert json.loads(fake_api.last_request.content) == {
+        "base": "main",
+        "head": HEAD_SHA,
+    }
+
+
+def test_merge_already_contained_returns_none(fake_api: FakeAPI) -> None:
+    fake_api.add("POST", MERGES, status=204)
+    assert (
+        repositories(fake_api).merges.create(REPOSITORY_ID, "main", "x")
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "error"),
+    [
+        (404, NotFoundError),
+        (409, ConflictError),
+        (502, IntrospectionAPIError),
+        (504, SandboxUnavailableError),
+    ],
+)
+def test_merge_failures_raise_typed_errors(
+    fake_api: FakeAPI, status: int, error: type[IntrospectionAPIError]
+) -> None:
+    fake_api.add(
+        "POST", MERGES, status=status, json_body={"detail": "merge failed"}
+    )
+    with pytest.raises(error) as exc_info:
+        repositories(fake_api).merges.create(REPOSITORY_ID, "main", "feature")
+    assert exc_info.value.status_code == status
+    assert len(fake_api.requests) == 1
+
+
 # --- async twins --------------------------------------------------------
 
 
@@ -378,3 +467,31 @@ async def test_async_commit_detail(fake_api: FakeAPI) -> None:
     detail = await async_repositories(fake_api).commit(REPOSITORY_ID, COMMIT)
     assert detail.sha == COMMIT
     assert detail.files[0].changes == 2
+
+
+async def test_async_merge(fake_api: FakeAPI) -> None:
+    fake_api.add("POST", MERGES, status=201, json_body=merge_body())
+    merges = async_repositories(fake_api).merges
+    merge = await merges.create(REPOSITORY_ID, "main", "feature")
+    assert merge is not None
+    assert merge.sha == "m" * 40
+    assert json.loads(fake_api.last_request.content) == {
+        "base": "main",
+        "head": "feature",
+    }
+
+
+async def test_async_merge_already_contained_returns_none(
+    fake_api: FakeAPI,
+) -> None:
+    fake_api.add("POST", MERGES, status=204)
+    merges = async_repositories(fake_api).merges
+    assert await merges.create(REPOSITORY_ID, "main", "feature") is None
+
+
+async def test_async_merge_conflict_raises(fake_api: FakeAPI) -> None:
+    fake_api.add("POST", MERGES, status=409, json_body={"detail": "conflict"})
+    with pytest.raises(ConflictError):
+        await async_repositories(fake_api).merges.create(
+            REPOSITORY_ID, "main", "feature"
+        )

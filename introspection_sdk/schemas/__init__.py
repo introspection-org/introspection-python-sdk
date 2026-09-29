@@ -92,6 +92,7 @@ from introspection_sdk.schemas.repositories import (
     RepositoryDirectory,
     RepositoryEntry,
     RepositoryFile,
+    RepositoryMerge,
 )
 from introspection_sdk.schemas.trajectory import (
     Trajectory,
@@ -171,6 +172,7 @@ __all__ = [
     "RepositoryDirectory",
     "RepositoryEntry",
     "RepositoryFile",
+    "RepositoryMerge",
     "ResumeEntry",
     "SpanAttributes",
     "SpanKind",
