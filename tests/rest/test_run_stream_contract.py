@@ -1,6 +1,8 @@
 """The same pinned SSE/status exchanges run in Swift, JS, Rust and Python."""
 
+import hashlib
 import json
+import time
 from pathlib import Path
 from uuid import UUID
 
@@ -18,16 +20,22 @@ from introspection_sdk.schemas.tasks import TaskRun, TaskStatus
 
 from .conftest import TASK_ID, FakeAPI
 
-SCENARIOS = json.loads(
-    (
-        Path(__file__).parents[1] / "fixtures/run-stream-contract.json"
-    ).read_text()
-)
+FIXTURE_BYTES = (
+    Path(__file__).parents[1] / "fixtures/run-stream-contract.json"
+).read_bytes()
+SCENARIOS = json.loads(FIXTURE_BYTES)
 RUN = TaskRun(id="run-1", task_id=UUID(TASK_ID), status=TaskStatus.RUNNING)
 ERRORS = {
     "stream_incomplete": StreamIncompleteError,
     "run_failed": RunFailedError,
 }
+
+
+def test_fixture_hash():
+    assert (
+        hashlib.sha256(FIXTURE_BYTES).hexdigest()
+        == "f1dfd4501a3466442e1201210fc5c7a17150b03787405f22def762aaf511ea78"
+    )
 
 
 def exchanges(fake_api: FakeAPI, scenario: dict) -> list[str]:
@@ -36,6 +44,12 @@ def exchanges(fake_api: FakeAPI, scenario: dict) -> list[str]:
 
     def stream(request: httpx.Request) -> httpx.Response:
         index = min(len(cursors), len(scenario["streams"]) - 1)
+        time.sleep(
+            scenario.get("stream_delays_ms", [0] * len(scenario["streams"]))[
+                index
+            ]
+            / 1000
+        )
         cursors.append(request.headers.get("last-event-id"))
         return httpx.Response(200, content=scenario["streams"][index].encode())
 
@@ -64,7 +78,11 @@ def test_shared_contract(fake_api: FakeAPI, scenario: dict):
     try:
         events.extend(
             TaskRuns(fake_api.client()).stream(
-                TASK_ID, "run-1", max_reconnects=2, backoff=0.001
+                TASK_ID,
+                "run-1",
+                max_reconnects=2,
+                backoff=0.001,
+                timeout=scenario.get("timeout_ms", 300000) / 1000,
             )
         )
     except (StreamIncompleteError, RunFailedError) as exc:
@@ -90,7 +108,11 @@ async def test_shared_contract_async(fake_api: FakeAPI, scenario: dict):
     error = None
     try:
         async for event in AsyncTaskRuns(fake_api.async_client()).stream(
-            TASK_ID, "run-1", max_reconnects=2, backoff=0.001
+            TASK_ID,
+            "run-1",
+            max_reconnects=2,
+            backoff=0.001,
+            timeout=scenario.get("timeout_ms", 300000) / 1000,
         ):
             events.append(event)
     except (StreamIncompleteError, RunFailedError) as exc:

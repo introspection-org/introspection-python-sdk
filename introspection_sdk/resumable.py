@@ -4,6 +4,7 @@ Only a settling RUN_FINISHED or RUN_ERROR ends the sequence. Clean nonterminal
 closures check run status and reattach within the recovery budget. Replay starts
 at zero, so output produced before the first attach is included. A resume_gap
 remains visible to stream consumers; text() raises rather than return lost output.
+The recovery timeout renews on each new content cursor and is checked before retries.
 """
 
 from __future__ import annotations
@@ -50,8 +51,8 @@ def _is_severance(exc: BaseException) -> bool:
     return isinstance(exc, NetworkError | httpx.HTTPError)
 
 
-def _stream_path(task_id: str, run_id: str) -> str:
-    return f"/v1/tasks/{task_id}/runs/{run_id}/stream"
+def _run_path(task_id: str, run_id: str) -> str:
+    return f"/v1/tasks/{task_id}/runs/{run_id}"
 
 
 def _resume_headers(last_event_id: str | None) -> dict[str, str] | None:
@@ -81,7 +82,7 @@ def stream_resumable(
     while True:
         progressed = False
         lines = http.stream_sse_lines(
-            _stream_path(task_id, run_id),
+            _run_path(task_id, run_id) + "/stream",
             headers=_resume_headers(last_event_id),
         )
         try:
@@ -103,6 +104,7 @@ def stream_resumable(
                     if int(frame.id) <= int(last_event_id):
                         continue
                     last_event_id = frame.id
+                    deadline = time.monotonic() + timeout
                     progressed = True
                 if (
                     isinstance(event, RunFinishedEvent)
@@ -136,7 +138,7 @@ def stream_resumable(
                 state = TaskRun.model_validate(
                     http.request(
                         "GET",
-                        _stream_path(task_id, run_id).removesuffix("/stream"),
+                        _run_path(task_id, run_id),
                     )
                 )
             except (IntrospectionAPIError, httpx.HTTPError, ValueError):
@@ -184,7 +186,7 @@ async def stream_resumable_async(
     while True:
         progressed = False
         lines = http.stream_sse_lines(
-            _stream_path(task_id, run_id),
+            _run_path(task_id, run_id) + "/stream",
             headers=_resume_headers(last_event_id),
         )
         try:
@@ -206,6 +208,7 @@ async def stream_resumable_async(
                     if int(frame.id) <= int(last_event_id):
                         continue
                     last_event_id = frame.id
+                    deadline = time.monotonic() + timeout
                     progressed = True
                 if (
                     isinstance(event, RunFinishedEvent)
@@ -238,7 +241,7 @@ async def stream_resumable_async(
                 state = TaskRun.model_validate(
                     await http.request(
                         "GET",
-                        _stream_path(task_id, run_id).removesuffix("/stream"),
+                        _run_path(task_id, run_id),
                     )
                 )
             except (IntrospectionAPIError, httpx.HTTPError, ValueError):
