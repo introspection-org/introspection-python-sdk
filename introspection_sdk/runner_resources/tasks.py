@@ -246,8 +246,8 @@ class TaskRuns:
         """Stream a run's AG-UI events.
 
         Reconnects with a content cursor, starting at zero. A nonterminal EOF
-        checks this run's status. Replay gaps remain visible as CUSTOM events;
-        RunHandle.text() rejects them. The keyword args bound recovery attempts.
+        checks this run's status. A reconnect behind the replay buffer yields one
+        MESSAGES_SNAPSHOT; a 410 raises StreamIncompleteError. The keyword args bound recovery attempts.
         """
         return stream_resumable(
             self._http,
