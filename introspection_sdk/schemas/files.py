@@ -65,3 +65,8 @@ class FileCreateTextRequest(_ApiModel):
     name: str = Field(min_length=1, max_length=512)
     content: str
     mime_type: str = "text/markdown"
+    metadata: dict[str, Any] | None = None
+    tags: list[str] | None = None
+    """Tags stamped on the file when this request creates it; same rules as
+    :attr:`FileUpdateRequest.tags`. A request that adds a version to an
+    existing file keeps that file's tags."""

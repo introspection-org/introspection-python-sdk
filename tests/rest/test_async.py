@@ -307,6 +307,46 @@ async def test_files_create_text_and_download(fake_api: FakeAPI):
     assert data == b"bytes-here"
 
 
+async def test_files_create_text_sends_tags_and_metadata(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", json_body=file_payload())
+    files = AsyncFiles(fake_api.async_client())
+    await files.create_text(
+        name="n.md",
+        content="# hi",
+        metadata={"source": "crm"},
+        tags=["customer:acme"],
+    )
+    body = fake_api.last_request.json()
+    assert body["tags"] == ["customer:acme"]
+    assert body["metadata"] == {"source": "crm"}
+
+
+async def test_files_upload_sends_one_tags_field_per_tag(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", json_body=file_payload())
+    files = AsyncFiles(fake_api.async_client())
+    await files.upload(
+        file=b"x",
+        name="a.bin",
+        metadata={"source": "crm"},
+        tags=["a", "b"],
+    )
+    content = fake_api.last_request.content
+    assert content.count(b'name="tags"') == 2
+    assert b'name="metadata"' in content
+    assert b'{"source": "crm"}' in content
+
+
+async def test_files_upload_omits_tags_and_metadata_when_unset(
+    fake_api: FakeAPI,
+):
+    fake_api.add("POST", "/v1/files", json_body=file_payload())
+    files = AsyncFiles(fake_api.async_client())
+    await files.upload(file=b"x", name="a.bin")
+    content = fake_api.last_request.content
+    assert b'name="tags"' not in content
+    assert b'name="metadata"' not in content
+
+
 async def test_files_list_async_iter(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
     out = [f async for f in AsyncFiles(fake_api.async_client()).list()]
