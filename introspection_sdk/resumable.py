@@ -2,8 +2,10 @@
 
 Only a settling RUN_FINISHED or RUN_ERROR ends the sequence. Clean nonterminal
 closures check run status and reattach within the recovery budget. Replay starts
-at zero, so output produced before the first attach is included. A resume_gap
-remains visible to stream consumers; text() raises rather than return lost output.
+at zero, so output produced before the first attach is included. A reconnect
+behind the replay buffer yields one MESSAGES_SNAPSHOT of the run so far; a 410
+(history gone) raises StreamIncompleteError. A legacy resume_gap stays visible
+to stream consumers; text() raises rather than return lost output.
 The recovery timeout renews on each new content cursor and is checked before retries.
 """
 
@@ -13,6 +15,7 @@ import asyncio
 import json
 import time
 from collections.abc import AsyncIterator, Iterator
+from http import HTTPStatus
 
 import httpx2 as httpx
 
@@ -129,6 +132,13 @@ def stream_resumable(
             )
             continue
         except Exception as exc:
+            if (
+                isinstance(exc, IntrospectionAPIError)
+                and exc.status_code == HTTPStatus.GONE
+            ):
+                raise StreamIncompleteError(
+                    "The stream history is no longer available; read the conversation transcript"
+                ) from exc
             if not _is_severance(exc):
                 raise
             failure = exc
@@ -232,6 +242,13 @@ async def stream_resumable_async(
             )
             continue
         except Exception as exc:
+            if (
+                isinstance(exc, IntrospectionAPIError)
+                and exc.status_code == HTTPStatus.GONE
+            ):
+                raise StreamIncompleteError(
+                    "The stream history is no longer available; read the conversation transcript"
+                ) from exc
             if not _is_severance(exc):
                 raise
             failure = exc

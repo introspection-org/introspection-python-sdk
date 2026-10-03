@@ -24,7 +24,9 @@ from introspection_sdk.resumable import (
 )
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
+    AssistantMessage,
     CustomEvent,
+    MessagesSnapshotEvent,
     ResumeEntry,
     RunErrorEvent,
     TextMessageChunkEvent,
@@ -83,6 +85,15 @@ def _repo_refs(
     ]
 
 
+def _snapshot_text(event: MessagesSnapshotEvent) -> list[str]:
+    """A snapshot carries the whole run so far, so it replaces what was read."""
+    return [
+        m.content
+        for m in event.messages
+        if isinstance(m, AssistantMessage) and isinstance(m.content, str)
+    ]
+
+
 class RunHandle:
     """Returned by ``Tasks.start(...)`` and ``TaskRuns.create(...)``.
 
@@ -134,7 +145,11 @@ class RunHandle:
                 raise StreamIncompleteError(
                     "The replay buffer lost output; read the conversation transcript"
                 )
-            if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
+            if isinstance(ev, MessagesSnapshotEvent):
+                out = _snapshot_text(ev)
+            elif isinstance(
+                ev, TextMessageContentEvent | TextMessageChunkEvent
+            ):
                 out.append(str(ev.delta or ""))
         return "".join(out)
 
@@ -428,7 +443,11 @@ class AsyncRunHandle:
                 raise StreamIncompleteError(
                     "The replay buffer lost output; read the conversation transcript"
                 )
-            if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
+            if isinstance(ev, MessagesSnapshotEvent):
+                out = _snapshot_text(ev)
+            elif isinstance(
+                ev, TextMessageContentEvent | TextMessageChunkEvent
+            ):
                 out.append(str(ev.delta or ""))
         return "".join(out)
 

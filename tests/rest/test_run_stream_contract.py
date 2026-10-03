@@ -34,7 +34,7 @@ ERRORS = {
 def test_fixture_hash():
     assert (
         hashlib.sha256(FIXTURE_BYTES).hexdigest()
-        == "f1dfd4501a3466442e1201210fc5c7a17150b03787405f22def762aaf511ea78"
+        == "b25a2d3d463ce20ccc6e95abeccf549ef053db059c1c79a4b602f014362fc7fb"
     )
 
 
@@ -51,7 +51,12 @@ def exchanges(fake_api: FakeAPI, scenario: dict) -> list[str]:
             / 1000
         )
         cursors.append(request.headers.get("last-event-id"))
-        return httpx.Response(200, content=scenario["streams"][index].encode())
+        return httpx.Response(
+            scenario.get("attach_statuses", [200] * len(scenario["streams"]))[
+                index
+            ],
+            content=scenario["streams"][index].encode(),
+        )
 
     def status(request: httpx.Request) -> httpx.Response:
         index = len(reads)
@@ -129,7 +134,11 @@ async def test_shared_contract_async(fake_api: FakeAPI, scenario: dict):
 
 @pytest.mark.parametrize(
     "scenario",
-    [s for s in SCENARIOS if "text_error" in s or s["name"] == "text_chunk"],
+    [
+        s
+        for s in SCENARIOS
+        if "text_error" in s or "text" in s or s["name"] == "text_chunk"
+    ],
     ids=lambda s: s["name"],
 )
 def test_text_outcome(fake_api: FakeAPI, scenario: dict):
@@ -139,12 +148,16 @@ def test_text_outcome(fake_api: FakeAPI, scenario: dict):
         with pytest.raises(ERRORS[scenario["text_error"]]):
             handle.text()
     else:
-        assert handle.text() == "chunk"
+        assert handle.text() == scenario.get("text", "chunk")
 
 
 @pytest.mark.parametrize(
     "scenario",
-    [s for s in SCENARIOS if "text_error" in s or s["name"] == "text_chunk"],
+    [
+        s
+        for s in SCENARIOS
+        if "text_error" in s or "text" in s or s["name"] == "text_chunk"
+    ],
     ids=lambda s: s["name"],
 )
 async def test_text_outcome_async(fake_api: FakeAPI, scenario: dict):
@@ -154,4 +167,4 @@ async def test_text_outcome_async(fake_api: FakeAPI, scenario: dict):
         with pytest.raises(ERRORS[scenario["text_error"]]):
             await handle.text()
     else:
-        assert await handle.text() == "chunk"
+        assert await handle.text() == scenario.get("text", "chunk")
