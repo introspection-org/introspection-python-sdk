@@ -266,6 +266,24 @@ def test_list_sends_the_tag_filter(fake_api: FakeAPI):
     assert fake_api.last_request.params["tag"] == "customer:acme"
 
 
+def test_list_sends_metadata_as_repeated_pairs(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    Files(fake_api.client()).list(
+        metadata={"source": "crm", "ref": "a:b"}, tag="customer:acme"
+    ).page()
+
+    req = fake_api.last_request
+    assert req.url.params.get_list("metadata") == ["source:crm", "ref:a:b"]
+    assert req.params["tag"] == "customer:acme"
+
+
+def test_list_omits_empty_metadata_filter(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    Files(fake_api.client()).list(metadata={}).page()
+
+    assert "metadata" not in fake_api.last_request.url.params
+
+
 def test_update_sends_tags(fake_api: FakeAPI):
     fake_api.add("PATCH", f"/v1/files/{FILE_ID}", json_body=file_payload())
     Files(fake_api.client()).update(FILE_ID, tags=["customer:acme"])

@@ -179,9 +179,16 @@ class Files:
         file_type: FileType | str | None = None,
         storage_path: str | None = None,
         tag: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> Pager[File, Paginated[File]]:
         """List files. Iterate the returned :class:`Pager` to stream every
-        file across pages, or call ``.page()`` for the first page only."""
+        file across pages, or call ``.page()`` for the first page only.
+
+        ``metadata`` narrows to files whose metadata holds every pair, each
+        matched exactly against the string value; it is sent as one repeated
+        ``metadata=key:value`` param per entry (at most 16). Keys are letters,
+        digits, ``_`` and ``-``. A server that predates the filter ignores it
+        and returns the unfiltered list."""
 
         def fetch(cursor: str | None) -> Paginated[File]:
             params: dict[str, Any] = {
@@ -196,6 +203,11 @@ class Files:
                 ),
                 "storage_path": storage_path,
                 "tag": tag,
+                "metadata": (
+                    [f"{key}:{value}" for key, value in metadata.items()]
+                    if metadata
+                    else None
+                ),
             }
             payload = self._http.request("GET", "/v1/files", params=params)
             return Paginated[File].model_validate(payload)
@@ -378,9 +390,16 @@ class AsyncFiles:
         file_type: FileType | str | None = None,
         storage_path: str | None = None,
         tag: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> AsyncPager[File, Paginated[File]]:
         """List files. ``await`` the returned :class:`AsyncPager` for the
-        first page, or ``async for`` it to stream every file across pages."""
+        first page, or ``async for`` it to stream every file across pages.
+
+        ``metadata`` narrows to files whose metadata holds every pair, each
+        matched exactly against the string value; it is sent as one repeated
+        ``metadata=key:value`` param per entry (at most 16). Keys are letters,
+        digits, ``_`` and ``-``. A server that predates the filter ignores it
+        and returns the unfiltered list."""
 
         async def fetch(cursor: str | None) -> Paginated[File]:
             params: dict[str, Any] = {
@@ -395,6 +414,11 @@ class AsyncFiles:
                 ),
                 "storage_path": storage_path,
                 "tag": tag,
+                "metadata": (
+                    [f"{key}:{value}" for key, value in metadata.items()]
+                    if metadata
+                    else None
+                ),
             }
             payload = await self._http.request(
                 "GET", "/v1/files", params=params
