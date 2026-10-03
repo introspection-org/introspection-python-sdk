@@ -230,13 +230,9 @@ class TaskRuns:
     ) -> Iterator[AGUIEvent]:
         """Stream a run's AG-UI events.
 
-        The stream resumes **transparently** across a mid-turn disconnect
-        (gateway idle-timeout, load-balancer recycle, network blip): it
-        re-attaches with the SSE-standard ``Last-Event-ID`` so the server
-        replays the frames the client missed, yielding a single gap-free
-        ``AGUIEvent`` sequence (INT-252). It completes when the turn finishes
-        and raises only once recovery is exhausted — no consumer-visible change
-        from a plain stream. The keyword args tune the recovery bounds.
+        Reconnects with a content cursor, starting at zero. A nonterminal EOF
+        checks this run's status. Replay gaps remain visible as CUSTOM events;
+        RunHandle.text() rejects them. The keyword args bound recovery attempts.
         """
         return stream_resumable(
             self._http,
