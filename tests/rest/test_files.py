@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import io
+import json
+from email.parser import BytesParser
+from email.policy import HTTP
 from pathlib import Path
 
 import pytest
 
+from introspection_sdk._errors import ConflictError
 from introspection_sdk.runner_resources.files import (
     Files,
     _materialise_upload,
@@ -18,6 +22,21 @@ from .conftest import FILE_ID, FakeAPI, file_payload, paginated
 
 def _files(fake_api: FakeAPI) -> Files:
     return Files(fake_api.client())
+
+
+def _form_fields(content_type: str, content: bytes) -> list[tuple[str, str]]:
+    """Return the non-file ``(name, value)`` multipart fields, in order."""
+    message = BytesParser(policy=HTTP).parsebytes(
+        b"Content-Type: " + content_type.encode() + b"\r\n\r\n" + content
+    )
+    return [
+        (
+            str(part.get_param("name", header="content-disposition")),
+            str(part.get_content()),
+        )
+        for part in message.iter_parts()
+        if part.get_filename() is None
+    ]
 
 
 # --- _materialise_upload (pure helper) ------------------------------
@@ -89,12 +108,77 @@ def test_upload_sends_multipart(fake_api: FakeAPI):
     assert b"greeting.txt" in sent.content
 
 
+def test_upload_sends_tags_and_metadata_as_form_fields(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", json_body=file_payload())
+    _files(fake_api).upload(
+        file=b"hello",
+        name="greeting.txt",
+        metadata={"source": "crm"},
+        tags=["customer:acme", "tier:gold"],
+    )
+    sent = fake_api.last_request
+    fields = _form_fields(sent.headers["content-type"], sent.content)
+
+    # One `tags` field per tag, order preserved; metadata as a JSON string.
+    assert [v for k, v in fields if k == "tags"] == [
+        "customer:acme",
+        "tier:gold",
+    ]
+    (metadata,) = [v for k, v in fields if k == "metadata"]
+    assert json.loads(metadata) == {"source": "crm"}
+
+
+def test_upload_omits_tags_and_metadata_when_unset(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", json_body=file_payload())
+    _files(fake_api).upload(file=b"hello", name="greeting.txt")
+    sent = fake_api.last_request
+    fields = _form_fields(sent.headers["content-type"], sent.content)
+
+    assert [k for k, _ in fields] == ["name", "file_type"]
+
+
 def test_create_text_sends_json(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/files", json_body=file_payload())
     _files(fake_api).create_text(name="notes.md", content="# hi")
+
+    # Unset tags and metadata stay off the wire.
+    assert fake_api.last_request.json() == {
+        "name": "notes.md",
+        "content": "# hi",
+        "mime_type": "text/markdown",
+    }
+
+
+def test_create_text_sends_tags_and_metadata(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", "/v1/files", json_body=file_payload(tags=["customer:acme"])
+    )
+    f = _files(fake_api).create_text(
+        name="notes.md",
+        content="# hi",
+        metadata={"source": "crm"},
+        tags=["customer:acme"],
+    )
     body = fake_api.last_request.json()
-    assert body["name"] == "notes.md"
-    assert body["mime_type"] == "text/markdown"
+
+    assert body["tags"] == ["customer:acme"]
+    assert body["metadata"] == {"source": "crm"}
+    assert f.tags == ["customer:acme"]
+
+
+def test_create_text_surfaces_a_tag_conflict(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/files",
+        status=409,
+        json_body={"detail": "tags differ from the existing file"},
+    )
+    # A new version keeps the file's tags; a different set is refused.
+    with pytest.raises(ConflictError) as excinfo:
+        _files(fake_api).create_text(
+            name="notes.md", content="# v2", tags=["customer:other"]
+        )
+    assert excinfo.value.status_code == 409
 
 
 def test_get(fake_api: FakeAPI):

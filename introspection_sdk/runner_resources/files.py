@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import builtins
 import contextlib
+import json
 import mimetypes
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
@@ -70,6 +71,30 @@ def _materialise_upload(
         mimetypes.guess_type(name)[0] or "application/octet-stream"
     )
     yield name, file, ct
+
+
+def _upload_form(
+    name: str,
+    file_type: FileType | str,
+    metadata: dict[str, Any] | None,
+    tags: list[str] | None,
+) -> dict[str, Any]:
+    """Build the multipart form fields for ``POST /v1/files``.
+
+    ``tags`` goes out as one ``tags`` field per tag; ``metadata`` as a JSON
+    object string. Either is left off the form entirely when ``None``.
+    """
+    data: dict[str, Any] = {
+        "name": name,
+        "file_type": (
+            file_type.value if isinstance(file_type, FileType) else file_type
+        ),
+    }
+    if metadata is not None:
+        data["metadata"] = json.dumps(metadata)
+    if tags is not None:
+        data["tags"] = tags
+    return data
 
 
 class FileVersions:
@@ -184,8 +209,14 @@ class Files:
         name: str | None = None,
         file_type: FileType | str = FileType.OTHER,
         content_type: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> File:
         """Upload a binary file via multipart.
+
+        ``tags`` and ``metadata`` are stamped when the request creates the
+        file. A request that adds a new version to an existing file keeps
+        that file's tags; change them with :meth:`update`.
 
         Example:
             >>> runner.files.upload(
@@ -199,14 +230,7 @@ class Files:
             ct,
         ):
             files = {"file": (n, body, ct)}
-            data = {
-                "name": n,
-                "file_type": (
-                    file_type.value
-                    if isinstance(file_type, FileType)
-                    else file_type
-                ),
-            }
+            data = _upload_form(n, file_type, metadata, tags)
             payload = self._http.request(
                 "POST", "/v1/files", files=files, data=data
             )
@@ -218,13 +242,23 @@ class Files:
         name: str,
         content: str,
         mime_type: str = "text/markdown",
+        metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> File:
-        """Create a text/markdown file via JSON body."""
+        """Create a text/markdown file via JSON body.
+
+        ``tags`` and ``metadata`` are stamped when the request creates the
+        file. A request that adds a new version to an existing file keeps
+        that file's tags; change them with :meth:`update`."""
         body = FileCreateTextRequest(
-            name=name, content=content, mime_type=mime_type
+            name=name,
+            content=content,
+            mime_type=mime_type,
+            metadata=metadata,
+            tags=tags,
         )
         payload = self._http.request(
-            "POST", "/v1/files", json=body.model_dump()
+            "POST", "/v1/files", json=body.model_dump(exclude_none=True)
         )
         return File.model_validate(payload)
 
@@ -376,8 +410,14 @@ class AsyncFiles:
         name: str | None = None,
         file_type: FileType | str = FileType.OTHER,
         content_type: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> File:
         """Upload a binary file via multipart.
+
+        ``tags`` and ``metadata`` are stamped when the request creates the
+        file. A request that adds a new version to an existing file keeps
+        that file's tags; change them with :meth:`update`.
 
         Example:
             >>> await runner.files.upload(
@@ -391,14 +431,7 @@ class AsyncFiles:
             ct,
         ):
             files = {"file": (n, body, ct)}
-            data = {
-                "name": n,
-                "file_type": (
-                    file_type.value
-                    if isinstance(file_type, FileType)
-                    else file_type
-                ),
-            }
+            data = _upload_form(n, file_type, metadata, tags)
             payload = await self._http.request(
                 "POST", "/v1/files", files=files, data=data
             )
@@ -410,13 +443,23 @@ class AsyncFiles:
         name: str,
         content: str,
         mime_type: str = "text/markdown",
+        metadata: dict[str, Any] | None = None,
+        tags: builtins.list[str] | None = None,
     ) -> File:
-        """Create a text/markdown file via JSON body."""
+        """Create a text/markdown file via JSON body.
+
+        ``tags`` and ``metadata`` are stamped when the request creates the
+        file. A request that adds a new version to an existing file keeps
+        that file's tags; change them with :meth:`update`."""
         body = FileCreateTextRequest(
-            name=name, content=content, mime_type=mime_type
+            name=name,
+            content=content,
+            mime_type=mime_type,
+            metadata=metadata,
+            tags=tags,
         )
         payload = await self._http.request(
-            "POST", "/v1/files", json=body.model_dump()
+            "POST", "/v1/files", json=body.model_dump(exclude_none=True)
         )
         return File.model_validate(payload)
 
