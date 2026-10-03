@@ -50,6 +50,20 @@ class IntrospectionAPIError(Exception):
         )
 
 
+class StreamIncompleteError(IntrospectionAPIError):
+    """Output was lost or the stream ended without a confirmed outcome."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, status_code=0, code="stream_incomplete")
+
+
+class RunFailedError(IntrospectionAPIError):
+    """The run failed or was cancelled."""
+
+    def __init__(self, message: str, *, code: str | None = None) -> None:
+        super().__init__(message, status_code=0, code=code or "run_failed")
+
+
 class AuthenticationError(IntrospectionAPIError):
     """401 — missing or invalid credentials."""
 

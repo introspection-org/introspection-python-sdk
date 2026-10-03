@@ -10,6 +10,7 @@ import builtins
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
+from introspection_sdk._errors import RunFailedError, StreamIncompleteError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -23,7 +24,11 @@ from introspection_sdk.resumable import (
 )
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
+    AssistantMessage,
+    CustomEvent,
+    MessagesSnapshotEvent,
     ResumeEntry,
+    RunErrorEvent,
     TextMessageChunkEvent,
     TextMessageContentEvent,
 )
@@ -80,6 +85,15 @@ def _repo_refs(
     ]
 
 
+def _snapshot_text(event: MessagesSnapshotEvent) -> list[str]:
+    """A snapshot carries the whole run so far, so it replaces what was read."""
+    return [
+        m.content
+        for m in event.messages
+        if isinstance(m, AssistantMessage) and isinstance(m.content, str)
+    ]
+
+
 class RunHandle:
     """Returned by ``Tasks.start(...)`` and ``TaskRuns.create(...)``.
 
@@ -125,7 +139,17 @@ class RunHandle:
     def text(self) -> str:
         out: list[str] = []
         for ev in self.stream():
-            if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
+            if isinstance(ev, RunErrorEvent):
+                raise RunFailedError(ev.message, code=ev.code)
+            if isinstance(ev, CustomEvent) and ev.name == "resume_gap":
+                raise StreamIncompleteError(
+                    "The replay buffer lost output; read the conversation transcript"
+                )
+            if isinstance(ev, MessagesSnapshotEvent):
+                out = _snapshot_text(ev)
+            elif isinstance(
+                ev, TextMessageContentEvent | TextMessageChunkEvent
+            ):
                 out.append(str(ev.delta or ""))
         return "".join(out)
 
@@ -221,13 +245,9 @@ class TaskRuns:
     ) -> Iterator[AGUIEvent]:
         """Stream a run's AG-UI events.
 
-        The stream resumes **transparently** across a mid-turn disconnect
-        (gateway idle-timeout, load-balancer recycle, network blip): it
-        re-attaches with the SSE-standard ``Last-Event-ID`` so the server
-        replays the frames the client missed, yielding a single gap-free
-        ``AGUIEvent`` sequence (INT-252). It completes when the turn finishes
-        and raises only once recovery is exhausted — no consumer-visible change
-        from a plain stream. The keyword args tune the recovery bounds.
+        Reconnects with a content cursor, starting at zero. A nonterminal EOF
+        checks this run's status. A reconnect behind the replay buffer yields one
+        MESSAGES_SNAPSHOT; a 410 raises StreamIncompleteError. The keyword args bound recovery attempts.
         """
         return stream_resumable(
             self._http,
@@ -417,7 +437,17 @@ class AsyncRunHandle:
     async def text(self) -> str:
         out: list[str] = []
         async for ev in self.stream():
-            if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
+            if isinstance(ev, RunErrorEvent):
+                raise RunFailedError(ev.message, code=ev.code)
+            if isinstance(ev, CustomEvent) and ev.name == "resume_gap":
+                raise StreamIncompleteError(
+                    "The replay buffer lost output; read the conversation transcript"
+                )
+            if isinstance(ev, MessagesSnapshotEvent):
+                out = _snapshot_text(ev)
+            elif isinstance(
+                ev, TextMessageContentEvent | TextMessageChunkEvent
+            ):
                 out.append(str(ev.delta or ""))
         return "".join(out)
 

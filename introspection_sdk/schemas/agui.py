@@ -9,14 +9,19 @@ from __future__ import annotations
 from typing import Any
 
 from ag_ui.core import (
-    Event as AGUIEvent,
-)
-from ag_ui.core import (
+    AssistantMessage,
+    CustomEvent,
     EventType,
     Interrupt,
+    MessagesSnapshotEvent,
     ResumeEntry,
+    RunErrorEvent,
+    RunFinishedEvent,
     TextMessageChunkEvent,
     TextMessageContentEvent,
+)
+from ag_ui.core import (
+    Event as AGUIEvent,
 )
 from pydantic import TypeAdapter
 
@@ -29,8 +34,13 @@ def validate_ag_ui_event(payload: Any) -> AGUIEvent:
 
 __all__ = [
     "AGUIEvent",
+    "AssistantMessage",
+    "CustomEvent",
+    "RunErrorEvent",
+    "RunFinishedEvent",
     "EventType",
     "Interrupt",
+    "MessagesSnapshotEvent",
     "ResumeEntry",
     "TextMessageChunkEvent",
     "TextMessageContentEvent",

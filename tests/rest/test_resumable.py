@@ -129,7 +129,7 @@ def test_mid_turn_drop_reattaches_with_last_event_id(fake_api: FakeAPI):
 
     assert _deltas(events) == ["a", "b", "c"]  # gap-free
     # Reconnect resumes from the last numeric content-frame id seen.
-    assert handler.seen == [None, "2"]
+    assert handler.seen == ["0", "2"]
 
 
 def test_resume_cursor_ignores_control_ids(fake_api: FakeAPI):
@@ -146,7 +146,7 @@ def test_resume_cursor_ignores_control_ids(fake_api: FakeAPI):
     events = list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
 
     assert _deltas(events) == ["a", "b"]
-    assert handler.seen == [None, "5"]  # "c-9" is not a cursor
+    assert handler.seen == ["0", "5"]  # "c-9" is not a cursor
 
 
 def test_429_readiness_backs_off_then_attaches(fake_api: FakeAPI):
@@ -273,4 +273,4 @@ async def test_async_mid_turn_drop_reattaches(fake_api: FakeAPI):
     )
 
     assert _deltas(events) == ["a", "b", "c"]
-    assert handler.seen == [None, "2"]
+    assert handler.seen == ["0", "2"]

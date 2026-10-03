@@ -29,8 +29,10 @@ from introspection_sdk._errors import (
     NetworkError,
     NotFoundError,
     RateLimitError,
+    RunFailedError,
     RunnerExpiredError,
     SandboxUnavailableError,
+    StreamIncompleteError,
     ValidationError,
 )
 from introspection_sdk.auth import (
@@ -173,6 +175,8 @@ __all__ = [
     "ProjectLabelCreate",
     "ProjectLabelUpdate",
     "RateLimitError",
+    "RunFailedError",
+    "StreamIncompleteError",
     "Repository",
     "RepositoryCommit",
     "RepositoryCommitDetail",
