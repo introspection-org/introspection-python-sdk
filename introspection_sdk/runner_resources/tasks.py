@@ -10,6 +10,7 @@ import builtins
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
+from introspection_sdk._errors import RunFailedError, StreamIncompleteError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -23,7 +24,9 @@ from introspection_sdk.resumable import (
 )
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
+    CustomEvent,
     ResumeEntry,
+    RunErrorEvent,
     TextMessageChunkEvent,
     TextMessageContentEvent,
 )
@@ -125,6 +128,12 @@ class RunHandle:
     def text(self) -> str:
         out: list[str] = []
         for ev in self.stream():
+            if isinstance(ev, RunErrorEvent):
+                raise RunFailedError(ev.message, code=ev.code)
+            if isinstance(ev, CustomEvent) and ev.name == "resume_gap":
+                raise StreamIncompleteError(
+                    "The replay buffer lost output; read the conversation transcript"
+                )
             if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
                 out.append(str(ev.delta or ""))
         return "".join(out)
@@ -417,6 +426,12 @@ class AsyncRunHandle:
     async def text(self) -> str:
         out: list[str] = []
         async for ev in self.stream():
+            if isinstance(ev, RunErrorEvent):
+                raise RunFailedError(ev.message, code=ev.code)
+            if isinstance(ev, CustomEvent) and ev.name == "resume_gap":
+                raise StreamIncompleteError(
+                    "The replay buffer lost output; read the conversation transcript"
+                )
             if isinstance(ev, TextMessageContentEvent | TextMessageChunkEvent):
                 out.append(str(ev.delta or ""))
         return "".join(out)

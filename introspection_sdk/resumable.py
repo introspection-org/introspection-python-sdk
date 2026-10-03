@@ -1,26 +1,9 @@
-"""Transparent stream resume for the task run SSE stream (INT-252).
+"""Resume run streams using content cursors and the run-scoped status read.
 
-A turn is consumed over a long-lived SSE stream that can be severed before the
-turn settles (gateway idle-timeout, load-balancer recycle, network blip). Rather
-than surface that as a turn failure — losing every event between the drop and a
-manual retry — the run stream reconnects **transparently**: it tracks the last
-content-frame id and re-attaches with the SSE-standard ``Last-Event-ID`` header,
-so the server replays the frames the client missed and the iterator yields a
-single gap-free ``AGUIEvent`` sequence. There is **no consumer-visible change**:
-the stream either completes (the DP closed it on turn completion) or raises once
-recovery is exhausted, exactly like a plain stream.
-
-Readiness folds in the same way: a not-yet-attachable run answers the attach
-with ``429`` + ``Retry-After``, which is honoured as a backoff floor and retried
-— never surfaced to the caller. Readiness waits are counted separately from
-reconnects and are bounded by ``timeout``, not ``max_reconnects``: a run that is
-slow to provision has not failed at anything.
-
-Only a *transport* failure is a severance. A malformed or unrecognised payload
-is not recoverable by re-attaching, and treating it as one used to spin: the
-reconnect budget resets on any forward progress, so a stream that replays a bad
-frame after every reconnect looped until the deadline and re-delivered every
-event before it.
+Only a settling RUN_FINISHED or RUN_ERROR ends the sequence. Clean nonterminal
+closures check run status and reattach within the recovery budget. Replay starts
+at zero, so output produced before the first attach is included. A resume_gap
+remains visible to stream consumers; text() raises rather than return lost output.
 """
 
 from __future__ import annotations
@@ -33,9 +16,20 @@ from collections.abc import AsyncIterator, Iterator
 import httpx2 as httpx
 
 from introspection_sdk._backoff import _retry_delay
-from introspection_sdk._errors import NetworkError, RateLimitError
+from introspection_sdk._errors import (
+    IntrospectionAPIError,
+    NetworkError,
+    RateLimitError,
+    RunFailedError,
+    StreamIncompleteError,
+)
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
-from introspection_sdk.schemas.agui import AGUIEvent, validate_ag_ui_event
+from introspection_sdk.schemas.agui import (
+    AGUIEvent,
+    RunFinishedEvent,
+    validate_ag_ui_event,
+)
+from introspection_sdk.schemas.tasks import TaskRun, TaskStatus
 from introspection_sdk.streaming import _parse_sse, _parse_sse_async
 
 # The delay math (capped-exponential with
@@ -73,14 +67,14 @@ def stream_resumable(
     backoff: float = _DEFAULT_BACKOFF,
     timeout: float = _DEFAULT_TIMEOUT,
 ) -> Iterator[AGUIEvent]:
-    """Consume a run's SSE stream as a single gap-free ``AGUIEvent`` sequence
+    """Consume a run's SSE stream as a resumable ``AGUIEvent`` sequence
     (sync), reconnecting transparently on a mid-turn disconnect via
     ``Last-Event-ID``. See the module docstring."""
     deadline = time.monotonic() + timeout
     # The last *content*-frame id, replayed via ``Last-Event-ID`` on reconnect.
     # Control frames (RUN_* lifecycle, heartbeats) carry a non-numeric ``c-…``
     # id that is not a valid resume cursor, so only numeric ids advance it.
-    last_event_id: str | None = None
+    last_event_id = "0"
     reconnects = 0
     readiness_waits = 0
 
@@ -92,13 +86,33 @@ def stream_resumable(
         )
         try:
             for frame in _parse_sse(lines):
-                if frame.id and frame.id.isdigit():
-                    last_event_id = frame.id
                 if frame.event != "ag_ui":
                     continue  # ignore heartbeats etc.
-                progressed = True
-                yield validate_ag_ui_event(json.loads(frame.data))
-            return  # clean EOF: the DP closed the stream on turn completion
+                event = validate_ag_ui_event(json.loads(frame.data))
+                control = event.type in {
+                    "RUN_STARTED",
+                    "RUN_FINISHED",
+                    "RUN_ERROR",
+                }
+                if (
+                    not control
+                    and frame.id
+                    and frame.id.isascii()
+                    and frame.id.isdigit()
+                ):
+                    if int(frame.id) <= int(last_event_id):
+                        continue
+                    last_event_id = frame.id
+                    progressed = True
+                if (
+                    isinstance(event, RunFinishedEvent)
+                    and isinstance(event.result, dict)
+                    and event.result.get("reason") == "stream_close"
+                ):
+                    continue
+                yield event
+                if event.type in {"RUN_FINISHED", "RUN_ERROR"}:
+                    return
         except RateLimitError as exc:
             # Not attachable yet — a readiness wait, not a failed attempt.
             readiness_waits += 1
@@ -111,16 +125,45 @@ def stream_resumable(
                     remaining,
                 )
             )
+            continue
         except Exception as exc:
             if not _is_severance(exc):
                 raise
-            # Severed mid-read. Forward progress resets the budget; a reconnect
-            # that delivers nothing counts down.
-            reconnects = 0 if progressed else reconnects + 1
-            remaining = deadline - time.monotonic()
-            if reconnects > max_reconnects or remaining <= 0:
-                raise
-            time.sleep(min(_retry_delay(reconnects, None, backoff), remaining))
+            failure = exc
+        else:
+            state = None
+            try:
+                state = TaskRun.model_validate(
+                    http.request(
+                        "GET",
+                        _stream_path(task_id, run_id).removesuffix("/stream"),
+                    )
+                )
+            except (IntrospectionAPIError, httpx.HTTPError, ValueError):
+                pass
+            if state and state.status in {
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+            }:
+                raise RunFailedError(
+                    f"The run ended with status {state.status}"
+                )
+            if state and state.status in {
+                TaskStatus.IDLE,
+                TaskStatus.COMPLETED,
+                TaskStatus.AWAITING_USER,
+            }:
+                raise StreamIncompleteError(
+                    "The run settled without a complete stream; read the conversation transcript"
+                )
+            failure = StreamIncompleteError(
+                "The stream ended before the run settled"
+            )
+        reconnects = 0 if progressed else reconnects + 1
+        remaining = deadline - time.monotonic()
+        if reconnects > max_reconnects or remaining <= 0:
+            raise failure
+        time.sleep(min(_retry_delay(reconnects, None, backoff), remaining))
 
 
 async def stream_resumable_async(
@@ -134,7 +177,7 @@ async def stream_resumable_async(
 ) -> AsyncIterator[AGUIEvent]:
     """Async twin of :func:`stream_resumable`."""
     deadline = time.monotonic() + timeout
-    last_event_id: str | None = None
+    last_event_id = "0"
     reconnects = 0
     readiness_waits = 0
 
@@ -146,13 +189,33 @@ async def stream_resumable_async(
         )
         try:
             async for frame in _parse_sse_async(lines):
-                if frame.id and frame.id.isdigit():
-                    last_event_id = frame.id
                 if frame.event != "ag_ui":
                     continue
-                progressed = True
-                yield validate_ag_ui_event(json.loads(frame.data))
-            return
+                event = validate_ag_ui_event(json.loads(frame.data))
+                control = event.type in {
+                    "RUN_STARTED",
+                    "RUN_FINISHED",
+                    "RUN_ERROR",
+                }
+                if (
+                    not control
+                    and frame.id
+                    and frame.id.isascii()
+                    and frame.id.isdigit()
+                ):
+                    if int(frame.id) <= int(last_event_id):
+                        continue
+                    last_event_id = frame.id
+                    progressed = True
+                if (
+                    isinstance(event, RunFinishedEvent)
+                    and isinstance(event.result, dict)
+                    and event.result.get("reason") == "stream_close"
+                ):
+                    continue
+                yield event
+                if event.type in {"RUN_FINISHED", "RUN_ERROR"}:
+                    return
         except RateLimitError as exc:
             readiness_waits += 1
             remaining = deadline - time.monotonic()
@@ -164,13 +227,44 @@ async def stream_resumable_async(
                     remaining,
                 )
             )
+            continue
         except Exception as exc:
             if not _is_severance(exc):
                 raise
-            reconnects = 0 if progressed else reconnects + 1
-            remaining = deadline - time.monotonic()
-            if reconnects > max_reconnects or remaining <= 0:
-                raise
-            await asyncio.sleep(
-                min(_retry_delay(reconnects, None, backoff), remaining)
+            failure = exc
+        else:
+            state = None
+            try:
+                state = TaskRun.model_validate(
+                    await http.request(
+                        "GET",
+                        _stream_path(task_id, run_id).removesuffix("/stream"),
+                    )
+                )
+            except (IntrospectionAPIError, httpx.HTTPError, ValueError):
+                pass
+            if state and state.status in {
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+            }:
+                raise RunFailedError(
+                    f"The run ended with status {state.status}"
+                )
+            if state and state.status in {
+                TaskStatus.IDLE,
+                TaskStatus.COMPLETED,
+                TaskStatus.AWAITING_USER,
+            }:
+                raise StreamIncompleteError(
+                    "The run settled without a complete stream; read the conversation transcript"
+                )
+            failure = StreamIncompleteError(
+                "The stream ended before the run settled"
             )
+        reconnects = 0 if progressed else reconnects + 1
+        remaining = deadline - time.monotonic()
+        if reconnects > max_reconnects or remaining <= 0:
+            raise failure
+        await asyncio.sleep(
+            min(_retry_delay(reconnects, None, backoff), remaining)
+        )

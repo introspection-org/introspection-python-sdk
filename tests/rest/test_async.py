@@ -167,6 +167,7 @@ async def test_run_handle_stream_and_text(fake_api: FakeAPI):
         '"messageId":"msg-1","delta":"hel"}\n\n'
         'event: ag_ui\ndata: {"type":"TEXT_MESSAGE_CHUNK",'
         '"messageId":"msg-1","delta":"lo"}\n\n'
+        'event: ag_ui\ndata: {"type":"RUN_FINISHED","threadId":"t","runId":"run-1"}\n\n'
     )
     fake_api.add(
         "POST", f"/v1/tasks/{TASK_ID}/runs", json_body=task_run_response()
@@ -181,7 +182,9 @@ async def test_run_handle_stream_and_text(fake_api: FakeAPI):
     )
     events = [e async for e in handle.stream()]
     assert [
-        e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events
+        e.model_dump(exclude_none=True, by_alias=True)["delta"]
+        for e in events
+        if hasattr(e, "delta")
     ] == ["hel", "lo"]
     assert await handle.text() == "hello"
 

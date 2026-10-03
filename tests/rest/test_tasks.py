@@ -365,6 +365,7 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
         '"messageId":"msg-1","delta":"hel"}\n\n'
         'event: ag_ui\ndata: {"type":"TEXT_MESSAGE_CHUNK",'
         '"messageId":"msg-1","delta":"lo"}\n\n'
+        'event: ag_ui\ndata: {"type":"RUN_FINISHED","threadId":"t","runId":"run-1"}\n\n'
     )
     fake_api.add(
         "POST",
@@ -379,7 +380,9 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
     handle = _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"})
     events = list(handle.stream())
     assert [
-        e.model_dump(exclude_none=True, by_alias=True)["delta"] for e in events
+        e.model_dump(exclude_none=True, by_alias=True)["delta"]
+        for e in events
+        if hasattr(e, "delta")
     ] == ["hel", "lo"]
     # text() re-streams and concatenates AG-UI text deltas.
     assert handle.text() == "hello"
