@@ -307,6 +307,25 @@ async def test_files_create_text_and_download(fake_api: FakeAPI):
     assert data == b"bytes-here"
 
 
+async def test_files_list_sends_metadata_as_repeated_pairs(
+    fake_api: FakeAPI,
+):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    files = AsyncFiles(fake_api.async_client())
+    await files.list(metadata={"source": "crm", "ref": "a:b"})
+
+    params = fake_api.last_request.url.params
+    assert params.get_list("metadata") == ["source:crm", "ref:a:b"]
+
+
+async def test_files_list_omits_empty_metadata_filter(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    files = AsyncFiles(fake_api.async_client())
+    await files.list(metadata={})
+
+    assert "metadata" not in fake_api.last_request.url.params
+
+
 async def test_files_create_text_sends_tags_and_metadata(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/files", json_body=file_payload())
     files = AsyncFiles(fake_api.async_client())
