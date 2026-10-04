@@ -24,6 +24,8 @@ import httpx2 as httpx
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.auth import (
+    AsyncCredentialProvider,
+    CredentialProvider,
     async_service_account_token,
     service_account_token,
 )
@@ -60,6 +62,12 @@ class IntrospectionClient:
     :class:`~introspection_sdk.runner.Runner` for DP traffic
     (``runner.tasks`` / ``runner.files``).
 
+    ``credentials`` replaces the static ``token`` with a
+    :class:`~introspection_sdk.auth.CredentialProvider` that is asked for
+    the header on every request and renews it after a ``401`` (see
+    :meth:`EmailCodeAuth.client <introspection_sdk.auth.EmailCodeAuth.client>`).
+    ``transport`` is an ``httpx2`` transport used by both planes.
+
     For the OpenTelemetry-based ``track`` / ``feedback`` / ``identify``
     surface, see :class:`introspection_sdk.IntrospectionLogs` (requires
     the ``[otel]`` extra).
@@ -84,6 +92,8 @@ class IntrospectionClient:
         base_api_url: str | None = None,
         dp_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
+        credentials: CredentialProvider | None = None,
+        transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
         self._base_api_url = base_api_url or os.getenv(
@@ -100,11 +110,15 @@ class IntrospectionClient:
             token=self._token,
             cp_session=cp_session,
             additional_headers=self._additional_headers,
+            transport=transport,
+            credentials=credentials,
         )
         self._dp_http = _HttpClient(
             api_url=dp_url or self._base_api_url,
             token=self._token,
             additional_headers=self._additional_headers,
+            transport=transport,
+            credentials=credentials,
         )
         self.runtimes = Runtimes(
             self._http,
@@ -216,6 +230,8 @@ class AsyncIntrospectionClient:
         base_api_url: str | None = None,
         dp_url: str | None = None,
         additional_headers: dict[str, str] | None = None,
+        credentials: AsyncCredentialProvider | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
         self._base_api_url = base_api_url or os.getenv(
@@ -232,11 +248,15 @@ class AsyncIntrospectionClient:
             token=self._token,
             cp_session=cp_session,
             additional_headers=self._additional_headers,
+            transport=transport,
+            credentials=credentials,
         )
         self._dp_http = _AsyncHttpClient(
             api_url=dp_url or self._base_api_url,
             token=self._token,
             additional_headers=self._additional_headers,
+            transport=transport,
+            credentials=credentials,
         )
         self.runtimes = AsyncRuntimes(
             self._http,

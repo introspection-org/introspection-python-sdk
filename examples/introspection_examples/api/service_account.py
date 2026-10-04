@@ -2,8 +2,11 @@
 credentials, then resolve a runtime and run a task.
 
 This is the headless / CI counterpart to a long-lived ``intro_…`` API
-key: the confidential Application's ``client_id`` / ``client_secret``
-stay server-side, and you re-mint when the token expires.
+key: the ``service_account`` Application's ``client_id`` /
+``client_secret`` stay server-side, and you re-mint when the token expires.
+The token carries the Application's scope ceiling, so it never goes to a
+browser or an end user's device; end users sign in through a ``jwks``,
+``spa`` or ``native`` Application instead.
 
 Two ways to use it, both shown below:
 
@@ -12,9 +15,7 @@ Two ways to use it, both shown below:
    flow then works unchanged.
 2. ``service_account_token(...)`` directly — when you also need the
    resolved ``dp_url`` (the Data Plane endpoint the CP picked for the
-   project) and the ``runtime_id``, e.g. a broker that hands a browser
-   client ``{ token, runtime_id, dp_url }`` so the SPA talks only to the
-   Data Plane and never resolves runtimes itself.
+   project), e.g. to call the Data Plane from another server process.
 
 Run with:
     INTRO_SA_CLIENT_ID=intro_app_xxx
@@ -55,11 +56,9 @@ def main() -> None:
         project=project,
     )
 
-    # (2) Broker path: mint the token explicitly to also read `dp_url`
-    # (resolved server-side by the CP), and resolve the runtime slug to a
-    # concrete `runtime_id`. A web broker returns these three to a browser
-    # client — `{ token, runtime_id, dp_url }` — so the SPA connects to the
-    # Data Plane directly without hardcoding the DP URL.
+    # (2) Mint the token explicitly to also read `dp_url` (resolved
+    # server-side by the CP), and resolve the runtime slug to a concrete
+    # `runtime_id`.
     token = service_account_token(
         client_id=client_id,
         client_secret=client_secret,

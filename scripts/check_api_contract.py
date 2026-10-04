@@ -49,7 +49,6 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from introspection_sdk.resources.automations import Automations
 from introspection_sdk.resources.connectors import (
     Connections,
     Connectors,
@@ -58,6 +57,7 @@ from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.resources.members import Members
 from introspection_sdk.resources.recipes import Recipes
 from introspection_sdk.resources.runtimes import Runtimes
+from introspection_sdk.runner_resources.automations import Automations
 from introspection_sdk.runner_resources.conversations import (
     ConversationItems,
     Conversations,

@@ -19,7 +19,11 @@ uv run python -m introspection_examples.api.automations              # Automatio
 uv run python -m introspection_examples.api.connectors_slack         # Create a Slack connector and authorize a workspace
 uv run python -m introspection_examples.api.connectors_pipedream     # Create a Pipedream connector and authorize one app
 uv run python -m introspection_examples.api.connectors_custom_app    # Find a custom MCP app, discover OAuth, create + authorize with a binding
+uv run python -m introspection_examples.api.service_account          # service_account Application: client_credentials token, then run a task
+uv run python -m introspection_examples.api.native_email_code        # native Application: email-code sign-in for an end user (prompts for the code)
 ```
+
+Each example's module docstring lists the environment it needs.
 
 ## Custom events
 
