@@ -13,6 +13,7 @@ import pytest
 from introspection_sdk import IntrospectionAPIError, NotFoundError
 from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner import Runner
+from introspection_sdk.schemas.runner import RunnerIdentity
 
 from .conftest import (
     PROJECT_ID,
@@ -259,3 +260,45 @@ def test_run_forwards_identity_tags(fake_api: FakeAPI):
         "user_id": "u_demo",
         "tags": ["project:x"],
     }
+
+
+def test_run_forwards_identity_metadata(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/runtimes/{RUNTIME_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    runner = _runtimes(fake_api)(RUNTIME_ID).run(
+        identity=RunnerIdentity(
+            user_id="u_demo", metadata={"plan": "enterprise"}
+        )
+    )
+
+    body = fake_api.last_request.json()
+    assert body["identity"] == {
+        "user_id": "u_demo",
+        "metadata": {"plan": "enterprise"},
+    }
+
+    # refresh() re-sends the same identity, so the server re-merges it.
+    runner.refresh()
+    assert fake_api.last_request.json()["identity"]["metadata"] == {
+        "plan": "enterprise"
+    }
+
+
+def test_run_omits_unset_identity_metadata(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/runtimes/{RUNTIME_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    _runtimes(fake_api)(RUNTIME_ID).run(identity={"user_id": "u_demo"})
+
+    assert "metadata" not in fake_api.last_request.json()["identity"]

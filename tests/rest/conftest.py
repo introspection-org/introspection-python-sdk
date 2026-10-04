@@ -45,6 +45,7 @@ from introspection_sdk.schemas.connectors import (
 )
 from introspection_sdk.schemas.experiments import Experiment
 from introspection_sdk.schemas.files import File, FileType
+from introspection_sdk.schemas.members import Member, MemberType
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.recipes import Recipe
 from introspection_sdk.schemas.runner import (
@@ -513,6 +514,21 @@ def file_payload(**over: Any) -> File:
     }
     defaults.update(over)
     return File(**defaults)
+
+
+def member_payload(**over: Any) -> Member:
+    defaults: dict[str, Any] = {
+        "id": MEMBER_ID,
+        "org_id": ORG_ID,
+        "created_at": _NOW_DT,
+        "updated_at": _NOW_DT,
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "role": "member",
+        "member_type": MemberType.BUSINESS,
+    }
+    defaults.update(over)
+    return Member(**defaults)
 
 
 def paginated(
