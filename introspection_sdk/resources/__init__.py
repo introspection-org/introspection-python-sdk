@@ -6,6 +6,10 @@ from introspection_sdk.resources.annotations import (
     AsyncProjectLabels,
     ProjectLabels,
 )
+from introspection_sdk.resources.automations import (
+    AsyncAutomations,
+    Automations,
+)
 from introspection_sdk.resources.connectors import (
     AsyncConnections,
     AsyncConnectors,
@@ -37,7 +41,9 @@ from introspection_sdk.resources.runtimes import (
 
 __all__ = [
     "Annotations",
+    "Automations",
     "AsyncAnnotations",
+    "AsyncAutomations",
     "AsyncConnections",
     "AsyncConnectors",
     "AsyncExperimentHandle",

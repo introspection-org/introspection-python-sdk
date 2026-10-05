@@ -49,6 +49,7 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from introspection_sdk.resources.automations import Automations
 from introspection_sdk.resources.connectors import (
     Connections,
     Connectors,
@@ -65,7 +66,17 @@ from introspection_sdk.runner_resources.events import Events
 from introspection_sdk.runner_resources.files import Files
 from introspection_sdk.runner_resources.shares import Shares
 from introspection_sdk.runner_resources.tasks import Tasks
-from introspection_sdk.schemas.events import FeedbackEvent
+from introspection_sdk.schemas.automations import (
+    Automation,
+    AutomationCreateRequest,
+    AutomationTriggerResponse,
+    AutomationUpdateRequest,
+)
+from introspection_sdk.schemas.events import (
+    AutomationSkippedPayload,
+    AutomationTriggeredPayload,
+    FeedbackEvent,
+)
 from introspection_sdk.schemas.files import File, FileUpdateRequest
 from introspection_sdk.schemas.members import Member, MemberUpdateRequest
 from introspection_sdk.schemas.metrics import MetricQueryRequest
@@ -124,6 +135,10 @@ class Surface:
     # this the check reports them as params the API rejects, which is exactly
     # backwards: they are never sent, so the API never sees them.
     client_side: frozenset[str] = frozenset()
+    # Fields this SDK sends ahead of the reference publishing them, each tied
+    # to the server change that adds it. Checked for staleness like `exempt`:
+    # once the reference declares one, keeping it here is reported.
+    sdk_only: frozenset[str] = frozenset()
     # Which reference declares this surface. The two planes are separate
     # services with separate specs, and the CP half went unchecked entirely
     # until an experiments filter the API does not accept shipped in two SDKs.
@@ -555,6 +570,70 @@ SURFACES = (
         extra_means="sent but not declared by the API",
         missing_means="cannot be sent by callers of this SDK",
     ),
+    # --- automations -------------------------------------------------------
+    Surface(
+        name="Automation",
+        where="the automation read model",
+        sdk=lambda: set(Automation.model_fields),
+        server=lambda spec: schema_properties(spec, "Automation"),
+        # Dropped server-side by introspection-cloud#3154; drop the exemption
+        # once the reference does.
+        exempt=frozenset({"agent_member_id"}),
+        extra_means="invented — the API does not return it",
+        missing_means="returned by the API but not surfaced here",
+    ),
+    Surface(
+        name="AutomationCreate",
+        where="POST /v1/automations body",
+        sdk=lambda: set(AutomationCreateRequest.model_fields),
+        server=lambda spec: schema_properties(spec, "AutomationCreate"),
+        extra_means="rejected with a 422 — the create body forbids undeclared fields",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="AutomationUpdate",
+        where="PATCH /v1/automations/{id} body",
+        sdk=lambda: set(AutomationUpdateRequest.model_fields),
+        server=lambda spec: schema_properties(spec, "AutomationUpdate"),
+        extra_means="rejected with a 422 — the update body forbids undeclared fields",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="AutomationTriggerResponse",
+        where="POST /v1/automations/{id}/trigger response",
+        sdk=lambda: set(AutomationTriggerResponse.model_fields),
+        server=lambda spec: schema_properties(
+            spec, "AutomationTriggerResponse"
+        ),
+        extra_means="invented — the API does not return it",
+        missing_means="returned by the API but not surfaced here",
+    ),
+    Surface(
+        name="automation list filters",
+        where="GET /v1/automations query parameters",
+        sdk=lambda: signature_params(Automations.list),
+        server=lambda spec: query_parameters(spec, "/v1/automations", "get"),
+        # Sent before the server publishes it (introspection-cloud#3137).
+        sdk_only=frozenset({"task_id"}),
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    Surface(
+        name="AutomationTriggered",
+        where="the introspection.automation.triggered payload",
+        sdk=lambda: set(AutomationTriggeredPayload.model_fields),
+        server=lambda spec: schema_properties(spec, "AutomationTriggered"),
+        extra_means="invented — the API does not return it",
+        missing_means="returned by the API but not surfaced here",
+    ),
+    Surface(
+        name="AutomationSkipped",
+        where="the introspection.automation.skipped payload",
+        sdk=lambda: set(AutomationSkippedPayload.model_fields),
+        server=lambda spec: schema_properties(spec, "AutomationSkipped"),
+        extra_means="invented — the API does not return it",
+        missing_means="returned by the API but not surfaced here",
+    ),
     # --- task cancel -------------------------------------------------------
     Surface(
         name="TaskCancelRequest",
@@ -619,8 +698,11 @@ def main() -> int:
         checked += len(server_fields | sdk_fields)
 
         missing = server_fields - sdk_fields - surface.exempt
-        extra = sdk_fields - server_fields - surface.client_side
+        extra = (
+            sdk_fields - server_fields - surface.client_side - surface.sdk_only
+        )
         stale_exemptions = surface.exempt - server_fields
+        stale_sdk_only = surface.sdk_only & server_fields
         stale_client_side = surface.client_side - sdk_fields
 
         lines: list[str] = []
@@ -645,6 +727,13 @@ def main() -> int:
                 lines,
                 "exempted here but no longer in the API (drop the exemption):",
                 stale_exemptions,
+            )
+            fatal = True
+        if stale_sdk_only:
+            report(
+                lines,
+                "declared sdk-only here but now in the API (drop it):",
+                stale_sdk_only,
             )
             fatal = True
         if stale_client_side:

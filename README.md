@@ -266,6 +266,72 @@ typed events, and metrics queries, [Files and shares](https://docs.introspection
 for durable inputs and grants, and [`examples/`](examples/introspection_examples/)
 for end-to-end scripts.
 
+## Schedule automations
+
+`client.automations` manages a project's automations on the data plane: a
+prompt on a schedule (`kind=None`), or platform work (`observation_synthesis`,
+`observation_clustering`, `project_check_in`). A prompt automation creates a
+task per firing, or posts into an existing task when it names `task_id`. A
+one-off reminder is a `manual` automation with a future `next_trigger_at`:
+
+```python
+from datetime import UTC, datetime
+
+from introspection_sdk.schemas.automations import AutomationMetadata
+
+reminder = client.automations.create(
+    name="Friday check-in",
+    trigger_type="manual",
+    prompt="How did the week go?",
+    runtime_group_id=runtime_group_id,
+    task_id=task_id,
+    next_trigger_at=datetime(2026, 10, 9, 16, tzinfo=UTC),
+)
+
+weekly = client.automations.create(
+    name="Weekly digest",
+    trigger_type="cron",
+    cron_schedule="0 9 * * 1",
+    prompt="Summarize my week",
+    runtime_group_id=runtime_group_id,
+    metadata=AutomationMetadata(timezone="Europe/London"),
+)
+
+for automation in client.automations.list(enabled=True, scheduled=True):
+    print(automation.name, automation.kind, automation.next_trigger_at)
+
+client.automations.update(weekly.id, enabled=False)  # pause, keep the slot
+result = client.automations.trigger(weekly.id)       # run it now
+print(result.status, result.task_id, result.reason)
+```
+
+`update` sends only the fields you pass, so `None` never clears anything;
+`metadata` replaces wholesale, and `kind` / `trigger_type` are immutable.
+`delete` soft-deletes, except for a project default, which answers 409:
+disable it instead. `kind`, `trigger_type`, condition types, skip reasons and
+trigger statuses are open enums: a value this SDK does not know yet decodes
+as a plain string rather than failing.
+
+Each firing is recorded as an event, read like any other family:
+
+```python
+for event in client.events.list(
+    "introspection.automation.triggered", automation_id=weekly.id
+):
+    print(event.payload.slot, event.payload.task_id, event.payload.posted)
+```
+
+`introspection.automation.skipped` records a scheduled slot that ran nothing,
+with its `reason`; it is project-owned, so only callers with project-wide
+telemetry access read it. Both families take the `automation_id` and
+`task_id` filters.
+
+Today the server serves `/v1/automations` to project administrators only and
+answers anyone else with a 403. introspection-cloud#3137 (not yet shipped)
+opens the routes to members for their own automations that post into one of
+their own tasks, and adds the `task_id` list filter, which this SDK already
+sends.
+
 ## Environment variables
 
 ```shell
