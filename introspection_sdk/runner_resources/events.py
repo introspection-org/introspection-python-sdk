@@ -22,7 +22,7 @@ Three response representations share one request contract:
 
 **Unknown-family tolerance:** rows whose ``event_name`` is outside the
 SDK's known family set are skipped client-side (never raised), counted on
-:data:`UNKNOWN_EVENT_SKIPS`, and debug-logged — so a seventh server-side
+:data:`UNKNOWN_EVENT_SKIPS`, and debug-logged — so a new server-side
 family doesn't break older SDKs.
 """
 
@@ -178,6 +178,8 @@ def build_event_params(
     severities: builtins.list[str] | None = None,
     runtime_group_unattributed: bool | None = None,
     status: str | None = None,
+    automation_id: UUID | str | None = None,
+    task_id: UUID | str | None = None,
 ) -> dict[str, Any]:
     """Fold the shared list/arrow kwargs into the wire query params.
 
@@ -185,7 +187,8 @@ def build_event_params(
     source of heterogeneity. Family-scoped filters (observation:
     ``conversation_ids`` / ``lens`` / ``pattern_id`` / ``include_superseded``
     / ``severities`` / ``runtime_group_unattributed``; pattern: ``lens`` /
-    ``status``) are passed through; the server validates them against the
+    ``status``; automation triggered/skipped: ``automation_id`` /
+    ``task_id``) are passed through; the server validates them against the
     requested family's allow-map.
     """
     if not event_name:
@@ -216,6 +219,8 @@ def build_event_params(
         "severities": severities,
         "runtime_group_unattributed": runtime_group_unattributed,
         "status": status,
+        "automation_id": automation_id,
+        "task_id": task_id,
     }
 
 
@@ -261,6 +266,8 @@ class Events:
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
+        automation_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
         format: ReadFormat = "json",
     ) -> Pager[Event, Paginated[Event]]:
         """List events of one family (cursor envelope). Iterate the returned
@@ -309,6 +316,8 @@ class Events:
                 severities=severities,
                 runtime_group_unattributed=runtime_group_unattributed,
                 status=status,
+                automation_id=automation_id,
+                task_id=task_id,
             )
             if format == "arrow":
                 raw = self._http.request(
@@ -385,6 +394,8 @@ class Events:
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
+        automation_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
     ) -> ArrowPageIterator:
         """Columnar accessor: iterate one ``pyarrow.Table`` per server page
         (constant memory — envelope columns + the family's typed ``payload``
@@ -425,6 +436,8 @@ class Events:
                 severities=severities,
                 runtime_group_unattributed=runtime_group_unattributed,
                 status=status,
+                automation_id=automation_id,
+                task_id=task_id,
             )
             raw = self._http.request(
                 "GET",
@@ -474,6 +487,8 @@ class AsyncEvents:
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
+        automation_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
         format: ReadFormat = "json",
     ) -> AsyncPager[Event, Paginated[Event]]:
         """List events of one family (cursor envelope). ``await`` the
@@ -513,6 +528,8 @@ class AsyncEvents:
                 severities=severities,
                 runtime_group_unattributed=runtime_group_unattributed,
                 status=status,
+                automation_id=automation_id,
+                task_id=task_id,
             )
             if format == "arrow":
                 raw = await self._http.request(
@@ -585,6 +602,8 @@ class AsyncEvents:
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
+        automation_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
     ) -> AsyncArrowPageIterator:
         """Columnar accessor: ``async for`` one ``pyarrow.Table`` per server
         page, or ``await .read_all()`` to concatenate every page into one
@@ -623,6 +642,8 @@ class AsyncEvents:
                 severities=severities,
                 runtime_group_unattributed=runtime_group_unattributed,
                 status=status,
+                automation_id=automation_id,
+                task_id=task_id,
             )
             raw = await self._http.request(
                 "GET",

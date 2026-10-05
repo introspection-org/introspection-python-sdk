@@ -25,9 +25,18 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from introspection_sdk.schemas.automations import (
+    OpenSkipReason,
+    OpenTriggerType,
+)
+
 __all__ = [
     "AnnotationEvent",
     "AnnotationPayload",
+    "AutomationSkippedEvent",
+    "AutomationSkippedPayload",
+    "AutomationTriggeredEvent",
+    "AutomationTriggeredPayload",
     "ClusteringRunEvent",
     "ClusteringRunPayload",
     "Event",
@@ -52,7 +61,7 @@ __all__ = [
 
 
 class IntrospectionEventName(StrEnum):
-    """The seven canonical platform event families — a closed, typed set.
+    """The platform event families this SDK types — a closed set.
 
     Legacy verb-suffixed names on stored rows are normalized server-side;
     responses always carry the canonical family name.
@@ -65,6 +74,9 @@ class IntrospectionEventName(StrEnum):
     JUDGEMENT = "introspection.judgement"
     PATTERN = "introspection.pattern"
     PATTERN_ASSIGNMENT = "introspection.pattern.assignment"
+    AUTOMATION_TRIGGERED = "introspection.automation.triggered"
+    AUTOMATION_SKIPPED = "introspection.automation.skipped"
+    """Project-owned: readable only with project-wide telemetry access."""
 
 
 #: Wire values of every family in the closed set, for cheap membership
@@ -238,6 +250,43 @@ class JudgementPayload(_ApiModel):
     experiment_arm_id: UUID | None = None
 
 
+class AutomationTriggeredPayload(_ApiModel):
+    """One automation trigger that ran.
+
+    ``slot`` is the ``next_trigger_at`` a scheduled trigger claimed
+    (``None`` for a hand trigger). ``posted`` says whether the prompt went
+    into an existing task rather than a new one. ``member_id`` is the
+    task's member, who owns the event; ``triggered_by_member_id`` is the
+    person who triggered it by hand.
+    """
+
+    automation_id: UUID
+    automation_name: str
+    trigger_type: OpenTriggerType
+    task_id: UUID
+    """The task created, or posted into when ``posted`` is true."""
+    posted: bool
+    member_id: UUID
+    prompt: str | None = None
+    slot: datetime | None = None
+    runtime_group_id: UUID | None = None
+    triggered_by_member_id: UUID | None = None
+
+
+class AutomationSkippedPayload(_ApiModel):
+    """One scheduled automation trigger that ran nothing.
+
+    Project-owned, so it names no member. ``task_id`` is set only when the
+    automation targets an existing task.
+    """
+
+    automation_id: UUID
+    trigger_type: OpenTriggerType
+    reason: OpenSkipReason
+    slot: datetime | None = None
+    task_id: UUID | None = None
+
+
 # --- whole-event models: envelope + typed payload, Literal tag -------
 
 
@@ -291,7 +340,23 @@ class JudgementEvent(IntrospectionEventBase):
     payload: JudgementPayload
 
 
-#: The discriminated union of the seven canonical event families. Pydantic
+class AutomationTriggeredEvent(IntrospectionEventBase):
+    """An automation trigger that ran
+    (``event_name=introspection.automation.triggered``)."""
+
+    event_name: Literal[IntrospectionEventName.AUTOMATION_TRIGGERED]
+    payload: AutomationTriggeredPayload
+
+
+class AutomationSkippedEvent(IntrospectionEventBase):
+    """A scheduled automation trigger that ran nothing
+    (``event_name=introspection.automation.skipped``)."""
+
+    event_name: Literal[IntrospectionEventName.AUTOMATION_SKIPPED]
+    payload: AutomationSkippedPayload
+
+
+#: The discriminated union of the typed event families. Pydantic
 #: selects the member from the top-level ``event_name`` tag; the member
 #: fixes the ``payload`` type.
 Event = Annotated[
@@ -301,7 +366,9 @@ Event = Annotated[
     | ClusteringRunEvent
     | FeedbackEvent
     | AnnotationEvent
-    | JudgementEvent,
+    | JudgementEvent
+    | AutomationTriggeredEvent
+    | AutomationSkippedEvent,
     Field(discriminator="event_name"),
 ]
 
@@ -310,7 +377,7 @@ class UnknownEvent(IntrospectionEventBase):
     """Forward-compatible fallback for a family this SDK version predates.
 
     The closed :data:`Event` union exists so the payload type is fixed by
-    the ``event_name`` tag. A seventh family added server-side has no
+    the ``event_name`` tag. A family added server-side has no
     member to select, so it surfaces here with the envelope validated and
     ``payload`` left untyped, rather than raising. Paginated reads skip
     such rows (the caller named a family, so an off-family row is noise);

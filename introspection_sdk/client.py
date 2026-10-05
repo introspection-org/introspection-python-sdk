@@ -31,6 +31,7 @@ from introspection_sdk.dev_target import client_headers
 from introspection_sdk.resources import (
     Annotations,
     AsyncAnnotations,
+    AsyncAutomations,
     AsyncConnectors,
     AsyncExperiments,
     AsyncMembers,
@@ -38,6 +39,7 @@ from introspection_sdk.resources import (
     AsyncRecipes,
     AsyncRepositories,
     AsyncRuntimes,
+    Automations,
     Connectors,
     Experiments,
     Members,
@@ -71,6 +73,7 @@ class IntrospectionClient:
     members: Members
     annotations: Annotations
     project_labels: ProjectLabels
+    automations: Automations
     events: Events
 
     def __init__(
@@ -117,6 +120,7 @@ class IntrospectionClient:
         self.members = Members(self._http)
         self.annotations = Annotations(self._http, self._dp_http)
         self.project_labels = ProjectLabels(self._dp_http)
+        self.automations = Automations(self._dp_http)
         self.events = Events(self._dp_http)
 
     @classmethod
@@ -201,6 +205,7 @@ class AsyncIntrospectionClient:
     members: AsyncMembers
     annotations: AsyncAnnotations
     project_labels: AsyncProjectLabels
+    automations: AsyncAutomations
     events: AsyncEvents
 
     def __init__(
@@ -247,6 +252,7 @@ class AsyncIntrospectionClient:
         self.members = AsyncMembers(self._http)
         self.annotations = AsyncAnnotations(self._http, self._dp_http)
         self.project_labels = AsyncProjectLabels(self._dp_http)
+        self.automations = AsyncAutomations(self._dp_http)
         self.events = AsyncEvents(self._dp_http)
 
     @classmethod
