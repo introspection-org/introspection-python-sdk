@@ -56,6 +56,8 @@ __all__ = [
     "PatternAssignmentPayload",
     "PatternEvent",
     "PatternPayload",
+    "TrackEvent",
+    "TrackPayload",
     "UnknownEvent",
 ]
 
@@ -77,6 +79,8 @@ class IntrospectionEventName(StrEnum):
     AUTOMATION_TRIGGERED = "introspection.automation.triggered"
     AUTOMATION_SKIPPED = "introspection.automation.skipped"
     """Project-owned: readable only with project-wide telemetry access."""
+    TRACK = "introspection.track"
+    """Virtual projection over app events from ``log_event`` / ``track``."""
 
 
 #: Wire values of every family in the closed set, for cheap membership
@@ -210,6 +214,15 @@ class ClusteringRunPayload(_ApiModel):
     params: dict[str, Any] | None = None
     replaces_run_id: str | None = None
     error: str | None = None
+
+
+class TrackPayload(_ApiModel):
+    """One app event emitted through ``log_event`` / ``track``."""
+
+    #: The custom ``event.name`` the caller logged, e.g. ``"ark.feed.entry"``.
+    name: str
+    #: The event's ``properties.*`` attributes, prefix stripped.
+    properties: dict[str, Any] | None = None
 
 
 class FeedbackPayload(_ApiModel):
@@ -356,6 +369,14 @@ class AutomationSkippedEvent(IntrospectionEventBase):
     payload: AutomationSkippedPayload
 
 
+class TrackEvent(IntrospectionEventBase):
+    """An app event (``event_name=introspection.track``); the custom name
+    is ``payload.name``."""
+
+    event_name: Literal[IntrospectionEventName.TRACK]
+    payload: TrackPayload
+
+
 #: The discriminated union of the typed event families. Pydantic
 #: selects the member from the top-level ``event_name`` tag; the member
 #: fixes the ``payload`` type.
@@ -368,7 +389,8 @@ Event = Annotated[
     | AnnotationEvent
     | JudgementEvent
     | AutomationTriggeredEvent
-    | AutomationSkippedEvent,
+    | AutomationSkippedEvent
+    | TrackEvent,
     Field(discriminator="event_name"),
 ]
 

@@ -10,14 +10,18 @@ and the span / tracing processors.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 __all__ = [
     "Attr",
     "Baggage",
     "DEFAULT_SERVICE_NAME",
+    "EventIdentity",
     "EventName",
     "FeedbackProperties",
+    "LogEventSeverity",
+    "RESERVED_EVENT_NAME_PREFIXES",
+    "reserved_event_name_prefix",
 ]
 
 #: ``service.name`` for telemetry this SDK emits when the caller names none.
@@ -27,6 +31,35 @@ __all__ = [
 #: :func:`~introspection_sdk.otel.init` produced two services in the backend
 #: and nothing tied them together.
 DEFAULT_SERVICE_NAME = "introspection-client"
+
+
+#: Event-name prefixes owned by the platform (``introspection.*``) and by the
+#: OpenTelemetry GenAI semantic conventions (``gen_ai.*``). A custom event
+#: under either would be read as that family rather than as an app event.
+RESERVED_EVENT_NAME_PREFIXES: tuple[str, ...] = ("introspection.", "gen_ai.")
+
+#: Severity of a record emitted by ``log_event``.
+LogEventSeverity = Literal["DEBUG", "INFO", "WARN", "ERROR"]
+
+
+def reserved_event_name_prefix(name: str) -> str | None:
+    """The reserved prefix ``name`` falls under, if any."""
+    for prefix in RESERVED_EVENT_NAME_PREFIXES:
+        if name.startswith(prefix):
+            return prefix
+    return None
+
+
+@dataclass(frozen=True)
+class EventIdentity:
+    """Identity known at a ``log_event`` call site.
+
+    Each field set here replaces the one scoped on the context; a field left
+    ``None`` still falls back to it.
+    """
+
+    user_id: str | None = None
+    anonymous_id: str | None = None
 
 
 class EventName:

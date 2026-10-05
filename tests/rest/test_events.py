@@ -39,6 +39,7 @@ from introspection_sdk.schemas.events import (
     ObservationEvent,
     PatternAssignmentEvent,
     PatternEvent,
+    TrackEvent,
     UnknownEvent,
 )
 
@@ -312,6 +313,38 @@ def test_list_feedback_family_typed_payload(fake_api: FakeAPI):
     assert (
         fake_api.last_request.params.get("event_name")
         == "introspection.feedback"
+    )
+
+
+def test_list_track_family_typed_payload(fake_api: FakeAPI):
+    """App events from ``log_event`` / ``track`` read back typed rather than
+    being skipped as an unknown family."""
+    fake_api.add(
+        "GET",
+        "/v1/events",
+        json_body=cursor_page(
+            [
+                envelope(
+                    "introspection.track",
+                    {
+                        "name": "ark.feed.entry",
+                        "properties": {"entry_id": "e_1"},
+                    },
+                )
+            ],
+            None,
+        ),
+    )
+    events = _events(fake_api)
+
+    page = events.list(IntrospectionEventName.TRACK).page()
+
+    (record,) = page.records
+    assert isinstance(record, TrackEvent)
+    assert record.payload.name == "ark.feed.entry"
+    assert record.payload.properties == {"entry_id": "e_1"}
+    assert (
+        fake_api.last_request.params.get("event_name") == "introspection.track"
     )
 
 

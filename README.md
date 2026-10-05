@@ -130,6 +130,12 @@ logs.shutdown()
 `feedback` records how a result landed, `track` records a product event, and
 `identify` attaches who it was.
 
+To record an app event under your own name (`ark.feed.entry`), use
+`logs.log_event(name, attributes, event_id=...)`; `track` is an alias of it.
+See [Logging custom events](docs/otel.md#logging-custom-events) for
+idempotency, reserved names, use from a recipe sandbox, and reading events
+back.
+
 See [Product signals](https://docs.introspection.dev/sdk/python/product-signals) for the full surface, and
 [**`docs/otel.md`**](docs/otel.md) for the OTel wiring.
 
