@@ -31,6 +31,15 @@ class RunnerIdentity(_ApiModel):
     attenuated to the asserting agent member's own tags, and applied on
     create only — an existing member's tags are never changed here. Same
     ``key:value`` grammar as every other tag write."""
+    metadata: dict[str, str] | None = None
+    """Metadata to set on the ``customer`` member this identity names. It
+    grants nothing, so unlike ``tags`` it applies to an existing member too:
+    a new member is seeded with it, and an existing one has these keys merged
+    in, overwriting keys of the same name (including ones an admin set) and
+    keeping the rest. ``None`` or ``{}`` changes nothing. ``refresh()``
+    re-sends the identity, so it re-merges these keys. Keys are letters,
+    digits, ``_`` and ``-``; values are non-empty strings; at most 64
+    entries."""
 
 
 class RunCallerLibrary(_ApiModel):

@@ -33,12 +33,14 @@ from introspection_sdk.resources import (
     AsyncAnnotations,
     AsyncConnectors,
     AsyncExperiments,
+    AsyncMembers,
     AsyncProjectLabels,
     AsyncRecipes,
     AsyncRepositories,
     AsyncRuntimes,
     Connectors,
     Experiments,
+    Members,
     ProjectLabels,
     Recipes,
     Repositories,
@@ -66,6 +68,7 @@ class IntrospectionClient:
     recipes: Recipes
     repositories: Repositories
     connectors: Connectors
+    members: Members
     annotations: Annotations
     project_labels: ProjectLabels
     events: Events
@@ -111,6 +114,7 @@ class IntrospectionClient:
         self.recipes = Recipes(self._http)
         self.repositories = Repositories(self._http, self._dp_http)
         self.connectors = Connectors(self._http)
+        self.members = Members(self._http)
         self.annotations = Annotations(self._http, self._dp_http)
         self.project_labels = ProjectLabels(self._dp_http)
         self.events = Events(self._dp_http)
@@ -194,6 +198,7 @@ class AsyncIntrospectionClient:
     recipes: AsyncRecipes
     repositories: AsyncRepositories
     connectors: AsyncConnectors
+    members: AsyncMembers
     annotations: AsyncAnnotations
     project_labels: AsyncProjectLabels
     events: AsyncEvents
@@ -239,6 +244,7 @@ class AsyncIntrospectionClient:
         self.recipes = AsyncRecipes(self._http)
         self.repositories = AsyncRepositories(self._http, self._dp_http)
         self.connectors = AsyncConnectors(self._http)
+        self.members = AsyncMembers(self._http)
         self.annotations = AsyncAnnotations(self._http, self._dp_http)
         self.project_labels = AsyncProjectLabels(self._dp_http)
         self.events = AsyncEvents(self._dp_http)

@@ -54,6 +54,7 @@ from introspection_sdk.resources.connectors import (
     Connectors,
 )
 from introspection_sdk.resources.experiments import Experiments
+from introspection_sdk.resources.members import Members
 from introspection_sdk.resources.recipes import Recipes
 from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner_resources.conversations import (
@@ -66,6 +67,7 @@ from introspection_sdk.runner_resources.shares import Shares
 from introspection_sdk.runner_resources.tasks import Tasks
 from introspection_sdk.schemas.events import FeedbackEvent
 from introspection_sdk.schemas.files import File, FileUpdateRequest
+from introspection_sdk.schemas.members import Member, MemberUpdateRequest
 from introspection_sdk.schemas.metrics import MetricQueryRequest
 from introspection_sdk.schemas.shares import ResourceShare, ShareCreateRequest
 from introspection_sdk.schemas.tasks import (
@@ -385,6 +387,58 @@ SURFACES = (
         missing_is_fatal=True,
         extra_means="sent as a query parameter the API does not accept",
         missing_means="accepted by the API but not exposed here",
+    ),
+    # --- members -----------------------------------------------------------
+    Surface(
+        name="Member",
+        where="the member read model",
+        plane="cp",
+        sdk=lambda: set(Member.model_fields),
+        server=lambda spec: schema_properties(spec, "Member"),
+        extra_means="invented — the API does not return it",
+        missing_means="returned by the API but not surfaced here",
+    ),
+    Surface(
+        name="member list filters",
+        where="GET /v1/members query parameters",
+        plane="cp",
+        sdk=lambda: signature_params(Members.list),
+        server=lambda spec: query_parameters(spec, "/v1/members", "get"),
+        # Resolve-a-known-set filters: an empty list cannot be expressed as a
+        # query string, so it would widen to the whole org.
+        exempt=frozenset({"id", "external_user_id"}),
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
+    ),
+    Surface(
+        name="MemberCreate",
+        where="POST /v1/members body",
+        plane="cp",
+        sdk=lambda: signature_params(Members.create),
+        server=lambda spec: schema_properties(spec, "MemberCreate"),
+        # Inherited from the read model's base and ignored by the invite route.
+        exempt=frozenset(
+            {
+                "external_user_id",
+                "image_url",
+                "member_type",
+                "is_deactivated",
+                "application_idp_id",
+                "connector_id",
+                "integration_id",
+            }
+        ),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="MemberUpdate",
+        where="PATCH /v1/members/{id} body",
+        plane="cp",
+        sdk=lambda: set(MemberUpdateRequest.model_fields),
+        server=lambda spec: schema_properties(spec, "MemberUpdate"),
+        extra_means="sent but not declared by the API",
+        missing_means="cannot be sent by callers of this SDK",
     ),
     # --- connectors --------------------------------------------------------
     Surface(

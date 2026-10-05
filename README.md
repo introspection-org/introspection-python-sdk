@@ -225,6 +225,42 @@ if merge is not None:
     print(merge.sha, merge.parents)
 ```
 
+## Label members
+
+`client.members` reads and updates the organization's members. Each carries
+two label sets: `tags` are **access-bearing** (a member reaches every file and
+task whose tags intersect its own, so writing them needs `members:manage`),
+while `metadata` is a `key: value` map that **grants nothing** and exists to
+filter on.
+
+```python
+for member in client.members.list(metadata={"plan": "enterprise"}, tag="team:acme"):
+    print(member.id, member.metadata)
+
+member = client.members.update(member_id, metadata={"plan": "pro", "region": "eu"})
+client.members.update(member_id, metadata={})  # clear it
+```
+
+`update` replaces `tags` and `metadata` wholesale: omit a field to leave it,
+pass `[]` / `{}` to clear it. The `metadata` filter ANDs up to 16 pairs with
+distinct keys, each matched exactly. Keys are letters, digits, `_` and `-`
+(no `.`); values are non-empty strings; one write carries at most 64 entries. The
+server answers 422 otherwise.
+
+`create` invites a human by email and can seed both sets. A `customer` member
+is minted from an asserted identity instead, and that identity can label it:
+
+```python
+runner = client.runtimes("customer-agent").run(
+    identity={"user_id": "u_123", "metadata": {"plan": "enterprise"}},
+)
+```
+
+Identity `metadata` seeds a new member and is merged into an existing one,
+overwriting keys of the same name (including ones an admin set) and keeping
+the rest; `refresh()` re-sends it. Identity `tags`, by contrast, apply only
+when the member is created.
+
 See [Production evidence](https://docs.introspection.dev/sdk/python/production-evidence) for transcripts,
 typed events, and metrics queries, [Files and shares](https://docs.introspection.dev/sdk/python/files-and-shares)
 for durable inputs and grants, and [`examples/`](examples/introspection_examples/)
