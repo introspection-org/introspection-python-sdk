@@ -32,7 +32,7 @@ otel = [
     "opentelemetry-sdk >= 1.39.0, < 1.43.0",
     "opentelemetry-exporter-otlp-proto-http>=1.39.0,<1.43.0",
 ]
-dev = ["pre-commit>=3.5.0", "ruff==0.14.14", "ty>=0.0.7"]
+dev = ["mypy>=2.4.0", "pre-commit>=3.5.0", "ruff==0.14.14", "ty>=0.0.7"]
 test = [
     "pytest>=9.0.0",
     "pytest-asyncio>=1.3.0",
@@ -74,6 +74,14 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+# mypy checks only that the client and the Runner satisfy the data-plane
+# Protocols; ty, which checks everything else, does not verify protocol
+# members yet.
+[tool.mypy]
+files = ["introspection_sdk/protocols.py", "tests/rest/test_dataplane_protocols.py"]
+follow_imports = "silent"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

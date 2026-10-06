@@ -157,7 +157,36 @@ async for summary in runner.conversations.list(
     print(summary.id, summary.usage.total_tokens, summary.cost.usd)
 ```
 
-The runner also exposes `files`, `shares`, `events`, and `metrics`.
+The runner also exposes `files`, `shares`, `events`, `metrics`,
+`automations` and `connections`.
+
+## One data-plane interface on the client and the Runner
+
+`IntrospectionClient` and `Runner` expose the same data-plane namespaces:
+`tasks` (with `tasks.runs`), `files`, `conversations`, `events`, `metrics`,
+`shares`, `automations` and `connections`. The contract is
+`introspection_sdk.protocols.DataPlaneResources` (and
+`AsyncDataPlaneResources` for `AsyncIntrospectionClient` / `AsyncRunner`),
+so code written against it runs with either handle:
+
+```python
+from introspection_sdk.protocols import DataPlaneResources
+
+
+def connected_apps(dp: DataPlaneResources) -> list[str]:
+    return [connection.app for connection in dp.connections.list()]
+
+
+connected_apps(client)                               # the client's own token
+connected_apps(client.runtimes("support-agent").run())  # the runner's token
+```
+
+The two differ only in the credential they send: the client sends its own
+token (an API key, a service account or a member's token) against
+`dp_url`, and a Runner sends the session token minted for it. A route the
+credential lacks the scope for answers 403 either way. A runner a member
+opens for themself is being given `automations:read` and
+`automations:write`, so it manages that member's automations.
 
 ## Curate traces with human review
 
@@ -395,6 +424,30 @@ sends.
 The routes need the `automations:read` and `automations:write` scopes, so a `native` sign-in cannot use them yet.
 `can_manage` says whether the caller may change an automation, and
 `created_by_member_id` who created it.
+
+## Connect apps for a member
+
+`client.connections` / `runner.connections` manage the apps (Gmail, Slack, …)
+members connected for themselves, which the agent then acts with in that
+member's sessions. These are not a connector's connections, which are
+`client.connectors.connections` on the control plane.
+
+```python
+page = runner.connections.create(app="gmail")  # runtime: the runner's group
+print(page.authorize_url, page.expires_in)     # open it once; never cache it
+
+for connection in runner.connections.list(app="gmail"):
+    print(connection.id, connection.account_name, connection.healthy)
+
+runner.connections.delete(connection.id)
+```
+
+On the client, `create` takes the runtime explicitly:
+`client.connections.create(app="gmail", runtime="support-agent")`, a runtime
+slug or runtime group id. `list` takes `member_id` and `app` filters; a
+caller who is not a project administrator only ever gets their own
+connections. The routes need `connections:read`, `connections:write` and
+`connections:delete`.
 
 ## Environment variables
 

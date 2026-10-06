@@ -49,7 +49,6 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from introspection_sdk.resources.automations import Automations
 from introspection_sdk.resources.connectors import (
     Connections,
     Connectors,
@@ -58,6 +57,8 @@ from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.resources.members import Members
 from introspection_sdk.resources.recipes import Recipes
 from introspection_sdk.resources.runtimes import Runtimes
+from introspection_sdk.runner_resources.automations import Automations
+from introspection_sdk.runner_resources.connections import AppConnections
 from introspection_sdk.runner_resources.conversations import (
     ConversationItems,
     Conversations,
@@ -72,6 +73,7 @@ from introspection_sdk.schemas.automations import (
     AutomationTriggerResponse,
     AutomationUpdateRequest,
 )
+from introspection_sdk.schemas.connections import Connection as AppConnection
 from introspection_sdk.schemas.events import (
     AutomationSkippedPayload,
     AutomationTriggeredPayload,
@@ -633,6 +635,23 @@ SURFACES = (
         server=lambda spec: schema_properties(spec, "AutomationSkipped"),
         extra_means="invented — the API does not return it",
         missing_means="returned by the API but not surfaced here",
+    ),
+    # --- member app connections ---------------------------------------------
+    Surface(
+        name="Connection (DP)",
+        where="the DP connection read model",
+        sdk=lambda: set(AppConnection.model_fields),
+        server=lambda spec: schema_properties(spec, "Connection"),
+        extra_means="invented — the API does not return it",
+        missing_means="returned by the API but not surfaced here",
+    ),
+    Surface(
+        name="connection list filters",
+        where="GET /v1/connections query parameters",
+        sdk=lambda: signature_params(AppConnections.list),
+        server=lambda spec: query_parameters(spec, "/v1/connections", "get"),
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
     ),
     # --- task cancel -------------------------------------------------------
     Surface(
