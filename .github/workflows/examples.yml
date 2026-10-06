@@ -65,3 +65,4 @@ jobs:
           uv run -m introspection_examples.api.runtimes
           uv run -m introspection_examples.api.async_runtimes
           uv run -m introspection_examples.api.repositories
+          uv run -m introspection_examples.otel.log_event

@@ -130,6 +130,12 @@ logs.shutdown()
 `feedback` records how a result landed, `track` records a product event, and
 `identify` attaches who it was.
 
+To record an app event under your own name (`ark.feed.entry`), use
+`logs.log_event(name, attributes, event_id=...)`; `track` is an alias of it.
+See [Logging custom events](docs/otel.md#logging-custom-events) for
+idempotency, reserved names, use from a recipe sandbox, and reading events
+back.
+
 See [Product signals](https://docs.introspection.dev/sdk/python/product-signals) for the full surface, and
 [**`docs/otel.md`**](docs/otel.md) for the OTel wiring.
 
@@ -295,6 +301,60 @@ typed events, and metrics queries, [Files and shares](https://docs.introspection
 for durable inputs and grants, and [`examples/`](examples/introspection_examples/)
 for end-to-end scripts.
 
+## Authenticate
+
+An API key (`INTROSPECTION_TOKEN`) is the simplest credential. To issue tokens
+yourself, register an Application in the project. Its type is chosen at
+creation, cannot change, and gives it exactly one way in; an app that needs two
+ways in registers two Applications.
+
+| Type              | Who signs in                                         | Grants (`allowed_grants`)                     | SDK entry point                                                               |
+| ----------------- | ---------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `service_account` | Your server, with a `client_secret`                  | `client_credentials`                          | `IntrospectionClient.from_service_account(...)`, `service_account_token(...)` |
+| `jwks`            | Your end users, through your own identity provider   | none: RFC 8693 token exchange of their JWT    | `token_exchange(...)`                                                         |
+| `spa`             | Your end users, through Introspection's hosted login | `authorization_code` (PKCE), `refresh_token`  | `authorization_code_token(...)`                                               |
+| `native`          | Your end users, with a code sent to their email      | `email_code`, `device_code`, `refresh_token`  | `EmailCodeAuth`, `AsyncEmailCodeAuth`                                         |
+
+The server derives an Application's grants from its type; a client never sends
+them. An `spa` needs at least one `redirect_uris` entry and a `jwks` takes none;
+an `spa` with a brokered identity provider also exchanges that login's
+`id_token` through `token_exchange`. Applications created before the types
+became exclusive keep working as they did. Tokens for end users belong to a
+`customer` member and carry at most the Application's `allowed_scopes`. A
+`service_account` or `jwks` token is not refreshable: mint or exchange again
+before `expires_in` lapses.
+
+### Native email-code sign-in
+
+```python
+from introspection_sdk import EmailCodeAuth
+
+auth = EmailCodeAuth(client_id="intro_app_...", project="ark")
+auth.send_code("user@example.com")
+auth.verify_code("user@example.com", code)  # six digits, or six letters and digits on a first sign-in
+
+client = auth.client()  # Data Plane URL from the session
+for event in client.events.list("introspection.feedback", limit=5):
+    print(event.payload.name)
+```
+
+`EmailCodeAuth` refreshes the access token `leeway` seconds (default 60) before
+it expires and after a `401`, and concurrent callers share one refresh. A
+refresh the server rejects signs the user out and raises `AuthenticationError`.
+A sign-in or refresh response that arrives after a newer sign-in or a sign-out
+is dropped and raises `SignInSupersededError`, so it never overwrites the newer
+session. Pass `session=` to restore a saved `AuthSession` and
+`on_session_change=` to persist each change (`None` after `sign_out()`); the
+session holds the refresh token, so store it as a secret. A rate-limited
+`send_code` raises `RateLimitError` with `retry_after`.
+
+The token is a Data Plane credential: Data Plane namespaces such as
+`client.events` accept it within the Application's `allowed_scopes`, and
+Control Plane namespaces such as `client.runtimes` reject it. `AsyncEmailCodeAuth` is the asyncio twin, and
+`send_email_code`, `email_code_token`, `refresh_access_token` and
+`revoke_session` are the one-shot calls underneath. See
+[`examples/introspection_examples/api/native_email_code.py`](examples/introspection_examples/api/native_email_code.py).
+
 ## Schedule automations
 
 `client.automations` manages a project's automations on the data plane: a
@@ -361,6 +421,10 @@ opens the routes to members for their own automations that post into one of
 their own tasks, and adds the `task_id` list filter, which this SDK already
 sends.
 
+The routes need the `automations:read` and `automations:write` scopes, so a `native` sign-in cannot use them yet.
+`can_manage` says whether the caller may change an automation, and
+`created_by_member_id` who created it.
+
 ## Track issues
 
 `client.issues` / `runner.issues` manage the project's issues: a living brief
@@ -416,6 +480,7 @@ connections. The routes need `connections:read`, `connections:write` and
 
 ```shell
 export INTROSPECTION_TOKEN="intro_xxx"
+export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"  # optional
 export INTROSPECTION_SERVICE_NAME="my-service"   # optional
 export INTROSPECTION_LOG_LEVEL="debug"           # optional
 ```
@@ -430,45 +495,6 @@ export INTROSPECTION_LOG_LEVEL="debug"           # optional
 - [Platform operations](https://docs.introspection.dev/sdk/python/platform-operations)
 - [Python SDK reference](https://docs.introspection.dev/sdk/python/reference)
 - [Authentication](https://docs.introspection.dev/sdk/authentication)
-
-## Stream recovery
-
-Run streams request replay from cursor `0`, including output produced before the
-first connection. Only a settling `RUN_FINISHED` or `RUN_ERROR` confirms completion;
-`RUN_FINISHED` with `result.reason = "stream_close"` is suppressed. A nonterminal
-EOF checks the specific run's status and reconnects within the recovery budget.
-Each new content cursor renews both the timeout window and the reconnect budget.
-Lifecycle events, heartbeats and duplicate content renew neither. The timeout is
-checked when recovery is needed; it does not interrupt an open connection.
-
-Every reconnect resumes from the last content cursor (`Last-Event-ID`). When
-that cursor is older than the server's replay buffer, the stream continues with
-one AG-UI `MESSAGES_SNAPSHOT` holding the run's messages so far; its id becomes
-the new cursor, and the text helper takes its assistant text in place of what it
-had read. When the server holds neither the frames nor a snapshot, it answers
-`410` and the stream ends with an incomplete-output error. Runtime images that
-predate the snapshot send `CUSTOM resume_gap` instead; raw streams pass it
-through. The text helper raises an incomplete-output error instead of returning
-partial text, including on `resume_gap`; it also raises on run failure or
-cancellation. If the status read
-says the run settled but the stream never confirmed completion, it raises an
-incomplete-output error. Recover final output from the conversation transcript
-when needed; the SDK does not automatically hydrate it or require an additional
-`conversations:read` scope just to stream. A long stream can therefore
-reconnect after its original timeout as long as content has continued to advance.
-
-Use a concrete run ID when consuming one turn. `runs/current` is a moving alias: a
-reconnect or status read may resolve to the next turn if another run has started.
-
-The in-process fake sandbox (`mock://`) supplies replies through the conversation
-transcript, not SSE. Its attach-only `stream_close` cannot satisfy `.text()`; use
-transcript reads for fake-sandbox tests, or a real runtime for `.text()` tests.
-
-The shared `run-stream-contract.json` fixtures pin these behaviors across Swift,
-JavaScript, Rust and Python. Each test suite pins the fixture SHA-256; intentional
-contract changes must update all four copies and their expected hashes together.
-
-Python exports `StreamIncompleteError` and `RunFailedError` from `introspection_sdk`, for both sync and async clients.
 
 ## License
 

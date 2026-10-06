@@ -14,7 +14,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
+from introspection_sdk import (
+    AsyncEmailCodeAuth,
+    AsyncIntrospectionClient,
+    AuthSession,
+    EmailCodeAuth,
+    IntrospectionClient,
+)
 from introspection_sdk.protocols import (
     AsyncDataPlaneResources,
     DataPlaneResources,
@@ -51,6 +57,20 @@ def _typed_async_client(
 
 def _typed_async_runner(runner: AsyncRunner) -> AsyncDataPlaneResources:
     return runner
+
+
+def _typed_email_code_client(auth: EmailCodeAuth) -> DataPlaneResources:
+    return auth.client()
+
+
+async def _typed_async_email_code_client(
+    auth: AsyncEmailCodeAuth,
+) -> AsyncDataPlaneResources:
+    return await auth.client()
+
+
+def _member_session(dp: LocalDP) -> AuthSession:
+    return AuthSession(access_token="member-token", dp_url=dp.endpoint)
 
 
 AUTOMATION = {
@@ -263,3 +283,44 @@ async def test_every_namespace_works_through_the_async_runner(
 
     assert _calls(dp) == EXPECTED_PATHS
     assert {r.authorization for r in dp.requests} == {"Bearer runner-jwt"}
+
+
+def test_every_namespace_works_through_the_email_code_client(
+    local_dp: Callable[[], LocalDP],
+):
+    dp = local_dp()
+    _seed(dp)
+    auth = EmailCodeAuth(
+        "client-id",
+        "project",
+        session=_member_session(dp),
+        base_api_url="https://api.test",
+    )
+    client = auth.client()
+    try:
+        assert isinstance(client, DataPlaneResources)
+        _drive(client)
+    finally:
+        client.shutdown()
+
+    assert _calls(dp) == EXPECTED_PATHS
+    assert {r.authorization for r in dp.requests} == {"Bearer member-token"}
+
+
+async def test_every_namespace_works_through_the_async_email_code_client(
+    local_dp: Callable[[], LocalDP],
+):
+    dp = local_dp()
+    _seed(dp)
+    auth = AsyncEmailCodeAuth(
+        "client-id",
+        "project",
+        session=_member_session(dp),
+        base_api_url="https://api.test",
+    )
+    async with await auth.client() as client:
+        assert isinstance(client, AsyncDataPlaneResources)
+        await _adrive(client)
+
+    assert _calls(dp) == EXPECTED_PATHS
+    assert {r.authorization for r in dp.requests} == {"Bearer member-token"}

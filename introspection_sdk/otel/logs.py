@@ -3,8 +3,8 @@
 :class:`IntrospectionLogs` is an independent surface (separate from
 :class:`~introspection_sdk.IntrospectionClient`) that emits structured
 log records over OTLP for the Introspection backend. It owns a
-``LoggerProvider`` and exposes the ergonomic ``track`` / ``feedback`` /
-``identify`` helpers, plus baggage context managers
+``LoggerProvider`` and exposes the ergonomic ``log_event`` / ``track`` /
+``feedback`` / ``identify`` helpers, plus baggage context managers
 (``set_baggage`` / ``set_agent`` / ``set_conversation`` /
 ``set_user_id`` / ``set_anonymous_id``).
 
@@ -17,6 +17,7 @@ Example::
     with logs.set_user_id("user_42"):
         logs.track("Button Clicked", {"button_id": "submit"})
         logs.feedback("thumbs_up", conversation_id="conv_456")
+    logs.log_event("ark.feed.entry", {"entry_id": "e_1"}, event_id="fe:e_1")
     logs.shutdown()
 """
 
@@ -32,6 +33,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from opentelemetry import baggage, context
@@ -52,14 +54,27 @@ from introspection_sdk.otel.types import (
     DEFAULT_SERVICE_NAME,
     Attr,
     Baggage,
+    EventIdentity,
     EventName,
     FeedbackProperties,
+    LogEventSeverity,
+    reserved_event_name_prefix,
 )
 from introspection_sdk.utils import logger
 from introspection_sdk.version import USER_AGENT, VERSION
 
 if TYPE_CHECKING:
     from opentelemetry.sdk._logs.export import LogRecordExporter
+
+
+_SEVERITY_NUMBERS: dict[str, SeverityNumber] = {
+    "DEBUG": SeverityNumber.DEBUG,
+    "INFO": SeverityNumber.INFO,
+    "WARN": SeverityNumber.WARN,
+    "ERROR": SeverityNumber.ERROR,
+}
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 @dataclass
@@ -81,7 +96,8 @@ class _IdentityContext:
 
 
 class IntrospectionLogs:
-    """OTLP logs surface for ``track`` / ``feedback`` / ``identify``.
+    """OTLP logs surface for ``log_event`` / ``track`` / ``feedback`` /
+    ``identify``.
 
     Independent of :class:`~introspection_sdk.IntrospectionClient` —
     construct one wherever you want to emit Introspection events.
@@ -226,6 +242,7 @@ class IntrospectionLogs:
         conversation_id: str | None = None,
         previous_response_id: str | None = None,
         event_id: str | None = None,
+        identity: EventIdentity | None = None,
     ) -> dict[str, Any]:
         # Caller-supplied values go in first and the SDK's own identity keys
         # last. The order matters on the wire: OTel caps a log record at
@@ -251,8 +268,17 @@ class IntrospectionLogs:
                 attributes[f"{prefix}{key}"] = _attribute_value(value)
 
         identity_ctx = self._get_identity_from_context()
-        user_id = identity_ctx.user_id
-        anonymous_id = identity_ctx.anonymous_id
+        override = identity or EventIdentity()
+        user_id = (
+            override.user_id
+            if override.user_id is not None
+            else identity_ctx.user_id
+        )
+        anonymous_id = (
+            override.anonymous_id
+            if override.anonymous_id is not None
+            else identity_ctx.anonymous_id
+        )
 
         gen_ai_ctx = self._get_gen_ai_from_context()
 
@@ -386,6 +412,84 @@ class IntrospectionLogs:
             event_id=event_id,
         )
 
+    def log_event(
+        self,
+        name: str,
+        attributes: dict[str, Any] | None = None,
+        *,
+        event_id: str | None = None,
+        timestamp: datetime | int | float | None = None,
+        identity: EventIdentity | None = None,
+        severity: LogEventSeverity | None = None,
+    ) -> None:
+        """Log an app event under any custom name, e.g. ``"ark.feed.entry"``.
+
+        ``attributes`` land under ``properties.*``, which is where the
+        platform's ``introspection.track`` read projection finds them; read
+        the events back with
+        ``client.events.list(event_name="introspection.track")``. Identity
+        and gen_ai context are taken from the active baggage unless
+        ``identity`` overrides them.
+
+        Args:
+            name: The event name. Must be non-empty and outside the
+                reserved namespaces
+                (:data:`~introspection_sdk.otel.types.RESERVED_EVENT_NAME_PREFIXES`).
+            attributes: Event attributes, stored as ``properties.<key>``.
+                ``None`` values are dropped.
+            event_id: Caller-supplied event id (auto-generated if omitted).
+                Consumers dedupe on it, so derive it from something stable
+                (e.g. ``f"feed-entry:{entry.id}"``) when delivery may repeat.
+            timestamp: When the event happened, as a ``datetime`` or epoch
+                milliseconds. A naive ``datetime`` is read as local time.
+                Default: now.
+            identity: Identity known at the call site. Each field set
+                replaces the one scoped on the context; a ``None`` field
+                still falls back to it.
+            severity: ``"DEBUG"``, ``"INFO"``, ``"WARN"`` or ``"ERROR"``.
+                Default: ``"INFO"``.
+
+        Raises:
+            ValueError: ``name`` is empty or reserved, or ``severity`` is
+                not one of the four levels.
+        """
+        if not name:
+            raise ValueError(
+                "log_event: event name must be a non-empty string."
+            )
+        reserved = reserved_event_name_prefix(name)
+        if reserved:
+            raise ValueError(
+                f'log_event: event name "{name}" is in the reserved '
+                f'"{reserved}*" namespace, which belongs to the platform and '
+                "OpenTelemetry. Use your own prefix, e.g. "
+                f'"myapp.{name[len(reserved) :]}".'
+            )
+        resolved_severity = severity or "INFO"
+        severity_number = _SEVERITY_NUMBERS.get(resolved_severity)
+        if severity_number is None:
+            raise ValueError(
+                f"log_event: severity must be one of "
+                f"{', '.join(_SEVERITY_NUMBERS)}; got {severity!r}."
+            )
+        self._otel_logger.emit(
+            timestamp=(
+                self._get_timestamp()
+                if timestamp is None
+                else _timestamp_ns(timestamp)
+            ),
+            context=context.get_current(),
+            severity_number=severity_number,
+            severity_text=resolved_severity,
+            attributes=self._build_attributes(
+                name,
+                properties=attributes,
+                event_id=event_id,
+                identity=identity,
+            ),
+        )
+        logger.debug(f"Logged event: {name}")
+
     def track(
         self,
         event_name: str,
@@ -393,17 +497,8 @@ class IntrospectionLogs:
         *,
         event_id: str | None = None,
     ) -> None:
-        attributes = self._build_attributes(
-            event_name, properties=properties, event_id=event_id
-        )
-        self._otel_logger.emit(
-            timestamp=self._get_timestamp(),
-            context=context.get_current(),
-            severity_number=SeverityNumber.INFO,
-            severity_text="INFO",
-            attributes=attributes,
-        )
-        logger.debug(f"Tracked: {event_name}")
+        """Track an analytics event: a thin alias of :meth:`log_event`."""
+        self.log_event(event_name, properties, event_id=event_id)
 
     def feedback(
         self,
@@ -504,6 +599,14 @@ def _attribute_value(value: Any) -> Any:
         return json.dumps(value, separators=(",", ":"))
     except (TypeError, ValueError):
         return repr(value)
+
+
+def _timestamp_ns(value: datetime | int | float) -> int:
+    """A ``datetime`` or epoch milliseconds as epoch nanoseconds."""
+    if isinstance(value, datetime):
+        aware = value if value.tzinfo is not None else value.astimezone()
+        return ((aware - _EPOCH) // timedelta(microseconds=1)) * 1000
+    return round(value * 1_000_000)
 
 
 def _generate_message_id() -> str:

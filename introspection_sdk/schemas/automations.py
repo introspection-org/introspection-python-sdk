@@ -18,7 +18,13 @@ from enum import StrEnum
 from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+)
 
 from introspection_sdk.schemas.tasks import TaskRepoRequest
 
@@ -124,6 +130,9 @@ class AutomationMetadata(_ApiModel):
     repositories: list[TaskRepoRequest] | None = None
     """Repositories a task-backed automation clones."""
     conditions: list[AutomationCondition] | None = None
+    operator_default: str | None = None
+    """Set by the platform on a project's default automation
+    (``project_check_in``)."""
 
 
 class Automation(_ApiModel):
@@ -154,6 +163,7 @@ class Automation(_ApiModel):
     task_id: UUID | None = None
     """The existing task each firing posts the prompt into; ``None`` creates
     a task per firing."""
+    agent_member_id: UUID | None = None
     created_by_member_id: UUID | None = None
     execution_blocked_reason: str | None = None
     """Why the scheduler will not run this automation, when it will not."""
@@ -164,6 +174,8 @@ class Automation(_ApiModel):
     ``project_check_in``), ``None`` otherwise."""
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    deleted_at: datetime | None = None
+    """Set on a soft-deleted automation, which ``get`` still returns."""
 
     @property
     def typed_metadata(self) -> AutomationMetadata | None:
@@ -198,7 +210,7 @@ class AutomationCreateRequest(_ApiModel):
     task_id: UUID | None = None
     """An existing task each firing posts the prompt into (prompt
     automations only)."""
-    next_trigger_at: datetime | None = None
+    next_trigger_at: AwareDatetime | None = None
     """A one-off slot for a ``manual`` automation; must be in the future
     and timezone-aware."""
     metadata: dict[str, Any] | None = None
@@ -220,7 +232,7 @@ class AutomationUpdateRequest(_ApiModel):
     runtime_group_id: UUID | None = None
     """Moves a prompt automation to another runtime group."""
     task_id: UUID | None = None
-    next_trigger_at: datetime | None = None
+    next_trigger_at: AwareDatetime | None = None
     """Schedules, moves or re-arms a ``manual`` automation's one-off slot;
     must be in the future and timezone-aware."""
     metadata: dict[str, Any] | None = None

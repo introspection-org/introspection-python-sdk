@@ -36,11 +36,19 @@ from introspection_sdk._errors import (
     ValidationError,
 )
 from introspection_sdk.auth import (
+    AsyncEmailCodeAuth,
+    AuthSession,
+    EmailCodeAuth,
     OAuthToken,
+    SignInSupersededError,
     async_authorization_code_token,
+    async_email_code_token,
+    async_send_email_code,
     async_service_account_token,
     async_token_exchange,
     authorization_code_token,
+    email_code_token,
+    send_email_code,
     service_account_token,
     token_exchange,
 )
@@ -66,6 +74,12 @@ from introspection_sdk.schemas.annotations import (
     ProjectLabel,
     ProjectLabelCreate,
     ProjectLabelUpdate,
+)
+from introspection_sdk.schemas.automations import (
+    Automation,
+    AutomationMetadata,
+    AutomationTriggerResponse,
+    AutomationTriggerType,
 )
 from introspection_sdk.schemas.repositories import (
     Repository,
@@ -160,6 +174,7 @@ def __getattr__(name: str) -> object:
 __all__ = [
     # Always-available REST surface
     "AsyncDataPlaneResources",
+    "AsyncEmailCodeAuth",
     "DataPlaneResources",
     "AsyncIntrospectionClient",
     "AsyncRunHandle",
@@ -167,8 +182,14 @@ __all__ = [
     "AGUIEvent",
     "AnnotationState",
     "AnnotationTarget",
+    "AuthSession",
     "AuthenticationError",
+    "Automation",
+    "AutomationMetadata",
+    "AutomationTriggerResponse",
+    "AutomationTriggerType",
     "ConflictError",
+    "EmailCodeAuth",
     "EventType",
     "InsufficientScopeError",
     "IntrospectionAPIError",
@@ -197,12 +218,17 @@ __all__ = [
     "Runner",
     "RunnerExpiredError",
     "SandboxUnavailableError",
+    "SignInSupersededError",
     "ValidationError",
-    # Server-side OAuth helpers (machine / federated auth)
+    # OAuth helpers (one per Application type)
     "async_authorization_code_token",
+    "async_email_code_token",
+    "async_send_email_code",
     "async_service_account_token",
     "async_token_exchange",
     "authorization_code_token",
+    "email_code_token",
+    "send_email_code",
     "service_account_token",
     "token_exchange",
     # OTel-only (lazy-loaded; require `[otel]` extra)

@@ -174,12 +174,15 @@ def error_from_response(res: httpx.Response) -> IntrospectionAPIError:
                 message = detail
             elif isinstance(body.get("message"), str):
                 message = body["message"]
+            elif isinstance(body.get("error_description"), str):
+                message = body["error_description"]
     else:
         body = res.text
 
     code: str | None = None
     if isinstance(body, dict):
-        raw_code = body.get("code")
+        # The OAuth endpoints answer RFC 6749 §5.2 bodies: ``error`` is the code.
+        raw_code = body.get("code") or body.get("error")
         if isinstance(raw_code, str):
             code = raw_code
 

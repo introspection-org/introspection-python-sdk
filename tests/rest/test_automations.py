@@ -11,6 +11,7 @@ from typing import Any
 from uuid import UUID
 
 import httpx2 as httpx
+import pydantic
 import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
@@ -670,3 +671,41 @@ async def test_async_events_send_automation_filters(fake_api: FakeAPI):
     params = fake_api.last_request.params
     assert params["automation_id"] == AUTOMATION_ID
     assert params["task_id"] == TASK_ID
+
+
+def test_create_rejects_a_naive_slot_before_sending(fake_api: FakeAPI):
+    with pytest.raises(pydantic.ValidationError):
+        Automations(fake_api.client()).create(
+            name="One-off",
+            trigger_type="manual",
+            prompt="Go",
+            runtime_group_id=UUID(RUNTIME_GROUP_ID),
+            next_trigger_at=datetime(2026, 2, 1, 9, 0),
+        )
+    with pytest.raises(pydantic.ValidationError):
+        Automations(fake_api.client()).update(
+            AUTOMATION_ID, next_trigger_at=datetime(2026, 2, 1, 9, 0)
+        )
+    assert fake_api.requests == []
+
+
+def test_get_decodes_soft_delete_agent_and_operator_default(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET",
+        AUTOMATION_PATH,
+        json_body=automation_body(
+            deleted_at="2026-10-01T09:00:00Z",
+            agent_member_id=MEMBER_ID,
+            metadata={"operator_default": "project_check_in"},
+        ),
+    )
+
+    automation = Automations(fake_api.client()).get(AUTOMATION_ID)
+
+    assert automation.deleted_at == datetime(2026, 10, 1, 9, tzinfo=UTC)
+    assert automation.agent_member_id == UUID(MEMBER_ID)
+    metadata = automation.typed_metadata
+    assert metadata is not None
+    assert metadata.operator_default == "project_check_in"
