@@ -15,7 +15,7 @@ import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
 from introspection_sdk._errors import ConflictError, IntrospectionAPIError
-from introspection_sdk.resources.automations import (
+from introspection_sdk.runner_resources.automations import (
     AsyncAutomations,
     Automations,
 )

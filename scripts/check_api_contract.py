@@ -49,7 +49,6 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from introspection_sdk.resources.automations import Automations
 from introspection_sdk.resources.connectors import (
     Connections,
     Connectors,
@@ -58,12 +57,14 @@ from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.resources.members import Members
 from introspection_sdk.resources.recipes import Recipes
 from introspection_sdk.resources.runtimes import Runtimes
+from introspection_sdk.runner_resources.automations import Automations
 from introspection_sdk.runner_resources.conversations import (
     ConversationItems,
     Conversations,
 )
 from introspection_sdk.runner_resources.events import Events
 from introspection_sdk.runner_resources.files import Files
+from introspection_sdk.runner_resources.issues import Issues
 from introspection_sdk.runner_resources.shares import Shares
 from introspection_sdk.runner_resources.tasks import Tasks
 from introspection_sdk.schemas.automations import (
@@ -78,6 +79,11 @@ from introspection_sdk.schemas.events import (
     FeedbackEvent,
 )
 from introspection_sdk.schemas.files import File, FileUpdateRequest
+from introspection_sdk.schemas.issues import (
+    Issue,
+    IssueCreateRequest,
+    IssueUpdateRequest,
+)
 from introspection_sdk.schemas.members import Member, MemberUpdateRequest
 from introspection_sdk.schemas.metrics import MetricQueryRequest
 from introspection_sdk.schemas.shares import ResourceShare, ShareCreateRequest
@@ -633,6 +639,39 @@ SURFACES = (
         server=lambda spec: schema_properties(spec, "AutomationSkipped"),
         extra_means="invented — the API does not return it",
         missing_means="returned by the API but not surfaced here",
+    ),
+    # --- issues ------------------------------------------------------------
+    Surface(
+        name="Issue",
+        where="the issue read model",
+        sdk=lambda: set(Issue.model_fields),
+        server=lambda spec: schema_properties(spec, "Issue"),
+        extra_means="invented — the API does not return it",
+        missing_means="returned by the API but not surfaced here",
+    ),
+    Surface(
+        name="IssueCreate",
+        where="POST /v1/issues body",
+        sdk=lambda: set(IssueCreateRequest.model_fields),
+        server=lambda spec: schema_properties(spec, "IssueCreate"),
+        extra_means="rejected with a 422 — the create body forbids undeclared fields",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="IssueUpdate",
+        where="PATCH /v1/issues/{id} body",
+        sdk=lambda: set(IssueUpdateRequest.model_fields),
+        server=lambda spec: schema_properties(spec, "IssueUpdate"),
+        extra_means="rejected with a 422 — the update body forbids undeclared fields",
+        missing_means="cannot be sent by callers of this SDK",
+    ),
+    Surface(
+        name="issue list filters",
+        where="GET /v1/issues query parameters",
+        sdk=lambda: signature_params(Issues.list),
+        server=lambda spec: query_parameters(spec, "/v1/issues", "get"),
+        extra_means="sent as a query parameter the API does not accept",
+        missing_means="accepted by the API but not exposed here",
     ),
     # --- task cancel -------------------------------------------------------
     Surface(

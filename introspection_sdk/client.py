@@ -48,7 +48,22 @@ from introspection_sdk.resources import (
     Repositories,
     Runtimes,
 )
-from introspection_sdk.runner_resources.events import AsyncEvents, Events
+from introspection_sdk.runner_resources import (
+    AsyncConversations,
+    AsyncEvents,
+    AsyncFiles,
+    AsyncIssues,
+    AsyncMetrics,
+    AsyncShares,
+    AsyncTasks,
+    Conversations,
+    Events,
+    Files,
+    Issues,
+    Metrics,
+    Shares,
+    Tasks,
+)
 
 
 class IntrospectionClient:
@@ -75,6 +90,12 @@ class IntrospectionClient:
     project_labels: ProjectLabels
     automations: Automations
     events: Events
+    tasks: Tasks
+    files: Files
+    conversations: Conversations
+    metrics: Metrics
+    shares: Shares
+    issues: Issues
 
     def __init__(
         self,
@@ -122,6 +143,12 @@ class IntrospectionClient:
         self.project_labels = ProjectLabels(self._dp_http)
         self.automations = Automations(self._dp_http)
         self.events = Events(self._dp_http)
+        self.tasks = Tasks(self._dp_http)
+        self.files = Files(self._dp_http)
+        self.conversations = Conversations(self._dp_http)
+        self.metrics = Metrics(self._dp_http)
+        self.shares = Shares(self._dp_http)
+        self.issues = Issues(self._dp_http)
 
     @classmethod
     def from_service_account(
@@ -207,6 +234,12 @@ class AsyncIntrospectionClient:
     project_labels: AsyncProjectLabels
     automations: AsyncAutomations
     events: AsyncEvents
+    tasks: AsyncTasks
+    files: AsyncFiles
+    conversations: AsyncConversations
+    metrics: AsyncMetrics
+    shares: AsyncShares
+    issues: AsyncIssues
 
     def __init__(
         self,
@@ -254,6 +287,12 @@ class AsyncIntrospectionClient:
         self.project_labels = AsyncProjectLabels(self._dp_http)
         self.automations = AsyncAutomations(self._dp_http)
         self.events = AsyncEvents(self._dp_http)
+        self.tasks = AsyncTasks(self._dp_http)
+        self.files = AsyncFiles(self._dp_http)
+        self.conversations = AsyncConversations(self._dp_http)
+        self.metrics = AsyncMetrics(self._dp_http)
+        self.shares = AsyncShares(self._dp_http)
+        self.issues = AsyncIssues(self._dp_http)
 
     @classmethod
     async def from_service_account(

@@ -66,6 +66,9 @@ jobs:
       - name: Run type checking
         run: uv run ty check
 
+      - name: Check the client and Runner share the data-plane Protocols
+        run: uv run mypy
+
   test:
     name: Unit Tests
     needs: lint

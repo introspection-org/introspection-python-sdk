@@ -3,11 +3,12 @@
 
 The Runner is an agent-session with a runtime context attached. It
 owns the DP endpoint + session-locator JWT minted by the CP
-``/run`` call and exposes ``runner.tasks``, ``runner.files`` and the
-read-only ``runner.conversations`` namespaces that target that
-endpoint. The DP-side agent-session machinery
-materializes the real access token from the session lookup on
-each request, so the SDK does not need to drive refresh itself —
+``/run`` call and exposes ``runner.tasks``, ``runner.files``,
+``runner.automations``, ``runner.issues`` and the read-only
+``runner.conversations`` namespaces that target that endpoint. The
+DP-side agent-session machinery materializes the real access token
+from the session lookup on each request, so the SDK does not need to
+drive refresh itself —
 ``runner.refresh()`` stays as a manual escape hatch that re-calls
 CP ``/run``. ``runner.close()`` flips a local ``_closed`` flag
 and tears down the underlying HTTP client; server-side revoke is
@@ -22,15 +23,19 @@ from datetime import datetime
 from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.runner_resources import (
+    AsyncAutomations,
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
+    AsyncIssues,
     AsyncMetrics,
     AsyncShares,
     AsyncTasks,
+    Automations,
     Conversations,
     Events,
     Files,
+    Issues,
     Metrics,
     Shares,
     Tasks,
@@ -73,6 +78,8 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
+        self._automations = Automations(self._http)
+        self._issues = Issues(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _HttpClient:
         return _HttpClient(
@@ -127,6 +134,18 @@ class Runner:
         return self._shares
 
     @property
+    def automations(self) -> Automations:
+        """DP ``/v1/automations`` namespace bound to this Runner."""
+        self._check_open()
+        return self._automations
+
+    @property
+    def issues(self) -> Issues:
+        """DP ``/v1/issues`` namespace bound to this Runner."""
+        self._check_open()
+        return self._issues
+
+    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -174,6 +193,8 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
+        self._automations = Automations(self._http)
+        self._issues = Issues(self._http)
         try:
             old_http.close()
         except Exception:  # noqa: BLE001 — best-effort cleanup
@@ -232,6 +253,8 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
+        self._automations = AsyncAutomations(self._http)
+        self._issues = AsyncIssues(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
         return _AsyncHttpClient(
@@ -287,6 +310,18 @@ class AsyncRunner:
         return self._shares
 
     @property
+    def automations(self) -> AsyncAutomations:
+        """DP ``/v1/automations`` namespace bound to this Runner."""
+        self._check_open()
+        return self._automations
+
+    @property
+    def issues(self) -> AsyncIssues:
+        """DP ``/v1/issues`` namespace bound to this Runner."""
+        self._check_open()
+        return self._issues
+
+    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -334,6 +369,8 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
+        self._automations = AsyncAutomations(self._http)
+        self._issues = AsyncIssues(self._http)
         try:
             await old_http.aclose()
         except Exception:  # noqa: BLE001 — best-effort cleanup

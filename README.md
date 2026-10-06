@@ -151,7 +151,36 @@ async for summary in runner.conversations.list(
     print(summary.id, summary.usage.total_tokens, summary.cost.usd)
 ```
 
-The runner also exposes `files`, `shares`, `events`, and `metrics`.
+The runner also exposes `files`, `shares`, `events`, `metrics`,
+`automations` and `issues`.
+
+## One data-plane interface on the client and the Runner
+
+`IntrospectionClient` and `Runner` expose the same data-plane namespaces:
+`tasks` (with `tasks.runs`), `files`, `conversations`, `events`, `metrics`,
+`shares`, `automations` and `issues`. The contract is
+`introspection_sdk.protocols.DataPlaneResources` (and
+`AsyncDataPlaneResources` for `AsyncIntrospectionClient` / `AsyncRunner`),
+so code written against it runs with either handle:
+
+```python
+from introspection_sdk.protocols import DataPlaneResources
+
+
+def open_issues(dp: DataPlaneResources) -> list[str]:
+    return [issue.title for issue in dp.issues.list(status=["open"])]
+
+
+open_issues(client)                               # the client's own token
+open_issues(client.runtimes("support-agent").run())  # the runner's token
+```
+
+The two differ only in the credential they send: the client sends its own
+token (an API key, a service account or a member's token) against
+`dp_url`, and a Runner sends the session token minted for it. A route the
+credential lacks the scope for answers 403 either way. A runner a member
+opens for themself is being given `automations:read` and
+`automations:write`, so it manages that member's automations.
 
 ## Curate traces with human review
 
@@ -331,6 +360,33 @@ answers anyone else with a 403. introspection-cloud#3137 (not yet shipped)
 opens the routes to members for their own automations that post into one of
 their own tasks, and adds the `task_id` list filter, which this SDK already
 sends.
+
+## Track issues
+
+`client.issues` / `runner.issues` manage the project's issues: a living brief
+(title, description, evidence) worked by one fixed worker task.
+
+```python
+issue = client.issues.create(
+    title="Checkout fails for EU cards",
+    description="Card payments from EU issuers decline at 3DS.",
+    task_id=task_id,
+    priority="high",
+    tags=["customer:acme"],
+    idempotency_key="checkout-eu-1",
+)
+
+for issue in client.issues.list(status=["open", "waiting"], owner=["me"]):
+    print(issue.display_index, issue.title, issue.task_status)
+
+client.issues.update(issue.id, expected_revision=issue.revision, status="closed")
+```
+
+`update` edits the brief at `expected_revision` and answers 409 when the issue
+has moved on; only the fields you pass are sent, and `tags=[]` /
+`metadata={}` clear. `create`, `update` and `delete` take an
+`idempotency_key` so a retried call applies once. Status, priority and task
+status are open enums.
 
 ## Environment variables
 

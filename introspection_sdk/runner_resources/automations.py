@@ -1,4 +1,5 @@
-"""``client.automations`` — DP namespace for ``/v1/automations``.
+"""``client.automations`` / ``runner.automations`` — DP namespace for
+``/v1/automations``.
 
 An automation is scheduled work on a project: a prompt a person set up
 (``kind=None``), which creates a task per firing or posts into an
@@ -12,6 +13,10 @@ The server serves these routes to project administrators only today and
 answers anyone else with a 403. introspection-cloud#3137 (not yet
 shipped) opens them to members for their own automations that post into
 one of their own tasks.
+
+``runner.automations`` sends the runner's token. The platform is being
+changed so that a runner a member opens for themself carries
+``automations:read`` and ``automations:write``.
 """
 
 from __future__ import annotations

@@ -48,6 +48,10 @@ from introspection_sdk.client import (
     AsyncIntrospectionClient,
     IntrospectionClient,
 )
+from introspection_sdk.protocols import (
+    AsyncDataPlaneResources,
+    DataPlaneResources,
+)
 from introspection_sdk.runner import AsyncRunner, Runner
 from introspection_sdk.runner_resources.tasks import AsyncRunHandle, RunHandle
 from introspection_sdk.schemas.agui import (
@@ -155,6 +159,8 @@ def __getattr__(name: str) -> object:
 
 __all__ = [
     # Always-available REST surface
+    "AsyncDataPlaneResources",
+    "DataPlaneResources",
     "AsyncIntrospectionClient",
     "AsyncRunHandle",
     "AsyncRunner",

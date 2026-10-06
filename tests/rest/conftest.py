@@ -45,6 +45,7 @@ from introspection_sdk.schemas.connectors import (
 )
 from introspection_sdk.schemas.experiments import Experiment
 from introspection_sdk.schemas.files import File, FileType
+from introspection_sdk.schemas.issues import Issue, IssuePriority, IssueStatus
 from introspection_sdk.schemas.members import Member, MemberType
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.recipes import Recipe
@@ -543,3 +544,28 @@ def paginated(
         next=next,
         total_count=total_count,
     )
+
+
+ISSUE_ID = "0199a1b2-0000-7000-8000-0000000000e1"
+
+
+def issue_payload(**over: Any) -> Issue:
+    defaults: dict[str, Any] = {
+        "id": UUID(ISSUE_ID),
+        "org_id": UUID(ORG_ID),
+        "project_id": UUID(PROJECT_ID),
+        "created_at": _NOW_DT,
+        "updated_at": _NOW_DT,
+        "title": "Checkout fails for EU cards",
+        "description": "Card payments from EU issuers decline at 3DS.",
+        "priority": IssuePriority.HIGH,
+        "tags": ["customer:acme"],
+        "metadata": {"severity": "sev2"},
+        "status": IssueStatus.OPEN,
+        "revision": 3,
+        "display_index": 42,
+        "task_id": UUID(TASK_ID),
+        "task_status": TaskStatus.IDLE,
+    }
+    defaults.update(over)
+    return Issue(**defaults)
