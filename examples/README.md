@@ -21,6 +21,12 @@ uv run python -m introspection_examples.api.connectors_pipedream     # Create a 
 uv run python -m introspection_examples.api.connectors_custom_app    # Find a custom MCP app, discover OAuth, create + authorize with a binding
 ```
 
+## Custom events
+
+```bash
+uv run python -m introspection_examples.otel.log_event               # log_event: log a custom-named event, read it back via introspection.track
+```
+
 ## Tracing
 
 There are no tracing examples here. The Python SDK ships no framework
@@ -33,4 +39,5 @@ instrument with any OTel-emitting library, or instrument manually. See
 ```
 examples/introspection_examples/
   api/                 # REST API (IntrospectionClient, Runner, tasks, files)
+  otel/                # OTel logs surface (log_event)
 ```

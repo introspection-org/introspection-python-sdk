@@ -41,6 +41,8 @@ from introspection_sdk.schemas.events import (
     PatternAssignmentPayload,
     PatternEvent,
     PatternPayload,
+    TrackEvent,
+    TrackPayload,
     UnknownEvent,
 )
 from introspection_sdk.schemas.genai import (
@@ -190,6 +192,8 @@ __all__ = [
     "TrajectoryToolCall",
     "TrajectoryToolRecord",
     "TrajectoryUserRecord",
+    "TrackEvent",
+    "TrackPayload",
     "UnknownEvent",
     "UrlPart",
 ]

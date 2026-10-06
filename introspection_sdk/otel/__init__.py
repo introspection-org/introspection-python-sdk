@@ -7,7 +7,7 @@ Requires the ``[otel]`` install extra::
 Exports the independent telemetry surfaces:
 
 * :class:`IntrospectionLogs` — OTLP logs emitter for
-  ``track`` / ``feedback`` / ``identify``.
+  ``log_event`` / ``track`` / ``feedback`` / ``identify``.
 * :class:`IntrospectionSpanProcessor` —
   span/trace processors that forward to the Introspection backend.
 
@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import atexit
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
 from opentelemetry.sdk.trace import TracerProvider
@@ -39,10 +40,13 @@ from introspection_sdk.otel.processors.span_processor import (
     IntrospectionSpanProcessor,
 )
 from introspection_sdk.otel.types import (
+    RESERVED_EVENT_NAME_PREFIXES,
     Attr,
     Baggage,
+    EventIdentity,
     EventName,
     FeedbackProperties,
+    LogEventSeverity,
 )
 from introspection_sdk.utils import logger
 
@@ -51,14 +55,18 @@ __all__ = [
     "IntrospectionSpanProcessor",
     "Attr",
     "Baggage",
+    "EventIdentity",
     "EventName",
     "FeedbackProperties",
+    "LogEventSeverity",
+    "RESERVED_EVENT_NAME_PREFIXES",
     "init",
     "shutdown",
     "get_client",
     "get_tracer_provider",
     "conversation",
     "new_conversation_id",
+    "log_event",
     "track",
     "feedback",
     "identify",
@@ -142,7 +150,7 @@ def get_client() -> IntrospectionLogs:
     if client is None:
         raise RuntimeError(
             "introspection.init() must be called before using "
-            "feedback/track/identify."
+            "log_event/track/feedback/identify."
         )
     return client
 
@@ -201,6 +209,26 @@ def _reset_for_tests() -> None:
         _detach_exporter(provider)
     _state["provider"] = None
     _state["client"] = None
+
+
+def log_event(
+    name: str,
+    attributes: dict[str, Any] | None = None,
+    *,
+    event_id: str | None = None,
+    timestamp: datetime | int | float | None = None,
+    identity: EventIdentity | None = None,
+    severity: LogEventSeverity | None = None,
+) -> None:
+    """Proxy to the global IntrospectionLogs.log_event(). Requires init() first."""
+    get_client().log_event(
+        name,
+        attributes,
+        event_id=event_id,
+        timestamp=timestamp,
+        identity=identity,
+        severity=severity,
+    )
 
 
 def track(
