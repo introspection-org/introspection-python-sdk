@@ -152,13 +152,13 @@ async for summary in runner.conversations.list(
 ```
 
 The runner also exposes `files`, `shares`, `events`, `metrics`,
-`automations` and `issues`.
+`automations`, `issues` and `connections`.
 
 ## One data-plane interface on the client and the Runner
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:
 `tasks` (with `tasks.runs`), `files`, `conversations`, `events`, `metrics`,
-`shares`, `automations` and `issues`. The contract is
+`shares`, `automations`, `issues` and `connections`. The contract is
 `introspection_sdk.protocols.DataPlaneResources` (and
 `AsyncDataPlaneResources` for `AsyncIntrospectionClient` / `AsyncRunner`),
 so code written against it runs with either handle:
@@ -387,6 +387,30 @@ has moved on; only the fields you pass are sent, and `tags=[]` /
 `metadata={}` clear. `create`, `update` and `delete` take an
 `idempotency_key` so a retried call applies once. Status, priority and task
 status are open enums.
+
+## Connect apps for a member
+
+`client.connections` / `runner.connections` manage the apps (Gmail, Slack, …)
+members connected for themselves, which the agent then acts with in that
+member's sessions. These are not a connector's connections, which are
+`client.connectors.connections` on the control plane.
+
+```python
+page = runner.connections.create(app="gmail")  # runtime: the runner's group
+print(page.authorize_url, page.expires_in)     # open it once; never cache it
+
+for connection in runner.connections.list(app="gmail"):
+    print(connection.id, connection.account_name, connection.healthy)
+
+runner.connections.delete(connection.id)
+```
+
+On the client, `create` takes the runtime explicitly:
+`client.connections.create(app="gmail", runtime="support-agent")`, a runtime
+slug or runtime group id. `list` takes `member_id` and `app` filters; a
+caller who is not a project administrator only ever gets their own
+connections. The routes need `connections:read`, `connections:write` and
+`connections:delete`.
 
 ## Environment variables
 

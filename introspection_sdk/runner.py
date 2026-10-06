@@ -4,8 +4,9 @@
 The Runner is an agent-session with a runtime context attached. It
 owns the DP endpoint + session-locator JWT minted by the CP
 ``/run`` call and exposes ``runner.tasks``, ``runner.files``,
-``runner.automations``, ``runner.issues`` and the read-only
-``runner.conversations`` namespaces that target that endpoint. The
+``runner.automations``, ``runner.issues``, ``runner.connections`` and
+the read-only ``runner.conversations`` namespaces that target that
+endpoint. The
 DP-side agent-session machinery materializes the real access token
 from the session lookup on each request, so the SDK does not need to
 drive refresh itself —
@@ -29,6 +30,7 @@ from introspection_sdk.runner_resources import (
     AsyncFiles,
     AsyncIssues,
     AsyncMetrics,
+    AsyncRunnerAppConnections,
     AsyncShares,
     AsyncTasks,
     Automations,
@@ -37,6 +39,7 @@ from introspection_sdk.runner_resources import (
     Files,
     Issues,
     Metrics,
+    RunnerAppConnections,
     Shares,
     Tasks,
 )
@@ -80,6 +83,9 @@ class Runner:
         self._shares = Shares(self._http)
         self._automations = Automations(self._http)
         self._issues = Issues(self._http)
+        self._connections = RunnerAppConnections(
+            self._http, spec.runtime_context.runtime_group_id
+        )
 
     def _build_http(self, spec: RunnerSpec) -> _HttpClient:
         return _HttpClient(
@@ -146,6 +152,13 @@ class Runner:
         return self._issues
 
     @property
+    def connections(self) -> RunnerAppConnections:
+        """DP ``/v1/connections`` namespace bound to this Runner. ``create``
+        defaults ``runtime`` to the runner's runtime group."""
+        self._check_open()
+        return self._connections
+
+    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -195,6 +208,9 @@ class Runner:
         self._shares = Shares(self._http)
         self._automations = Automations(self._http)
         self._issues = Issues(self._http)
+        self._connections = RunnerAppConnections(
+            self._http, new_spec.runtime_context.runtime_group_id
+        )
         try:
             old_http.close()
         except Exception:  # noqa: BLE001 — best-effort cleanup
@@ -255,6 +271,9 @@ class AsyncRunner:
         self._shares = AsyncShares(self._http)
         self._automations = AsyncAutomations(self._http)
         self._issues = AsyncIssues(self._http)
+        self._connections = AsyncRunnerAppConnections(
+            self._http, spec.runtime_context.runtime_group_id
+        )
 
     def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
         return _AsyncHttpClient(
@@ -322,6 +341,13 @@ class AsyncRunner:
         return self._issues
 
     @property
+    def connections(self) -> AsyncRunnerAppConnections:
+        """DP ``/v1/connections`` namespace bound to this Runner. ``create``
+        defaults ``runtime`` to the runner's runtime group."""
+        self._check_open()
+        return self._connections
+
+    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -371,6 +397,9 @@ class AsyncRunner:
         self._shares = AsyncShares(self._http)
         self._automations = AsyncAutomations(self._http)
         self._issues = AsyncIssues(self._http)
+        self._connections = AsyncRunnerAppConnections(
+            self._http, new_spec.runtime_context.runtime_group_id
+        )
         try:
             await old_http.aclose()
         except Exception:  # noqa: BLE001 — best-effort cleanup

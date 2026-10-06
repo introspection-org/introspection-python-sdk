@@ -49,6 +49,8 @@ from introspection_sdk.resources import (
     Runtimes,
 )
 from introspection_sdk.runner_resources import (
+    AppConnections,
+    AsyncAppConnections,
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
@@ -96,6 +98,7 @@ class IntrospectionClient:
     metrics: Metrics
     shares: Shares
     issues: Issues
+    connections: AppConnections
 
     def __init__(
         self,
@@ -149,6 +152,7 @@ class IntrospectionClient:
         self.metrics = Metrics(self._dp_http)
         self.shares = Shares(self._dp_http)
         self.issues = Issues(self._dp_http)
+        self.connections = AppConnections(self._dp_http)
 
     @classmethod
     def from_service_account(
@@ -240,6 +244,7 @@ class AsyncIntrospectionClient:
     metrics: AsyncMetrics
     shares: AsyncShares
     issues: AsyncIssues
+    connections: AsyncAppConnections
 
     def __init__(
         self,
@@ -293,6 +298,7 @@ class AsyncIntrospectionClient:
         self.metrics = AsyncMetrics(self._dp_http)
         self.shares = AsyncShares(self._dp_http)
         self.issues = AsyncIssues(self._dp_http)
+        self.connections = AsyncAppConnections(self._dp_http)
 
     @classmethod
     async def from_service_account(

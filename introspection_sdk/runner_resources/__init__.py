@@ -4,6 +4,12 @@ from introspection_sdk.runner_resources.automations import (
     AsyncAutomations,
     Automations,
 )
+from introspection_sdk.runner_resources.connections import (
+    AppConnections,
+    AsyncAppConnections,
+    AsyncRunnerAppConnections,
+    RunnerAppConnections,
+)
 from introspection_sdk.runner_resources.conversations import (
     AsyncConversationItems,
     AsyncConversations,
@@ -44,6 +50,8 @@ from introspection_sdk.runner_resources.tasks import (
 )
 
 __all__ = [
+    "AppConnections",
+    "AsyncAppConnections",
     "AsyncAutomations",
     "AsyncConversationItems",
     "AsyncConversations",
@@ -53,6 +61,7 @@ __all__ = [
     "AsyncIssues",
     "AsyncMetrics",
     "AsyncRunHandle",
+    "AsyncRunnerAppConnections",
     "AsyncShares",
     "AsyncTaskRuns",
     "AsyncTasks",
@@ -67,6 +76,7 @@ __all__ = [
     "Issues",
     "Metrics",
     "RunHandle",
+    "RunnerAppConnections",
     "Shares",
     "TaskRuns",
     "Tasks",

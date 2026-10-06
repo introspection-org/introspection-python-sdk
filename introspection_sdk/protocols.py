@@ -8,7 +8,9 @@ either handle, and the type checker fails when the two drift apart.
 
 The two differ in credential, not in shape: the client sends its own token
 (an API key, a service account or a member's token) and the Runner sends
-the session token minted for it.
+the session token minted for it. ``runner.connections.create`` takes
+``runtime`` as optional, defaulting to the runner's runtime group, which
+still satisfies the Protocol, where ``runtime`` is required.
 """
 
 from __future__ import annotations
@@ -41,6 +43,7 @@ from introspection_sdk.schemas.automations import (
     AutomationTriggerResponse,
     AutomationTriggerType,
 )
+from introspection_sdk.schemas.connections import Connection, ConnectPage
 from introspection_sdk.schemas.conversations import (
     Conversation,
     ConversationItemInclude,
@@ -88,6 +91,7 @@ from introspection_sdk.schemas.trajectory import Trajectory
 
 __all__ = [
     "AsyncAutomationsResource",
+    "AsyncConnectionsResource",
     "AsyncConversationItemsResource",
     "AsyncConversationsResource",
     "AsyncDataPlaneResources",
@@ -100,6 +104,7 @@ __all__ = [
     "AsyncTaskRunsResource",
     "AsyncTasksResource",
     "AutomationsResource",
+    "ConnectionsResource",
     "ConversationItemsResource",
     "ConversationsResource",
     "DataPlaneResources",
@@ -1243,6 +1248,26 @@ class AsyncIssuesResource(Protocol):
 
 
 @runtime_checkable
+class ConnectionsResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.connections.AppConnections`."""
+
+    def list(
+        self,
+        *,
+        member_id: UUID | str | None = None,
+        app: str | None = None,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> Pager[Connection, Paginated[Connection]]: ...
+
+    def create(self, *, app: str, runtime: str | UUID) -> ConnectPage: ...
+
+    def get(self, connection_id: UUID | str) -> Connection: ...
+
+    def delete(self, connection_id: UUID | str) -> None: ...
+
+
+@runtime_checkable
 class DataPlaneResources(Protocol):
     """The data-plane namespaces :class:`~introspection_sdk.IntrospectionClient`
     and :class:`~introspection_sdk.runner.Runner` both expose."""
@@ -1270,6 +1295,31 @@ class DataPlaneResources(Protocol):
 
     @property
     def issues(self) -> IssuesResource: ...
+
+    @property
+    def connections(self) -> ConnectionsResource: ...
+
+
+@runtime_checkable
+class AsyncConnectionsResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.connections.AsyncAppConnections`."""
+
+    def list(
+        self,
+        *,
+        member_id: UUID | str | None = None,
+        app: str | None = None,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> AsyncPager[Connection, Paginated[Connection]]: ...
+
+    async def create(
+        self, *, app: str, runtime: str | UUID
+    ) -> ConnectPage: ...
+
+    async def get(self, connection_id: UUID | str) -> Connection: ...
+
+    async def delete(self, connection_id: UUID | str) -> None: ...
 
 
 @runtime_checkable
@@ -1300,3 +1350,6 @@ class AsyncDataPlaneResources(Protocol):
 
     @property
     def issues(self) -> AsyncIssuesResource: ...
+
+    @property
+    def connections(self) -> AsyncConnectionsResource: ...
