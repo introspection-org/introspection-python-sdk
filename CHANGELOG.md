@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.22.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.21.0...v0.22.0) (2026-10-06)
+
+
+### Features
+
+* **automations:** add automations resource ([#159](https://github.com/introspection-org/introspection-python-sdk/issues/159)) ([bd1438e](https://github.com/introspection-org/introspection-python-sdk/commit/bd1438ee2af8f464975c06f8c986057ee14fcba1))
+* **dataplane:** share one Protocol between client and Runner, add connections ([#161](https://github.com/introspection-org/introspection-python-sdk/issues/161)) ([ed6514a](https://github.com/introspection-org/introspection-python-sdk/commit/ed6514ae58706b8e67bda07ed34a6486ea10ec9f))
+* **files:** accept tags and metadata on file create ([#151](https://github.com/introspection-org/introspection-python-sdk/issues/151)) ([b8de857](https://github.com/introspection-org/introspection-python-sdk/commit/b8de857370eed633f4836a0fd93f792ed5eeed7f))
+* **files:** filter file lists by metadata ([#154](https://github.com/introspection-org/introspection-python-sdk/issues/154)) ([bc7306b](https://github.com/introspection-org/introspection-python-sdk/commit/bc7306b66ca22849aa9f69a0a832a2877cc36fbc))
+* **members:** add client.members with tags and metadata ([#158](https://github.com/introspection-org/introspection-python-sdk/issues/158)) ([d0e4e75](https://github.com/introspection-org/introspection-python-sdk/commit/d0e4e754a59584a4fd87adfb50dcb47b745df22f))
+* native email-code sign-in, pluggable credentials and OAuth error mapping ([#157](https://github.com/introspection-org/introspection-python-sdk/issues/157)) ([6674ddd](https://github.com/introspection-org/introspection-python-sdk/commit/6674ddd85790b48e378cb908cc27649bb8829db0))
+* **otel:** add log_event for custom events; track delegates to it ([#160](https://github.com/introspection-org/introspection-python-sdk/issues/160)) ([cc22e75](https://github.com/introspection-org/introspection-python-sdk/commit/cc22e7508fdb1c8411e3701b62d245aadf5ae169))
+
+
+### Bug Fixes
+
+* **streaming:** reject incomplete output and resume nonterminal closes ([#153](https://github.com/introspection-org/introspection-python-sdk/issues/153)) ([bafb412](https://github.com/introspection-org/introspection-python-sdk/commit/bafb41294e1290e07b6c51a005517cb040b8ba84))
+
 ## [0.21.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.20.0...v0.21.0) (2026-09-29)
 
 
