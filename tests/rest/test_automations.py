@@ -1,4 +1,4 @@
-"""Contract tests for ``client.automations`` / ``runner.automations`` and the automation event families.
+"""Contract tests for ``client.automations`` and the automation event families.
 
 Driven through the offline :class:`FakeAPI` transport from ``conftest.py`` —
 nothing in ``introspection_sdk`` is patched.
@@ -16,7 +16,7 @@ import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
 from introspection_sdk._errors import ConflictError, IntrospectionAPIError
-from introspection_sdk.runner_resources.automations import (
+from introspection_sdk.resources.automations import (
     AsyncAutomations,
     Automations,
 )

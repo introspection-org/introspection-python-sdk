@@ -157,8 +157,7 @@ async for summary in runner.conversations.list(
     print(summary.id, summary.usage.total_tokens, summary.cost.usd)
 ```
 
-The runner also exposes `files`, `shares`, `events`, `metrics`, and
-`automations`.
+The runner also exposes `files`, `shares`, `events`, and `metrics`.
 
 ## Curate traces with human review
 
@@ -393,9 +392,7 @@ opens the routes to members for their own automations that post into one of
 their own tasks, and adds the `task_id` list filter, which this SDK already
 sends.
 
-`runner.automations` is the same namespace on a Runner, sending the
-runner's token. The routes need the `automations:read` and
-`automations:write` scopes, so a `native` sign-in cannot use them yet.
+The routes need the `automations:read` and `automations:write` scopes, so a `native` sign-in cannot use them yet.
 `can_manage` says whether the caller may change an automation, and
 `created_by_member_id` who created it.
 
@@ -418,58 +415,6 @@ export INTROSPECTION_LOG_LEVEL="debug"           # optional
 - [Platform operations](https://docs.introspection.dev/sdk/python/platform-operations)
 - [Python SDK reference](https://docs.introspection.dev/sdk/python/reference)
 - [Authentication](https://docs.introspection.dev/sdk/authentication)
-
-## Stream recovery
-
-`run.stream()` and `run.text()` (and `tasks.runs.stream(task_id, run_id)`)
-recover from a dropped connection on their own. They follow the cross-SDK
-recovery contract, pinned by the shared `run-stream-contract.json` fixtures.
-
-- **Cursor.** The first attach sends `Last-Event-ID: 0`, so output produced
-  before it is replayed. Every reconnect resumes from the last content cursor:
-  the id of the last new content frame.
-- **Completion.** Only a settling `RUN_FINISHED` or `RUN_ERROR` confirms that
-  the run ended. A `RUN_FINISHED` whose `result.reason` is `"stream_close"`
-  only ends an attach, so it is not yielded.
-- **Clean EOF.** When the stream closes without a settling event, the SDK
-  reads that run's status (`GET /v1/tasks/{task_id}/runs/{run_id}`).
-  `failed` or `cancelled` raises `RunFailedError`. `idle`, `completed` or
-  `awaiting_user` raises `StreamIncompleteError`, because the run settled
-  without the stream confirming it. Anything else, including a status read
-  that fails, reconnects.
-- **Budget.** Reconnects are bounded by `max_reconnects` (default 5) and
-  `timeout` (default 300 s), with backoff from `backoff` (default 0.5 s). A new
-  content cursor renews both, so a long run keeps a full recovery window.
-  Duplicate content, lifecycle events and heartbeats renew neither. The timeout
-  is checked only before a reconnect, never while a connection is open. A
-  `429` while the run is not attachable yet waits for `Retry-After` within the
-  timeout and does not spend the reconnect budget.
-- **Past the replay buffer.** When the cursor is older than what the runtime
-  retains, the reconnect answers with one AG-UI `MESSAGES_SNAPSHOT` of the run's
-  messages so far. Its id becomes the new cursor, and `text()` replaces the
-  assistant text it had collected with the snapshot's. When the runtime holds
-  neither the frames nor a snapshot, it answers `410` and the stream raises
-  `StreamIncompleteError`. Runtime images older than the snapshot send a
-  `CUSTOM resume_gap` event instead: `stream()` yields it, and `text()` raises
-  `StreamIncompleteError`.
-- **`text()`** never returns partial output. It raises `RunFailedError` on
-  `RUN_ERROR` and `StreamIncompleteError` wherever output may be missing. The
-  SDK does not read the conversation transcript to fill a gap (and does not need
-  the `conversations:read` scope to stream); read it yourself with
-  `runner.conversations` when you need the output after such an error.
-
-Use a concrete run id for one turn. `runs/current` is a moving alias, so a
-reconnect or status read can resolve to the next run.
-
-The in-process fake sandbox (`mock://`) delivers replies only through the
-conversation transcript. Its stream ends with an attach-level `stream_close`,
-which `text()` cannot treat as a completed reply, so test fake runs through
-transcript reads and `text()` against a real runtime.
-
-Each SDK's test suite pins the fixture's SHA-256; a contract change updates all
-four copies (Swift, JavaScript, Rust, Python) and their hashes together.
-`StreamIncompleteError` and `RunFailedError` are exported from
-`introspection_sdk` for both the sync and async clients.
 
 ## License
 

@@ -120,6 +120,9 @@ class RunHandle:
         backoff: float = 0.5,
         timeout: float = 300.0,
     ) -> Iterator[AGUIEvent]:
+        """Stream this run's AG-UI events, reconnecting on a dropped
+        connection under the recovery contract in
+        :mod:`introspection_sdk.resumable`."""
         return self._runs.stream(
             str(self.run.task_id),
             self.run.id,
@@ -137,6 +140,17 @@ class RunHandle:
         )
 
     def text(self) -> str:
+        """Collect this run's assistant text from :meth:`stream`.
+
+        Never returns partial output: raises ``RunFailedError`` on
+        ``RUN_ERROR`` and ``StreamIncompleteError`` wherever output may be
+        missing (a ``410``, a ``resume_gap``, or a run that settled without
+        the stream confirming it). A ``MESSAGES_SNAPSHOT`` replaces the text
+        collected so far with the snapshot's. The transcript is not read to
+        fill a gap, so streaming needs no ``conversations:read`` scope; read
+        ``runner.conversations`` yourself when you need the output after
+        such an error.
+        """
         out: list[str] = []
         for ev in self.stream():
             if isinstance(ev, RunErrorEvent):
@@ -243,12 +257,9 @@ class TaskRuns:
         backoff: float = 0.5,
         timeout: float = 300.0,
     ) -> Iterator[AGUIEvent]:
-        """Stream a run's AG-UI events.
-
-        Reconnects with a content cursor, starting at zero. A nonterminal EOF
-        checks this run's status. A reconnect behind the replay buffer yields one
-        MESSAGES_SNAPSHOT; a 410 raises StreamIncompleteError. The keyword args bound recovery attempts.
-        """
+        """Stream a run's AG-UI events, reconnecting on a dropped connection
+        under the recovery contract in :mod:`introspection_sdk.resumable`.
+        The keyword args bound recovery attempts."""
         return stream_resumable(
             self._http,
             task_id,
@@ -418,6 +429,9 @@ class AsyncRunHandle:
         backoff: float = 0.5,
         timeout: float = 300.0,
     ) -> AsyncIterator[AGUIEvent]:
+        """Stream this run's AG-UI events, reconnecting on a dropped
+        connection under the recovery contract in
+        :mod:`introspection_sdk.resumable`."""
         return self._runs.stream(
             str(self.run.task_id),
             self.run.id,
@@ -435,6 +449,17 @@ class AsyncRunHandle:
         )
 
     async def text(self) -> str:
+        """Collect this run's assistant text from :meth:`stream`.
+
+        Never returns partial output: raises ``RunFailedError`` on
+        ``RUN_ERROR`` and ``StreamIncompleteError`` wherever output may be
+        missing (a ``410``, a ``resume_gap``, or a run that settled without
+        the stream confirming it). A ``MESSAGES_SNAPSHOT`` replaces the text
+        collected so far with the snapshot's. The transcript is not read to
+        fill a gap, so streaming needs no ``conversations:read`` scope; read
+        ``runner.conversations`` yourself when you need the output after
+        such an error.
+        """
         out: list[str] = []
         async for ev in self.stream():
             if isinstance(ev, RunErrorEvent):

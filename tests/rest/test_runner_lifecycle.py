@@ -26,14 +26,12 @@ import pytest
 from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk.resources.runtimes import AsyncRuntimes, Runtimes
 from introspection_sdk.runner_resources import (
-    AsyncAutomations,
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
     AsyncMetrics,
     AsyncShares,
     AsyncTasks,
-    Automations,
     Conversations,
     Events,
     Files,
@@ -164,7 +162,6 @@ def test_open_read_refresh_close_sync(
     assert isinstance(runner.events, Events)
     assert isinstance(runner.metrics, Metrics)
     assert isinstance(runner.shares, Shares)
-    assert isinstance(runner.automations, Automations)
 
     assert str(runner.tasks.get(TASK_ID).id) == TASK_ID
     assert runner.files.list().page().count == 1
@@ -243,7 +240,6 @@ async def test_open_read_refresh_close_async(
     assert isinstance(runner.events, AsyncEvents)
     assert isinstance(runner.metrics, AsyncMetrics)
     assert isinstance(runner.shares, AsyncShares)
-    assert isinstance(runner.automations, AsyncAutomations)
 
     assert str((await runner.tasks.get(TASK_ID)).id) == TASK_ID
     assert (await runner.files.list().page()).count == 1

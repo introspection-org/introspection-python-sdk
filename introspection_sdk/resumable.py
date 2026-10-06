@@ -1,12 +1,46 @@
 """Resume run streams using content cursors and the run-scoped status read.
 
-Only a settling RUN_FINISHED or RUN_ERROR ends the sequence. Clean nonterminal
-closures check run status and reattach within the recovery budget. Replay starts
-at zero, so output produced before the first attach is included. A reconnect
-behind the replay buffer yields one MESSAGES_SNAPSHOT of the run so far; a 410
-(history gone) raises StreamIncompleteError. A legacy resume_gap stays visible
-to stream consumers; text() raises rather than return lost output.
-The recovery timeout renews on each new content cursor and is checked before retries.
+This is the cross-SDK run-stream recovery contract, pinned by the shared
+``run-stream-contract.json`` fixtures. Each SDK's test suite pins the
+fixture's SHA-256, so a contract change updates all four copies (Swift,
+JavaScript, Rust, Python) and their hashes together.
+
+- **Cursor.** The first attach sends ``Last-Event-ID: 0``, so output
+  produced before it is replayed. Every reconnect resumes from the last
+  content cursor: the id of the last new content frame.
+- **Completion.** Only a settling ``RUN_FINISHED`` or ``RUN_ERROR`` ends the
+  sequence. A ``RUN_FINISHED`` whose ``result.reason`` is ``"stream_close"``
+  only ends an attach, so it is not yielded.
+- **Clean EOF.** When the stream closes without a settling event, the run's
+  status is read (``GET /v1/tasks/{task_id}/runs/{run_id}``). ``failed`` or
+  ``cancelled`` raises ``RunFailedError``; ``idle``, ``completed`` or
+  ``awaiting_user`` raises ``StreamIncompleteError``, because the run
+  settled without the stream confirming it. Anything else, including a
+  status read that fails, reconnects.
+- **Budget.** Reconnects are bounded by ``max_reconnects`` (default 5) and
+  ``timeout`` (default 300 s), with backoff from ``backoff`` (default
+  0.5 s). A new content cursor renews both, so a long run keeps a full
+  recovery window; duplicate content, lifecycle events and heartbeats renew
+  neither. The timeout is checked only before a reconnect, never while a
+  connection is open. A ``429`` while the run is not attachable yet waits
+  for ``Retry-After`` within the timeout and does not spend the reconnect
+  budget.
+- **Past the replay buffer.** When the cursor is older than what the
+  runtime retains, the reconnect answers with one AG-UI
+  ``MESSAGES_SNAPSHOT`` of the run's messages so far, and its id becomes the
+  new cursor. When the runtime holds neither the frames nor a snapshot, it
+  answers ``410`` and the stream raises ``StreamIncompleteError``. Runtime
+  images older than the snapshot send a ``CUSTOM resume_gap`` event
+  instead, which the stream yields.
+
+Use a concrete run id for one turn. ``runs/current`` is a moving alias, so
+a reconnect or status read can resolve to the next run.
+
+The in-process fake sandbox (``mock://``) delivers replies only through the
+conversation transcript. Its stream ends with an attach-level
+``stream_close``, which ``text()`` cannot treat as a completed reply, so
+test fake runs through transcript reads and ``text()`` against a real
+runtime.
 """
 
 from __future__ import annotations

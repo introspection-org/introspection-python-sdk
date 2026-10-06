@@ -22,14 +22,12 @@ from datetime import datetime
 from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.runner_resources import (
-    AsyncAutomations,
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
     AsyncMetrics,
     AsyncShares,
     AsyncTasks,
-    Automations,
     Conversations,
     Events,
     Files,
@@ -75,7 +73,6 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
-        self._automations = Automations(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _HttpClient:
         return _HttpClient(
@@ -130,12 +127,6 @@ class Runner:
         return self._shares
 
     @property
-    def automations(self) -> Automations:
-        """DP ``/v1/automations`` namespace bound to this Runner."""
-        self._check_open()
-        return self._automations
-
-    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -183,7 +174,6 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
-        self._automations = Automations(self._http)
         try:
             old_http.close()
         except Exception:  # noqa: BLE001 — best-effort cleanup
@@ -242,7 +232,6 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
-        self._automations = AsyncAutomations(self._http)
 
     def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
         return _AsyncHttpClient(
@@ -298,12 +287,6 @@ class AsyncRunner:
         return self._shares
 
     @property
-    def automations(self) -> AsyncAutomations:
-        """DP ``/v1/automations`` namespace bound to this Runner."""
-        self._check_open()
-        return self._automations
-
-    @property
     def context(self) -> RunnerContext:
         """Resolved runtime/arm/recipe/identity/caller context."""
         return self._spec.runtime_context
@@ -351,7 +334,6 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
-        self._automations = AsyncAutomations(self._http)
         try:
             await old_http.aclose()
         except Exception:  # noqa: BLE001 — best-effort cleanup
