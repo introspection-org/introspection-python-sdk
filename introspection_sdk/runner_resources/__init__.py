@@ -28,10 +28,6 @@ from introspection_sdk.runner_resources.files import (
     Files,
     FileVersions,
 )
-from introspection_sdk.runner_resources.issues import (
-    AsyncIssues,
-    Issues,
-)
 from introspection_sdk.runner_resources.metrics import (
     AsyncMetrics,
     Metrics,
@@ -58,7 +54,6 @@ __all__ = [
     "AsyncEvents",
     "AsyncFileVersions",
     "AsyncFiles",
-    "AsyncIssues",
     "AsyncMetrics",
     "AsyncRunHandle",
     "AsyncRunnerAppConnections",
@@ -73,7 +68,6 @@ __all__ = [
     "Events",
     "Files",
     "FileVersions",
-    "Issues",
     "Metrics",
     "RunHandle",
     "RunnerAppConnections",

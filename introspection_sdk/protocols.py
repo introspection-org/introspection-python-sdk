@@ -58,17 +58,6 @@ from introspection_sdk.schemas.events import (
 )
 from introspection_sdk.schemas.files import File, FileType
 from introspection_sdk.schemas.genai_span import GenAiSpan, GenAiSpanList
-from introspection_sdk.schemas.issues import (
-    Issue,
-    IssueEventReference,
-    IssueFile,
-    IssueLink,
-    IssueMetadataValue,
-    IssueOwner,
-    IssuePriority,
-    IssueSpanReference,
-    IssueStatus,
-)
 from introspection_sdk.schemas.metrics import (
     MetricQueryRequest,
     MetricQueryResponse,
@@ -85,7 +74,6 @@ from introspection_sdk.schemas.tasks import (
     TaskRepoRequest,
     TaskRun,
     TaskRunKind,
-    TaskStatus,
 )
 from introspection_sdk.schemas.trajectory import Trajectory
 
@@ -98,7 +86,6 @@ __all__ = [
     "AsyncEventsResource",
     "AsyncFileVersionsResource",
     "AsyncFilesResource",
-    "AsyncIssuesResource",
     "AsyncMetricsResource",
     "AsyncSharesResource",
     "AsyncTaskRunsResource",
@@ -111,7 +98,6 @@ __all__ = [
     "EventsResource",
     "FileVersionsResource",
     "FilesResource",
-    "IssuesResource",
     "MetricsResource",
     "SharesResource",
     "TaskRunsResource",
@@ -621,69 +607,6 @@ class AutomationsResource(Protocol):
 
 
 @runtime_checkable
-class IssuesResource(Protocol):
-    """Protocol of :class:`~introspection_sdk.runner_resources.issues.Issues`."""
-
-    def list(
-        self,
-        *,
-        status: builtins.list[IssueStatus | str] | None = None,
-        owner: builtins.list[IssueOwner | str] | None = None,
-        assigned_to_me: bool | None = None,
-        has_open_requests: bool | None = None,
-        task_status: builtins.list[TaskStatus | str] | None = None,
-        exclude_task_status: builtins.list[TaskStatus | str] | None = None,
-        display_index: int | None = None,
-        tag: str | None = None,
-        metadata: dict[str, str] | None = None,
-        search: str | None = None,
-        include_total: bool = False,
-        limit: int | None = None,
-        next: str | None = None,
-    ) -> Pager[Issue, Paginated[Issue]]: ...
-
-    def create(
-        self,
-        *,
-        title: str,
-        description: str,
-        task_id: UUID | str,
-        priority: IssuePriority | str | None = None,
-        tags: builtins.list[str] | None = None,
-        metadata: dict[str, IssueMetadataValue] | None = None,
-        files: builtins.list[IssueFile] | None = None,
-        links: builtins.list[IssueLink] | None = None,
-        events: builtins.list[IssueEventReference] | None = None,
-        spans: builtins.list[IssueSpanReference] | None = None,
-        idempotency_key: str | None = None,
-    ) -> Issue: ...
-
-    def get(self, issue_id: UUID | str) -> Issue: ...
-
-    def update(
-        self,
-        issue_id: UUID | str,
-        *,
-        expected_revision: int,
-        title: str | None = None,
-        description: str | None = None,
-        priority: IssuePriority | str | None = None,
-        status: IssueStatus | str | None = None,
-        tags: builtins.list[str] | None = None,
-        metadata: dict[str, IssueMetadataValue] | None = None,
-        files: builtins.list[IssueFile] | None = None,
-        links: builtins.list[IssueLink] | None = None,
-        events: builtins.list[IssueEventReference] | None = None,
-        spans: builtins.list[IssueSpanReference] | None = None,
-        idempotency_key: str | None = None,
-    ) -> Issue: ...
-
-    def delete(
-        self, issue_id: UUID | str, *, idempotency_key: str | None = None
-    ) -> None: ...
-
-
-@runtime_checkable
 class AsyncTaskRunsResource(Protocol):
     """Protocol of :class:`~introspection_sdk.runner_resources.tasks.AsyncTaskRuns`."""
 
@@ -1185,69 +1108,6 @@ class AsyncAutomationsResource(Protocol):
 
 
 @runtime_checkable
-class AsyncIssuesResource(Protocol):
-    """Protocol of :class:`~introspection_sdk.runner_resources.issues.AsyncIssues`."""
-
-    def list(
-        self,
-        *,
-        status: builtins.list[IssueStatus | str] | None = None,
-        owner: builtins.list[IssueOwner | str] | None = None,
-        assigned_to_me: bool | None = None,
-        has_open_requests: bool | None = None,
-        task_status: builtins.list[TaskStatus | str] | None = None,
-        exclude_task_status: builtins.list[TaskStatus | str] | None = None,
-        display_index: int | None = None,
-        tag: str | None = None,
-        metadata: dict[str, str] | None = None,
-        search: str | None = None,
-        include_total: bool = False,
-        limit: int | None = None,
-        next: str | None = None,
-    ) -> AsyncPager[Issue, Paginated[Issue]]: ...
-
-    async def create(
-        self,
-        *,
-        title: str,
-        description: str,
-        task_id: UUID | str,
-        priority: IssuePriority | str | None = None,
-        tags: builtins.list[str] | None = None,
-        metadata: dict[str, IssueMetadataValue] | None = None,
-        files: builtins.list[IssueFile] | None = None,
-        links: builtins.list[IssueLink] | None = None,
-        events: builtins.list[IssueEventReference] | None = None,
-        spans: builtins.list[IssueSpanReference] | None = None,
-        idempotency_key: str | None = None,
-    ) -> Issue: ...
-
-    async def get(self, issue_id: UUID | str) -> Issue: ...
-
-    async def update(
-        self,
-        issue_id: UUID | str,
-        *,
-        expected_revision: int,
-        title: str | None = None,
-        description: str | None = None,
-        priority: IssuePriority | str | None = None,
-        status: IssueStatus | str | None = None,
-        tags: builtins.list[str] | None = None,
-        metadata: dict[str, IssueMetadataValue] | None = None,
-        files: builtins.list[IssueFile] | None = None,
-        links: builtins.list[IssueLink] | None = None,
-        events: builtins.list[IssueEventReference] | None = None,
-        spans: builtins.list[IssueSpanReference] | None = None,
-        idempotency_key: str | None = None,
-    ) -> Issue: ...
-
-    async def delete(
-        self, issue_id: UUID | str, *, idempotency_key: str | None = None
-    ) -> None: ...
-
-
-@runtime_checkable
 class ConnectionsResource(Protocol):
     """Protocol of :class:`~introspection_sdk.runner_resources.connections.AppConnections`."""
 
@@ -1292,9 +1152,6 @@ class DataPlaneResources(Protocol):
 
     @property
     def automations(self) -> AutomationsResource: ...
-
-    @property
-    def issues(self) -> IssuesResource: ...
 
     @property
     def connections(self) -> ConnectionsResource: ...
@@ -1347,9 +1204,6 @@ class AsyncDataPlaneResources(Protocol):
 
     @property
     def automations(self) -> AsyncAutomationsResource: ...
-
-    @property
-    def issues(self) -> AsyncIssuesResource: ...
 
     @property
     def connections(self) -> AsyncConnectionsResource: ...

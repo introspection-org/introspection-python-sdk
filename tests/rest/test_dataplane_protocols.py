@@ -29,11 +29,9 @@ from introspection_sdk.runner import AsyncRunner, Runner
 from introspection_sdk.schemas.runner import RunnerDeployment, RunnerSpec
 
 from .conftest import (
-    ISSUE_ID,
     TASK_ID,
     LocalDP,
     file_payload,
-    issue_payload,
     paginated,
     runner_spec_payload,
     task_payload,
@@ -110,8 +108,6 @@ EXPECTED_PATHS = [
     ("POST", "/v1/metrics"),
     ("GET", "/v1/shares"),
     ("GET", "/v1/automations"),
-    ("GET", "/v1/issues"),
-    ("GET", f"/v1/issues/{ISSUE_ID}"),
     ("GET", "/v1/connections"),
     ("POST", "/v1/connections"),
 ]
@@ -130,8 +126,6 @@ def _seed(dp: LocalDP) -> None:
         "/v1/automations",
         {"records": [AUTOMATION], "count": 1, "next": None},
     )
-    dp.add("GET", "/v1/issues", paginated([issue_payload()]))
-    dp.add("GET", f"/v1/issues/{ISSUE_ID}", issue_payload())
     dp.add("GET", "/v1/connections", {"records": [], "count": 0})
     dp.add(
         "POST",
@@ -158,8 +152,6 @@ def _drive(dp: DataPlaneResources) -> None:
     assert dp.metrics.query(METRIC_QUERY).meta.row_count == 0
     assert dp.shares.list().page().count == 0
     assert dp.automations.list().page().count == 1
-    assert dp.issues.list().page().count == 1
-    assert dp.issues.get(ISSUE_ID).revision == 3
     assert dp.connections.list().page().count == 0
     assert (
         dp.connections.create(app="gmail", runtime="support").expires_in == 60
@@ -175,8 +167,6 @@ async def _adrive(dp: AsyncDataPlaneResources) -> None:
     assert (await dp.metrics.query(METRIC_QUERY)).meta.row_count == 0
     assert (await dp.shares.list().page()).count == 0
     assert (await dp.automations.list().page()).count == 1
-    assert (await dp.issues.list().page()).count == 1
-    assert (await dp.issues.get(ISSUE_ID)).revision == 3
     assert (await dp.connections.list().page()).count == 0
     page = await dp.connections.create(app="gmail", runtime="support")
     assert page.expires_in == 60

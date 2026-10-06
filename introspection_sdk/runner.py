@@ -4,7 +4,7 @@
 The Runner is an agent-session with a runtime context attached. It
 owns the DP endpoint + session-locator JWT minted by the CP
 ``/run`` call and exposes ``runner.tasks``, ``runner.files``,
-``runner.automations``, ``runner.issues``, ``runner.connections`` and
+``runner.automations``, ``runner.connections`` and
 the read-only ``runner.conversations`` namespaces that target that
 endpoint. The
 DP-side agent-session machinery materializes the real access token
@@ -28,7 +28,6 @@ from introspection_sdk.runner_resources import (
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
-    AsyncIssues,
     AsyncMetrics,
     AsyncRunnerAppConnections,
     AsyncShares,
@@ -37,7 +36,6 @@ from introspection_sdk.runner_resources import (
     Conversations,
     Events,
     Files,
-    Issues,
     Metrics,
     RunnerAppConnections,
     Shares,
@@ -82,7 +80,6 @@ class Runner:
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
         self._automations = Automations(self._http)
-        self._issues = Issues(self._http)
         self._connections = RunnerAppConnections(
             self._http, spec.runtime_context.runtime_group_id
         )
@@ -146,12 +143,6 @@ class Runner:
         return self._automations
 
     @property
-    def issues(self) -> Issues:
-        """DP ``/v1/issues`` namespace bound to this Runner."""
-        self._check_open()
-        return self._issues
-
-    @property
     def connections(self) -> RunnerAppConnections:
         """DP ``/v1/connections`` namespace bound to this Runner. ``create``
         defaults ``runtime`` to the runner's runtime group."""
@@ -207,7 +198,6 @@ class Runner:
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
         self._automations = Automations(self._http)
-        self._issues = Issues(self._http)
         self._connections = RunnerAppConnections(
             self._http, new_spec.runtime_context.runtime_group_id
         )
@@ -270,7 +260,6 @@ class AsyncRunner:
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
         self._automations = AsyncAutomations(self._http)
-        self._issues = AsyncIssues(self._http)
         self._connections = AsyncRunnerAppConnections(
             self._http, spec.runtime_context.runtime_group_id
         )
@@ -335,12 +324,6 @@ class AsyncRunner:
         return self._automations
 
     @property
-    def issues(self) -> AsyncIssues:
-        """DP ``/v1/issues`` namespace bound to this Runner."""
-        self._check_open()
-        return self._issues
-
-    @property
     def connections(self) -> AsyncRunnerAppConnections:
         """DP ``/v1/connections`` namespace bound to this Runner. ``create``
         defaults ``runtime`` to the runner's runtime group."""
@@ -396,7 +379,6 @@ class AsyncRunner:
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
         self._automations = AsyncAutomations(self._http)
-        self._issues = AsyncIssues(self._http)
         self._connections = AsyncRunnerAppConnections(
             self._http, new_spec.runtime_context.runtime_group_id
         )
