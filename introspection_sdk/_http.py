@@ -21,7 +21,7 @@ import time
 from collections.abc import AsyncIterator, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx2 as httpx
 
@@ -32,6 +32,12 @@ from introspection_sdk._errors import (
     _parse_retry_after,
     error_from_response,
 )
+
+if TYPE_CHECKING:
+    from introspection_sdk.auth import (
+        AsyncCredentialProvider,
+        CredentialProvider,
+    )
 
 #: Default automatic retries for unary REST calls: ``429`` on every method,
 #: ``502``/``503``/``504`` on ``GET`` only (see
@@ -77,8 +83,10 @@ class _HttpClient:
         transport: httpx.BaseTransport | None = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base: float = DEFAULT_RETRY_BASE,
+        credentials: CredentialProvider | None = None,
     ) -> None:
         self._closed = False
+        self._credentials = credentials
         self._client = httpx.Client(
             base_url=api_url.rstrip("/"),
             timeout=timeout,
@@ -87,6 +95,8 @@ class _HttpClient:
         self._auth_headers: dict[str, str] = (
             {"Cookie": f"intro_cp_session={cp_session}"}
             if cp_session
+            else {}
+            if credentials is not None
             else {"Authorization": f"Bearer {token}"}
         )
         if additional_headers:
@@ -115,6 +125,18 @@ class _HttpClient:
                 status_code=0,
             )
 
+    def _request_headers(
+        self, extra: Mapping[str, str] | None
+    ) -> dict[str, str]:
+        req_headers = dict(self._auth_headers)
+        if self._credentials is not None and "Cookie" not in req_headers:
+            authorization = self._credentials.authorization()
+            if authorization:
+                req_headers["Authorization"] = authorization
+        if extra:
+            req_headers.update(extra)
+        return req_headers
+
     def request(
         self,
         method: str,
@@ -128,10 +150,6 @@ class _HttpClient:
         expect: str = "json",
     ) -> Any:
         self._check_open()
-        req_headers = dict(self._auth_headers)
-        if headers:
-            req_headers.update(headers)
-        headers = req_headers
         # Auto-retry retryable statuses, honouring ``Retry-After`` as a
         # backoff floor when present: ``429`` on any method (the request was
         # rejected and never processed, so retrying is side-effect-safe for
@@ -140,7 +158,9 @@ class _HttpClient:
         retries = 0 if files is not None else self._max_retries
         idempotent = method.upper() == "GET"
         attempt = 0
+        reauthorized = files is not None
         while True:
+            req_headers = self._request_headers(headers)
             try:
                 res = self._client.request(
                     method,
@@ -149,10 +169,20 @@ class _HttpClient:
                     json=json,
                     files=files,
                     data=data,
-                    headers=headers,
+                    headers=req_headers,
                 )
             except httpx.HTTPError as exc:
                 raise NetworkError(str(exc)) from exc
+            if (
+                res.status_code == 401
+                and self._credentials is not None
+                and not reauthorized
+            ):
+                reauthorized = True
+                if self._credentials.refresh_after_unauthorized(
+                    req_headers.get("Authorization")
+                ):
+                    continue
             if (
                 _is_retryable_status(res.status_code, idempotent)
                 and attempt < retries
@@ -182,9 +212,7 @@ class _HttpClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> Iterator[bytes]:
-        req_headers = dict(self._auth_headers)
-        if headers:
-            req_headers.update(headers)
+        req_headers = self._request_headers(headers)
         try:
             with self._client.stream(
                 "GET",
@@ -207,10 +235,9 @@ class _HttpClient:
         headers: Mapping[str, str] | None = None,
     ) -> Iterator[str]:
         self._check_open()
-        req_headers = dict(self._auth_headers)
-        req_headers["Accept"] = "text/event-stream"
-        if headers:
-            req_headers.update(headers)
+        req_headers = self._request_headers(
+            {"Accept": "text/event-stream", **(headers or {})}
+        )
         try:
             with self._client.stream(
                 "GET", path, params=_clean_params(params), headers=req_headers
@@ -243,8 +270,10 @@ class _AsyncHttpClient:
         transport: httpx.AsyncBaseTransport | None = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_base: float = DEFAULT_RETRY_BASE,
+        credentials: AsyncCredentialProvider | None = None,
     ) -> None:
         self._closed = False
+        self._credentials = credentials
         self._client = httpx.AsyncClient(
             base_url=api_url.rstrip("/"),
             timeout=timeout,
@@ -253,6 +282,8 @@ class _AsyncHttpClient:
         self._auth_headers: dict[str, str] = (
             {"Cookie": f"intro_cp_session={cp_session}"}
             if cp_session
+            else {}
+            if credentials is not None
             else {"Authorization": f"Bearer {token}"}
         )
         if additional_headers:
@@ -273,6 +304,18 @@ class _AsyncHttpClient:
                 status_code=0,
             )
 
+    async def _request_headers(
+        self, extra: Mapping[str, str] | None
+    ) -> dict[str, str]:
+        req_headers = dict(self._auth_headers)
+        if self._credentials is not None and "Cookie" not in req_headers:
+            authorization = await self._credentials.authorization()
+            if authorization:
+                req_headers["Authorization"] = authorization
+        if extra:
+            req_headers.update(extra)
+        return req_headers
+
     async def request(
         self,
         method: str,
@@ -286,17 +329,15 @@ class _AsyncHttpClient:
         expect: str = "json",
     ) -> Any:
         self._check_open()
-        req_headers = dict(self._auth_headers)
-        if headers:
-            req_headers.update(headers)
-        headers = req_headers
         # See the sync twin: transparent retry on ``429`` (any method) and
         # ``502``/``503``/``504`` (``GET`` only), honouring ``Retry-After``
         # as a backoff floor; multipart uploads are excluded.
         retries = 0 if files is not None else self._max_retries
         idempotent = method.upper() == "GET"
         attempt = 0
+        reauthorized = files is not None
         while True:
+            req_headers = await self._request_headers(headers)
             try:
                 res = await self._client.request(
                     method,
@@ -305,10 +346,20 @@ class _AsyncHttpClient:
                     json=json,
                     files=files,
                     data=data,
-                    headers=headers,
+                    headers=req_headers,
                 )
             except httpx.HTTPError as exc:
                 raise NetworkError(str(exc)) from exc
+            if (
+                res.status_code == 401
+                and self._credentials is not None
+                and not reauthorized
+            ):
+                reauthorized = True
+                if await self._credentials.refresh_after_unauthorized(
+                    req_headers.get("Authorization")
+                ):
+                    continue
             if (
                 _is_retryable_status(res.status_code, idempotent)
                 and attempt < retries
@@ -338,9 +389,7 @@ class _AsyncHttpClient:
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[bytes]:
-        req_headers = dict(self._auth_headers)
-        if headers:
-            req_headers.update(headers)
+        req_headers = await self._request_headers(headers)
         try:
             async with self._client.stream(
                 "GET",
@@ -364,10 +413,9 @@ class _AsyncHttpClient:
         headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[str]:
         self._check_open()
-        req_headers = dict(self._auth_headers)
-        req_headers["Accept"] = "text/event-stream"
-        if headers:
-            req_headers.update(headers)
+        req_headers = await self._request_headers(
+            {"Accept": "text/event-stream", **(headers or {})}
+        )
         try:
             async with self._client.stream(
                 "GET", path, params=_clean_params(params), headers=req_headers

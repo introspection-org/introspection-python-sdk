@@ -65,6 +65,10 @@ def _list_params(
     }
 
 
+def _uuid(value: UUID | str | None) -> UUID | None:
+    return value if value is None or isinstance(value, UUID) else UUID(value)
+
+
 def _metadata(metadata: MetadataInput | None) -> dict[str, Any] | None:
     if isinstance(metadata, AutomationMetadata):
         return metadata.model_dump(mode="json", exclude_none=True)
@@ -79,8 +83,8 @@ def _create_body(
     cron_schedule: str | None,
     kind: AutomationKind | str | None,
     prompt: str | None,
-    runtime_group_id: UUID | None,
-    task_id: UUID | None,
+    runtime_group_id: UUID | str | None,
+    task_id: UUID | str | None,
     next_trigger_at: datetime | None,
     metadata: MetadataInput | None,
     enabled: bool | None,
@@ -92,8 +96,8 @@ def _create_body(
         cron_schedule=cron_schedule,
         kind=kind,
         prompt=prompt,
-        runtime_group_id=runtime_group_id,
-        task_id=task_id,
+        runtime_group_id=_uuid(runtime_group_id),
+        task_id=_uuid(task_id),
         next_trigger_at=next_trigger_at,
         metadata=_metadata(metadata),
         enabled=enabled,
@@ -106,8 +110,8 @@ def _update_body(
     description: str | None,
     cron_schedule: str | None,
     prompt: str | None,
-    runtime_group_id: UUID | None,
-    task_id: UUID | None,
+    runtime_group_id: UUID | str | None,
+    task_id: UUID | str | None,
     next_trigger_at: datetime | None,
     metadata: MetadataInput | None,
     enabled: bool | None,
@@ -119,8 +123,8 @@ def _update_body(
         description=description,
         cron_schedule=cron_schedule,
         prompt=prompt,
-        runtime_group_id=runtime_group_id,
-        task_id=task_id,
+        runtime_group_id=_uuid(runtime_group_id),
+        task_id=_uuid(task_id),
         next_trigger_at=next_trigger_at,
         metadata=_metadata(metadata),
         enabled=enabled,
@@ -184,8 +188,8 @@ class Automations:
         cron_schedule: str | None = None,
         kind: AutomationKind | str | None = None,
         prompt: str | None = None,
-        runtime_group_id: UUID | None = None,
-        task_id: UUID | None = None,
+        runtime_group_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
@@ -227,8 +231,8 @@ class Automations:
         description: str | None = None,
         cron_schedule: str | None = None,
         prompt: str | None = None,
-        runtime_group_id: UUID | None = None,
-        task_id: UUID | None = None,
+        runtime_group_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
@@ -322,8 +326,8 @@ class AsyncAutomations:
         cron_schedule: str | None = None,
         kind: AutomationKind | str | None = None,
         prompt: str | None = None,
-        runtime_group_id: UUID | None = None,
-        task_id: UUID | None = None,
+        runtime_group_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
@@ -356,8 +360,8 @@ class AsyncAutomations:
         description: str | None = None,
         cron_schedule: str | None = None,
         prompt: str | None = None,
-        runtime_group_id: UUID | None = None,
-        task_id: UUID | None = None,
+        runtime_group_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
