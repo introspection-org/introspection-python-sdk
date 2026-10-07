@@ -445,21 +445,27 @@ async def test_runtime_run_mints_async_runner(fake_api: FakeAPI):
     await runner.close()
 
 
-async def test_runtime_handle_resolves_slug(fake_api: FakeAPI):
-    fake_api.add(
-        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
-    )
+async def test_runtime_handle_posts_the_slug_without_listing(
+    fake_api: FakeAPI,
+):
+    """A slug opens a runner in one request; `GET /v1/runtimes` refuses a
+    `customer` credential, so listing first would strand it."""
     fake_api.add(
         "POST",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
+        "/v1/runtimes/checkout-agent/run",
         json_body=runner_spec_payload(),
     )
     runtimes = AsyncRuntimes(fake_api.async_client())
     runner = await runtimes("checkout-agent").run()
     assert isinstance(runner, AsyncRunner)
-    # First call lists by slug, second posts /run.
-    assert fake_api.requests[0].path == "/v1/runtimes"
-    assert fake_api.last_request.path == f"/v1/runtimes/{RUNTIME_ID}/run"
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("POST", "/v1/runtimes/checkout-agent/run")
+    ]
+    await runner.refresh()
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("POST", "/v1/runtimes/checkout-agent/run"),
+        ("POST", "/v1/runtimes/checkout-agent/run"),
+    ]
     await runner.close()
 
 

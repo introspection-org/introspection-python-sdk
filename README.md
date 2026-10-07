@@ -81,6 +81,14 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
+`runtimes("customer-agent").run()` is one request, `POST
+/v1/runtimes/customer-agent/run`: the Control Plane resolves the slug in the
+credential's project (or the `project=` you pass), so a credential that may not
+list runtimes, such as a customer signed in by email code, can still open a
+runner. `runner.refresh()` posts the same path. A UUID selector is a runtime
+group id; it is resolved with `GET /v1/runtimes` first, and
+`client.runtimes.handle(runtime_id)` posts a known runtime id directly.
+
 Or wait for the finished answer instead of streaming:
 
 ```python

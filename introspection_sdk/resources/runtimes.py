@@ -2,17 +2,19 @@
 
 ``client.runtimes`` is the :class:`Runtimes` instance; calling
 ``client.runtimes(runtime)`` returns a :class:`RuntimeHandle`
-which exposes ``.run()``. When called with a
-runtime slug or UUID, the handle resolves it on the caller's project
-on every use — never cached, so a version withdrawn after the handle was
-built cannot strand it. UUID selectors are runtime group IDs; concrete
-runtime row IDs are used only by explicit ``*_id`` methods.
+which exposes ``.run()``. A slug goes straight to
+``POST /v1/runtimes/{slug}/run``, which resolves it in the caller's project,
+so opening a runner needs no list call. A UUID selector is a runtime group
+id and is resolved on the caller's project on every use. Neither is cached,
+so a version withdrawn after the handle was built cannot strand it.
+Concrete runtime row IDs are used only by explicit ``*_id`` methods.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._errors import NotFoundError
@@ -65,7 +67,7 @@ class Runtimes:
         """Bind a handle to a concrete ``runtime_id``, skipping resolution.
 
         ``client.runtimes(selector)`` holds a slug or runtime group id and
-        lists on every use to find what the group currently serves. Pass a
+        resolves it on every use to find what the group currently serves. Pass a
         runtime id there and the lookup answers nothing: the ``runtime``
         filter matches slugs and group ids, not the row's own id. Use this
         when the id is already known — from ``resolve()``, ``get()``, or a
@@ -154,14 +156,19 @@ class Runtimes:
 
     def _post_run(
         self,
-        runtime_id: UUID,
+        runtime: UUID | str,
         options: RunRequest,
+        *,
+        project: str | None = None,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
             exclude_none=True, mode="json"
         )
         payload = self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/run", json=body
+            "POST",
+            _run_path(runtime),
+            params={"project": project},
+            json=body,
         )
         return RunnerSpec.model_validate(payload)
 
@@ -169,8 +176,12 @@ class Runtimes:
 class RuntimeHandle:
     """Handle for a specific runtime slug or runtime group id.
 
-    Holds the stable selector and resolves it on each use, by listing on the
-    caller's project. Built by ``client.runtimes(runtime)``.
+    Holds the stable selector and resolves it on each use. ``run()`` posts a
+    slug straight to ``/v1/runtimes/{slug}/run``, which resolves it in the
+    caller's project, so a credential refused the list (a ``customer``
+    signed in by email code) can still open a runner. A runtime group id has
+    no such route and is resolved by listing on the caller's project. Built
+    by ``client.runtimes(runtime)``.
 
     The resolved row id is deliberately not cached. A runtime group's versions
     change underneath a long-lived handle: deploys add them, and yanking or
@@ -203,6 +214,11 @@ class RuntimeHandle:
             return UUID(str(self._raw))
         return self._runtimes.resolve(str(self._raw), project=self._project).id
 
+    def _run_target(self) -> UUID | str:
+        if self._resolved or _is_uuid(self._raw):
+            return self._resolve()
+        return str(self._raw)
+
     def run(
         self,
         *,
@@ -233,10 +249,12 @@ class RuntimeHandle:
             ttl_seconds=ttl_seconds,
             scope=scope,
         )
-        rid = self._resolve()
+        target = self._run_target()
 
         def refresher() -> RunnerSpec:
-            return self._runtimes._post_run(rid, options)
+            return self._runtimes._post_run(
+                target, options, project=self._project
+            )
 
         spec = refresher()
         return Runner(
@@ -277,7 +295,7 @@ class AsyncRuntimes:
         """Bind a handle to a concrete ``runtime_id``, skipping resolution.
 
         ``client.runtimes(selector)`` holds a slug or runtime group id and
-        lists on every use to find what the group currently serves. Pass a
+        resolves it on every use to find what the group currently serves. Pass a
         runtime id there and the lookup answers nothing: the ``runtime``
         filter matches slugs and group ids, not the row's own id. Use this
         when the id is already known — from ``resolve()``, ``get()``, or a
@@ -360,14 +378,19 @@ class AsyncRuntimes:
 
     async def _post_run(
         self,
-        runtime_id: UUID,
+        runtime: UUID | str,
         options: RunRequest,
+        *,
+        project: str | None = None,
     ) -> RunnerSpec:
         body: dict[str, Any] = options.model_dump(
             exclude_none=True, mode="json"
         )
         payload = await self._http.request(
-            "POST", f"/v1/runtimes/{runtime_id}/run", json=body
+            "POST",
+            _run_path(runtime),
+            params={"project": project},
+            json=body,
         )
         return RunnerSpec.model_validate(payload)
 
@@ -375,8 +398,9 @@ class AsyncRuntimes:
 class AsyncRuntimeHandle:
     """Async twin of :class:`RuntimeHandle`.
 
-    Holds the stable selector and resolves it on each use, by listing on the
-    caller's project. Built by ``client.runtimes(runtime)``. See
+    Holds the stable selector and resolves it on each use: ``run()`` posts a
+    slug straight to ``/v1/runtimes/{slug}/run`` and lists only to resolve a
+    runtime group id. Built by ``client.runtimes(runtime)``. See
     :class:`RuntimeHandle` for why the resolved id is not cached.
     """
 
@@ -412,6 +436,11 @@ class AsyncRuntimeHandle:
         )
         return resolved.id
 
+    async def _run_target(self) -> UUID | str:
+        if self._resolved or _is_uuid(self._raw):
+            return await self._resolve()
+        return str(self._raw)
+
     async def run(
         self,
         *,
@@ -442,10 +471,12 @@ class AsyncRuntimeHandle:
             ttl_seconds=ttl_seconds,
             scope=scope,
         )
-        rid = await self._resolve()
+        target = await self._run_target()
 
         async def refresher() -> RunnerSpec:
-            return await self._runtimes._post_run(rid, options)
+            return await self._runtimes._post_run(
+                target, options, project=self._project
+            )
 
         spec = await refresher()
         return AsyncRunner(
@@ -478,3 +509,17 @@ def _no_runtime(runtime: str | UUID) -> NotFoundError:
         status_code=404,
         code="not_found",
     )
+
+
+def _is_uuid(selector: str | UUID) -> bool:
+    if isinstance(selector, UUID):
+        return True
+    try:
+        UUID(selector)
+    except ValueError:
+        return False
+    return True
+
+
+def _run_path(runtime: UUID | str) -> str:
+    return f"/v1/runtimes/{quote(str(runtime), safe='')}/run"

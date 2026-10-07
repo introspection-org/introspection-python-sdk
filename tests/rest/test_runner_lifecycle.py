@@ -50,10 +50,11 @@ from .conftest import (
     file_payload,
     paginated,
     runner_spec_payload,
-    runtime_payload,
     task_payload,
     to_jsonable,
 )
+
+SLUG_RUN_PATH = "/v1/runtimes/checkout-agent/run"
 
 METRIC_RESPONSE: dict[str, Any] = {
     "data": [],
@@ -87,15 +88,12 @@ def _seed_dp(dp: LocalDP) -> None:
 
 
 def _seed_cp(fake_api: FakeAPI, dp_a: LocalDP, dp_b: LocalDP) -> list[bytes]:
-    """Wire the CP resolve + ``/run`` routes.
+    """Wire the CP ``/run`` route for the ``checkout-agent`` slug.
 
     The first ``/run`` hands back ``dp_a``; every later one (i.e.
     ``refresh()``) hands back ``dp_b`` with a different session token, so
     a Runner that failed to re-point would keep hitting ``dp_a``.
     """
-    fake_api.add(
-        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
-    )
     specs = [
         runner_spec_payload(
             session_id="sess-a",
@@ -119,7 +117,7 @@ def _seed_cp(fake_api: FakeAPI, dp_a: LocalDP, dp_b: LocalDP) -> list[bytes]:
         bodies.append(request.read())
         return httpx.Response(200, json=to_jsonable(spec))
 
-    fake_api.add_handler("POST", f"/v1/runtimes/{RUNTIME_ID}/run", handler)
+    fake_api.add_handler("POST", SLUG_RUN_PATH, handler)
     return bodies
 
 
@@ -141,10 +139,7 @@ def test_open_read_refresh_close_sync(
 
     # The CP `/run` call happened, and its answer is what the accessors
     # report.
-    assert [r.path for r in fake_api.requests] == [
-        "/v1/runtimes",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
-    ]
+    assert [r.path for r in fake_api.requests] == [SLUG_RUN_PATH]
     assert run_bodies == [b'{"agent_name":"agent","ttl_seconds":3600}']
     assert runner.session_id == "sess-a"
     assert runner.dp_endpoint == dp_a.endpoint
@@ -185,6 +180,7 @@ def test_open_read_refresh_close_sync(
     stale = runner.tasks
     runner.refresh()
     assert len(run_bodies) == 2
+    assert [r.path for r in fake_api.requests] == [SLUG_RUN_PATH] * 2
     assert runner.session_id == "sess-b"
     assert runner.dp_endpoint == dp_b.endpoint
     assert runner.deployment.region == "eu-west"
@@ -224,10 +220,7 @@ async def test_open_read_refresh_close_async(
         "checkout-agent"
     ).run(agent_name="agent")
 
-    assert [r.path for r in fake_api.requests] == [
-        "/v1/runtimes",
-        f"/v1/runtimes/{RUNTIME_ID}/run",
-    ]
+    assert [r.path for r in fake_api.requests] == [SLUG_RUN_PATH]
     assert runner.session_id == "sess-a"
     assert runner.dp_endpoint == dp_a.endpoint
     assert runner.deployment.slug == "dp-a"
@@ -261,6 +254,7 @@ async def test_open_read_refresh_close_async(
     stale = runner.tasks
     await runner.refresh()
     assert len(run_bodies) == 2
+    assert [r.path for r in fake_api.requests] == [SLUG_RUN_PATH] * 2
     assert runner.session_id == "sess-b"
     assert runner.dp_endpoint == dp_b.endpoint
 
