@@ -8,6 +8,8 @@ every namespace but issues no requests, so these run fully offline.
 
 from __future__ import annotations
 
+from importlib.metadata import version
+
 import pytest
 
 from introspection_sdk.client import (
@@ -18,9 +20,13 @@ from introspection_sdk.dev_target import DEV_TARGET_ENV, client_headers
 from introspection_sdk.version import USER_AGENT
 
 
-def test_the_agent_names_the_sdk_and_its_release():
-    assert USER_AGENT.startswith("introspection-sdk/")
-    assert USER_AGENT != "introspection-sdk/"
+def test_the_agent_names_this_library_and_its_release():
+    # The package version, the one release-please bumps in pyproject.toml.
+    assert (
+        USER_AGENT
+        == f"introspection-python-sdk/{version('introspection-sdk')}"
+    )
+    assert USER_AGENT != "introspection-python-sdk/"
 
 
 @pytest.mark.parametrize(

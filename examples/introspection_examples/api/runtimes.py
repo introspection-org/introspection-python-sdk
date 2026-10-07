@@ -28,9 +28,9 @@ def main() -> None:
         identity={"user_id": "u_42"},
         caller={
             "ip": "8.8.8.8",
-            "user_agent": f"introspection-sdk-python/{VERSION}",
+            "user_agent": f"introspection-python-sdk/{VERSION}",
             "library": {
-                "name": "introspection-sdk-python",
+                "name": "introspection-python-sdk",
                 "version": VERSION,
             },
         },

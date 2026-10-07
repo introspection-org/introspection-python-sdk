@@ -690,7 +690,9 @@ class TestBaggagePropagation:
             request = rsps.calls[0].request
             assert request.headers is not None
             assert request.headers["Authorization"] == "Bearer my-secret-token"
-            assert "introspection-sdk" in request.headers["User-Agent"]
+            assert request.headers["User-Agent"].startswith(
+                "introspection-python-sdk/"
+            )
             assert request.headers["X-Custom"] == "custom-value"
 
             provider.shutdown()

@@ -194,6 +194,61 @@ def test_handle_skips_resolution_for_a_known_runtime_id(fake_api: FakeAPI):
     assert handle.run().session_id == runner_spec_payload().session_id
 
 
+def test_slug_run_posts_the_slug_without_listing(fake_api: FakeAPI):
+    """A slug opens a runner in exactly one request, and so does refresh.
+
+    `GET /v1/runtimes` refuses a `customer` credential with 403, so the
+    slug goes straight to `/run`, which resolves it in the caller's project.
+    """
+    fake_api.add(
+        "POST",
+        "/v1/runtimes/checkout-agent/run",
+        json_body=runner_spec_payload(),
+    )
+    runner = _runtimes(fake_api)("checkout-agent").run()
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("POST", "/v1/runtimes/checkout-agent/run")
+    ]
+    assert "project" not in fake_api.last_request.params
+    runner.refresh()
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("POST", "/v1/runtimes/checkout-agent/run"),
+        ("POST", "/v1/runtimes/checkout-agent/run"),
+    ]
+
+
+def test_slug_run_forwards_the_project(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/runtimes/checkout-agent/run",
+        json_body=runner_spec_payload(),
+    )
+    _runtimes(fake_api)("checkout-agent", project="shop").run()
+    assert len(fake_api.requests) == 1
+    assert fake_api.last_request.params.get("project") == "shop"
+
+
+def test_uuid_string_selector_still_resolves_by_id(fake_api: FakeAPI):
+    """A UUID selector is a runtime group id, which `/run` does not accept,
+    so it still resolves to the concrete runtime and posts by that id."""
+    runtime_group_id = "33333333-3333-3333-3333-333333333333"
+    fake_api.add(
+        "GET", "/v1/runtimes", json_body=paginated([runtime_payload()])
+    )
+    fake_api.add(
+        "POST",
+        f"/v1/runtimes/{RUNTIME_ID}/run",
+        json_body=runner_spec_payload(),
+    )
+    runner = _runtimes(fake_api)(runtime_group_id).run()
+    runner.refresh()
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("GET", "/v1/runtimes"),
+        ("POST", f"/v1/runtimes/{RUNTIME_ID}/run"),
+        ("POST", f"/v1/runtimes/{RUNTIME_ID}/run"),
+    ]
+
+
 def test_run_returns_runner_with_context(fake_api: FakeAPI):
     runtime_group_id = UUID("33333333-3333-3333-3333-333333333333")
     fake_api.add(
