@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.22.0...v0.23.0) (2026-10-07)
+
+
+### Features
+
+* open a runner by Runtime slug without listing; library-specific User-Agent ([#162](https://github.com/introspection-org/introspection-python-sdk/issues/162)) ([5d3f3ad](https://github.com/introspection-org/introspection-python-sdk/commit/5d3f3ada417268080e8a170dbcb2bc68fbe88ed4))
+
 ## [0.22.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.21.0...v0.22.0) (2026-10-06)
 
 
