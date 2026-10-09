@@ -309,7 +309,11 @@ class InputMessage(OmitNoneModel):
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
     )
     parts: list[MessagePart] = Field(
-        description="Ordered list of content parts.",
+        default_factory=list,
+        description=(
+            "Ordered list of content parts. Empty when the read omitted the "
+            "key: a message without content arrives without ``parts``."
+        ),
     )
     name: str | None = Field(default=None, description="Optional sender name.")
 
@@ -321,7 +325,11 @@ class OutputMessage(OmitNoneModel):
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
     )
     parts: list[MessagePart] = Field(
-        description="Ordered list of content parts.",
+        default_factory=list,
+        description=(
+            "Ordered list of content parts. Empty when the read omitted the "
+            "key: a message without content arrives without ``parts``."
+        ),
     )
     finish_reason: str | None = Field(
         default=None,

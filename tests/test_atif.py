@@ -554,6 +554,30 @@ def test_a_span_without_resource_or_provider_falls_back() -> None:
     assert "session_id" not in trajectory
 
 
+def test_a_model_call_that_returned_no_content_is_still_a_step() -> None:
+    # The read omits empty containers, so the message arrives without parts.
+    spans = [
+        chat(
+            1,
+            [USER],
+            [{"role": "assistant", "finish_reason": "stop"}],
+            usage={"input_tokens": 9, "output_tokens": 4},
+        )
+    ]
+
+    steps = dump(spans_to_atif(spans))["steps"]
+
+    assert steps[1] == {
+        "step_id": 2,
+        "timestamp": "2026-10-09T10:00:01Z",
+        "source": "agent",
+        "model_name": "anthropic/claude-opus-5-5",
+        "message": "",
+        "metrics": {"prompt_tokens": 9, "completion_tokens": 4},
+        "llm_call_count": 1,
+    }
+
+
 def test_a_tool_call_without_an_id_is_refused() -> None:
     spans = [
         chat(1, [USER], [{"role": "assistant", "parts": [call(None)]}]),
