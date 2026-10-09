@@ -41,6 +41,7 @@ test = [
     "inline-snapshot>=0.31.0",
     "dirty-equals>=0.11.0",
     "responses>=0.25.8",
+    "jsonschema>=4.23.0",
 ]
 
 [tool.hatch.metadata]
