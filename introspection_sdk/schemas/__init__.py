@@ -13,6 +13,17 @@ from introspection_sdk.schemas.annotations import (
     ProjectLabelCreate,
     ProjectLabelUpdate,
 )
+from introspection_sdk.schemas.atif import (
+    ATIF_SCHEMA_VERSION,
+    AtifAgent,
+    AtifFinalMetrics,
+    AtifMetrics,
+    AtifObservation,
+    AtifObservationResult,
+    AtifStep,
+    AtifToolCall,
+    AtifTrajectory,
+)
 from introspection_sdk.schemas.automations import (
     Automation,
     AutomationCondition,
@@ -125,6 +136,15 @@ from introspection_sdk.schemas.trajectory import (
 )
 
 __all__ = [
+    "ATIF_SCHEMA_VERSION",
+    "AtifAgent",
+    "AtifFinalMetrics",
+    "AtifMetrics",
+    "AtifObservation",
+    "AtifObservationResult",
+    "AtifStep",
+    "AtifToolCall",
+    "AtifTrajectory",
     "AnnotationEvent",
     "AnnotationPayload",
     "AnnotationState",

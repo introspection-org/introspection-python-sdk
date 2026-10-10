@@ -79,6 +79,10 @@ This SDK ships no framework integrations and no span converters. A framework
 emits OTel GenAI semconv spans and attaches `IntrospectionSpanProcessor`;
 there is no per-framework code here to add.
 
+`introspection_sdk/atif.py` is not an exception: it reads the GenAI spans a
+conversation read returns and projects them onto Harbor's ATIF trajectory. It
+converts no framework's native format.
+
 Adding a new public surface? Land all of these in the same PR:
 
 - [ ] Implementation in `introspection_sdk/`
