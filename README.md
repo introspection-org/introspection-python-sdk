@@ -271,10 +271,12 @@ if merge is not None:
 ## Label members
 
 `client.members` reads and updates the organization's members. Each carries
-two label sets: `tags` are **access-bearing** (a member reaches every file and
-task whose tags intersect its own, so writing them needs `members:manage`),
+two label sets: `tags` are **access-bearing** (a member is admitted by every
+share whose `granted_tag` it holds, so writing them needs `members:manage`),
 while `metadata` is a `key: value` map that **grants nothing** and exists to
-filter on.
+filter on. The older implicit grant, where a member reaches every file and task
+whose tags intersect its own, still works but is being retired; share with a
+cohort through `shares.create(..., granted_tag="team:acme")` instead.
 
 ```python
 for member in client.members.list(metadata={"plan": "enterprise"}, tag="team:acme"):
@@ -282,6 +284,27 @@ for member in client.members.list(metadata={"plan": "enterprise"}, tag="team:acm
 
 member = client.members.update(member_id, metadata={"plan": "pro", "region": "eu"})
 client.members.update(member_id, metadata={})  # clear it
+```
+
+## Share files, issues and conversations
+
+`shares` grants access to a resource you own. The grantee fields are ANDed:
+`granted_member_id` admits one member, `granted_tag` admits everyone whose
+token carries that tag (you must hold it), both admit that member only while
+they hold the tag, and neither shares with the whole project. Shares are
+ambient, so a shared resource shows up in the grantee's ordinary reads.
+
+```python
+share = client.shares.create(
+    resource_type="file", resource_id=file_id, granted_tag="team:acme", mode="write"
+)
+client.shares.update(str(share.id), mode="read")
+
+# Conversations are shared read-only; `visible_from` hides earlier spans.
+convo = client.shares.create(
+    resource_type="conversation", resource_id=conversation_id, visible_from=cutoff
+)
+client.shares.update(str(convo.id), visible_from=None)  # clear the cutoff
 ```
 
 `update` replaces `tags` and `metadata` wholesale: omit a field to leave it,

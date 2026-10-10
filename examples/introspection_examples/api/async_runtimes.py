@@ -56,10 +56,11 @@ async def main() -> None:
                 print(event.model_dump_json(by_alias=True, exclude_none=True))
 
             # Once the run has drained, the task carries its conversation id
-            # in metadata. Fetch that conversation, then mint a read-share —
-            # the grant's `url` (carrying the `?share_id` capability) is what
-            # you hand out, or feed back as `fork_share_id` to branch a new
-            # task off this conversation.
+            # in metadata. Fetch that conversation, then share it with the
+            # project. Shares are ambient: grantees see it in their ordinary
+            # reads, and the grant's `url` is the plain resource URL. Its id
+            # can be fed back as `fork_share_id` to branch a new task off this
+            # conversation.
             conversation_id = (
                 (run.task.metadata or {}).get("conversation_id")
                 if run.task
@@ -88,6 +89,19 @@ async def main() -> None:
                 mime_type="text/markdown",
             )
             print(f"created file: {file.id}")
+
+            # A write share lets grantees update the file and add versions.
+            # Name `granted_tag="team:acme"` (a tag you hold) to share with
+            # that cohort instead of the whole project.
+            file_share = await runner.shares.create(
+                resource_type="file", resource_id=str(file.id), mode="write"
+            )
+            file_share = await runner.shares.update(
+                str(file_share.id), mode="read"
+            )
+            print(
+                f"shared file {file.id} ({file_share.mode}) -> {file_share.url}"
+            )
 
             payload = await runner.files.download(str(file.id))
             print(f"downloaded {len(payload)} bytes")
