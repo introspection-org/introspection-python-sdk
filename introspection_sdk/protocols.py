@@ -303,7 +303,6 @@ class ConversationItemsResource(Protocol):
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | None = None,
     ) -> Pager[GenAiSpan, GenAiSpanList]: ...
 
     def get(
@@ -341,7 +340,6 @@ class ConversationsResource(Protocol):
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -374,7 +372,6 @@ class ConversationsResource(Protocol):
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -412,7 +409,6 @@ class ConversationsResource(Protocol):
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Trajectory: ...
@@ -425,7 +421,6 @@ class ConversationsResource(Protocol):
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Any: ...
@@ -815,7 +810,6 @@ class AsyncConversationItemsResource(Protocol):
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | None = None,
     ) -> AsyncPager[GenAiSpan, GenAiSpanList]: ...
 
     async def get(
@@ -853,7 +847,6 @@ class AsyncConversationsResource(Protocol):
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -886,7 +879,6 @@ class AsyncConversationsResource(Protocol):
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -924,7 +916,6 @@ class AsyncConversationsResource(Protocol):
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Trajectory: ...
@@ -937,7 +928,6 @@ class AsyncConversationsResource(Protocol):
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Any: ...

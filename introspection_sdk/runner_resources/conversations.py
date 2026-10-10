@@ -9,15 +9,12 @@ cursors. The item envelope retains OpenAI-style ``first_id`` / ``last_id``
 metadata, but those identifiers do not drive pagination.
 
 Shares are ambient: a conversation shared with the caller appears in these
-reads without naming the share. The ``share_id`` parameter every read still
-accepts is deprecated; the API ignores it, and passing one emits a
-:class:`DeprecationWarning`.
+reads without naming the share.
 """
 
 from __future__ import annotations
 
 import builtins
-import warnings
 from collections.abc import AsyncIterator, Iterator
 from datetime import datetime
 from typing import Any, Literal, TypedDict, Unpack
@@ -69,24 +66,11 @@ class ConversationExportParams(TypedDict, total=False):
     service_name: str
     operation_name: str
     lookback_days: int
-    share_id: str | UUID
-    """Deprecated and ignored by the API; shares are ambient."""
     start_date: str | datetime
     end_date: str | datetime
 
 
 JSON_EXPORT_HEADERS = {"Accept": "application/json"}
-
-
-def warn_share_id_deprecated(share_id: object) -> None:
-    """Warn a caller that still passes the ignored ``share_id`` read param."""
-    if share_id is not None:
-        warnings.warn(
-            "share_id is deprecated and ignored by the API: shares are "
-            "ambient, so a shared conversation is readable without it",
-            DeprecationWarning,
-            stacklevel=3,
-        )
 
 
 #: How many items ``retrieve()`` scans, newest-first, looking for the latest
@@ -107,7 +91,6 @@ def build_export_params(
     service_name: str | None = None,
     operation_name: str | None = None,
     lookback_days: int | None = None,
-    share_id: str | UUID | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
 ) -> dict[str, Any]:
@@ -131,8 +114,6 @@ def build_export_params(
         params["operation_name"] = operation_name
     if lookback_days is not None:
         params["lookback_days"] = lookback_days
-    if share_id is not None:
-        params["share_id"] = str(share_id)
     if start_date is not None:
         params["start_date"] = start_date
     if end_date is not None:
@@ -179,7 +160,6 @@ def build_conversation_params(
     experiment_id: UUID | None = None,
     recipe_git_commit_sha: str | None = None,
     conversation_ids: builtins.list[str] | None = None,
-    share_id: builtins.list[str] | None = None,
     resolution: ConversationResolution | None = None,
     sentiment: ConversationSentiment | None = None,
     owner_key: str | None = None,
@@ -205,7 +185,6 @@ def build_conversation_params(
         "experiment_id": experiment_id,
         "recipe_git_commit_sha": recipe_git_commit_sha,
         "conversation_ids": conversation_ids,
-        "share_id": share_id,
         "resolution": resolution,
         "sentiment": sentiment,
         "owner_key": owner_key,
@@ -314,7 +293,6 @@ class ConversationItems:
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | None = None,
     ) -> Pager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. Iterate
         the returned :class:`Pager` to stream every item
@@ -327,10 +305,7 @@ class ConversationItems:
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
-
-        ``share_id`` is deprecated and ignored: shares are ambient.
         """
-        warn_share_id_deprecated(share_id)
 
         def fetch(cursor: str | None) -> GenAiSpanList:
             params: dict[str, Any] = {
@@ -343,7 +318,6 @@ class ConversationItems:
                 "start_date": start_date,
                 "end_date": end_date,
                 "lookback_days": lookback_days,
-                "share_id": share_id,
             }
             payload = self._http.request(
                 "GET",
@@ -418,7 +392,6 @@ class Conversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -439,9 +412,7 @@ class Conversations:
         ``start_date`` / ``end_date``; ``lookback`` (e.g. ``"24h"``) sets
         ``start_date = now - lookback`` and is mutually exclusive with
         ``start`` / ``end``. ``format="arrow"`` negotiates the columnar Arrow
-        stream, decoded back into the same envelope. ``share_id`` is
-        deprecated and ignored: shares are ambient."""
-        warn_share_id_deprecated(share_id)
+        stream, decoded back into the same envelope."""
         resolved_start, resolved_end = resolve_window(
             start=start,
             end=end,
@@ -468,7 +439,6 @@ class Conversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -512,7 +482,6 @@ class Conversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -528,7 +497,6 @@ class Conversations:
         (constant memory), or call ``.read_all()`` to concatenate every
         page into one Table. Same filters as :meth:`list`; requires the
         ``[arrow]`` extra."""
-        warn_share_id_deprecated(share_id)
         resolved_start, resolved_end = resolve_window(
             start=start,
             end=end,
@@ -555,7 +523,6 @@ class Conversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -605,10 +572,7 @@ class Conversations:
         conversation_id: str,
         **params: Unpack[ConversationExportParams],
     ) -> GenAiSpanList:
-        """Export one complete conversation as the standard GenAI-span list.
-
-        ``share_id`` is deprecated and ignored: shares are ambient."""
-        warn_share_id_deprecated(params.get("share_id"))
+        """Export one complete conversation as the standard GenAI-span list."""
         payload = self._http.request(
             "GET",
             _export_path(conversation_id),
@@ -624,7 +588,6 @@ class Conversations:
         **params: Unpack[ConversationExportParams],
     ) -> Iterator[bytes]:
         """Stream raw complete-export bytes without buffering them in the SDK."""
-        warn_share_id_deprecated(params.get("share_id"))
         return self._http.stream_bytes(
             _export_path(conversation_id),
             params=build_export_params(**params),
@@ -639,7 +602,6 @@ class Conversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Trajectory:
@@ -654,10 +616,7 @@ class Conversations:
         GenAI messages, so a conversation that cannot be represented as
         trajectory-v1 raises rather than returning a partial export, and a
         conversation with no exportable records raises ``NotFoundError``.
-
-        ``share_id`` is deprecated and ignored: shares are ambient.
         """
-        warn_share_id_deprecated(share_id)
         payload = self._http.request(
             "GET",
             _export_path(conversation_id),
@@ -666,7 +625,6 @@ class Conversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),
@@ -682,7 +640,6 @@ class Conversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Any:
@@ -693,10 +650,8 @@ class Conversations:
         conversation server-side and streams it in one response. Returns
         ``None`` for an empty body.
 
-        Requires the optional ``pyarrow`` dependency. ``share_id`` is
-        deprecated and ignored: shares are ambient.
+        Requires the optional ``pyarrow`` dependency.
         """
-        warn_share_id_deprecated(share_id)
         raw = self._http.request(
             "GET",
             _export_path(conversation_id),
@@ -705,7 +660,6 @@ class Conversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),
@@ -794,7 +748,6 @@ class AsyncConversationItems:
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | None = None,
     ) -> AsyncPager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. ``await``
         the returned :class:`AsyncPager` for the first
@@ -808,7 +761,6 @@ class AsyncConversationItems:
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
         """
-        warn_share_id_deprecated(share_id)
 
         async def fetch(cursor: str | None) -> GenAiSpanList:
             params: dict[str, Any] = {
@@ -821,7 +773,6 @@ class AsyncConversationItems:
                 "start_date": start_date,
                 "end_date": end_date,
                 "lookback_days": lookback_days,
-                "share_id": share_id,
             }
             payload = await self._http.request(
                 "GET",
@@ -897,7 +848,6 @@ class AsyncConversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -914,7 +864,6 @@ class AsyncConversations:
         returned :class:`AsyncPager` for the first page, or ``async for`` it
         to stream every summary across pages. See
         :meth:`Conversations.list` for the param semantics."""
-        warn_share_id_deprecated(share_id)
         resolved_start, resolved_end = resolve_window(
             start=start,
             end=end,
@@ -943,7 +892,6 @@ class AsyncConversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -987,7 +935,6 @@ class AsyncConversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -1003,7 +950,6 @@ class AsyncConversations:
         page, or ``await .read_all()`` to concatenate every page into one
         Table. Same filters as :meth:`list`; requires the ``[arrow]``
         extra."""
-        warn_share_id_deprecated(share_id)
         resolved_start, resolved_end = resolve_window(
             start=start,
             end=end,
@@ -1030,7 +976,6 @@ class AsyncConversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -1081,7 +1026,6 @@ class AsyncConversations:
         **params: Unpack[ConversationExportParams],
     ) -> GenAiSpanList:
         """Async twin of :meth:`Conversations.export_json`."""
-        warn_share_id_deprecated(params.get("share_id"))
         payload = await self._http.request(
             "GET",
             _export_path(conversation_id),
@@ -1097,7 +1041,6 @@ class AsyncConversations:
         **params: Unpack[ConversationExportParams],
     ) -> AsyncIterator[bytes]:
         """Async byte-stream twin of :meth:`Conversations.export_stream`."""
-        warn_share_id_deprecated(params.get("share_id"))
         return self._http.stream_bytes(
             _export_path(conversation_id),
             params=build_export_params(**params),
@@ -1112,12 +1055,10 @@ class AsyncConversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Trajectory:
         """Async twin of :meth:`Conversations.export_trajectory`."""
-        warn_share_id_deprecated(share_id)
         payload = await self._http.request(
             "GET",
             _export_path(conversation_id),
@@ -1126,7 +1067,6 @@ class AsyncConversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),
@@ -1142,12 +1082,10 @@ class AsyncConversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Any:
         """Async twin of :meth:`Conversations.export_arrow`."""
-        warn_share_id_deprecated(share_id)
         raw = await self._http.request(
             "GET",
             _export_path(conversation_id),
@@ -1156,7 +1094,6 @@ class AsyncConversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),

@@ -12,7 +12,6 @@ Driven through the offline :class:`FakeAPI` transport from
 from __future__ import annotations
 
 import io
-import warnings
 from typing import Any
 from uuid import UUID
 
@@ -974,18 +973,16 @@ def test_export_stream_preserves_wire_bytes_and_filters(
     body = b'[{"wire":"bytes"}]'
     fake_api.add("GET", "/v1/conversations/conv-1/export", content=body)
 
-    with pytest.warns(DeprecationWarning, match="share_id"):
-        chunks = _conversations(fake_api).export_stream(
-            "conv-1",
-            format,  # type: ignore[arg-type]
-            agent="root",
-            service_name="svc",
-            operation_name="chat",
-            lookback_days=7,
-            share_id="33333333-3333-3333-3333-333333333333",
-            start_date="2026-07-01T00:00:00Z",
-            end_date="2026-07-02T00:00:00Z",
-        )
+    chunks = _conversations(fake_api).export_stream(
+        "conv-1",
+        format,  # type: ignore[arg-type]
+        agent="root",
+        service_name="svc",
+        operation_name="chat",
+        lookback_days=7,
+        start_date="2026-07-01T00:00:00Z",
+        end_date="2026-07-02T00:00:00Z",
+    )
 
     assert b"".join(chunks) == body
     request = fake_api.last_request
@@ -995,7 +992,6 @@ def test_export_stream_preserves_wire_bytes_and_filters(
         "service_name": "svc",
         "operation_name": "chat",
         "lookback_days": "7",
-        "share_id": "33333333-3333-3333-3333-333333333333",
         "start_date": "2026-07-01T00:00:00Z",
         "end_date": "2026-07-02T00:00:00Z",
     }
@@ -1015,15 +1011,13 @@ def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
     )
-    with pytest.warns(DeprecationWarning, match="share_id"):
-        _conversations(fake_api).export_trajectory(
-            "conv-1",
-            agent="root",
-            service_name="svc",
-            operation_name="chat",
-            lookback_days=7,
-            share_id="33333333-3333-3333-3333-333333333333",
-        )
+    _conversations(fake_api).export_trajectory(
+        "conv-1",
+        agent="root",
+        service_name="svc",
+        operation_name="chat",
+        lookback_days=7,
+    )
 
     params = dict(fake_api.requests[-1].params)
     assert params == {
@@ -1031,7 +1025,6 @@ def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
         "service_name": "svc",
         "operation_name": "chat",
         "lookback_days": "7",
-        "share_id": "33333333-3333-3333-3333-333333333333",
     }
     # The export is assembled server-side over the whole conversation, so it
     # must never carry a cursor or page bound.
@@ -1093,19 +1086,13 @@ async def test_async_export_json_and_stream(fake_api: FakeAPI):
     )
 
 
-def test_share_id_is_deprecated_but_still_sent(fake_api: FakeAPI):
+def test_reads_do_not_accept_or_send_share_id(fake_api: FakeAPI):
+    """Shares are ambient, so reads take no ``share_id``."""
     fake_api.add("GET", "/v1/conversations", json_body=paginated([]))
+    conversations = _conversations(fake_api)
 
-    with pytest.warns(DeprecationWarning, match="share_id"):
-        pager = _conversations(fake_api).list(share_id=["share-1"])
-    pager.page()
+    with pytest.raises(TypeError, match="share_id"):
+        conversations.list(share_id=["share-1"])  # type: ignore[call-arg]
 
-    assert fake_api.last_request.params.get_list("share_id") == ["share-1"]
-
-
-def test_reads_without_share_id_do_not_warn(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/conversations", json_body=paginated([]))
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
-        _conversations(fake_api).list().page()
+    conversations.list().page()
+    assert "share_id" not in fake_api.last_request.params

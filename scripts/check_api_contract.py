@@ -235,9 +235,8 @@ SURFACES = (
         sdk=lambda: signature_params(Files.list),
         server=lambda spec: query_parameters(spec, "/v1/files", "get"),
         # `identity_key` is privileged-only and 403s for these credentials;
-        # `task_id` is a scoping param the runner already carries; `share_id`
-        # is ignored now that shares are ambient.
-        exempt=frozenset({"identity_key", "task_id", "share_id"}),
+        # `task_id` is a scoping param the runner already carries.
+        exempt=frozenset({"identity_key", "task_id"}),
         missing_is_fatal=False,
         extra_means="sent as a query parameter the API does not accept",
         missing_means="accepted by the API but not exposed here",
@@ -331,7 +330,6 @@ SURFACES = (
                 "owner_key",
                 "resolution",
                 "sentiment",
-                "share_id",
             }
         ),
         # `order`/`start`/`end`/`lookback` are ergonomic window inputs resolved
