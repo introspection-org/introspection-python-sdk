@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum, StrEnum
-from typing import Annotated, Literal
+from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import (
-    BaseModel,
-    BeforeValidator,
-    ConfigDict,
-    model_validator,
-)
+from pydantic import BaseModel, BeforeValidator, ConfigDict
 
 
 class _ApiModel(BaseModel):
@@ -30,32 +25,14 @@ class ShareResourceType(StrEnum):
     read back from ``list`` but never passed to ``create``."""
 
 
-class ShareMode(StrEnum):
-    """What a share lets its grantees do."""
-
-    READ = "read"
-    WRITE = "write"
-    """The resource's ordinary update, and adding file versions; never delete,
-    tags, owner or shares. A conversation is shared ``read`` only."""
-
-
-class UnsetType(Enum):
-    """Type of :data:`UNSET`, the default of an argument whose ``None`` means
-    "clear it" rather than "leave it alone"."""
-
-    UNSET = "UNSET"
-
-
-UNSET: Literal[UnsetType.UNSET] = UnsetType.UNSET
-
-
 class ResourceShare(_ApiModel):
     """A sharing grant for a file, issue or conversation (`/v1/shares`).
 
     The grantee fields are ANDed: ``granted_member_id`` admits that member,
     ``granted_tag`` admits every caller whose token carries the tag, both
     admit that member only while they hold the tag, and neither is a
-    project-wide grant."""
+    project-wide grant. A share admits; the caller's token scopes decide
+    whether they may read, write or delete the resource."""
 
     id: UUID
     org_id: UUID
@@ -66,7 +43,6 @@ class ResourceShare(_ApiModel):
     resource_id: str
     granted_member_id: UUID | None = None
     granted_tag: str | None = None
-    mode: ShareMode = ShareMode.READ
     visible_from: datetime | None = None
     """Conversation shares only: spans before this instant stay hidden from
     callers the share alone admits."""
@@ -91,23 +67,14 @@ class ShareCreateRequest(_ApiModel):
     resource_id: Annotated[str, BeforeValidator(str)]
     granted_member_id: UUID | None = None
     granted_tag: str | None = None
-    mode: ShareMode | None = None
-    """``None`` takes the API default, ``read``."""
     visible_from: datetime | None = None
     """Conversation shares only; timezone-aware and not in the future."""
 
 
 class ShareUpdateRequest(_ApiModel):
-    """Change a grant's ``mode`` or ``visible_from``; the grantee is fixed.
+    """Change a conversation grant's ``visible_from``; the grantee is fixed.
 
-    Only fields explicitly set go on the wire, so ``visible_from=None`` clears
-    the cutoff while an omitted ``visible_from`` leaves it alone."""
+    ``visible_from`` is required on the wire: ``None`` clears the cutoff so
+    callers the share alone admits see the whole history."""
 
-    mode: ShareMode | None = None
-    visible_from: datetime | None = None
-
-    @model_validator(mode="after")
-    def _at_least_one_field(self) -> ShareUpdateRequest:
-        if not self.model_fields_set:
-            raise ValueError("a share update sets mode, visible_from or both")
-        return self
+    visible_from: datetime | None

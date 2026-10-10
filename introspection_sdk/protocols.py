@@ -64,11 +64,8 @@ from introspection_sdk.schemas.metrics import (
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.shares import (
-    UNSET,
     ResourceShare,
-    ShareMode,
     ShareResourceType,
-    UnsetType,
 )
 from introspection_sdk.schemas.tasks import (
     Task,
@@ -553,7 +550,6 @@ class SharesResource(Protocol):
         resource_id: str,
         granted_member_id: str | None = None,
         granted_tag: str | None = None,
-        mode: ShareMode | str | None = None,
         visible_from: datetime | None = None,
     ) -> ResourceShare: ...
 
@@ -563,8 +559,7 @@ class SharesResource(Protocol):
         self,
         share_id: str,
         *,
-        mode: ShareMode | str | None = None,
-        visible_from: datetime | None | UnsetType = UNSET,
+        visible_from: datetime | None,
     ) -> ResourceShare: ...
 
     def delete(self, share_id: str) -> None: ...
@@ -1067,7 +1062,6 @@ class AsyncSharesResource(Protocol):
         resource_id: str,
         granted_member_id: str | None = None,
         granted_tag: str | None = None,
-        mode: ShareMode | str | None = None,
         visible_from: datetime | None = None,
     ) -> ResourceShare: ...
 
@@ -1077,8 +1071,7 @@ class AsyncSharesResource(Protocol):
         self,
         share_id: str,
         *,
-        mode: ShareMode | str | None = None,
-        visible_from: datetime | None | UnsetType = UNSET,
+        visible_from: datetime | None,
     ) -> ResourceShare: ...
 
     async def delete(self, share_id: str) -> None: ...

@@ -24,13 +24,10 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.shares import (
-    UNSET,
     ResourceShare,
     ShareCreateRequest,
-    ShareMode,
     ShareResourceType,
     ShareUpdateRequest,
-    UnsetType,
 )
 
 
@@ -67,7 +64,6 @@ def _create_body(
     resource_id: str,
     granted_member_id: str | None,
     granted_tag: str | None,
-    mode: ShareMode | str | None,
     visible_from: datetime | None,
 ) -> dict[str, Any]:
     # Loose public inputs (plain str / enum) are coerced by validation:
@@ -78,24 +74,14 @@ def _create_body(
             "resource_id": resource_id,
             "granted_member_id": granted_member_id,
             "granted_tag": granted_tag,
-            "mode": mode,
             "visible_from": visible_from,
         }
     ).model_dump(mode="json", exclude_none=True)
 
 
-def _update_body(
-    *,
-    mode: ShareMode | str | None,
-    visible_from: datetime | None | UnsetType,
-) -> dict[str, Any]:
-    fields: dict[str, Any] = {}
-    if mode is not None:
-        fields["mode"] = mode
-    if visible_from is not UNSET:
-        fields["visible_from"] = visible_from
-    return ShareUpdateRequest.model_validate(fields).model_dump(
-        mode="json", exclude_unset=True
+def _update_body(visible_from: datetime | None) -> dict[str, Any]:
+    return ShareUpdateRequest(visible_from=visible_from).model_dump(
+        mode="json"
     )
 
 
@@ -148,7 +134,6 @@ class Shares:
         resource_id: str,
         granted_member_id: str | None = None,
         granted_tag: str | None = None,
-        mode: ShareMode | str | None = None,
         visible_from: datetime | None = None,
     ) -> ResourceShare:
         """Create a grant. The caller must own the target resource.
@@ -156,10 +141,10 @@ class Shares:
         ``granted_member_id`` and ``granted_tag`` are ANDed; omit both for a
         project-wide grant. A tag share also requires the caller to hold the
         tag (or be an admin), and a duplicate live tag share raises
-        ``ConflictError``. ``mode`` defaults to ``read`` and must be ``read``
-        for a conversation; ``visible_from`` (conversations only, timezone-aware,
-        not in the future) hides earlier spans from callers the share alone
-        admits."""
+        ``ConflictError``. A share admits; the grantee's token scopes decide
+        whether they may read, write or delete. ``visible_from``
+        (conversations only, timezone-aware, not in the future) hides earlier
+        spans from callers the share alone admits."""
         payload = self._http.request(
             "POST",
             "/v1/shares",
@@ -168,7 +153,6 @@ class Shares:
                 resource_id=resource_id,
                 granted_member_id=granted_member_id,
                 granted_tag=granted_tag,
-                mode=mode,
                 visible_from=visible_from,
             ),
         )
@@ -182,18 +166,18 @@ class Shares:
         self,
         share_id: str,
         *,
-        mode: ShareMode | str | None = None,
-        visible_from: datetime | None | UnsetType = UNSET,
+        visible_from: datetime | None,
     ) -> ResourceShare:
-        """Change a grant's ``mode`` or ``visible_from``; pass at least one.
+        """Set or clear a conversation grant's ``visible_from``.
 
-        ``visible_from=None`` clears the cutoff; omitting it leaves it alone.
-        The grantee cannot change. Only the grantor or an admin may update a
-        grant; anyone else gets ``NotFoundError``."""
+        ``visible_from=None`` clears the cutoff. The grantee cannot change;
+        revoke and create another to admit someone else. Only the grantor or
+        an admin may update a grant; anyone else gets ``NotFoundError``, and a
+        non-conversation share is a ``422``."""
         payload = self._http.request(
             "PATCH",
             f"/v1/shares/{share_id}",
-            json=_update_body(mode=mode, visible_from=visible_from),
+            json=_update_body(visible_from),
         )
         return ResourceShare.model_validate(payload)
 
@@ -250,7 +234,6 @@ class AsyncShares:
         resource_id: str,
         granted_member_id: str | None = None,
         granted_tag: str | None = None,
-        mode: ShareMode | str | None = None,
         visible_from: datetime | None = None,
     ) -> ResourceShare:
         """Create a grant. The caller must own the target resource.
@@ -258,10 +241,10 @@ class AsyncShares:
         ``granted_member_id`` and ``granted_tag`` are ANDed; omit both for a
         project-wide grant. A tag share also requires the caller to hold the
         tag (or be an admin), and a duplicate live tag share raises
-        ``ConflictError``. ``mode`` defaults to ``read`` and must be ``read``
-        for a conversation; ``visible_from`` (conversations only, timezone-aware,
-        not in the future) hides earlier spans from callers the share alone
-        admits."""
+        ``ConflictError``. A share admits; the grantee's token scopes decide
+        whether they may read, write or delete. ``visible_from``
+        (conversations only, timezone-aware, not in the future) hides earlier
+        spans from callers the share alone admits."""
         payload = await self._http.request(
             "POST",
             "/v1/shares",
@@ -270,7 +253,6 @@ class AsyncShares:
                 resource_id=resource_id,
                 granted_member_id=granted_member_id,
                 granted_tag=granted_tag,
-                mode=mode,
                 visible_from=visible_from,
             ),
         )
@@ -284,14 +266,13 @@ class AsyncShares:
         self,
         share_id: str,
         *,
-        mode: ShareMode | str | None = None,
-        visible_from: datetime | None | UnsetType = UNSET,
+        visible_from: datetime | None,
     ) -> ResourceShare:
         """Async twin of :meth:`Shares.update`."""
         payload = await self._http.request(
             "PATCH",
             f"/v1/shares/{share_id}",
-            json=_update_body(mode=mode, visible_from=visible_from),
+            json=_update_body(visible_from),
         )
         return ResourceShare.model_validate(payload)
 

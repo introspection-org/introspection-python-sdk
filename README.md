@@ -291,16 +291,17 @@ client.members.update(member_id, metadata={})  # clear it
 `shares` grants access to a resource you own. The grantee fields are ANDed:
 `granted_member_id` admits one member, `granted_tag` admits everyone whose
 token carries that tag (you must hold it), both admit that member only while
-they hold the tag, and neither shares with the whole project. Shares are
-ambient, so a shared resource shows up in the grantee's ordinary reads.
+they hold the tag, and neither shares with the whole project. A share
+admits; the caller's token scopes decide whether they may read, write or
+delete. Shares are ambient, so a shared resource shows up in the grantee's
+ordinary reads.
 
 ```python
 share = client.shares.create(
-    resource_type="file", resource_id=file_id, granted_tag="team:acme", mode="write"
+    resource_type="file", resource_id=file_id, granted_tag="team:acme"
 )
-client.shares.update(str(share.id), mode="read")
 
-# Conversations are shared read-only; `visible_from` hides earlier spans.
+# On a conversation, `visible_from` hides earlier spans; `update` changes only it.
 convo = client.shares.create(
     resource_type="conversation", resource_id=conversation_id, visible_from=cutoff
 )

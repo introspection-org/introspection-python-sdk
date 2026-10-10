@@ -90,18 +90,13 @@ async def main() -> None:
             )
             print(f"created file: {file.id}")
 
-            # A write share lets grantees update the file and add versions.
-            # Name `granted_tag="team:acme"` (a tag you hold) to share with
+            # A share admits; the grantee's token scopes decide what they may
+            # do. Name `granted_tag="team:acme"` (a tag you hold) to share with
             # that cohort instead of the whole project.
             file_share = await runner.shares.create(
-                resource_type="file", resource_id=str(file.id), mode="write"
+                resource_type="file", resource_id=str(file.id)
             )
-            file_share = await runner.shares.update(
-                str(file_share.id), mode="read"
-            )
-            print(
-                f"shared file {file.id} ({file_share.mode}) -> {file_share.url}"
-            )
+            print(f"shared file {file.id} -> {file_share.url}")
 
             payload = await runner.files.download(str(file.id))
             print(f"downloaded {len(payload)} bytes")
