@@ -63,7 +63,10 @@ from introspection_sdk.schemas.metrics import (
     MetricQueryResponse,
 )
 from introspection_sdk.schemas.pagination import Paginated
-from introspection_sdk.schemas.shares import ResourceShare, ShareResourceType
+from introspection_sdk.schemas.shares import (
+    ResourceShare,
+    ShareResourceType,
+)
 from introspection_sdk.schemas.tasks import (
     Task,
     TaskCancelRequest,
@@ -534,6 +537,8 @@ class SharesResource(Protocol):
         next: str | None = None,
         resource_type: ShareResourceType | str | None = None,
         resource_id: str | None = None,
+        granted_member_id: str | None = None,
+        granted_tag: str | None = None,
         created_by_me: bool = False,
         granted_to_me: bool = False,
     ) -> Pager[ResourceShare, Paginated[ResourceShare]]: ...
@@ -544,9 +549,18 @@ class SharesResource(Protocol):
         resource_type: ShareResourceType | str,
         resource_id: str,
         granted_member_id: str | None = None,
+        granted_tag: str | None = None,
+        visible_from: datetime | None = None,
     ) -> ResourceShare: ...
 
     def get(self, share_id: str) -> ResourceShare: ...
+
+    def update(
+        self,
+        share_id: str,
+        *,
+        visible_from: datetime | None,
+    ) -> ResourceShare: ...
 
     def delete(self, share_id: str) -> None: ...
 
@@ -1035,6 +1049,8 @@ class AsyncSharesResource(Protocol):
         next: str | None = None,
         resource_type: ShareResourceType | str | None = None,
         resource_id: str | None = None,
+        granted_member_id: str | None = None,
+        granted_tag: str | None = None,
         created_by_me: bool = False,
         granted_to_me: bool = False,
     ) -> AsyncPager[ResourceShare, Paginated[ResourceShare]]: ...
@@ -1045,9 +1061,18 @@ class AsyncSharesResource(Protocol):
         resource_type: ShareResourceType | str,
         resource_id: str,
         granted_member_id: str | None = None,
+        granted_tag: str | None = None,
+        visible_from: datetime | None = None,
     ) -> ResourceShare: ...
 
     async def get(self, share_id: str) -> ResourceShare: ...
+
+    async def update(
+        self,
+        share_id: str,
+        *,
+        visible_from: datetime | None,
+    ) -> ResourceShare: ...
 
     async def delete(self, share_id: str) -> None: ...
 

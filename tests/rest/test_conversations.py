@@ -12,6 +12,7 @@ Driven through the offline :class:`FakeAPI` transport from
 from __future__ import annotations
 
 import io
+import warnings
 from typing import Any
 from uuid import UUID
 
@@ -39,7 +40,7 @@ from introspection_sdk.schemas.trajectory import (
 )
 from tests.schemas.test_genai_span import present
 
-from .conftest import FakeAPI
+from .conftest import FakeAPI, paginated
 
 RUNTIME_ID = "11111111-1111-1111-1111-111111111111"
 RUNTIME_GROUP_ID = "22222222-2222-2222-2222-222222222222"
@@ -973,17 +974,18 @@ def test_export_stream_preserves_wire_bytes_and_filters(
     body = b'[{"wire":"bytes"}]'
     fake_api.add("GET", "/v1/conversations/conv-1/export", content=body)
 
-    chunks = _conversations(fake_api).export_stream(
-        "conv-1",
-        format,  # type: ignore[arg-type]
-        agent="root",
-        service_name="svc",
-        operation_name="chat",
-        lookback_days=7,
-        share_id="33333333-3333-3333-3333-333333333333",
-        start_date="2026-07-01T00:00:00Z",
-        end_date="2026-07-02T00:00:00Z",
-    )
+    with pytest.warns(DeprecationWarning, match="share_id"):
+        chunks = _conversations(fake_api).export_stream(
+            "conv-1",
+            format,  # type: ignore[arg-type]
+            agent="root",
+            service_name="svc",
+            operation_name="chat",
+            lookback_days=7,
+            share_id="33333333-3333-3333-3333-333333333333",
+            start_date="2026-07-01T00:00:00Z",
+            end_date="2026-07-02T00:00:00Z",
+        )
 
     assert b"".join(chunks) == body
     request = fake_api.last_request
@@ -1013,14 +1015,15 @@ def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
     fake_api.add(
         "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
     )
-    _conversations(fake_api).export_trajectory(
-        "conv-1",
-        agent="root",
-        service_name="svc",
-        operation_name="chat",
-        lookback_days=7,
-        share_id="33333333-3333-3333-3333-333333333333",
-    )
+    with pytest.warns(DeprecationWarning, match="share_id"):
+        _conversations(fake_api).export_trajectory(
+            "conv-1",
+            agent="root",
+            service_name="svc",
+            operation_name="chat",
+            lookback_days=7,
+            share_id="33333333-3333-3333-3333-333333333333",
+        )
 
     params = dict(fake_api.requests[-1].params)
     assert params == {
@@ -1088,3 +1091,21 @@ async def test_async_export_json_and_stream(fake_api: FakeAPI):
     assert fake_api.last_request.headers["accept"] == (
         "application/vnd.letta.trajectory+json;version=1"
     )
+
+
+def test_share_id_is_deprecated_but_still_sent(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/conversations", json_body=paginated([]))
+
+    with pytest.warns(DeprecationWarning, match="share_id"):
+        pager = _conversations(fake_api).list(share_id=["share-1"])
+    pager.page()
+
+    assert fake_api.last_request.params.get_list("share_id") == ["share-1"]
+
+
+def test_reads_without_share_id_do_not_warn(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/conversations", json_body=paginated([]))
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        _conversations(fake_api).list().page()
