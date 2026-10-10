@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.23.0...v0.24.0) (2026-10-10)
+
+
+### Features
+
+* **shares:** tag shares, visible_from update, and ambient reads ([#165](https://github.com/introspection-org/introspection-python-sdk/issues/165)) ([755f129](https://github.com/introspection-org/introspection-python-sdk/commit/755f129ac4c31e5e3e78e2c6369f1cbbd2a5ce87))
+
 ## [0.23.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.22.0...v0.23.0) (2026-10-07)
 
 
