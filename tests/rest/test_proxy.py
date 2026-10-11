@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import ssl
+from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import httpx2 as httpx
@@ -11,6 +14,14 @@ from introspection_sdk.proxy.httpx2 import (
     AsyncIntrospectionTransport,
     IntrospectionTransport,
 )
+from tests.rest.proxy_servers import (
+    ORIGIN_HOST,
+    PROXY_AUTHORIZATION,
+    EgressProxy,
+    egress_proxy,
+)
+
+PLACEHOLDER = "sk-p***Q3xZ"
 
 
 class RecordingTransport(httpx.BaseTransport):
@@ -168,3 +179,117 @@ def test_invalid_egress_configuration_fails_closed(
 ) -> None:
     with pytest.raises(ValueError):
         ProxyConfig(**config)
+
+
+def native_environment(proxy_url: str) -> dict[str, str]:
+    return {
+        "INTROSPECTION_EGRESS_PROXY_NATIVE": "1",
+        "INTROSPECTION_EGRESS_URL": "https://egress.invalid",
+        "INTROSPECTION_ENDPOINT_HOSTS": ORIGIN_HOST,
+        "INTROSPECTION_RELAY_TARGET": "brightsparc",
+        "HTTPS_PROXY": proxy_url,
+        "NO_PROXY": "localhost,.cluster.local",
+    }
+
+
+def test_native_config_ignores_legacy_egress_contract() -> None:
+    config = ProxyConfig.from_env(
+        native_environment("http://session:tok@egress-gw:8080")
+    )
+    assert config.egress_url is None
+    assert config.endpoint_hosts == frozenset()
+    assert config.relay_target is None
+    assert config.forward_proxy_url == "http://session:tok@egress-gw:8080"
+    assert config.bypasses_forward_proxy("svc.cluster.local")
+
+
+def test_unset_egress_url_never_rewrites() -> None:
+    direct = RecordingTransport("direct")
+    egress = RecordingTransport("egress")
+    forward = RecordingTransport("forward")
+    transport = IntrospectionTransport(
+        ProxyConfig.from_env({"HTTPS_PROXY": "http://egress-gw:8080"}),
+        _direct=direct,
+        _egress=egress,
+        _forward=forward,
+    )
+    with httpx.Client(transport=transport) as client:
+        assert client.get("https://api.openai.com").json() == {
+            "route": "forward"
+        }
+    assert not egress.requests
+    assert forward.requests[0].headers["host"] == "api.openai.com"
+
+
+@pytest.fixture(params=[False, True], ids=["http-proxy", "https-proxy"])
+def egress(
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[EgressProxy]:
+    with egress_proxy(tmp_path, tls=request.param) as proxy:
+        monkeypatch.setenv("SSL_CERT_FILE", str(proxy.ca_bundle))
+        monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+        yield proxy
+
+
+def test_native_request_tunnels_through_credentialed_proxy(
+    egress: EgressProxy,
+) -> None:
+    config = ProxyConfig.from_env(native_environment(egress.proxy_url()))
+    with httpx.Client(transport=IntrospectionTransport(config)) as client:
+        response = client.get(
+            f"https://{ORIGIN_HOST}/v1/models",
+            headers={"Authorization": f"Bearer {PLACEHOLDER}"},
+        )
+
+    assert response.json() == {
+        "request": "GET /v1/models HTTP/1.1",
+        "host": ORIGIN_HOST,
+        "authorization": f"Bearer {PLACEHOLDER}",
+    }
+    assert egress.connects == [(f"{ORIGIN_HOST}:443", PROXY_AUTHORIZATION)]
+
+
+def test_native_async_request_tunnels_through_credentialed_proxy(
+    egress: EgressProxy,
+) -> None:
+    config = ProxyConfig.from_env(native_environment(egress.proxy_url()))
+
+    async def fetch() -> httpx.Response:
+        async with httpx.AsyncClient(
+            transport=AsyncIntrospectionTransport(config)
+        ) as client:
+            return await client.get(f"https://{ORIGIN_HOST}/v1/models")
+
+    assert asyncio.run(fetch()).json()["host"] == ORIGIN_HOST
+    assert egress.connects == [(f"{ORIGIN_HOST}:443", PROXY_AUTHORIZATION)]
+
+
+def test_native_request_without_proxy_credential_is_refused(
+    egress: EgressProxy,
+) -> None:
+    config = ProxyConfig.from_env(
+        native_environment(egress.proxy_url(credential=False))
+    )
+    with (
+        httpx.Client(transport=IntrospectionTransport(config)) as client,
+        pytest.raises(httpx.ProxyError, match="407"),
+    ):
+        client.get(f"https://{ORIGIN_HOST}/v1/models")
+    assert egress.connects == [(f"{ORIGIN_HOST}:443", None)]
+
+
+def test_explicit_verify_also_trusts_an_https_proxy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+    with egress_proxy(tmp_path, tls=True) as egress:
+        config = ProxyConfig.from_env(native_environment(egress.proxy_url()))
+        verify = ssl.create_default_context(cafile=str(egress.ca_bundle))
+        transport = IntrospectionTransport(config, verify=verify)
+        with httpx.Client(transport=transport) as client:
+            response = client.get(f"https://{ORIGIN_HOST}/v1/models")
+
+    assert response.json()["host"] == ORIGIN_HOST

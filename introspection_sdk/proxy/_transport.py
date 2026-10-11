@@ -8,6 +8,14 @@ from typing import Any
 from introspection_sdk.proxy._config import ProxyConfig
 
 
+def forward_proxy(http: Any, url: str, ssl_context: Any) -> Any:
+    """Build a forward proxy whose own TLS trusts the same roots."""
+
+    if http.URL(url).scheme == "https":
+        return http.Proxy(url, ssl_context=ssl_context)
+    return http.Proxy(url)
+
+
 def egress_request(
     http: Any,
     request: Any,

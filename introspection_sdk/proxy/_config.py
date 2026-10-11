@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 EGRESS_URL_ENV = "INTROSPECTION_EGRESS_URL"
 ENDPOINT_HOSTS_ENV = "INTROSPECTION_ENDPOINT_HOSTS"
 RELAY_TARGET_ENV = "INTROSPECTION_RELAY_TARGET"
+PROXY_NATIVE_ENV = "INTROSPECTION_EGRESS_PROXY_NATIVE"
 
 
 def _first(environment: Mapping[str, str], *names: str) -> str | None:
@@ -71,9 +72,11 @@ class ProxyConfig:
         """Read the proxy contract shared by the Rust and JavaScript SDKs."""
 
         values = os.environ if environment is None else environment
+        # A proxy-native runtime reaches every host through HTTPS_PROXY.
+        legacy = {} if values.get(PROXY_NATIVE_ENV) == "1" else values
         return cls(
-            egress_url=values.get(EGRESS_URL_ENV) or None,
-            endpoint_hosts=_host_set(values.get(ENDPOINT_HOSTS_ENV)),
+            egress_url=legacy.get(EGRESS_URL_ENV) or None,
+            endpoint_hosts=_host_set(legacy.get(ENDPOINT_HOSTS_ENV)),
             forward_proxy_url=_first(
                 values,
                 "HTTPS_PROXY",
@@ -82,7 +85,7 @@ class ProxyConfig:
                 "http_proxy",
             ),
             no_proxy=_no_proxy_entries(_first(values, "NO_PROXY", "no_proxy")),
-            relay_target=(values.get(RELAY_TARGET_ENV) or "").strip() or None,
+            relay_target=(legacy.get(RELAY_TARGET_ENV) or "").strip() or None,
         )
 
     def uses_egress(self, host: str) -> bool:
