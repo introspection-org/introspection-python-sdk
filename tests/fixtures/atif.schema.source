@@ -1,0 +1,3 @@
+JSON Schema of harbor.models.trajectories.Trajectory, generated with
+Trajectory.model_json_schema() from the PyPI release harbor==0.24.0.
+Regenerate when the projection moves to a newer ATIF schema_version.
