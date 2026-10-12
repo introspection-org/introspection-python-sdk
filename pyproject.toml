@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "introspection-sdk"
-version = "0.25.0"
+version = "0.26.0"
 description = "Python SDK for Introspection — continuously improve your AI systems with production feedback and frontier practices"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -41,6 +41,7 @@ test = [
     "inline-snapshot>=0.31.0",
     "dirty-equals>=0.11.0",
     "responses>=0.25.8",
+    "jsonschema>=4.23.0",
     "trustme>=1.2.0",
 ]
 

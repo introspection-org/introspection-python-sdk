@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.25.0...v0.26.0) (2026-10-12)
+
+
+### Features
+
+* project a conversation's GenAI spans onto a Harbor ATIF trajectory ([#164](https://github.com/introspection-org/introspection-python-sdk/issues/164)) ([74c6cf8](https://github.com/introspection-org/introspection-python-sdk/commit/74c6cf8ddc3633bb7f37a8b779bb40511797b784))
+
 ## [0.25.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.24.0...v0.25.0) (2026-10-10)
 
 
