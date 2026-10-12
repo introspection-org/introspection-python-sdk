@@ -5,9 +5,11 @@ via ``extra="allow"`` so CP additions don't break the SDK.
 
 ``tags`` and ``metadata`` are the two label sets a member carries, and
 they differ in what they grant. A tag is **access-bearing**: a member
-can read and write any file or task whose tags intersect its own, which
-is why writing one needs ``members:manage``. Metadata **grants
-nothing**: it is a filter-only ``key: value`` map.
+is admitted by every share whose ``granted_tag`` it holds (see
+``runner.shares``), which is why writing one needs ``members:manage``.
+The implicit grant to any file or task whose tags intersect the member's
+still works but is being retired; share with a ``granted_tag`` instead.
+Metadata **grants nothing**: it is a filter-only ``key: value`` map.
 """
 
 from __future__ import annotations
@@ -44,8 +46,9 @@ class Member(_ApiModel):
     member_type: MemberType = MemberType.BUSINESS
     is_deactivated: bool = False
     tags: list[str] = []
-    """Access-bearing tags: this member can read and write any file or task
-    whose tags intersect these."""
+    """Access-bearing tags: this member is admitted by every share whose
+    ``granted_tag`` is one of these. The implicit grant to files and tasks
+    whose tags intersect these is being retired."""
     metadata: dict[str, str] = {}
     """Customer-defined ``key: value`` labels. Grants nothing; filter on it
     with ``members.list(metadata=...)``."""

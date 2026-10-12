@@ -7,6 +7,9 @@ read-only.
 Both conversation summaries and conversation items walk opaque ``next``
 cursors. The item envelope retains OpenAI-style ``first_id`` / ``last_id``
 metadata, but those identifiers do not drive pagination.
+
+Shares are ambient: a conversation shared with the caller appears in these
+reads without naming the share.
 """
 
 from __future__ import annotations
@@ -63,12 +66,12 @@ class ConversationExportParams(TypedDict, total=False):
     service_name: str
     operation_name: str
     lookback_days: int
-    share_id: str | UUID
     start_date: str | datetime
     end_date: str | datetime
 
 
 JSON_EXPORT_HEADERS = {"Accept": "application/json"}
+
 
 #: How many items ``retrieve()`` scans, newest-first, looking for the latest
 #: LLM turn. The scan used to be unbounded: it drove the auto-paging
@@ -88,7 +91,6 @@ def build_export_params(
     service_name: str | None = None,
     operation_name: str | None = None,
     lookback_days: int | None = None,
-    share_id: str | UUID | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
 ) -> dict[str, Any]:
@@ -112,8 +114,6 @@ def build_export_params(
         params["operation_name"] = operation_name
     if lookback_days is not None:
         params["lookback_days"] = lookback_days
-    if share_id is not None:
-        params["share_id"] = str(share_id)
     if start_date is not None:
         params["start_date"] = start_date
     if end_date is not None:
@@ -160,7 +160,6 @@ def build_conversation_params(
     experiment_id: UUID | None = None,
     recipe_git_commit_sha: str | None = None,
     conversation_ids: builtins.list[str] | None = None,
-    share_id: builtins.list[str] | None = None,
     resolution: ConversationResolution | None = None,
     sentiment: ConversationSentiment | None = None,
     owner_key: str | None = None,
@@ -186,7 +185,6 @@ def build_conversation_params(
         "experiment_id": experiment_id,
         "recipe_git_commit_sha": recipe_git_commit_sha,
         "conversation_ids": conversation_ids,
-        "share_id": share_id,
         "resolution": resolution,
         "sentiment": sentiment,
         "owner_key": owner_key,
@@ -295,7 +293,6 @@ class ConversationItems:
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | None = None,
     ) -> Pager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. Iterate
         the returned :class:`Pager` to stream every item
@@ -321,7 +318,6 @@ class ConversationItems:
                 "start_date": start_date,
                 "end_date": end_date,
                 "lookback_days": lookback_days,
-                "share_id": share_id,
             }
             payload = self._http.request(
                 "GET",
@@ -396,7 +392,6 @@ class Conversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -444,7 +439,6 @@ class Conversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -488,7 +482,6 @@ class Conversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -530,7 +523,6 @@ class Conversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -610,7 +602,6 @@ class Conversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Trajectory:
@@ -634,7 +625,6 @@ class Conversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),
@@ -650,7 +640,6 @@ class Conversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Any:
@@ -671,7 +660,6 @@ class Conversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),
@@ -760,7 +748,6 @@ class AsyncConversationItems:
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | None = None,
     ) -> AsyncPager[GenAiSpan, GenAiSpanList]:
         """List conversation items using an opaque ``next`` cursor. ``await``
         the returned :class:`AsyncPager` for the first
@@ -786,7 +773,6 @@ class AsyncConversationItems:
                 "start_date": start_date,
                 "end_date": end_date,
                 "lookback_days": lookback_days,
-                "share_id": share_id,
             }
             payload = await self._http.request(
                 "GET",
@@ -862,7 +848,6 @@ class AsyncConversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -907,7 +892,6 @@ class AsyncConversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -951,7 +935,6 @@ class AsyncConversations:
         experiment_id: UUID | None = None,
         recipe_git_commit_sha: str | None = None,
         conversation_ids: builtins.list[str] | None = None,
-        share_id: builtins.list[str] | None = None,
         resolution: ConversationResolution | None = None,
         sentiment: ConversationSentiment | None = None,
         owner_key: str | None = None,
@@ -993,7 +976,6 @@ class AsyncConversations:
                 experiment_id=experiment_id,
                 recipe_git_commit_sha=recipe_git_commit_sha,
                 conversation_ids=conversation_ids,
-                share_id=share_id,
                 resolution=resolution,
                 sentiment=sentiment,
                 owner_key=owner_key,
@@ -1073,7 +1055,6 @@ class AsyncConversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Trajectory:
@@ -1086,7 +1067,6 @@ class AsyncConversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),
@@ -1102,7 +1082,6 @@ class AsyncConversations:
         service_name: str | None = None,
         operation_name: str | None = None,
         lookback_days: int | None = None,
-        share_id: str | UUID | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
     ) -> Any:
@@ -1115,7 +1094,6 @@ class AsyncConversations:
                 service_name=service_name,
                 operation_name=operation_name,
                 lookback_days=lookback_days,
-                share_id=share_id,
                 start_date=start_date,
                 end_date=end_date,
             ),

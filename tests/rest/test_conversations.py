@@ -39,7 +39,7 @@ from introspection_sdk.schemas.trajectory import (
 )
 from tests.schemas.test_genai_span import present
 
-from .conftest import FakeAPI
+from .conftest import FakeAPI, paginated
 
 RUNTIME_ID = "11111111-1111-1111-1111-111111111111"
 RUNTIME_GROUP_ID = "22222222-2222-2222-2222-222222222222"
@@ -980,7 +980,6 @@ def test_export_stream_preserves_wire_bytes_and_filters(
         service_name="svc",
         operation_name="chat",
         lookback_days=7,
-        share_id="33333333-3333-3333-3333-333333333333",
         start_date="2026-07-01T00:00:00Z",
         end_date="2026-07-02T00:00:00Z",
     )
@@ -993,7 +992,6 @@ def test_export_stream_preserves_wire_bytes_and_filters(
         "service_name": "svc",
         "operation_name": "chat",
         "lookback_days": "7",
-        "share_id": "33333333-3333-3333-3333-333333333333",
         "start_date": "2026-07-01T00:00:00Z",
         "end_date": "2026-07-02T00:00:00Z",
     }
@@ -1019,7 +1017,6 @@ def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
         service_name="svc",
         operation_name="chat",
         lookback_days=7,
-        share_id="33333333-3333-3333-3333-333333333333",
     )
 
     params = dict(fake_api.requests[-1].params)
@@ -1028,7 +1025,6 @@ def test_export_trajectory_sends_filters_but_no_pagination(fake_api: FakeAPI):
         "service_name": "svc",
         "operation_name": "chat",
         "lookback_days": "7",
-        "share_id": "33333333-3333-3333-3333-333333333333",
     }
     # The export is assembled server-side over the whole conversation, so it
     # must never carry a cursor or page bound.
@@ -1088,3 +1084,15 @@ async def test_async_export_json_and_stream(fake_api: FakeAPI):
     assert fake_api.last_request.headers["accept"] == (
         "application/vnd.letta.trajectory+json;version=1"
     )
+
+
+def test_reads_do_not_accept_or_send_share_id(fake_api: FakeAPI):
+    """Shares are ambient, so reads take no ``share_id``."""
+    fake_api.add("GET", "/v1/conversations", json_body=paginated([]))
+    conversations = _conversations(fake_api)
+
+    with pytest.raises(TypeError, match="share_id"):
+        conversations.list(share_id=["share-1"])  # type: ignore[call-arg]
+
+    conversations.list().page()
+    assert "share_id" not in fake_api.last_request.params

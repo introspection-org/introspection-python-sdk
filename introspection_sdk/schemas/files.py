@@ -55,9 +55,10 @@ class FileUpdateRequest(_ApiModel):
     convention, not a grammar. Each tag is 1–128 characters with no whitespace
     or control characters; at most 64 tags. Duplicates collapse.
 
-    Tags are access-bearing: a caller whose member tags intersect a file's tags
-    can read and write it, so a tag shared with a member cohort hands them the
-    file. Shared writers may not replace the tags themselves; that remains
+    A caller whose member tags intersect a file's tags can still read and
+    write it, but that implicit grant is being retired: to share a file with
+    a member cohort, create a share with ``granted_tag`` (``runner.shares``).
+    Shared writers may not replace the tags themselves; that remains
     owner/privileged-only."""
 
 

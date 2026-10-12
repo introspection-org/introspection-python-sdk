@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.25.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.24.0...v0.25.0) (2026-10-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **conversations:** the conversation reads no longer accept share_id; passing it raises TypeError. Drop the argument — shared conversations appear in ordinary reads, and the API ignored the value.
+
+### Code Refactoring
+
+* **conversations:** drop the share_id read parameter ([#167](https://github.com/introspection-org/introspection-python-sdk/issues/167)) ([4de5520](https://github.com/introspection-org/introspection-python-sdk/commit/4de5520cfd20fabb9b0b12784a070af86135d229))
+
+## [0.24.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.23.0...v0.24.0) (2026-10-10)
+
+
+### Features
+
+* **shares:** tag shares, visible_from update, and ambient reads ([#165](https://github.com/introspection-org/introspection-python-sdk/issues/165)) ([755f129](https://github.com/introspection-org/introspection-python-sdk/commit/755f129ac4c31e5e3e78e2c6369f1cbbd2a5ce87))
+
 ## [0.23.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.22.0...v0.23.0) (2026-10-07)
 
 
