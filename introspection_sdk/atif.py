@@ -116,10 +116,12 @@ class AtifProjection:
         self._models: set[str] = set()
         self._step_count = 0
         self._omitted_parts = 0
-        self._prompt_tokens = 0
-        self._completion_tokens = 0
-        self._cached_tokens = 0
-        self._cost_usd = 0.0
+        self._model_calls = 0
+        self._usage_calls = 0
+        self._prompt_tokens = _Total()
+        self._completion_tokens = _Total()
+        self._cached_tokens = _Total()
+        self._cost_usd = _Total()
 
     def add(self, span: GenAiSpan) -> list[AtifStep]:
         """Read one span and return the steps it made final."""
@@ -199,11 +201,25 @@ class AtifProjection:
 
     @property
     def final_metrics(self) -> AtifFinalMetrics:
+        """The totals; one is set only when every model call reported it.
+
+        A partial sum would read as the whole, so a metric some call left
+        out stays unset. The read omits a zero, so two absences are known:
+        a call that reported usage without cached tokens read none from the
+        cache, and a call that used no tokens cost nothing.
+        """
+        calls = self._model_calls
         return AtifFinalMetrics(
-            total_prompt_tokens=self._prompt_tokens,
-            total_completion_tokens=self._completion_tokens,
-            total_cached_tokens=self._cached_tokens,
-            total_cost_usd=self._cost_usd,
+            total_prompt_tokens=_whole(self._prompt_tokens.over(calls)),
+            total_completion_tokens=_whole(
+                self._completion_tokens.over(calls)
+            ),
+            total_cached_tokens=(
+                _whole(self._cached_tokens.value)
+                if calls and self._usage_calls == calls
+                else None
+            ),
+            total_cost_usd=self._cost_usd.over(calls),
             total_steps=self._step_count,
         )
 
@@ -428,16 +444,41 @@ class AtifProjection:
             if usage and usage.cache_read
             else None
         )
-        self._prompt_tokens += prompt or 0
-        self._completion_tokens += completion or 0
-        self._cached_tokens += cached or 0
-        self._cost_usd += cost or 0.0
+        self._model_calls += 1
+        if usage is not None:
+            self._usage_calls += 1
+        self._prompt_tokens.add(prompt)
+        self._completion_tokens.add(completion)
+        self._cached_tokens.add(cached)
+        unused = prompt == 0 and completion == 0
+        self._cost_usd.add(0.0 if cost is None and unused else cost)
         return AtifMetrics(
             prompt_tokens=prompt,
             completion_tokens=completion,
             cached_tokens=cached,
             cost_usd=cost,
         )
+
+
+class _Total:
+    """A sum that remembers how many model calls reported a value."""
+
+    def __init__(self) -> None:
+        self.value = 0.0
+        self.reported = 0
+
+    def add(self, value: float | None) -> None:
+        if value is not None:
+            self.value += value
+            self.reported += 1
+
+    def over(self, calls: int) -> float | None:
+        """The sum, when each of ``calls`` model calls reported a value."""
+        return self.value if calls and self.reported == calls else None
+
+
+def _whole(value: float | None) -> int | None:
+    return None if value is None else int(value)
 
 
 def _lane(span: GenAiSpan) -> str:

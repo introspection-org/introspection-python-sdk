@@ -168,6 +168,29 @@ async for summary in runner.conversations.list(
 The runner also exposes `files`, `shares`, `events`, `metrics`,
 `automations` and `connections`.
 
+## Export a conversation as a Harbor trajectory
+
+`spans_to_atif` projects the GenAI spans of a conversation onto one
+ATIF trajectory, the format Harbor reads. It is a pure function of the spans and needs no
+`harbor` install:
+
+```python
+from pathlib import Path
+
+from introspection_sdk.atif import spans_to_atif
+
+spans = client.conversations.export_json(conversation_id).data
+trajectory = spans_to_atif(spans, session_id=conversation_id)
+Path("trajectory.json").write_text(trajectory.model_dump_json(indent=2))
+```
+
+Each model call becomes one `agent` step with its text, reasoning, tool
+calls, usage and cost, and each tool result is attached to the step that made
+the call. A total in `final_metrics` is set only when every model call
+reported it. For a streamed read, `AtifProjection` takes one span at a time
+and returns the steps that are final. Runnable:
+[`conversation_atif.py`](examples/introspection_examples/api/conversation_atif.py).
+
 ## One data-plane interface on the client and the Runner
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:

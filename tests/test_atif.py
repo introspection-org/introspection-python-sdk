@@ -554,6 +554,79 @@ def test_a_span_without_resource_or_provider_falls_back() -> None:
     assert "session_id" not in trajectory
 
 
+def test_a_total_some_model_call_did_not_report_is_left_unset() -> None:
+    spans = [
+        chat(
+            1,
+            [USER],
+            [FIRST_OUTPUT],
+            usage={"input_tokens": 100, "output_tokens": 10},
+            cost=0.01,
+        ),
+        # This call reported neither usage nor cost.
+        chat(3, [result("c1", "hello")], [ANSWER]),
+    ]
+
+    trajectory = dump(spans_to_atif(spans))
+
+    assert trajectory["final_metrics"] == {"total_steps": 3}
+    assert trajectory["steps"][1]["metrics"] == {
+        "prompt_tokens": 100,
+        "completion_tokens": 10,
+        "cost_usd": 0.01,
+    }
+
+
+def test_totals_every_model_call_reported_are_summed() -> None:
+    spans = [
+        chat(
+            1,
+            [USER],
+            [FIRST_OUTPUT],
+            usage={"input_tokens": 100, "output_tokens": 10},
+        ),
+        chat(
+            3,
+            [result("c1", "hello")],
+            [ANSWER],
+            usage={"input_tokens": 150, "output_tokens": 5},
+        ),
+    ]
+
+    # Usage without cached tokens read none from the cache; a cost no call
+    # reported is not known.
+    assert dump(spans_to_atif(spans))["final_metrics"] == {
+        "total_prompt_tokens": 250,
+        "total_completion_tokens": 15,
+        "total_cached_tokens": 0,
+        "total_steps": 3,
+    }
+
+
+def test_a_model_call_that_used_no_tokens_cost_nothing() -> None:
+    spans = [
+        chat(
+            1,
+            [USER],
+            [FIRST_OUTPUT],
+            usage={"input_tokens": 100, "output_tokens": 10},
+            cost=0.01,
+        ),
+        # A failed call: the read omits its zero cost.
+        chat(
+            3,
+            [result("c1", "hello")],
+            [text("assistant", "")],
+            usage={"input_tokens": 0, "output_tokens": 0},
+        ),
+    ]
+
+    trajectory = dump(spans_to_atif(spans))
+
+    assert trajectory["final_metrics"]["total_cost_usd"] == 0.01
+    assert "cost_usd" not in trajectory["steps"][2]["metrics"]
+
+
 def test_a_model_call_that_returned_no_content_is_still_a_step() -> None:
     # The read omits empty containers, so the message arrives without parts.
     spans = [
