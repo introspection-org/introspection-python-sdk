@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
+import pytest
 
 from introspection_sdk.proxy import ProxyConfig
 from introspection_sdk.proxy.httpx import IntrospectionTransport
+from tests.rest.proxy_servers import (
+    ORIGIN_HOST,
+    PROXY_AUTHORIZATION,
+    egress_proxy,
+)
 
 
 class RecordingTransport(httpx.BaseTransport):
@@ -41,3 +49,25 @@ def test_legacy_httpx_import_uses_shared_egress_contract() -> None:
     assert egress.requests[0].headers["x-api-key"] == (
         "scoped-session-locator"
     )
+
+
+@pytest.mark.parametrize("tls", [False, True], ids=["http", "https"])
+def test_legacy_httpx_native_request_uses_credentialed_proxy(
+    tls: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with egress_proxy(tmp_path, tls=tls) as egress:
+        monkeypatch.setenv("SSL_CERT_FILE", str(egress.ca_bundle))
+        monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+        config = ProxyConfig.from_env(
+            {
+                "INTROSPECTION_EGRESS_PROXY_NATIVE": "1",
+                "INTROSPECTION_EGRESS_URL": "https://egress.invalid",
+                "INTROSPECTION_ENDPOINT_HOSTS": ORIGIN_HOST,
+                "HTTPS_PROXY": egress.proxy_url(),
+            }
+        )
+        with httpx.Client(transport=IntrospectionTransport(config)) as client:
+            response = client.get(f"https://{ORIGIN_HOST}/sandboxes")
+
+    assert response.json()["request"] == "GET /sandboxes HTTP/1.1"
+    assert egress.connects == [(f"{ORIGIN_HOST}:443", PROXY_AUTHORIZATION)]

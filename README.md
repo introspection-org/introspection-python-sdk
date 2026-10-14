@@ -54,10 +54,17 @@ pip install "introspection-sdk[proxy-httpx]"
 from introspection_sdk.proxy.httpx import IntrospectionTransport
 ```
 
-Both imports use the same routing implementation and the
-`INTROSPECTION_EGRESS_URL`, `INTROSPECTION_ENDPOINT_HOSTS`, and standard proxy
-environment contract. Transport types cannot be shared between the two HTTP
-libraries, so only their thin library-specific wrappers differ.
+Both imports use the same routing implementation and the standard proxy
+environment contract: `HTTPS_PROXY`/`HTTP_PROXY` (credentials in the proxy URL
+are sent as `Proxy-Authorization`), `NO_PROXY`, and `SSL_CERT_FILE`, which
+also verifies an `https://` proxy. Transport types cannot be shared between the
+two HTTP libraries, so only their thin library-specific wrappers differ.
+
+Runtimes that predate `INTROSPECTION_EGRESS_PROXY_NATIVE=1` still set
+`INTROSPECTION_EGRESS_URL` and `INTROSPECTION_ENDPOINT_HOSTS`; requests to those
+hosts are rewritten to the egress. With the native flag set, or without an
+egress URL, nothing is rewritten. The rewriting is deprecated and will be
+removed.
 
 ## Run a task
 

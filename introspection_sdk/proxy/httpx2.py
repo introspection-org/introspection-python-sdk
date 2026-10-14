@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import ssl
+
 import httpx2 as httpx
 
 from introspection_sdk.proxy._config import ProxyConfig
 from introspection_sdk.proxy._transport import (
+    forward_proxy,
     handle_async_request,
     handle_request,
     unique_transports,
@@ -19,22 +22,28 @@ class IntrospectionTransport(httpx.BaseTransport):
         self,
         config: ProxyConfig | None = None,
         *,
-        verify: bool | str = True,
+        verify: ssl.SSLContext | bool | str = True,
         _direct: httpx.BaseTransport | None = None,
         _egress: httpx.BaseTransport | None = None,
         _forward: httpx.BaseTransport | None = None,
     ) -> None:
         self.config = config or ProxyConfig.from_env()
-        self._direct = _direct or httpx.HTTPTransport(verify=verify)
-        self._egress = _egress or httpx.HTTPTransport(verify=verify)
+        ssl_context = httpx.create_ssl_context(verify=verify)
+        self._direct = _direct or httpx.HTTPTransport(verify=ssl_context)
+        self._egress = _egress or httpx.HTTPTransport(verify=ssl_context)
         self._forward = _forward
         if self._forward is None and self.config.forward_proxy_url:
             self._forward = httpx.HTTPTransport(
-                verify=verify, proxy=self.config.forward_proxy_url
+                verify=ssl_context,
+                proxy=forward_proxy(
+                    httpx, self.config.forward_proxy_url, ssl_context
+                ),
             )
 
     @classmethod
-    def from_env(cls, *, verify: bool | str = True) -> IntrospectionTransport:
+    def from_env(
+        cls, *, verify: ssl.SSLContext | bool | str = True
+    ) -> IntrospectionTransport:
         return cls(ProxyConfig.from_env(), verify=verify)
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
@@ -62,23 +71,27 @@ class AsyncIntrospectionTransport(httpx.AsyncBaseTransport):
         self,
         config: ProxyConfig | None = None,
         *,
-        verify: bool | str = True,
+        verify: ssl.SSLContext | bool | str = True,
         _direct: httpx.AsyncBaseTransport | None = None,
         _egress: httpx.AsyncBaseTransport | None = None,
         _forward: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.config = config or ProxyConfig.from_env()
-        self._direct = _direct or httpx.AsyncHTTPTransport(verify=verify)
-        self._egress = _egress or httpx.AsyncHTTPTransport(verify=verify)
+        ssl_context = httpx.create_ssl_context(verify=verify)
+        self._direct = _direct or httpx.AsyncHTTPTransport(verify=ssl_context)
+        self._egress = _egress or httpx.AsyncHTTPTransport(verify=ssl_context)
         self._forward = _forward
         if self._forward is None and self.config.forward_proxy_url:
             self._forward = httpx.AsyncHTTPTransport(
-                verify=verify, proxy=self.config.forward_proxy_url
+                verify=ssl_context,
+                proxy=forward_proxy(
+                    httpx, self.config.forward_proxy_url, ssl_context
+                ),
             )
 
     @classmethod
     def from_env(
-        cls, *, verify: bool | str = True
+        cls, *, verify: ssl.SSLContext | bool | str = True
     ) -> AsyncIntrospectionTransport:
         return cls(ProxyConfig.from_env(), verify=verify)
 

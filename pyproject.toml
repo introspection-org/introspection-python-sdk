@@ -42,6 +42,7 @@ test = [
     "dirty-equals>=0.11.0",
     "responses>=0.25.8",
     "jsonschema>=4.23.0",
+    "trustme>=1.2.0",
 ]
 
 [tool.hatch.metadata]
