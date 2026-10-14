@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.27.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.26.0...v0.27.0) (2026-10-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **connectors:** `approval_policy` and `person_server_mode` are removed from Connector, ConnectorCreateRequest and `connectors.create()`, along with the ConnectorApprovalPolicy and ConnectorPersonServerMode enums. The control plane no longer accepts or returns either field; AAuth policy (Cedar entities and member attributes) replaces them.
+
+### Features
+
+* **connectors:** AAuth connectors with Cedar policy entities, and member policy attributes ([#171](https://github.com/introspection-org/introspection-python-sdk/issues/171)) ([f2c0510](https://github.com/introspection-org/introspection-python-sdk/commit/f2c05102a3867cafaecffc6fb163ae91d173db48))
+* **proxy:** route proxy-native sessions through the standard env proxy ([#169](https://github.com/introspection-org/introspection-python-sdk/issues/169)) ([ad84db7](https://github.com/introspection-org/introspection-python-sdk/commit/ad84db740a04b461fe1eeb8a62bd2b5136a5f281))
+
 ## [0.26.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.25.0...v0.26.0) (2026-10-12)
 
 
