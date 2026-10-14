@@ -37,7 +37,6 @@ from introspection_sdk.schemas.connectors import (
     ConnectionTokenResult,
     Connector,
     ConnectorApp,
-    ConnectorApprovalPolicy,
     ConnectorAuthMode,
     ConnectorAuthorization,
     ConnectorAuthorizeBinding,
@@ -45,9 +44,9 @@ from introspection_sdk.schemas.connectors import (
     ConnectorCreateRequest,
     ConnectorOAuthDiscoveryRequest,
     ConnectorOAuthDiscoveryResponse,
-    ConnectorPersonServerMode,
     ConnectorStatus,
     ConnectorUpdateRequest,
+    PolicyEntity,
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.runner import RunnerIdentity
@@ -70,11 +69,10 @@ def _create_body(
     signing_secret: str | None,
     metadata: dict[str, Any] | None,
     issuer: str | None,
-    person_server_mode: ConnectorPersonServerMode | str | None,
     person_server_url: str | None,
-    approval_policy: ConnectorApprovalPolicy | str | None,
     application_id: UUID | None,
     assertion_audience: str | None,
+    policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     webhook_url: str | None,
 ) -> dict[str, Any]:
     # Loose public inputs (plain str) are coerced by validation:
@@ -97,11 +95,10 @@ def _create_body(
             "signing_secret": signing_secret,
             "metadata": metadata,
             "issuer": issuer,
-            "person_server_mode": person_server_mode,
             "person_server_url": person_server_url,
-            "approval_policy": approval_policy,
             "application_id": application_id,
             "assertion_audience": assertion_audience,
+            "policy_entities": policy_entities,
             "webhook_url": webhook_url,
         }
     ).model_dump(mode="json", exclude_none=True)
@@ -116,6 +113,7 @@ def _update_body(
     status: ConnectorStatus | str | None,
     metadata: dict[str, Any] | None,
     webhook_url: str | None,
+    policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     client_secret: str | None,
     signing_secret: str | None,
 ) -> dict[str, Any]:
@@ -130,6 +128,7 @@ def _update_body(
             "status": status,
             "metadata": metadata,
             "webhook_url": webhook_url,
+            "policy_entities": policy_entities,
             "client_secret": client_secret,
             "signing_secret": signing_secret,
         }
@@ -359,11 +358,11 @@ class Connectors:
         signing_secret: str | None = None,
         metadata: dict[str, Any] | None = None,
         issuer: str | None = None,
-        person_server_mode: ConnectorPersonServerMode | str | None = None,
         person_server_url: str | None = None,
-        approval_policy: ConnectorApprovalPolicy | str | None = None,
         application_id: UUID | None = None,
         assertion_audience: str | None = None,
+        policy_entities: builtins.list[PolicyEntity | dict[str, Any]]
+        | None = None,
         webhook_url: str | None = None,
     ) -> Connector:
         """Create a connector, or replace one with the same ``slug``.
@@ -379,7 +378,10 @@ class Connectors:
         the OAuth endpoints from ``.well-known`` discovery and, where the
         provider supports it, register an OAuth client on its own. A
         ``pipedream`` connector requires ``metadata["provider_workspace_id"]``
-        — its Pipedream Connect project id (``proj_...``).
+        — its Pipedream Connect project id (``proj_...``). An ``aauth``
+        connector requires ``person_server_url`` and ``application_id``;
+        ``policy_entities`` are the Cedar entities the egress policy gate
+        adds to its requests.
         """
         payload = self._http.request(
             "POST",
@@ -400,11 +402,10 @@ class Connectors:
                 signing_secret=signing_secret,
                 metadata=metadata,
                 issuer=issuer,
-                person_server_mode=person_server_mode,
                 person_server_url=person_server_url,
-                approval_policy=approval_policy,
                 application_id=application_id,
                 assertion_audience=assertion_audience,
+                policy_entities=policy_entities,
                 webhook_url=webhook_url,
             ),
         )
@@ -486,12 +487,15 @@ class Connectors:
         status: ConnectorStatus | str | None = None,
         metadata: dict[str, Any] | None = None,
         webhook_url: str | None = None,
+        policy_entities: builtins.list[PolicyEntity | dict[str, Any]]
+        | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
     ) -> Connector:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
-        rotation, never a clear)."""
+        rotation, never a clear). ``policy_entities`` replaces the
+        connector's Cedar entities."""
         payload = self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
@@ -503,6 +507,7 @@ class Connectors:
                 status=status,
                 metadata=metadata,
                 webhook_url=webhook_url,
+                policy_entities=policy_entities,
                 client_secret=client_secret,
                 signing_secret=signing_secret,
             ),
@@ -715,11 +720,11 @@ class AsyncConnectors:
         signing_secret: str | None = None,
         metadata: dict[str, Any] | None = None,
         issuer: str | None = None,
-        person_server_mode: ConnectorPersonServerMode | str | None = None,
         person_server_url: str | None = None,
-        approval_policy: ConnectorApprovalPolicy | str | None = None,
         application_id: UUID | None = None,
         assertion_audience: str | None = None,
+        policy_entities: builtins.list[PolicyEntity | dict[str, Any]]
+        | None = None,
         webhook_url: str | None = None,
     ) -> Connector:
         """Create a connector, or replace one with the same ``slug``.
@@ -735,7 +740,10 @@ class AsyncConnectors:
         the OAuth endpoints from ``.well-known`` discovery and, where the
         provider supports it, register an OAuth client on its own. A
         ``pipedream`` connector requires ``metadata["provider_workspace_id"]``
-        — its Pipedream Connect project id (``proj_...``).
+        — its Pipedream Connect project id (``proj_...``). An ``aauth``
+        connector requires ``person_server_url`` and ``application_id``;
+        ``policy_entities`` are the Cedar entities the egress policy gate
+        adds to its requests.
         """
         payload = await self._http.request(
             "POST",
@@ -756,11 +764,10 @@ class AsyncConnectors:
                 signing_secret=signing_secret,
                 metadata=metadata,
                 issuer=issuer,
-                person_server_mode=person_server_mode,
                 person_server_url=person_server_url,
-                approval_policy=approval_policy,
                 application_id=application_id,
                 assertion_audience=assertion_audience,
+                policy_entities=policy_entities,
                 webhook_url=webhook_url,
             ),
         )
@@ -844,12 +851,15 @@ class AsyncConnectors:
         status: ConnectorStatus | str | None = None,
         metadata: dict[str, Any] | None = None,
         webhook_url: str | None = None,
+        policy_entities: builtins.list[PolicyEntity | dict[str, Any]]
+        | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
     ) -> Connector:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
-        rotation, never a clear)."""
+        rotation, never a clear). ``policy_entities`` replaces the
+        connector's Cedar entities."""
         payload = await self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
@@ -861,6 +871,7 @@ class AsyncConnectors:
                 status=status,
                 metadata=metadata,
                 webhook_url=webhook_url,
+                policy_entities=policy_entities,
                 client_secret=client_secret,
                 signing_secret=signing_secret,
             ),

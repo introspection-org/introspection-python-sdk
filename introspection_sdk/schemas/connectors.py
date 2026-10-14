@@ -34,6 +34,7 @@ class ConnectorAuthMode(StrEnum):
     IDENTITY_ASSERTION = "identity_assertion"
     FEDERATED_EXCHANGE = "federated_exchange"
     PERSON_AUTHORIZED = "person_authorized"
+    AAUTH = "aauth"
 
 
 class ConnectorStatus(StrEnum):
@@ -78,20 +79,22 @@ class ConnectionBrokerSubjectType(StrEnum):
     PERSON = "person"
 
 
-class ConnectorPersonServerMode(StrEnum):
-    """How a person-authorized connector reaches its Person Server."""
+class EntityUid(_ApiModel):
+    """A Cedar entity reference, ``{"type": "Company", "id": "acme"}``."""
 
-    MANAGED = "managed"
-    BYO = "byo"
-    DISCOVERED = "discovered"
+    type: str
+    id: str
 
 
-class ConnectorApprovalPolicy(StrEnum):
-    """Who approves a person-authorized connector's actions."""
+class PolicyEntity(_ApiModel):
+    """A Cedar entity a recipe's policies read, in Cedar's JSON entity
+    format: e.g. a company and the seniority its business-class bookings
+    need. The egress policy gate adds a connector's entities to every
+    request it evaluates for that connector."""
 
-    HUMAN = "human"
-    JUDGE_ADVISES_HUMAN = "judge_advises_human"
-    JUDGE_AUTO_WITHIN_ENVELOPE = "judge_auto_within_envelope"
+    uid: EntityUid
+    attrs: dict[str, Any] = Field(default_factory=dict)
+    parents: list[EntityUid] = Field(default_factory=list)
 
 
 class Connector(_ApiModel):
@@ -121,11 +124,10 @@ class Connector(_ApiModel):
     scopes: list[str] = []
     api_hosts: list[str] = []
     client_id: str | None = None
-    person_server_mode: ConnectorPersonServerMode | None = None
     person_server_url: str | None = None
-    approval_policy: ConnectorApprovalPolicy = ConnectorApprovalPolicy.HUMAN
     application_id: UUID | None = None
     assertion_audience: str | None = None
+    policy_entities: list[PolicyEntity] | None = None
     webhook_url: str | None = None
     status: ConnectorStatus = ConnectorStatus.PENDING
     created_by_member_id: UUID | None = None
@@ -198,11 +200,14 @@ class ConnectorCreateRequest(_ApiModel):
     (``proj_...``); ``provider_environment`` is derived from
     ``environment`` by the server and need not be sent."""
     issuer: str | None = None
-    person_server_mode: ConnectorPersonServerMode | None = None
     person_server_url: str | None = None
-    approval_policy: ConnectorApprovalPolicy | None = None
+    """Person Server an ``aauth`` connector's grants go through; required
+    for ``aauth``, together with ``application_id``."""
     application_id: UUID | None = None
     assertion_audience: str | None = None
+    policy_entities: list[PolicyEntity] | None = None
+    """Cedar entities the egress policy gate adds to this connector's
+    requests."""
     webhook_url: str | None = None
 
 
@@ -221,6 +226,9 @@ class ConnectorUpdateRequest(_ApiModel):
     status: ConnectorStatus | None = None
     metadata: dict[str, Any] | None = None
     webhook_url: str | None = None
+    policy_entities: list[PolicyEntity] | None = None
+    """Replaces the connector's Cedar entities; ``None`` leaves them
+    untouched."""
     client_secret: str | None = None
     signing_secret: str | None = None
 
@@ -411,7 +419,6 @@ __all__ = [
     "ConnectionTokenRequest",
     "ConnectionTokenResult",
     "Connector",
-    "ConnectorApprovalPolicy",
     "ConnectorApp",
     "ConnectorAuthMode",
     "ConnectorAuthorization",
@@ -421,7 +428,8 @@ __all__ = [
     "ConnectorOAuthClientRegistration",
     "ConnectorOAuthDiscoveryRequest",
     "ConnectorOAuthDiscoveryResponse",
-    "ConnectorPersonServerMode",
     "ConnectorStatus",
     "ConnectorUpdateRequest",
+    "EntityUid",
+    "PolicyEntity",
 ]

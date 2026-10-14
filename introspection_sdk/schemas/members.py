@@ -16,9 +16,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Discriminator, Tag, TypeAdapter
 
 
 class _ApiModel(BaseModel):
@@ -56,20 +57,72 @@ class Member(_ApiModel):
     connector_id: UUID | None = None
     integration_id: UUID | None = None
     is_external_credential_agent: bool = False
+    policy_attributes: dict[str, Any] | None = None
+    """Cedar JSON attributes this member carries as the principal of the
+    egress policy gate. A value may reference an entity as
+    ``{"__entity": {"type": ..., "id": ...}}``."""
 
 
-class MemberCreateRequest(_ApiModel):
-    """Body of ``POST /v1/members``: invite a human (``business``) member."""
+class BusinessMemberCreate(BaseModel):
+    """``POST /v1/members`` body for a person at the organization, invited
+    by email. Unknown fields are refused."""
 
+    model_config = ConfigDict(extra="forbid")
+
+    member_type: Literal["business"] = "business"
     email: str
     name: str
     """Full name — the server requires a first and a last name."""
     role: str | None = None
+    """Defaults to ``"member"`` server-side."""
     tags: list[str] | None = None
     """Seed tags. Access-bearing, so setting any needs ``members:manage``."""
     metadata: dict[str, str] | None = None
     """Seed metadata. Keys are letters, digits, ``_`` and ``-``; values are
     non-empty strings; at most 64 entries per write."""
+    policy_attributes: dict[str, Any] | None = None
+    """Seed Cedar attributes for the egress policy gate. They decide what
+    the member's agents may do, so setting any needs ``members:manage``."""
+
+
+class CustomerMemberCreate(BaseModel):
+    """``POST /v1/members`` body for one of the organization's own end
+    users, keyed by its id for them (owner-only). Takes no ``role``.
+    Unknown fields are refused."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    member_type: Literal["customer"] = "customer"
+    external_user_id: str
+    """``user:{id}`` or ``anon:{id}``, as a runner identity asserts it."""
+    name: str | None = None
+    """Display only."""
+    email: str | None = None
+    """Display only; a customer never signs in."""
+    tags: list[str] | None = None
+    metadata: dict[str, str] | None = None
+    policy_attributes: dict[str, Any] | None = None
+    """Seed Cedar attributes for the egress policy gate."""
+
+
+def _member_create_tag(value: Any) -> str:
+    # A missing member_type is a business member, as the API reads it.
+    if isinstance(value, dict):
+        return value.get("member_type") or "business"
+    return getattr(value, "member_type", "business")
+
+
+MemberCreate = Annotated[
+    Annotated[BusinessMemberCreate, Tag("business")]
+    | Annotated[CustomerMemberCreate, Tag("customer")],
+    Discriminator(_member_create_tag),
+]
+"""Body of ``POST /v1/members``: a business or a customer member,
+discriminated by ``member_type``."""
+
+MEMBER_CREATE_ADAPTER: TypeAdapter[
+    BusinessMemberCreate | CustomerMemberCreate
+] = TypeAdapter(MemberCreate)
 
 
 class MemberUpdateRequest(_ApiModel):
@@ -84,11 +137,17 @@ class MemberUpdateRequest(_ApiModel):
     metadata: dict[str, str] | None = None
     """Replaces the metadata map wholesale. ``None`` leaves it untouched;
     ``{}`` clears it."""
+    policy_attributes: dict[str, Any] | None = None
+    """Replaces the Cedar attributes the egress policy gate sees for this
+    member. ``None`` leaves them untouched. Owner-only."""
 
 
 __all__ = [
+    "MEMBER_CREATE_ADAPTER",
+    "BusinessMemberCreate",
+    "CustomerMemberCreate",
     "Member",
-    "MemberCreateRequest",
+    "MemberCreate",
     "MemberType",
     "MemberUpdateRequest",
 ]
