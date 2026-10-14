@@ -7,8 +7,9 @@ identity (:class:`~introspection_sdk.schemas.runner.RunnerIdentity`).
 created here, only by identity assertion.
 
 Reads need ``members:read``. ``update`` needs ``members:manage`` (owner),
-as does seeding ``tags`` on ``create``: a member tag is access-bearing.
-``metadata`` grants nothing.
+as does seeding ``tags`` or ``policy_attributes`` on ``create``: a member
+tag is access-bearing, and policy attributes decide what the member's agents
+may do. ``metadata`` grants nothing.
 """
 
 from __future__ import annotations
@@ -69,9 +70,15 @@ def _create_body(
     role: str | None,
     tags: builtins.list[str] | None,
     metadata: dict[str, str] | None,
+    policy_attributes: dict[str, Any] | None,
 ) -> dict[str, Any]:
     return MemberCreateRequest(
-        email=email, name=name, role=role, tags=tags, metadata=metadata
+        email=email,
+        name=name,
+        role=role,
+        tags=tags,
+        metadata=metadata,
+        policy_attributes=policy_attributes,
     ).model_dump(mode="json", exclude_none=True)
 
 
@@ -82,6 +89,7 @@ def _update_body(
     role: str | None,
     tags: builtins.list[str] | None,
     metadata: dict[str, str] | None,
+    policy_attributes: dict[str, Any] | None,
 ) -> dict[str, Any]:
     # `exclude_none` drops an omitted field but keeps an explicit [] / {},
     # which is what clears tags / metadata — both replace wholesale.
@@ -91,6 +99,7 @@ def _update_body(
         role=role,
         tags=tags,
         metadata=metadata,
+        policy_attributes=policy_attributes,
     ).model_dump(mode="json", exclude_none=True)
 
 
@@ -156,6 +165,7 @@ class Members:
         role: str | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, str] | None = None,
+        policy_attributes: dict[str, Any] | None = None,
     ) -> Member:
         """Invite a human member by email (admin or owner only).
 
@@ -163,7 +173,8 @@ class Members:
         access-bearing, so passing any needs ``members:manage``.
         ``metadata`` keys are letters, digits, ``_`` and ``-``, values are
         non-empty strings, at most 64 entries per write; the server answers 422
-        otherwise."""
+        otherwise. ``policy_attributes`` seeds the member's Cedar attributes
+        for the egress policy gate and needs ``members:manage``."""
         payload = self._http.request(
             "POST",
             "/v1/members",
@@ -173,6 +184,7 @@ class Members:
                 role=role,
                 tags=tags,
                 metadata=metadata,
+                policy_attributes=policy_attributes,
             ),
         )
         return Member.model_validate(payload)
@@ -186,12 +198,15 @@ class Members:
         role: str | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, str] | None = None,
+        policy_attributes: dict[str, Any] | None = None,
     ) -> Member:
         """Update a member (requires ``members:manage``).
 
         ``tags`` and ``metadata`` each replace wholesale: ``None`` leaves
         them untouched, ``[]`` / ``{}`` clears them. To change one metadata
-        key, read the member, edit its map, and send the whole map back."""
+        key, read the member, edit its map, and send the whole map back.
+        ``policy_attributes`` replaces the member's Cedar attributes for the
+        egress policy gate; ``None`` leaves them untouched."""
         payload = self._http.request(
             "PATCH",
             f"/v1/members/{member_id}",
@@ -201,6 +216,7 @@ class Members:
                 role=role,
                 tags=tags,
                 metadata=metadata,
+                policy_attributes=policy_attributes,
             ),
         )
         return Member.model_validate(payload)
@@ -271,6 +287,7 @@ class AsyncMembers:
         role: str | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, str] | None = None,
+        policy_attributes: dict[str, Any] | None = None,
     ) -> Member:
         """Async twin of :meth:`Members.create`."""
         payload = await self._http.request(
@@ -282,6 +299,7 @@ class AsyncMembers:
                 role=role,
                 tags=tags,
                 metadata=metadata,
+                policy_attributes=policy_attributes,
             ),
         )
         return Member.model_validate(payload)
@@ -295,6 +313,7 @@ class AsyncMembers:
         role: str | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, str] | None = None,
+        policy_attributes: dict[str, Any] | None = None,
     ) -> Member:
         """Async twin of :meth:`Members.update`."""
         payload = await self._http.request(
@@ -306,6 +325,7 @@ class AsyncMembers:
                 role=role,
                 tags=tags,
                 metadata=metadata,
+                policy_attributes=policy_attributes,
             ),
         )
         return Member.model_validate(payload)

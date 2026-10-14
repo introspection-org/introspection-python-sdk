@@ -19,8 +19,14 @@ from introspection_sdk.resources.connectors import (
 from introspection_sdk.schemas.connectors import (
     ConnectionAuthorizationPending,
     ConnectionToken,
+    Connector,
+    ConnectorAuthMode,
     ConnectorAuthorizeBinding,
+    ConnectorCreateRequest,
     ConnectorOAuthClientRegistration,
+    ConnectorUpdateRequest,
+    EntityUid,
+    PolicyEntity,
 )
 
 from .conftest import (
@@ -110,26 +116,135 @@ def test_create_sends_only_the_fields_given(fake_api: FakeAPI):
     assert "project" not in fake_api.last_request.params
 
 
-def test_create_carries_person_server_configuration(fake_api: FakeAPI):
-    fake_api.add("POST", "/v1/connectors", json_body=connector_payload())
+APPLICATION_ID = "44444444-4444-4444-4444-444444444444"
+ACME_ENTITY = {
+    "uid": {"type": "Company", "id": "acme"},
+    "attrs": {"business_min_level": 5},
+    "parents": [{"type": "Region", "id": "emea"}],
+}
 
-    Connectors(fake_api.client()).create(
+
+def test_create_aauth_connector_sends_typed_policy_entities(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST",
+        "/v1/connectors",
+        json_body=connector_payload(
+            provider="booking",
+            auth_mode="aauth",
+            person_server_url="https://person.example.com",
+            application_id=APPLICATION_ID,
+            policy_entities=[ACME_ENTITY],
+        ),
+    )
+
+    created = Connectors(fake_api.client()).create(
         name="Bookings",
         provider="booking",
-        auth_mode="person_authorized",
-        person_server_mode="byo",
+        auth_mode=ConnectorAuthMode.AAUTH,
         person_server_url="https://person.example.com",
-        approval_policy="judge_advises_human",
+        application_id=UUID(APPLICATION_ID),
+        policy_entities=[
+            PolicyEntity(
+                uid=EntityUid(type="Company", id="acme"),
+                attrs={"business_min_level": 5},
+                parents=[EntityUid(type="Region", id="emea")],
+            )
+        ],
     )
 
     assert fake_api.last_request.json() == {
         "name": "Bookings",
         "provider": "booking",
-        "auth_mode": "person_authorized",
-        "person_server_mode": "byo",
+        "auth_mode": "aauth",
         "person_server_url": "https://person.example.com",
-        "approval_policy": "judge_advises_human",
+        "application_id": APPLICATION_ID,
+        "policy_entities": [ACME_ENTITY],
     }
+    assert created.auth_mode is ConnectorAuthMode.AAUTH
+    assert created.policy_entities == [
+        PolicyEntity.model_validate(ACME_ENTITY)
+    ]
+
+
+def test_create_accepts_policy_entities_as_plain_dicts(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/connectors", json_body=connector_payload())
+
+    Connectors(fake_api.client()).create(
+        name="Bookings",
+        provider="booking",
+        auth_mode="aauth",
+        person_server_url="https://person.example.com",
+        application_id=UUID(APPLICATION_ID),
+        policy_entities=[{"uid": {"type": "Company", "id": "acme"}}],
+    )
+
+    # attrs / parents default to empty, as Cedar's JSON entity format allows.
+    assert fake_api.last_request.json()["policy_entities"] == [
+        {"uid": {"type": "Company", "id": "acme"}, "attrs": {}, "parents": []}
+    ]
+
+
+def test_create_aauth_without_person_server_surfaces_the_422(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST",
+        "/v1/connectors",
+        status=422,
+        json_body={"detail": "aauth requires person_server_url"},
+    )
+
+    with pytest.raises(ValidationError):
+        Connectors(fake_api.client()).create(
+            name="Bookings", provider="booking", auth_mode="aauth"
+        )
+
+
+def test_read_parses_policy_entities(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        CONNECTOR_PATH,
+        json_body=connector_payload(
+            auth_mode="aauth", policy_entities=[ACME_ENTITY]
+        ),
+    )
+
+    fetched = Connectors(fake_api.client()).get(CONNECTOR_UUID)
+
+    assert fetched.policy_entities is not None
+    (entity,) = fetched.policy_entities
+    assert entity.uid == EntityUid(type="Company", id="acme")
+    assert entity.attrs == {"business_min_level": 5}
+    assert entity.parents == [EntityUid(type="Region", id="emea")]
+
+
+def test_read_without_policy_entities_is_none(fake_api: FakeAPI):
+    fake_api.add("GET", CONNECTOR_PATH, json_body=connector_payload())
+
+    assert (
+        Connectors(fake_api.client()).get(CONNECTOR_UUID).policy_entities
+        is None
+    )
+
+
+def test_update_replaces_policy_entities(fake_api: FakeAPI):
+    fake_api.add("PATCH", CONNECTOR_PATH, json_body=connector_payload())
+
+    Connectors(fake_api.client()).update(
+        CONNECTOR_UUID, policy_entities=[ACME_ENTITY]
+    )
+
+    assert fake_api.last_request.json() == {"policy_entities": [ACME_ENTITY]}
+
+
+@pytest.mark.parametrize("field", ["approval_policy", "person_server_mode"])
+def test_retired_person_server_fields_are_gone(field: str):
+    # The control plane removed both; AAuth policy replaces them.
+    assert field not in Connector.model_fields
+    assert field not in ConnectorCreateRequest.model_fields
+    assert field not in ConnectorUpdateRequest.model_fields
 
 
 def test_list_uses_authenticated_project_and_follows_the_cursor(
@@ -675,6 +790,26 @@ async def test_async_list_get_update_delete(fake_api: FakeAPI):
         "slack"
     )
     assert await connectors.delete(CONNECTOR_UUID) is None
+
+
+async def test_async_aauth_create_and_policy_update(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/connectors", json_body=connector_payload())
+    fake_api.add("PATCH", CONNECTOR_PATH, json_body=connector_payload())
+    connectors = AsyncConnectors(fake_api.async_client())
+
+    await connectors.create(
+        name="Bookings",
+        provider="booking",
+        auth_mode="aauth",
+        person_server_url="https://person.example.com",
+        application_id=UUID(APPLICATION_ID),
+        policy_entities=[ACME_ENTITY],
+    )
+    assert fake_api.last_request.json()["policy_entities"] == [ACME_ENTITY]
+    assert fake_api.last_request.json()["auth_mode"] == "aauth"
+
+    await connectors.update(CONNECTOR_UUID, policy_entities=[])
+    assert fake_api.last_request.json() == {"policy_entities": []}
 
 
 async def test_async_connections_list_and_revoke(fake_api: FakeAPI):

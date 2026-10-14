@@ -208,6 +208,107 @@ def test_update_surfaces_invalid_metadata(fake_api: FakeAPI):
         )
 
 
+POLICY_ATTRIBUTES = {
+    "level": 7,
+    "company": {"__entity": {"type": "Company", "id": "acme"}},
+}
+
+
+def test_read_parses_policy_attributes(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        MEMBER_PATH,
+        json_body=member_payload(policy_attributes=POLICY_ATTRIBUTES),
+    )
+
+    member = Members(fake_api.client()).get(MEMBER_UUID)
+
+    assert member.policy_attributes == POLICY_ATTRIBUTES
+
+
+def test_read_without_policy_attributes_is_none(fake_api: FakeAPI):
+    fake_api.add("GET", MEMBER_PATH, json_body=member_payload())
+
+    assert (
+        Members(fake_api.client()).get(MEMBER_UUID).policy_attributes is None
+    )
+
+
+def test_create_sends_policy_attributes(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/members",
+        status=201,
+        json_body=member_payload(policy_attributes=POLICY_ATTRIBUTES),
+    )
+
+    member = Members(fake_api.client()).create(
+        email="ada@example.com",
+        name="Ada Lovelace",
+        policy_attributes=POLICY_ATTRIBUTES,
+    )
+
+    assert fake_api.last_request.json() == {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "policy_attributes": POLICY_ATTRIBUTES,
+    }
+    assert member.policy_attributes == POLICY_ATTRIBUTES
+
+
+def test_update_replaces_policy_attributes(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        MEMBER_PATH,
+        json_body=member_payload(policy_attributes=POLICY_ATTRIBUTES),
+    )
+
+    member = Members(fake_api.client()).update(
+        MEMBER_UUID, policy_attributes=POLICY_ATTRIBUTES
+    )
+
+    assert fake_api.last_request.json() == {
+        "policy_attributes": POLICY_ATTRIBUTES
+    }
+    assert member.policy_attributes == POLICY_ATTRIBUTES
+
+
+def test_update_policy_attributes_without_manage_scope_is_forbidden(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "PATCH",
+        MEMBER_PATH,
+        status=403,
+        json_body={"detail": "Requires members:manage."},
+    )
+    with pytest.raises(IntrospectionAPIError) as exc:
+        Members(fake_api.client()).update(
+            MEMBER_UUID, policy_attributes={"level": 9}
+        )
+    assert exc.value.status_code == 403
+
+
+async def test_async_create_and_update_send_policy_attributes(
+    fake_api: FakeAPI,
+):
+    fake_api.add("POST", "/v1/members", status=201, json_body=member_payload())
+    fake_api.add("PATCH", MEMBER_PATH, json_body=member_payload())
+    members = AsyncMembers(fake_api.async_client())
+
+    await members.create(
+        email="ada@example.com",
+        name="Ada Lovelace",
+        policy_attributes={"level": 3},
+    )
+    assert fake_api.last_request.json()["policy_attributes"] == {"level": 3}
+
+    await members.update(MEMBER_UUID, policy_attributes=POLICY_ATTRIBUTES)
+    assert fake_api.last_request.json() == {
+        "policy_attributes": POLICY_ATTRIBUTES
+    }
+
+
 async def test_async_list_sends_metadata_and_tag(fake_api: FakeAPI):
     fake_api.add(
         "GET",
