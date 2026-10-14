@@ -3,8 +3,9 @@
 Members are the organization's principals: ``business`` humans,
 ``agent`` members, and ``customer`` members minted from an asserted
 identity (:class:`~introspection_sdk.schemas.runner.RunnerIdentity`).
-``create`` invites a human by email; ``customer`` members are never
-created here, only by identity assertion.
+``create`` invites a human by email, or (owner only) records a
+``customer`` member by its ``external_user_id``; customer members are
+also minted by identity assertion.
 
 Reads need ``members:read``. ``update`` needs ``members:manage`` (owner),
 as does seeding ``tags`` or ``policy_attributes`` on ``create``: a member
@@ -18,6 +19,8 @@ import builtins
 from typing import Any
 from uuid import UUID
 
+from pydantic import BaseModel
+
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -26,8 +29,10 @@ from introspection_sdk.pagination import (
     cursor_paginate,
 )
 from introspection_sdk.schemas.members import (
+    MEMBER_CREATE_ADAPTER,
+    BusinessMemberCreate,
+    CustomerMemberCreate,
     Member,
-    MemberCreateRequest,
     MemberType,
     MemberUpdateRequest,
 )
@@ -64,22 +69,13 @@ def _list_params(
 
 
 def _create_body(
-    *,
-    email: str,
-    name: str,
-    role: str | None,
-    tags: builtins.list[str] | None,
-    metadata: dict[str, str] | None,
-    policy_attributes: dict[str, Any] | None,
+    member: BusinessMemberCreate | CustomerMemberCreate | dict[str, Any],
 ) -> dict[str, Any]:
-    return MemberCreateRequest(
-        email=email,
-        name=name,
-        role=role,
-        tags=tags,
-        metadata=metadata,
-        policy_attributes=policy_attributes,
-    ).model_dump(mode="json", exclude_none=True)
+    # `member_type` has a default, so `exclude_none` always keeps it.
+    validated = MEMBER_CREATE_ADAPTER.validate_python(
+        member.model_dump() if isinstance(member, BaseModel) else member
+    )
+    return validated.model_dump(mode="json", exclude_none=True)
 
 
 def _update_body(
@@ -159,33 +155,22 @@ class Members:
 
     def create(
         self,
-        *,
-        email: str,
-        name: str,
-        role: str | None = None,
-        tags: builtins.list[str] | None = None,
-        metadata: dict[str, str] | None = None,
-        policy_attributes: dict[str, Any] | None = None,
+        member: BusinessMemberCreate | CustomerMemberCreate | dict[str, Any],
     ) -> Member:
-        """Invite a human member by email (admin or owner only).
+        """Create a member: a :class:`BusinessMemberCreate` invites a person
+        by email (admin or owner only); a :class:`CustomerMemberCreate`
+        records one of the organization's end users by ``external_user_id``
+        (owner only, no ``role``).
 
-        ``name`` must be a full name (first and last). ``tags`` are
-        access-bearing, so passing any needs ``members:manage``.
-        ``metadata`` keys are letters, digits, ``_`` and ``-``, values are
-        non-empty strings, at most 64 entries per write; the server answers 422
-        otherwise. ``policy_attributes`` seeds the member's Cedar attributes
-        for the egress policy gate and needs ``members:manage``."""
+        A plain dict is validated through the same union, and one without
+        ``member_type`` is a business member. ``member_type`` is always
+        sent. A business ``name`` must be a full name (first and last).
+        ``tags`` and ``policy_attributes`` decide access, so passing either
+        needs ``members:manage``. ``metadata`` keys are letters, digits,
+        ``_`` and ``-``, values are non-empty strings, at most 64 entries
+        per write; the server answers 422 otherwise."""
         payload = self._http.request(
-            "POST",
-            "/v1/members",
-            json=_create_body(
-                email=email,
-                name=name,
-                role=role,
-                tags=tags,
-                metadata=metadata,
-                policy_attributes=policy_attributes,
-            ),
+            "POST", "/v1/members", json=_create_body(member)
         )
         return Member.model_validate(payload)
 
@@ -281,26 +266,11 @@ class AsyncMembers:
 
     async def create(
         self,
-        *,
-        email: str,
-        name: str,
-        role: str | None = None,
-        tags: builtins.list[str] | None = None,
-        metadata: dict[str, str] | None = None,
-        policy_attributes: dict[str, Any] | None = None,
+        member: BusinessMemberCreate | CustomerMemberCreate | dict[str, Any],
     ) -> Member:
         """Async twin of :meth:`Members.create`."""
         payload = await self._http.request(
-            "POST",
-            "/v1/members",
-            json=_create_body(
-                email=email,
-                name=name,
-                role=role,
-                tags=tags,
-                metadata=metadata,
-                policy_attributes=policy_attributes,
-            ),
+            "POST", "/v1/members", json=_create_body(member)
         )
         return Member.model_validate(payload)
 
