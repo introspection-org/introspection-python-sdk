@@ -270,9 +270,9 @@ def test_create_rejects_an_invalid_body_before_sending(
 
 def test_create_models_require_their_identifying_fields():
     with pytest.raises(PydanticValidationError):
-        CustomerMemberCreate()  # type: ignore[call-arg]
+        CustomerMemberCreate.model_validate({})
     with pytest.raises(PydanticValidationError):
-        BusinessMemberCreate(name="Ada Lovelace")  # type: ignore[call-arg]
+        BusinessMemberCreate.model_validate({"name": "Ada Lovelace"})
 
 
 def test_update_replaces_metadata(fake_api: FakeAPI):
