@@ -110,5 +110,34 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  test-next-python:
+    name: Unit Tests (Python 3.15)
+    needs: lint
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+
+      # Resolved fresh rather than from uv.lock: that is what a user on 3.15
+      # installs, and the locked pydantic-core predates 3.15 wheels.
+      - name: Install dependencies
+        run: |
+          uv venv --python "${{ steps.python.outputs.python-path }}"
+          uv pip install -e ".[test,arrow,otel,proxy-httpx]"
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest tests/ -q
+
   # Examples live in their own workflow (./examples.yml) so they don't burn
   # LLM tokens on every push. They run on `workflow_dispatch` + tag pushes.
