@@ -71,9 +71,6 @@ from introspection_sdk.schemas.agui import (
 from introspection_sdk.schemas.annotations import (
     AnnotationState,
     AnnotationTarget,
-    ProjectLabel,
-    ProjectLabelCreate,
-    ProjectLabelUpdate,
 )
 from introspection_sdk.schemas.automations import (
     Automation,
@@ -91,6 +88,14 @@ from introspection_sdk.schemas.repositories import (
     RepositoryEntry,
     RepositoryFile,
     RepositoryMerge,
+)
+from introspection_sdk.schemas.tags import (
+    AccessTagCreate,
+    AnnotationTagCreate,
+    Tag,
+    TagCreate,
+    TagKind,
+    TagUpdate,
 )
 
 if TYPE_CHECKING:
@@ -198,9 +203,12 @@ __all__ = [
     "NetworkError",
     "NotFoundError",
     "OAuthToken",
-    "ProjectLabel",
-    "ProjectLabelCreate",
-    "ProjectLabelUpdate",
+    "AccessTagCreate",
+    "AnnotationTagCreate",
+    "Tag",
+    "TagCreate",
+    "TagKind",
+    "TagUpdate",
     "RateLimitError",
     "RunFailedError",
     "StreamIncompleteError",

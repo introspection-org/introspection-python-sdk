@@ -37,18 +37,18 @@ from introspection_sdk.resources import (
     AsyncConnectors,
     AsyncExperiments,
     AsyncMembers,
-    AsyncProjectLabels,
     AsyncRecipes,
     AsyncRepositories,
     AsyncRuntimes,
+    AsyncTags,
     Automations,
     Connectors,
     Experiments,
     Members,
-    ProjectLabels,
     Recipes,
     Repositories,
     Runtimes,
+    Tags,
 )
 from introspection_sdk.runner_resources import (
     AppConnections,
@@ -95,7 +95,7 @@ class IntrospectionClient:
     connectors: Connectors
     members: Members
     annotations: Annotations
-    project_labels: ProjectLabels
+    tags: Tags
     automations: Automations
     events: Events
     tasks: Tasks
@@ -154,7 +154,7 @@ class IntrospectionClient:
         self.connectors = Connectors(self._http)
         self.members = Members(self._http)
         self.annotations = Annotations(self._http, self._dp_http)
-        self.project_labels = ProjectLabels(self._dp_http)
+        self.tags = Tags(self._dp_http)
         self.automations = Automations(self._dp_http)
         self.events = Events(self._dp_http)
         self.tasks = Tasks(self._dp_http)
@@ -245,7 +245,7 @@ class AsyncIntrospectionClient:
     connectors: AsyncConnectors
     members: AsyncMembers
     annotations: AsyncAnnotations
-    project_labels: AsyncProjectLabels
+    tags: AsyncTags
     automations: AsyncAutomations
     events: AsyncEvents
     tasks: AsyncTasks
@@ -304,7 +304,7 @@ class AsyncIntrospectionClient:
         self.connectors = AsyncConnectors(self._http)
         self.members = AsyncMembers(self._http)
         self.annotations = AsyncAnnotations(self._http, self._dp_http)
-        self.project_labels = AsyncProjectLabels(self._dp_http)
+        self.tags = AsyncTags(self._dp_http)
         self.automations = AsyncAutomations(self._dp_http)
         self.events = AsyncEvents(self._dp_http)
         self.tasks = AsyncTasks(self._dp_http)

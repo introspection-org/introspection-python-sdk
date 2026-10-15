@@ -9,9 +9,6 @@ from introspection_sdk.schemas.agui import (
 from introspection_sdk.schemas.annotations import (
     AnnotationState,
     AnnotationTarget,
-    ProjectLabel,
-    ProjectLabelCreate,
-    ProjectLabelUpdate,
 )
 from introspection_sdk.schemas.atif import (
     ATIF_SCHEMA_VERSION,
@@ -124,6 +121,14 @@ from introspection_sdk.schemas.repositories import (
     RepositoryFile,
     RepositoryMerge,
 )
+from introspection_sdk.schemas.tags import (
+    AccessTagCreate,
+    AnnotationTagCreate,
+    Tag,
+    TagCreate,
+    TagKind,
+    TagUpdate,
+)
 from introspection_sdk.schemas.trajectory import (
     Trajectory,
     TrajectoryAssistantRecord,
@@ -214,9 +219,12 @@ __all__ = [
     "PatternAssignmentPayload",
     "PatternEvent",
     "PatternPayload",
-    "ProjectLabel",
-    "ProjectLabelCreate",
-    "ProjectLabelUpdate",
+    "AccessTagCreate",
+    "AnnotationTagCreate",
+    "Tag",
+    "TagKind",
+    "TagCreate",
+    "TagUpdate",
     "Repository",
     "RepositoryCommit",
     "RepositoryCommitDetail",
