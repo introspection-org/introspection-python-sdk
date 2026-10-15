@@ -1,4 +1,4 @@
-"""Project-level span annotations and managed label catalog."""
+"""Project-level span annotations."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import secrets
 import time
 from collections.abc import Sequence
 from typing import Any
-from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._errors import (
@@ -25,9 +24,6 @@ from introspection_sdk.pagination import (
 from introspection_sdk.schemas.annotations import (
     AnnotationState,
     AnnotationTarget,
-    ProjectLabel,
-    ProjectLabelCreate,
-    ProjectLabelUpdate,
 )
 from introspection_sdk.schemas.pagination import Paginated
 
@@ -71,57 +67,6 @@ def _member_error(
         code=code,
         body=body,
     )
-
-
-class ProjectLabels:
-    def __init__(self, http: _HttpClient) -> None:
-        self._http = http
-
-    def list(
-        self,
-        *,
-        search: str | None = None,
-        limit: int | None = None,
-        next: str | None = None,
-    ) -> Pager[ProjectLabel, Paginated[ProjectLabel]]:
-        def fetch(cursor: str | None) -> Paginated[ProjectLabel]:
-            payload = self._http.request(
-                "GET",
-                "/v1/project-labels",
-                params={"search": search, "limit": limit, "next": cursor},
-            )
-            return Paginated[ProjectLabel].model_validate(payload)
-
-        return cursor_paginate(fetch, start=next)
-
-    def create(
-        self, *, slug: str, color: str, description: str | None = None
-    ) -> ProjectLabel:
-        body = ProjectLabelCreate(
-            slug=slug, color=color.lower(), description=description
-        ).model_dump(mode="json", exclude_none=True)
-        return ProjectLabel.model_validate(
-            self._http.request("POST", "/v1/project-labels", json=body)
-        )
-
-    def get(self, slug: str) -> ProjectLabel:
-        return ProjectLabel.model_validate(
-            self._http.request(
-                "GET", f"/v1/project-labels/{quote(slug, safe='')}"
-            )
-        )
-
-    def update(self, slug: str, *, description: str | None) -> ProjectLabel:
-        body = ProjectLabelUpdate(description=description).model_dump(
-            mode="json"
-        )
-        return ProjectLabel.model_validate(
-            self._http.request(
-                "PATCH",
-                f"/v1/project-labels/{quote(slug, safe='')}",
-                json=body,
-            )
-        )
 
 
 class Annotations:
@@ -274,59 +219,6 @@ class Annotations:
                 )
             result.append(candidates[0])
         return result
-
-
-class AsyncProjectLabels:
-    def __init__(self, http: _AsyncHttpClient) -> None:
-        self._http = http
-
-    def list(
-        self,
-        *,
-        search: str | None = None,
-        limit: int | None = None,
-        next: str | None = None,
-    ) -> AsyncPager[ProjectLabel, Paginated[ProjectLabel]]:
-        async def fetch(cursor: str | None) -> Paginated[ProjectLabel]:
-            payload = await self._http.request(
-                "GET",
-                "/v1/project-labels",
-                params={"search": search, "limit": limit, "next": cursor},
-            )
-            return Paginated[ProjectLabel].model_validate(payload)
-
-        return async_cursor_paginate(fetch, start=next)
-
-    async def create(
-        self, *, slug: str, color: str, description: str | None = None
-    ) -> ProjectLabel:
-        body = ProjectLabelCreate(
-            slug=slug, color=color.lower(), description=description
-        ).model_dump(mode="json", exclude_none=True)
-        return ProjectLabel.model_validate(
-            await self._http.request("POST", "/v1/project-labels", json=body)
-        )
-
-    async def get(self, slug: str) -> ProjectLabel:
-        return ProjectLabel.model_validate(
-            await self._http.request(
-                "GET", f"/v1/project-labels/{quote(slug, safe='')}"
-            )
-        )
-
-    async def update(
-        self, slug: str, *, description: str | None
-    ) -> ProjectLabel:
-        body = ProjectLabelUpdate(description=description).model_dump(
-            mode="json"
-        )
-        return ProjectLabel.model_validate(
-            await self._http.request(
-                "PATCH",
-                f"/v1/project-labels/{quote(slug, safe='')}",
-                json=body,
-            )
-        )
 
 
 class AsyncAnnotations:
@@ -494,6 +386,4 @@ class AsyncAnnotations:
 __all__ = [
     "Annotations",
     "AsyncAnnotations",
-    "ProjectLabels",
-    "AsyncProjectLabels",
 ]

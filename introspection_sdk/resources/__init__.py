@@ -3,8 +3,6 @@
 from introspection_sdk.resources.annotations import (
     Annotations,
     AsyncAnnotations,
-    AsyncProjectLabels,
-    ProjectLabels,
 )
 from introspection_sdk.resources.connectors import (
     AsyncConnections,
@@ -34,6 +32,7 @@ from introspection_sdk.resources.runtimes import (
     RuntimeHandle,
     Runtimes,
 )
+from introspection_sdk.resources.tags import AsyncTags, Tags
 from introspection_sdk.runner_resources.automations import (
     AsyncAutomations,
     Automations,
@@ -49,7 +48,7 @@ __all__ = [
     "AsyncExperimentHandle",
     "AsyncExperiments",
     "AsyncMembers",
-    "AsyncProjectLabels",
+    "AsyncTags",
     "AsyncRecipes",
     "AsyncRepositories",
     "AsyncRepositoryContents",
@@ -61,7 +60,7 @@ __all__ = [
     "ExperimentHandle",
     "Experiments",
     "Members",
-    "ProjectLabels",
+    "Tags",
     "Recipes",
     "Repositories",
     "RepositoryContents",

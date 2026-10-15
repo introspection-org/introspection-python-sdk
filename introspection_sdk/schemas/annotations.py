@@ -1,17 +1,11 @@
-"""Wire models for append-only span annotations and managed labels."""
+"""Wire models for append-only span annotations."""
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-
-LabelSlug = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
-]
-HexColor = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$")]
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AnnotationTarget(BaseModel):
@@ -39,34 +33,7 @@ class AnnotationState(AnnotationTarget):
     assignment_event_id: UUID | None = None
 
 
-class ProjectLabel(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    slug: str
-    color: str
-    description: str | None = None
-    created_at: datetime
-    updated_at: datetime
-
-
-class ProjectLabelCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    slug: LabelSlug
-    color: HexColor
-    description: str | None = Field(default=None, max_length=2000)
-
-
-class ProjectLabelUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    description: str | None = Field(max_length=2000)
-
-
 __all__ = [
     "AnnotationState",
     "AnnotationTarget",
-    "ProjectLabel",
-    "ProjectLabelCreate",
-    "ProjectLabelUpdate",
 ]

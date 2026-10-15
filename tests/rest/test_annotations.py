@@ -12,7 +12,13 @@ from introspection_sdk._errors import NotFoundError, ValidationError
 from introspection_sdk.resources.annotations import (
     Annotations,
     AsyncAnnotations,
-    ProjectLabels,
+)
+from introspection_sdk.resources.tags import Tags
+from introspection_sdk.schemas.tags import (
+    AccessTagCreate,
+    AnnotationTagCreate,
+    TagKind,
+    TagUpdate,
 )
 
 from .conftest import FakeAPI
@@ -52,10 +58,13 @@ def annotation() -> dict[str, object]:
     }
 
 
-def label() -> dict[str, object]:
+def label(
+    kind: str = "annotation", color: str | None = "#f97316"
+) -> dict[str, object]:
     return {
-        "slug": "needs-review",
-        "color": "#f97316",
+        "kind": kind,
+        "name": "needs-review",
+        "color": color,
         "description": "Expert review queue",
         "created_at": "2026-08-25T12:00:00Z",
         "updated_at": "2026-08-25T12:00:00Z",
@@ -169,32 +178,70 @@ def test_reviewer_email_must_resolve_uniquely(fake_api: FakeAPI) -> None:
         )
 
 
-def test_project_labels_are_validated_and_only_description_updates(
+def test_annotation_tags_normalize_and_patch_only_what_is_set(
     fake_api: FakeAPI,
 ) -> None:
-    fake_api.add("POST", "/v1/project-labels", json_body=label())
+    fake_api.add("POST", "/v1/tags", json_body=label())
     fake_api.add(
         "PATCH",
-        "/v1/project-labels/needs-review",
+        "/v1/tags/annotation/needs-review",
         json_body={**label(), "description": None},
     )
-    labels = ProjectLabels(fake_api.client())
-    created = labels.create(
-        slug=" needs-review ",
-        color="#F97316",
-        description="Expert review queue",
+    tags = Tags(fake_api.client())
+    created = tags.create(
+        AnnotationTagCreate(
+            name=" needs-review ",
+            color="#F97316",
+            description="Expert review queue",
+        )
     )
-    assert created.slug == "needs-review"
+    assert created.name == "needs-review"
+    assert created.kind is TagKind.ANNOTATION
     assert fake_api.requests[0].json() == {
-        "slug": "needs-review",
+        "kind": "annotation",
+        "name": "needs-review",
         "color": "#f97316",
         "description": "Expert review queue",
     }
-    updated = labels.update("needs-review", description=None)
+    updated = tags.update(
+        TagKind.ANNOTATION, "needs-review", TagUpdate(description=None)
+    )
     assert updated.description is None
+    # Only the field that was set: an absent key leaves the value alone.
     assert fake_api.last_request.json() == {"description": None}
     with pytest.raises(PydanticValidationError):
-        labels.create(slug="bad", color="orange")
+        tags.create(AnnotationTagCreate(name="bad", color="orange"))
+
+
+def test_an_access_tag_has_no_color_and_encodes_its_opaque_name(
+    fake_api: FakeAPI,
+) -> None:
+    fake_api.add("POST", "/v1/tags", json_body=label("access", None))
+    # httpx decodes the path before FakeAPI matches it, so the route is
+    # registered decoded; the raw target below is what actually goes on the wire.
+    fake_api.add("DELETE", "/v1/tags/access/acme/eu", status=204)
+    tags = Tags(fake_api.client())
+    created = tags.create(AccessTagCreate(name="acme/eu"))
+    assert created.kind is TagKind.ACCESS
+    assert created.color is None
+    # The kind is the discriminant, and no `color` key is sent at all.
+    assert fake_api.requests[0].json() == {"kind": "access", "name": "acme/eu"}
+    tags.delete(TagKind.ACCESS, "acme/eu")
+    # The opaque name is encoded, so it cannot add a path segment.
+    assert b"/v1/tags/access/acme%2Feu" == fake_api.last_request.url.raw_path
+
+
+def test_a_tag_update_is_refused_locally_when_the_api_would_refuse_it(
+    fake_api: FakeAPI,
+) -> None:
+    tags = Tags(fake_api.client())
+    # An access tag has no colour to set.
+    with pytest.raises(ValidationError):
+        tags.update(TagKind.ACCESS, "acme/eu", TagUpdate(color="#f97316"))
+    # An update must name a field.
+    with pytest.raises(ValidationError):
+        tags.update(TagKind.ANNOTATION, "needs-review", TagUpdate())
+    assert fake_api.requests == []
 
 
 async def test_async_create_comment(fake_api: FakeAPI) -> None:
