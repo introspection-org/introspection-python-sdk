@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.28.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.27.0...v0.28.0) (2026-10-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **tags:** `client.project_labels` is now `client.tags`, `ProjectLabels`/`AsyncProjectLabels` are `Tags`/`AsyncTags`, and `ProjectLabel{,Create,Update}` are replaced by `Tag`, `TagCreate` and `TagUpdate`, which take a `TagKind`.
+
+### Features
+
+* **tags:** the tag catalogue, keyed by access or annotation ([#173](https://github.com/introspection-org/introspection-python-sdk/issues/173)) ([5169979](https://github.com/introspection-org/introspection-python-sdk/commit/51699792d4d95f8a2e04263ec4fa654ba6c25f72))
+
 ## [0.27.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.26.0...v0.27.0) (2026-10-14)
 
 
