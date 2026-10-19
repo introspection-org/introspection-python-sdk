@@ -14,11 +14,9 @@ not a recording of a live exchange, so these tests do **not** verify
 the live Introspection wire contract — only that the SDK builds the
 right request (method / path / params / body / headers) and parses a
 well-formed response correctly. The canned bodies encode our assumption
-of the server contract; real-API drift is caught by the live
-``-m integration`` job in ``ci.yml``, not here. The longer-term plan in
-``AGENTS.md`` is to back the happy paths with recorded cassettes once a
-live backend/token is available in CI; until then these stay framed as
-contract tests rather than recordings.
+of the server contract; real-API drift is caught by the live suite in
+``tests/live`` (``-m live``), which ``introspection-cloud``'s
+``sdk-coverage`` workflow runs against a seeded local stack, not here.
 """
 
 from __future__ import annotations

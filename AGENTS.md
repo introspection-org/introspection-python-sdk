@@ -59,7 +59,18 @@ params, headers, body) and the parsed result. No live calls, no API keys, and
 nothing to scrub.
 
 This SDK no longer records VCR cassettes — `pytest-recording` is not a
-dependency. Real-API drift is caught by the `-m integration` job in `ci.yml`.
+dependency. Real-API drift is caught by the live suite in `tests/live`
+(marked `live`, deselected by default), which `introspection-cloud`'s
+`sdk-coverage` workflow (`make sdk-coverage`) runs against a freshly seeded
+local stack:
+
+```shell
+INTROSPECTION_LIVE=1 uv run pytest tests/live -m live -p no:cacheprovider
+```
+
+It reads its credentials and URLs from the `INTROSPECTION_*` variables that
+introspection-cloud's `scripts/seed_sdk_project.py` writes, and skips without
+them. A new public method that is cheap and sandbox-free gets a step there.
 
 ## Coverage expectations per area
 

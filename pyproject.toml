@@ -87,9 +87,10 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not live'"
 markers = [
     "integration: requires real API keys and makes live API calls",
+    "live: CRUD walks against a seeded deployment (tests/live; INTROSPECTION_LIVE=1)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:pydantic.*",
