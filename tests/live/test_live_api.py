@@ -195,11 +195,13 @@ def test_automations_crud_walk(member_client: IntrospectionClient) -> None:
         assert updated.description == "updated"
 
         automations.delete(created.id)
-        # `get` reads soft-deleted automations too (unlike the Rust walk's
-        # 404), so a deleted one answers with `deleted_at` and leaves the list.
-        assert automations.get(created.id).deleted_at is not None
         listed = collect(automations.list())
         assert all(a.id != created.id for a in listed)
+        # Fails today: the DP reads automations with deleted ones included and
+        # returns no deleted_at, so a deleted automation reads back as live.
+        with pytest.raises(NotFoundError) as missing:
+            automations.get(created.id)
+        assert missing.value.status_code == 404
     finally:
         with contextlib.suppress(NotFoundError):
             automations.delete(created.id)
