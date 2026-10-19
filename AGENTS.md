@@ -68,9 +68,12 @@ local stack:
 INTROSPECTION_LIVE=1 uv run pytest tests/live -m live -p no:cacheprovider
 ```
 
-It reads its credentials and URLs from the `INTROSPECTION_*` variables that
+It reads its credentials from the `INTROSPECTION_*` variables that
 introspection-cloud's `scripts/seed_sdk_project.py` writes, and skips without
-them. A new public method that is cheap and sandbox-free gets a step there.
+them. It authenticates as the project's service account
+(`INTROSPECTION_CLIENT_ID` / `INTROSPECTION_CLIENT_SECRET`) and takes the Data
+Plane URL from the token response, never from the environment; a member token
+and CP session cover only the CLI-only scopes (annotation tags, members). A new public method that is cheap and sandbox-free gets a step there.
 
 ## Coverage expectations per area
 

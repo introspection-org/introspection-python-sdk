@@ -22,6 +22,7 @@ from introspection_sdk import (
     IntrospectionClient,
     NotFoundError,
     ValidationError,
+    service_account_token,
 )
 from introspection_sdk.schemas.automations import AutomationTriggerType
 from introspection_sdk.schemas.events import IntrospectionEventName
@@ -90,9 +91,7 @@ def test_files_crud_walk(api_client: IntrospectionClient) -> None:
             files.delete(file_id)
 
 
-def test_upload_and_shares_crud_walk(
-    api_client: IntrospectionClient, member_client: IntrospectionClient
-) -> None:
+def test_upload_and_shares_crud_walk(api_client: IntrospectionClient) -> None:
     files = api_client.files
     uploaded = files.upload(
         file=b"shared bytes",
@@ -126,31 +125,34 @@ def test_upload_and_shares_crud_walk(
                 )
             assert invalid.value.status_code == 422
 
-            # No API key capability carries `shares:delete`, so the member
-            # removes it.
-            member_client.shares.delete(share_id)
+            shares.delete(share_id)
             with pytest.raises(NotFoundError) as excinfo:
                 shares.get(share_id)
             assert excinfo.value.status_code == 404
         finally:
             with contextlib.suppress(NotFoundError):
-                member_client.shares.delete(share_id)
+                shares.delete(share_id)
     finally:
         with contextlib.suppress(NotFoundError):
             files.delete(file_id)
 
 
-def test_tags_crud_walk(member_client: IntrospectionClient) -> None:
+def test_tags_crud_walk(
+    api_client: IntrospectionClient, member_client: IntrospectionClient
+) -> None:
+    access_tags = api_client.tags
+    # `annotations:write` is not a service-account scope, so a member writes
+    # the annotation tag.
     tags = member_client.tags
     access = unique("access")
     annotation = unique("label")
 
-    tags.create(AccessTagCreate(name=access))
+    access_tags.create(AccessTagCreate(name=access))
     created = tags.create(
         AnnotationTagCreate(name=annotation, color="#f97316")
     )
     try:
-        assert tags.get(TagKind.ACCESS, access).name == access
+        assert access_tags.get(TagKind.ACCESS, access).name == access
         assert tags.get(TagKind.ANNOTATION, created.name).name == created.name
         listed = collect(tags.list(TagKind.ANNOTATION))
         assert any(tag.name == created.name for tag in listed)
@@ -163,7 +165,7 @@ def test_tags_crud_walk(member_client: IntrospectionClient) -> None:
         assert updated.description == "recolored"
 
         tags.delete(TagKind.ANNOTATION, created.name)
-        tags.delete(TagKind.ACCESS, access)
+        access_tags.delete(TagKind.ACCESS, access)
         with pytest.raises(NotFoundError) as excinfo:
             tags.get(TagKind.ANNOTATION, created.name)
         assert excinfo.value.status_code == 404
@@ -171,14 +173,14 @@ def test_tags_crud_walk(member_client: IntrospectionClient) -> None:
         with contextlib.suppress(NotFoundError):
             tags.delete(TagKind.ANNOTATION, created.name)
         with contextlib.suppress(NotFoundError):
-            tags.delete(TagKind.ACCESS, access)
+            access_tags.delete(TagKind.ACCESS, access)
 
 
-def test_automations_crud_walk(member_client: IntrospectionClient) -> None:
+def test_automations_crud_walk(api_client: IntrospectionClient) -> None:
     # An automation dispatches into a runtime group, so it needs a runtime the
     # seed does not create.
     runtime_group_id = setting("INTROSPECTION_RUNTIME_GROUP_ID")
-    automations = member_client.automations
+    automations = api_client.automations
     created = automations.create(
         name=unique("automation"),
         trigger_type=AutomationTriggerType.MANUAL,
@@ -244,10 +246,20 @@ def test_members_reads_with_session(
     assert session_client.members.get(members[0].id).id == members[0].id
 
 
-def test_rejected_credentials_are_typed(
+def test_rejected_client_secret_is_typed(base_api_url: str) -> None:
+    with pytest.raises(AuthenticationError) as excinfo:
+        service_account_token(
+            setting("INTROSPECTION_CLIENT_ID"),
+            "intro_sk_not_a_real_secret",
+            setting("INTROSPECTION_PROJECT"),
+            base_api_url=base_api_url,
+        )
+    assert excinfo.value.status_code == 401
+
+
+def test_rejected_bearer_is_typed(
     make_client: Callable[..., IntrospectionClient],
 ) -> None:
-    setting("INTROSPECTION_DP_URL")
     bogus = make_client("intro_dev_not_a_real_key")
     with pytest.raises(AuthenticationError) as excinfo:
         bogus.files.get(str(uuid7()))
