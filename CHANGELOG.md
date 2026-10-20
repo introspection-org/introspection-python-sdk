@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.29.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.28.0...v0.29.0) (2026-10-20)
+
+
+### Features
+
+* **examples:** docs reference snippet regions and a CI examples check ([#177](https://github.com/introspection-org/introspection-python-sdk/issues/177)) ([ea195ed](https://github.com/introspection-org/introspection-python-sdk/commit/ea195ed774e983c04d1339c76bc4f2169e9b7bc9))
+* **examples:** Python snippet regions for the docs' pattern pages ([#176](https://github.com/introspection-org/introspection-python-sdk/issues/176)) ([7d43ad7](https://github.com/introspection-org/introspection-python-sdk/commit/7d43ad75b6dfa424eb33d47274166ab0a73ea3bf))
+
 ## [0.28.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.27.0...v0.28.0) (2026-10-15)
 
 
