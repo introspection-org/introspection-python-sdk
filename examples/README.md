@@ -33,6 +33,23 @@ Each example's module docstring lists the environment it needs.
 uv run python -m introspection_examples.otel.log_event               # log_event: log a custom-named event, read it back via introspection.track
 ```
 
+## Docs reference snippets
+
+The docs site extracts its reference-page snippets from the
+`# #region docs:<id>` blocks in these modules at a pinned release tag; edit a
+region together with the page it feeds.
+
+```bash
+uv run python -m introspection_examples.reference.python_run_task        # Python SDK page: run a task, stream it, send a follow-up
+uv run python -m introspection_examples.reference.python_sdk             # Python SDK page: reattach, interrupts, cancel, files, reads, feedback
+uv run python -m introspection_examples.reference.auth_api_key           # Authentication page: API key
+uv run python -m introspection_examples.reference.auth_service_account   # Authentication page: service-account application
+uv run python -m introspection_examples.reference.auth_hosted_login      # Authentication page: hosted-login code exchange (needs a live redirect)
+```
+
+`python_run_task` targets a runtime with the slug `support-agent`, as the docs
+page does.
+
 ## Tracing
 
 There are no tracing examples here. The Python SDK ships no framework
@@ -46,4 +63,5 @@ instrument with any OTel-emitting library, or instrument manually. See
 examples/introspection_examples/
   api/                 # REST API (IntrospectionClient, Runner, tasks, files)
   otel/                # OTel logs surface (log_event)
+  reference/           # code behind the docs' reference-page snippets
 ```

@@ -61,9 +61,13 @@ jobs:
           # but make an unconfigured release workflow use the same default as
           # the examples themselves.
           INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL || 'https://api.introspection.dev' }}
+        # reference.python_run_task is left out: its docs region names the
+        # `support-agent` runtime, which this project need not deploy.
         run: |
           uv run -m introspection_examples.api.runtimes
           uv run -m introspection_examples.api.async_runtimes
           uv run -m introspection_examples.api.repositories
           uv run -m introspection_examples.api.conversation_atif
           uv run -m introspection_examples.otel.log_event
+          uv run -m introspection_examples.reference.auth_api_key
+          uv run -m introspection_examples.reference.python_sdk
