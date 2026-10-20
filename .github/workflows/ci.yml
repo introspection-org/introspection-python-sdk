@@ -110,5 +110,37 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  examples-check:
+    # examples.yml runs the examples only by hand and on tags, since they
+    # start real tasks. This checks every file under examples/ on each PR
+    # without running it: it compiles, its imports resolve, and its
+    # `# #region docs:` markers (extracted by the docs site) are paired and
+    # unique. Root `ruff` and `ty check` above already cover examples/.
+    name: Examples Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-examples-${{ hashFiles('examples/pyproject.toml', 'examples/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-examples-
+
+      - name: Check examples compile, resolve imports, and pair docs regions
+        run: uv run --project examples python scripts/check_examples.py
+
   # Examples live in their own workflow (./examples.yml) so they don't burn
   # LLM tokens on every push. They run on `workflow_dispatch` + tag pushes.

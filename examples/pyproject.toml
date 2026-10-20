@@ -23,3 +23,8 @@ introspection-sdk = { path = "..", editable = true }
 
 [tool.ruff]
 extend = "../pyproject.toml"
+
+# A docs region that shows a snippet's imports at module level sits below
+# the load_dotenv() / env-var check the docs leave out.
+[tool.ruff.lint.per-file-ignores]
+"introspection_examples/reference/*.py" = ["E402"]

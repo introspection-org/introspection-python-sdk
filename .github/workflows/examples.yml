@@ -90,9 +90,22 @@ jobs:
           # but make an unconfigured release workflow use the same default as
           # the examples themselves.
           INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL || 'https://api.introspection.dev' }}
+          # reference.auth_service_account needs a service account (the
+          # INTRO_SA_* secrets); reference.python_run_task needs a
+          # `support-agent` runtime, which its docs region names; and
+          # reference.auth_hosted_login needs a browser redirect's code. Each
+          # prints a skip message and exits 0 without its prerequisite.
+          INTROSPECTION_SERVICE_ACCOUNT_CLIENT_ID: ${{ secrets.INTRO_SA_CLIENT_ID }}
+          INTROSPECTION_SERVICE_ACCOUNT_CLIENT_SECRET: ${{ secrets.INTRO_SA_CLIENT_SECRET }}
+          INTROSPECTION_PROJECT: ${{ secrets.INTRO_PROJECT }}
         run: |
           uv run -m introspection_examples.api.runtimes
           uv run -m introspection_examples.api.async_runtimes
           uv run -m introspection_examples.api.repositories
           uv run -m introspection_examples.api.conversation_atif
           uv run -m introspection_examples.otel.log_event
+          uv run -m introspection_examples.reference.auth_api_key
+          uv run -m introspection_examples.reference.python_sdk
+          uv run -m introspection_examples.reference.python_run_task
+          uv run -m introspection_examples.reference.auth_service_account
+          uv run -m introspection_examples.reference.auth_hosted_login
