@@ -58,16 +58,60 @@ def _defined_names(module: str) -> set[str] | None:
         return None
     tree = ast.parse(Path(spec.origin).read_text(encoding="utf-8"))
     names: set[str] = set()
-    for node in ast.walk(tree):
+    _bind_module_scope(tree.body, names)
+    return names
+
+
+def _bind_module_scope(body: list[ast.stmt], names: set[str]) -> None:
+    """Add the names ``body`` binds at module scope: its own statements
+    and those nested in ``if`` / ``try`` / ``with`` / loop blocks, but
+    nothing inside a function or class body."""
+    for node in body:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             names.add(node.name)
-        elif isinstance(node, ast.ClassDef):
+            continue
+        if isinstance(node, ast.ClassDef):
             names.add(node.name)
-        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-            names.add(node.id)
-        elif isinstance(node, ast.alias):
-            names.add((node.asname or node.name).split(".")[0])
-    return names
+            continue
+        if isinstance(node, ast.Import | ast.ImportFrom):
+            for alias in node.names:
+                names.add((alias.asname or alias.name).split(".")[0])
+            continue
+        # Assignment targets, for/with targets, walrus targets and except
+        # aliases bound by this statement itself, not by nested blocks
+        # (those are visited below with the same scope rule).
+        for field in ("targets", "target", "items", "test", "value", "iter"):
+            child = getattr(node, field, None)
+            for part in child if isinstance(child, list) else [child]:
+                if isinstance(part, ast.AST):
+                    _bind_stored(part, names)
+        for field in ("body", "orelse", "finalbody"):
+            _bind_module_scope(getattr(node, field, []), names)
+        for handler in getattr(node, "handlers", []):
+            if handler.name:
+                names.add(handler.name)
+            _bind_module_scope(handler.body, names)
+        for case in getattr(node, "cases", []):
+            _bind_module_scope(case.body, names)
+
+
+# Expressions whose stored names are local to them, not the module.
+_OWN_SCOPE = (
+    ast.Lambda,
+    ast.ListComp,
+    ast.SetComp,
+    ast.DictComp,
+    ast.GeneratorExp,
+)
+
+
+def _bind_stored(node: ast.AST, names: set[str]) -> None:
+    if isinstance(node, _OWN_SCOPE):
+        return
+    if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+        names.add(node.id)
+    for child in ast.iter_child_nodes(node):
+        _bind_stored(child, names)
 
 
 def _package_of(path: Path) -> str:
