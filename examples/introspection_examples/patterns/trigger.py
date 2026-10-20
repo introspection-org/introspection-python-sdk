@@ -29,7 +29,6 @@ load_dotenv()
 RUNTIME = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
 
 
-# #region docs:patterns/trigger/task-per-event
 def handle_event(
     client: IntrospectionClient, body: dict[str, str]
 ) -> tuple[int, dict[str, str]]:
@@ -40,9 +39,6 @@ def handle_event(
             conversation_metadata={"event_id": body["id"]},
         )
     return 202, {"task_id": str(handle.run.task_id)}
-
-
-# #endregion docs:patterns/trigger/task-per-event
 
 
 async def run_batch(

@@ -41,7 +41,6 @@ load_dotenv()
 RUNTIME = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
 
 
-# #region docs:patterns/web-chat/broker-route
 def create_session(user_id: str) -> dict[str, str]:
     """POST /api/introspection/session for the user in your session.
 
@@ -64,10 +63,7 @@ def create_session(user_id: str) -> dict[str, str]:
     }
 
 
-# #endregion docs:patterns/web-chat/broker-route
-
-
-# #region docs:patterns/web-chat/verify
+# #region docs:patterns/web-chat/federated-broker
 def create_federated_session(id_token: str, runtime_id: str) -> dict[str, str]:
     """The broker for users signed in through your identity provider.
 
@@ -85,7 +81,7 @@ def create_federated_session(id_token: str, runtime_id: str) -> dict[str, str]:
     }
 
 
-# #endregion docs:patterns/web-chat/verify
+# #endregion docs:patterns/web-chat/federated-broker
 
 
 def main() -> None:

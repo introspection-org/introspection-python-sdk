@@ -27,14 +27,6 @@ from introspection_sdk import IntrospectionClient, Runner
 from pydantic import BaseModel, Field, ValidationError
 
 
-class Triage(BaseModel):
-    """The submit tool's schema, mirrored for validation."""
-
-    category: Literal["billing", "bug", "other"]
-    priority: int = Field(ge=1, le=4)
-    summary: str = Field(max_length=280)
-
-
 def read_stream(runner: Runner) -> tuple[str, str | None]:
     # #region docs:patterns/structured-output/read-stream
     handle = runner.tasks.start(prompt="Triage ticket 4411: ...")
@@ -56,12 +48,19 @@ def read_stream(runner: Runner) -> tuple[str, str | None]:
     return str(handle.run.task_id), raw
 
 
+# #region docs:patterns/structured-output/validate
+class Triage(BaseModel):
+    """The submit_result tool's schema."""
+
+    category: Literal["billing", "bug", "other"]
+    priority: int = Field(ge=1, le=4)
+    summary: str = Field(max_length=280)
+
+
 def validate(runner: Runner, task_id: str, raw: str | None) -> Triage | None:
-    # #region docs:patterns/structured-output/validate
     try:
-        result = Triage.model_validate_json(raw or "")
+        return Triage.model_validate_json(raw or "")
     except ValidationError:
-        result = None
         runner.tasks.runs.create(
             task_id,
             kind="prompt",
@@ -69,8 +68,10 @@ def validate(runner: Runner, task_id: str, raw: str | None) -> Triage | None:
                 "text": "You did not call submit_result with a valid triage. Call it now."
             },
         )
-    # #endregion docs:patterns/structured-output/validate
-    return result
+        return None
+
+
+# #endregion docs:patterns/structured-output/validate
 
 
 def main() -> None:

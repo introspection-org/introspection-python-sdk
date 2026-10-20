@@ -59,6 +59,7 @@ jobs:
           INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL || 'https://api.introspection.dev' }}
         run: |
           uv run -m introspection_examples.observe.feedback_events
+          uv run -m introspection_examples.identity.agents
           uv run -m introspection_examples.identity.sharing
           uv run -m introspection_examples.patterns.agent_follow_ups
           uv run -m introspection_examples.patterns.approve_outside

@@ -43,10 +43,10 @@ def mint_link(
 
 
 def connect_button(client: IntrospectionClient, app: str, runtime: str) -> str:
-    # #region docs:patterns/per-user-tools/verify
+    # #region docs:patterns/per-user-tools/connect-button
     mine = list(client.connections.list(app=app))
     page = client.connections.create(app=app, runtime=runtime)
-    # #endregion docs:patterns/per-user-tools/verify
+    # #endregion docs:patterns/per-user-tools/connect-button
     print(f"the user has {len(mine)} {app} connection(s)")
     return page.authorize_url
 

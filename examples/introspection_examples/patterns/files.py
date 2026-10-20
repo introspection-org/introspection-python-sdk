@@ -30,7 +30,7 @@ CONTRACT = b"""# Service agreement
 
 
 def review_contract(runner: Runner, contract: bytes) -> bytes | None:
-    # #region docs:patterns/files/verify
+    # #region docs:patterns/files/sdk-upload
     f = runner.files.upload(
         file=contract, name="contract.md", file_type="upload"
     )
@@ -44,7 +44,7 @@ def review_contract(runner: Runner, contract: bytes) -> bytes | None:
         (x for x in runner.files.list() if x.name.startswith(outputs)), None
     )
     data = runner.files.download(str(report.id)) if report else None
-    # #endregion docs:patterns/files/verify
+    # #endregion docs:patterns/files/sdk-upload
     return data
 
 
