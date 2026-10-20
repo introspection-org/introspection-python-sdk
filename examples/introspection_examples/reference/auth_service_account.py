@@ -13,11 +13,16 @@ Run with:
 
         uv run -m introspection_examples.reference.auth_service_account
 
+Without those variables it prints a skip message and exits 0, so the
+examples workflow can list it whether or not service-account secrets are
+configured.
+
 Optional env:
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
 """
 
 import os
+import sys
 
 from dotenv import load_dotenv
 
@@ -32,11 +37,15 @@ _missing = [
     if not os.getenv(name)
 ]
 if _missing:
-    raise SystemExit(
-        f"missing required env var(s): {', '.join(_missing)} -- create a "
-        "service_account Application and export its client id and secret "
-        "plus the project slug or id"
+    # Not an error: the examples workflow runs this module whether or not
+    # the repository has service-account secrets configured.
+    print(
+        f"skipping: set {', '.join(_missing)} (a service_account "
+        "Application's client id and secret, and the project slug or id) "
+        "to run this example",
+        file=sys.stderr,
     )
+    raise SystemExit(0)
 
 # #region docs:reference/authentication/service-account
 import os

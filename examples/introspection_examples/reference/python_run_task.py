@@ -11,7 +11,9 @@ Run with:
         uv run -m introspection_examples.reference.python_run_task
 
 The task runs on the ``support-agent`` runtime, as on the docs page; deploy
-a runtime with that slug in the token's project first.
+a runtime with that slug in the token's project first. When the project has
+no such runtime the module prints a skip message and exits 0, so the
+examples workflow can list it either way.
 
 Optional env:
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
@@ -20,6 +22,7 @@ Optional env:
 import os
 
 from dotenv import load_dotenv
+from introspection_sdk import IntrospectionClient, NotFoundError
 
 load_dotenv()
 if not os.getenv("INTROSPECTION_TOKEN"):
@@ -27,6 +30,17 @@ if not os.getenv("INTROSPECTION_TOKEN"):
         "INTROSPECTION_TOKEN is not set: export a project API key "
         "(intro_...) or add it to .env"
     )
+_probe = IntrospectionClient()
+try:
+    _probe.runtimes.resolve("support-agent")
+except NotFoundError:
+    print(
+        "skipping: no support-agent runtime in this token's project; "
+        "deploy one to run this example"
+    )
+    raise SystemExit(0) from None
+finally:
+    _probe.shutdown()
 
 # The docs' line lengths, not the formatter's.
 # fmt: off

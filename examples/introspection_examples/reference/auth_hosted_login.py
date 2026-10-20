@@ -6,7 +6,10 @@ signs the user in with authorization code + PKCE; after the redirect, your
 backend exchanges the code, redirect URI and PKCE verifier for a token.
 
 The code is single-use and comes from a live browser redirect, so take the
-three values from that redirect and export them before running.
+three values from that redirect and export them before running. Without
+them the module does the headless half: it generates a PKCE verifier and
+its S256 challenge (RFC 7636) for the authorize call, prints them, and
+exits 0, which is what the examples workflow runs.
 
 Run with:
     INTROSPECTION_SPA_CLIENT_ID=intro_app_xxx
@@ -20,7 +23,10 @@ Optional env:
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
 """
 
+import base64
+import hashlib
 import os
+import secrets
 
 from dotenv import load_dotenv
 
@@ -36,11 +42,22 @@ _missing = [
     if not os.getenv(name)
 ]
 if _missing:
-    raise SystemExit(
-        f"missing required env var(s): {', '.join(_missing)} -- sign in "
-        "through hosted login with an spa Application and export the "
-        "redirect's code, the redirect URI and your PKCE verifier"
+    # No redirect to exchange: generate the PKCE pair the authorize call
+    # needs instead. Send the challenge with code_challenge_method=S256 and
+    # keep the verifier for the exchange below.
+    verifier = secrets.token_urlsafe(64)
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+        .rstrip(b"=")
+        .decode()
     )
+    print(f"code_verifier={verifier}")
+    print(f"code_challenge={challenge}")
+    print(
+        f"skipping the exchange: set {', '.join(_missing)} from a hosted-login "
+        "redirect (export the verifier above as INTROSPECTION_SPA_CODE_VERIFIER)"
+    )
+    raise SystemExit(0)
 code = os.environ["INTROSPECTION_SPA_CODE"]
 redirect_uri = os.environ["INTROSPECTION_SPA_REDIRECT_URI"]
 code_verifier = os.environ["INTROSPECTION_SPA_CODE_VERIFIER"]
