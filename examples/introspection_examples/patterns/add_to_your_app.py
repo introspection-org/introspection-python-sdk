@@ -130,10 +130,15 @@ def main() -> None:
     load_dotenv()
     missing = [name for name in REQUIRED_ENV if not os.getenv(name)]
     if missing:
-        sys.exit(
-            f"Set {', '.join(missing)}: a service account's client ID and "
-            "secret, its project slug, and a project API key."
+        # Not an error: the examples workflow runs this module whether or
+        # not the repository has service-account secrets configured.
+        print(
+            f"skipping: set {', '.join(missing)} (a service account's client "
+            "ID and secret, its project slug, and a project API key) to run "
+            "this example",
+            file=sys.stderr,
         )
+        return
     runtime = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
     user_id = "user-4821"  # take it from your server session
 

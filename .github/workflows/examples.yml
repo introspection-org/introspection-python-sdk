@@ -50,14 +50,21 @@ jobs:
 
       - name: Run pattern examples
         # The docs' pattern pages show these modules' snippet regions.
-        # patterns.add_to_your_app and patterns.web_chat need a service
-        # account, which this job has no secret for, so they are not listed.
+        # patterns.add_to_your_app and patterns.web_chat also need a service
+        # account (the INTRO_SA_* secrets api/service_account.py reads); they
+        # print a skip message and exit 0 when those secrets are unset.
         if: inputs.run_examples || startsWith(github.ref, 'refs/tags/v')
         working-directory: examples
         env:
           INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
+          INTROSPECTION_API_KEY: ${{ secrets.INTROSPECTION_TOKEN }}
+          INTROSPECTION_SERVICE_ACCOUNT_CLIENT_ID: ${{ secrets.INTRO_SA_CLIENT_ID }}
+          INTROSPECTION_SERVICE_ACCOUNT_CLIENT_SECRET: ${{ secrets.INTRO_SA_CLIENT_SECRET }}
+          INTROSPECTION_PROJECT: ${{ secrets.INTRO_PROJECT }}
           INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL || 'https://api.introspection.dev' }}
         run: |
+          uv run -m introspection_examples.patterns.add_to_your_app
+          uv run -m introspection_examples.patterns.web_chat
           uv run -m introspection_examples.observe.feedback_events
           uv run -m introspection_examples.identity.agents
           uv run -m introspection_examples.identity.sharing

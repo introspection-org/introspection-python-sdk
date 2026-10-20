@@ -55,7 +55,7 @@ def create_session(user_id: str) -> dict[str, str]:
         project=os.environ["INTROSPECTION_PROJECT"],
     )
     runtime = cp.runtimes.resolve(RUNTIME)
-    session = cp.runtimes(runtime.id).run(identity={"user_id": user_id})
+    session = cp.runtimes.handle(runtime.id).run(identity={"user_id": user_id})
     return {
         "token": session.spec.session_token,
         "runtimeId": str(runtime.id),
@@ -87,10 +87,14 @@ def create_federated_session(id_token: str, runtime_id: str) -> dict[str, str]:
 def main() -> None:
     missing = [name for name in REQUIRED_ENV if not os.getenv(name)]
     if missing:
-        sys.exit(
-            f"Set {', '.join(missing)}: a service account's client ID and "
-            "secret, and its project slug."
+        # Not an error: the examples workflow runs this module whether or
+        # not the repository has service-account secrets configured.
+        print(
+            f"skipping: set {', '.join(missing)} (a service account's client "
+            "ID and secret, and its project slug) to run this example",
+            file=sys.stderr,
         )
+        return
 
     session = create_session("user-4821")
     print(
