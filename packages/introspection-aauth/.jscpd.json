@@ -1,14 +1,27 @@
 {
-  "path": ["introspection_aauth"],
+  "path": [
+    "introspection_aauth"
+  ],
   "pattern": "**/*.py",
-  "format": ["python"],
-  "ignore": ["**/.venv/**", "**/__pycache__/**"],
+  "format": [
+    "python"
+  ],
+  "ignore": [
+    "**/.venv/**",
+    "**/__pycache__/**",
+    "**/__init__.py"
+  ],
   "gitignore": true,
   "minTokens": 50,
   "minLines": 5,
   "mode": "weak",
-  "kind": ["exact", "renamed"],
+  "kind": [
+    "exact",
+    "renamed"
+  ],
   "ignoreIdentifiers": true,
   "threshold": 0,
-  "reporters": ["console"]
+  "reporters": [
+    "console"
+  ]
 }
