@@ -19,24 +19,48 @@ whatever proxy delivered it.
 
 from collections.abc import Awaitable
 from http import HTTPStatus
-from typing import Protocol
+from typing import Protocol, TypedDict, TypeVar, Unpack
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from .access_server.models import TokenRequest
 from .access_server.server import AccessServer
 from .person_server.models import (
     AuthTokenRequest,
     MissionAction,
+    MissionAnswer,
+    MissionLogged,
     MissionProposal,
     PersonTokenRequest,
 )
 from .person_server.server import PersonServer
-from .protocol.errors import AAuthError, Answer
+from .protocol.errors import AAuthError, Answer, Problem
 from .protocol.httpsig import SignedRequest
+from .protocol.keys import Jwks
+from .protocol.server import Server
+from .protocol.wire import (
+    AccessServerMetadata,
+    AuthTokenAnswer,
+    Empty,
+    Pending,
+    PersonServerMetadata,
+    PersonTokenAnswer,
+    TokenRequest,
+)
+
+_Found = TypeVar("_Found", bound=Server, covariant=True)
+_Server = TypeVar("_Server", bound=Server)
+_Acting = TypeVar("_Acting", bound=Server, contravariant=True)
+
+
+class _Docs(TypedDict, total=False):
+    summary: str
+    description: str
+    operation_id: str
+    status_code: int
+    response_model: object
+    responses: dict[int | str, dict[str, object]]
 
 
 class PersonServerResolver(Protocol):
@@ -61,10 +85,19 @@ SIGNED = (
     "Signed: the request carries an RFC 9421 signature with `Signature-Key`, "
     "and errors are AAuth problem+json."
 )
+PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
+    "4XX": {
+        "model": Problem,
+        "description": "Refused",
+        "content": {"application/problem+json": {}},
+    },
+}
 PENDING_RESPONSE: dict[int | str, dict[str, object]] = {
     HTTPStatus.ACCEPTED.value: {
-        "description": "Put to whoever decides; poll the `Location` it names"
-    }
+        "model": Pending,
+        "description": "Put to whoever decides; poll the `Location` it names",
+    },
+    **PROBLEM_RESPONSES,
 }
 
 
@@ -80,11 +113,23 @@ def _body(model: type[BaseModel]) -> dict[str, object]:
     }
 
 
-def _respond(answer: Answer) -> JSONResponse:
-    return JSONResponse(answer.body, answer.status, answer.headers)
+def _json(model: BaseModel, cache_control: str | None = None) -> Response:
+    response = Response(
+        model.model_dump_json(exclude_none=True),
+        media_type="application/json",
+    )
+    if cache_control:
+        response.headers["Cache-Control"] = cache_control
+    return response
 
 
-async def _serve(request: Request, base: str, handle: Handler) -> JSONResponse:
+def _respond(answer: Answer) -> Response:
+    headers = dict(answer.headers)
+    media_type = headers.pop("Content-Type", "application/json")
+    return Response(answer.content(), answer.status, headers, media_type)
+
+
+async def _serve(request: Request, base: str, handle: Handler) -> Response:
     path = request.url.path.removeprefix(urlsplit(base).path)
     query = f"?{request.url.query}" if request.url.query else ""
     signed = SignedRequest(
@@ -109,17 +154,21 @@ def _under(router: APIRouter, path: str) -> str:
     return path.removeprefix(router.prefix)
 
 
-def _cached(response: JSONResponse, cache_control: str | None) -> JSONResponse:
-    if cache_control:
-        response.headers["Cache-Control"] = cache_control
-    return response
+class _Resolver(Protocol[_Found]):
+    def __call__(self, request: Request) -> _Found | None: ...
 
 
-def _person(source: "PersonServer | PersonServerResolver"):
-    def find(request: Request) -> PersonServer:
-        server = (
-            source if isinstance(source, PersonServer) else source(request)
-        )
+class _Find(Protocol[_Found]):
+    def __call__(self, request: Request) -> _Found: ...
+
+
+def _fixed(server: _Server) -> _Resolver[_Server]:
+    return lambda request: server
+
+
+def _finder(resolve: _Resolver[_Server]) -> _Find[_Server]:
+    def find(request: Request) -> _Server:
+        server = resolve(request)
         if server is None:
             raise HTTPException(status_code=HTTPStatus.NOT_FOUND)
         return server
@@ -127,16 +176,37 @@ def _person(source: "PersonServer | PersonServerResolver"):
     return find
 
 
-def _access(source: "AccessServer | AccessServerResolver"):
-    def find(request: Request) -> AccessServer:
-        server = (
-            source if isinstance(source, AccessServer) else source(request)
-        )
-        if server is None:
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND)
-        return server
+def _well_known(
+    router: APIRouter,
+    find: _Find[Server],
+    *,
+    role: str,
+    title: str,
+    metadata_model: type[BaseModel],
+    cache_control: str | None,
+) -> APIRouter:
+    """`/.well-known/aauth-{role}.json` and its keys."""
 
-    return find
+    @router.get(
+        f"/.well-known/aauth-{role}.json",
+        summary=f"{title} metadata",
+        description="Its AAuth discovery document: issuer, keys, endpoints.",
+        operation_id=f"aauth_{role}_server_metadata",
+        response_model=metadata_model,
+    )
+    async def metadata(request: Request) -> Response:
+        return _json(find(request).metadata(), cache_control)
+
+    @router.get(
+        f"/.well-known/aauth-{role}-jwks.json",
+        summary=f"{title} signing keys",
+        operation_id=f"aauth_{role}_server_jwks",
+        response_model=Jwks,
+    )
+    async def jwks(request: Request) -> Response:
+        return _json(find(request).jwks(), cache_control)
+
+    return router
 
 
 def _endpoint_path(
@@ -156,27 +226,80 @@ def person_server_well_known_router(
     cache_control: str | None = None,
 ) -> APIRouter:
     """The Person Server's metadata and keys, to mount at the root."""
-    router = APIRouter() if router is None else router
-    find = _person(ps)
-
-    @router.get(
-        "/.well-known/aauth-person.json",
-        summary="Person Server metadata",
-        description="Its AAuth discovery document: issuer, keys, endpoints.",
-        operation_id="aauth_person_server_metadata",
+    return _well_known(
+        APIRouter() if router is None else router,
+        _finder(_fixed(ps) if isinstance(ps, PersonServer) else ps),
+        role="person",
+        title="Person Server",
+        metadata_model=PersonServerMetadata,
+        cache_control=cache_control,
     )
-    async def metadata(request: Request) -> JSONResponse:
-        return _cached(JSONResponse(find(request).metadata()), cache_control)
 
-    @router.get(
-        "/.well-known/aauth-person-jwks.json",
-        summary="Person Server signing keys",
-        operation_id="aauth_person_server_jwks",
+
+class _Act(Protocol[_Acting]):
+    """A server's answer to one signed request, given its path parameters."""
+
+    def __call__(
+        self, server: _Acting, signed: SignedRequest, path: dict[str, str], /
+    ) -> Awaitable[Answer]: ...
+
+
+def _parameters(path: str) -> list[dict[str, object]]:
+    names = [
+        segment.strip("{}").split(":")[0]
+        for segment in path.split("/")
+        if segment.startswith("{")
+    ]
+    return [
+        {
+            "name": n,
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string"},
+        }
+        for n in names
+    ]
+
+
+def _signed_route(
+    router: APIRouter,
+    method: str,
+    path: str,
+    find: _Find[_Server],
+    act: _Act[_Server],
+    *,
+    body: type[BaseModel] | None = None,
+    **docs: Unpack[_Docs],
+) -> None:
+    """A signed protocol route: the server `find` resolves answers it by `act`."""
+    extra: dict[str, object] = _body(body) if body is not None else {}
+    if parameters := _parameters(path):
+        extra["parameters"] = parameters
+
+    async def endpoint(request: Request) -> Response:
+        server = find(request)
+
+        async def handle(signed: SignedRequest) -> Answer:
+            return await act(server, signed, dict(request.path_params))
+
+        return await _serve(request, server.endpoint_base, handle)
+
+    router.add_api_route(
+        path,
+        endpoint,
+        methods=[method],
+        openapi_extra=extra or None,
+        **docs,
     )
-    async def jwks(request: Request) -> JSONResponse:
-        return _cached(JSONResponse(find(request).jwks()), cache_control)
 
-    return router
+
+async def _poll_person_server(
+    server: PersonServer, signed: SignedRequest, path: dict[str, str]
+) -> Answer:
+    parts = server.pending_parts(path["pending_path"])
+    if parts is None:
+        raise AAuthError(404, "not_found", "no such pending request")
+    return await server.poll(signed, *parts)
 
 
 def person_server_router(
@@ -190,74 +313,79 @@ def person_server_router(
     path of its servers' endpoint base."""
     router = APIRouter() if router is None else router
     prefix = _under(router, _endpoint_path(ps, endpoint_path))
-    find = _person(ps)
+    find = _finder(_fixed(ps) if isinstance(ps, PersonServer) else ps)
     if not router.prefix:
         person_server_well_known_router(ps, router)
-
-    @router.post(
+    _signed_route(
+        router,
+        "POST",
         f"{prefix}/mission",
+        find,
+        lambda server, signed, _: server.propose_mission(signed),
+        body=MissionProposal,
         summary="Propose a mission",
         description=f"Always put to an approver, who may set its budget. {SIGNED}",
         operation_id="aauth_person_server_propose_mission",
-        openapi_extra=_body(MissionProposal),
-        responses=PENDING_RESPONSE,
+        status_code=HTTPStatus.ACCEPTED,
+        response_model=Pending,
+        responses=PROBLEM_RESPONSES,
     )
-    async def mission(request: Request) -> JSONResponse:
-        server = find(request)
-        return await _serve(
-            request, server.endpoint_base, server.propose_mission
-        )
-
-    @router.post(
+    _signed_route(
+        router,
+        "POST",
         prefix + "/mission/{s256}",
+        find,
+        lambda server, signed, path: server.mission_action(
+            signed, path["s256"]
+        ),
+        body=MissionAction,
         summary="Log an update, or propose the mission complete",
         description=(
             "`action` is `update` or `completion`; a completion is put to "
             f"the mission's person. {SIGNED}"
         ),
         operation_id="aauth_person_server_mission_action",
-        openapi_extra=_body(MissionAction),
+        response_model=MissionLogged,
         responses=PENDING_RESPONSE,
     )
-    async def mission_action(request: Request, s256: str) -> JSONResponse:
-        server = find(request)
-
-        async def act(signed: SignedRequest) -> Answer:
-            return await server.mission_action(signed, s256)
-
-        return await _serve(request, server.endpoint_base, act)
-
-    @router.post(
+    _signed_route(
+        router,
+        "POST",
         f"{prefix}/person-token",
+        find,
+        lambda server, signed, _: server.person_token(signed),
+        body=PersonTokenRequest,
         summary="Get a person token",
         description=(
             "Who the agent acts for, at one resource, under a mission it "
             f"holds. {SIGNED}"
         ),
         operation_id="aauth_person_server_person_token",
-        openapi_extra=_body(PersonTokenRequest),
+        response_model=PersonTokenAnswer,
+        responses=PROBLEM_RESPONSES,
     )
-    async def person_token(request: Request) -> JSONResponse:
-        server = find(request)
-        return await _serve(request, server.endpoint_base, server.person_token)
-
-    @router.post(
+    _signed_route(
+        router,
+        "POST",
         f"{prefix}/token",
+        find,
+        lambda server, signed, _: server.auth_token(signed),
+        body=AuthTokenRequest,
         summary="Exchange a resource token for an auth token",
         description=(
             "Issued at once within the mission's budget and spent; over what "
             f"is left, put to an approver. {SIGNED}"
         ),
         operation_id="aauth_person_server_auth_token",
-        openapi_extra=_body(AuthTokenRequest),
+        response_model=AuthTokenAnswer,
         responses=PENDING_RESPONSE,
     )
-    async def auth_token(request: Request) -> JSONResponse:
-        server = find(request)
-        return await _serve(request, server.endpoint_base, server.auth_token)
-
-    @router.get(
+    _signed_route(
+        router,
+        "GET",
         prefix + "/pending/{pending_path:path}",
+        find,
+        _poll_person_server,
         summary="Poll a pending request",
         description=(
             "Only the key that asked may read it: `202` while pending, `200` "
@@ -265,19 +393,9 @@ def person_server_router(
             f"expires, `410` once collected. {SIGNED}"
         ),
         operation_id="aauth_person_server_poll",
+        response_model=AuthTokenAnswer | MissionAnswer | Empty,
         responses=PENDING_RESPONSE,
     )
-    async def poll(request: Request, pending_path: str) -> JSONResponse:
-        server = find(request)
-
-        async def read(signed: SignedRequest) -> Answer:
-            parts = server.pending_parts(pending_path)
-            if parts is None:
-                raise AAuthError(404, "not_found", "no such pending request")
-            return await server.poll(signed, *parts)
-
-        return await _serve(request, server.endpoint_base, read)
-
     return router
 
 
@@ -288,27 +406,16 @@ def access_server_well_known_router(
     cache_control: str | None = None,
 ) -> APIRouter:
     """The Access Server's metadata and keys, to mount at the root."""
-    router = APIRouter() if router is None else router
-    find = _access(server)
-
-    @router.get(
-        "/.well-known/aauth-access.json",
-        summary="Access Server metadata",
-        description="Its AAuth discovery document: issuer, keys, token endpoint.",
-        operation_id="aauth_access_server_metadata",
+    return _well_known(
+        APIRouter() if router is None else router,
+        _finder(
+            _fixed(server) if isinstance(server, AccessServer) else server
+        ),
+        role="access",
+        title="Access Server",
+        metadata_model=AccessServerMetadata,
+        cache_control=cache_control,
     )
-    async def metadata(request: Request) -> JSONResponse:
-        return _cached(JSONResponse(find(request).metadata()), cache_control)
-
-    @router.get(
-        "/.well-known/aauth-access-jwks.json",
-        summary="Access Server signing keys",
-        operation_id="aauth_access_server_jwks",
-    )
-    async def jwks(request: Request) -> JSONResponse:
-        return _cached(JSONResponse(find(request).jwks()), cache_control)
-
-    return router
 
 
 def access_server_router(
@@ -317,17 +424,21 @@ def access_server_router(
     *,
     endpoint_path: str | None = None,
 ) -> APIRouter:
-    """The Access Server's protocol routes, and its well-known documents
-    when `router` has no prefix. With a resolver, `endpoint_path` is the
-    path of its servers' endpoint base."""
+    """As `person_server_router`, for an Access Server."""
+    find = _finder(
+        _fixed(server) if isinstance(server, AccessServer) else server
+    )
     router = APIRouter() if router is None else router
-    prefix = _under(router, _endpoint_path(server, endpoint_path))
-    find = _access(server)
     if not router.prefix:
         access_server_well_known_router(server, router)
-
-    @router.post(
+    prefix = _under(router, _endpoint_path(server, endpoint_path))
+    _signed_route(
+        router,
+        "POST",
         f"{prefix}/token",
+        find,
+        lambda found, signed, _: found.token(signed),
+        body=TokenRequest,
         summary="Request an auth token, as a Person Server",
         description=(
             "A Person Server's signed request with the resource, agent and "
@@ -335,25 +446,18 @@ def access_server_router(
             f"policy waits on someone. {SIGNED}"
         ),
         operation_id="aauth_access_server_token",
-        openapi_extra=_body(TokenRequest),
+        response_model=AuthTokenAnswer,
         responses=PENDING_RESPONSE,
     )
-    async def token(request: Request) -> JSONResponse:
-        found = find(request)
-        return await _serve(request, found.endpoint_base, found.token)
-
-    @router.get(
+    _signed_route(
+        router,
+        "GET",
         prefix + "/pending/{pending_id}",
+        find,
+        lambda found, signed, path: found.poll(signed, path["pending_id"]),
         summary="Poll a pending request, as the Person Server that asked",
         operation_id="aauth_access_server_poll",
+        response_model=AuthTokenAnswer,
         responses=PENDING_RESPONSE,
     )
-    async def poll(request: Request, pending_id: str) -> JSONResponse:
-        found = find(request)
-
-        async def read(signed: SignedRequest) -> Answer:
-            return await found.poll(signed, pending_id)
-
-        return await _serve(request, found.endpoint_base, read)
-
     return router

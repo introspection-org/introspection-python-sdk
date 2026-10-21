@@ -1,11 +1,28 @@
 """What an Access Server decides on, and what it keeps while it waits."""
 
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
+from ..protocol.claims import (
+    AgentTokenClaims,
+    AuthGrant,
+    PersonTokenClaims,
+    ResourceTokenClaims,
+)
+from ..protocol.keys import Jwk
 from ..protocol.models import Budget
+
+
+class VerifiedTokens(BaseModel):
+    """The verified claims of the three tokens a Person Server sends."""
+
+    model_config = ConfigDict(frozen=True)
+
+    resource_token: ResourceTokenClaims
+    agent_token: AgentTokenClaims
+    presented_token: PersonTokenClaims
 
 
 class AccessRequest(BaseModel):
@@ -30,7 +47,7 @@ class AccessRequest(BaseModel):
     agent_provider: str
     agent_jkt: str
     #: The verified claims of each token, for anything else a policy reads.
-    claims: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    claims: VerifiedTokens | None = None
 
 
 class Verdict(BaseModel):
@@ -81,10 +98,10 @@ class PendingAccess(BaseModel):
     version: int = 0
     verdict: Verdict
     request: AccessRequest
-    #: The claims the auth token is issued with, once approved.
-    grant: dict[str, Any]
+    #: What the auth token grants, once approved, before the policy narrows it.
+    grant: AuthGrant
     #: The agent's key the auth token binds.
-    jwk: dict[str, Any]
+    jwk: Jwk
     #: The latest the auth token may expire: its agent and presented tokens' `exp`.
     not_after: int
     scope: str | None = None
@@ -92,14 +109,3 @@ class PendingAccess(BaseModel):
     decided_by: str | None = None
     created_at: int
     expires_at: int
-
-
-class TokenRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    resource_token: str
-    agent_token: str
-    presented_token: str
-    budget: Budget | None = None
-    upstream_token: str | None = None
-    subagent_token: str | None = None

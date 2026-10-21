@@ -3,6 +3,7 @@ within and over budget, approvals, completion."""
 
 from urllib.parse import urlsplit
 
+import httpx2 as httpx
 import pytest
 
 from introspection_aauth.person_server import (
@@ -10,24 +11,49 @@ from introspection_aauth.person_server import (
     MemoryStore,
     Mission,
 )
+from introspection_aauth.person_server.models import MissionAnswer
 from introspection_aauth.protocol import AAuthError, SigningKey
-from introspection_aauth.protocol.jwt import AGENT_TOKEN, decode, encode
+from introspection_aauth.protocol.claims import (
+    AgentTokenClaims,
+    AuthTokenClaims,
+    Confirmation,
+    PersonTokenClaims,
+)
+from introspection_aauth.protocol.jwt import AGENT_TOKEN, encode
+from introspection_aauth.protocol.keys import Jwks
+from introspection_aauth.protocol.wire import (
+    AuthTokenAnswer,
+    PersonServerMetadata,
+    PersonTokenAnswer,
+)
 
-from .world import AP, PS, RESOURCE, T0, TENANT, World, usd
+from .world import (
+    AP,
+    PS,
+    RESOURCE,
+    T0,
+    TENANT,
+    World,
+    body,
+    problem,
+    read,
+    usd,
+)
 
 
-def approval_id(response) -> str:
+def approval_id(response: httpx.Response) -> str:
     return urlsplit(response.headers["location"]).path.rsplit("/", 1)[1]
 
 
 async def test_publishes_its_metadata_and_keys():
     world = World()
-    metadata = (
-        await world.http.get(f"{PS}/.well-known/aauth-person.json")
-    ).json()
-    assert metadata["issuer"] == PS
-    assert metadata["auth_token_endpoint"] == f"{PS}/aauth/token"
-    keys = (await world.http.get(metadata["jwks_uri"])).json()
+    metadata = body(
+        await world.http.get(f"{PS}/.well-known/aauth-person.json"),
+        PersonServerMetadata,
+    )
+    assert metadata == world.ps.metadata()
+    assert metadata.auth_token_endpoint == f"{PS}/aauth/token"
+    keys = body(await world.http.get(metadata.jwks_uri), Jwks)
     assert keys == world.ps.jwks()
 
 
@@ -48,9 +74,9 @@ async def test_a_mission_goes_to_a_person_who_sets_its_budget():
     assert waiting.status_code == 202
 
     mission = await world.approved_mission(budget=100_000)
-    blob = decode(mission["person_tokens"][RESOURCE]).claims
-    assert blob["aud"] == RESOURCE and blob["mission_s256"] == mission["s256"]
-    assert blob["tenant"] == TENANT
+    claims = read(mission.person_tokens[RESOURCE], PersonTokenClaims)
+    assert claims.aud == RESOURCE and claims.mission_s256 == mission.s256
+    assert claims.tenant == TENANT
 
 
 async def test_a_call_within_budget_is_issued_unasked_and_spent():
@@ -58,10 +84,10 @@ async def test_a_call_within_budget_is_issued_unasked_and_spent():
     mission = await world.approved_mission(budget=100_000)
     issued = await world.ask(mission, 60_000)
     assert issued.status_code == 200, issued.text
-    claims = decode(issued.json()["auth_token"]).claims
-    assert claims["iss"] == PS and claims["aud"] == RESOURCE
-    assert claims["budget"]["amount"] == 60_000
-    assert await world.spent(mission["s256"]) == 60_000
+    claims = read(body(issued, AuthTokenAnswer).auth_token, AuthTokenClaims)
+    assert claims.iss == PS and claims.aud == RESOURCE
+    assert claims.budget == usd(60_000)
+    assert await world.spent(mission.s256) == 60_000
 
 
 async def test_a_call_over_budget_waits_on_a_person_then_is_issued():
@@ -76,7 +102,7 @@ async def test_a_call_over_budget_waits_on_a_person_then_is_issued():
     )
     issued = await world.follow(over)
     assert issued.status_code == 200, issued.text
-    assert await world.spent(mission["s256"]) == 120_000
+    assert await world.spent(mission.s256) == 120_000
 
 
 async def test_a_declined_call_is_refused():
@@ -88,8 +114,8 @@ async def test_a_declined_call_is_refused():
     )
     refused = await world.follow(over)
     assert refused.status_code == 403
-    assert refused.json()["error"] == "denied"
-    assert await world.spent(mission["s256"]) == 0
+    assert problem(refused).error == "denied"
+    assert await world.spent(mission.s256) == 0
 
 
 async def test_only_the_missions_person_accepts_its_completion():
@@ -97,7 +123,7 @@ async def test_only_the_missions_person_accepts_its_completion():
     mission = await world.approved_mission(budget=1_000)
     done = await world.call(
         "POST",
-        f"{PS}/aauth/mission/{mission['s256']}",
+        f"{PS}/aauth/mission/{mission.s256}",
         {"action": "completion", "summary": "Booked"},
     )
     assert done.status_code == 202
@@ -113,11 +139,11 @@ async def test_only_the_missions_person_accepts_its_completion():
         TENANT, approval_id(done), ApprovalStatus.APPROVED, decided_by="sam"
     )
     assert (await world.follow(done)).status_code == 200
-    stored = await world.ps_store.mission(TENANT, mission["s256"])
+    stored = await world.ps_store.mission(TENANT, mission.s256)
     assert stored is not None and stored.completed_at == world.now
     after = await world.ask(mission, 10)
     assert after.status_code == 403
-    assert after.json()["error"] == "mission_terminated"
+    assert problem(after).error == "mission_terminated"
 
 
 async def test_a_mission_logs_updates():
@@ -125,11 +151,11 @@ async def test_a_mission_logs_updates():
     mission = await world.approved_mission(budget=1_000)
     logged = await world.call(
         "POST",
-        f"{PS}/aauth/mission/{mission['s256']}",
+        f"{PS}/aauth/mission/{mission.s256}",
         {"action": "update", "description": "Found two flights"},
     )
     assert logged.status_code == 200
-    stored = await world.ps_store.mission(TENANT, mission["s256"])
+    stored = await world.ps_store.mission(TENANT, mission.s256)
     assert stored is not None and stored.log[0].entry == "Found two flights"
 
 
@@ -150,7 +176,7 @@ async def test_an_agent_from_an_untrusted_provider_is_refused():
         {"description": "x", "login_hint": "sam"},
     )
     assert refused.status_code == 401
-    assert refused.json()["error"] == "invalid_jwt"
+    assert problem(refused).error == "invalid_jwt"
 
 
 async def test_a_key_acts_for_one_person():
@@ -166,8 +192,10 @@ async def test_a_key_acts_for_one_person():
         "POST", f"{PS}/aauth/person-token", {"resource": RESOURCE}
     )
     assert same.status_code == 200
-    claims = decode(same.json()["person_token"]).claims
-    assert claims["sub"] == world.ps.directed_subject("sam", RESOURCE)
+    claims = read(
+        body(same, PersonTokenAnswer).person_token, PersonTokenClaims
+    )
+    assert claims.sub == world.ps.directed_subject("sam", RESOURCE)
 
 
 async def test_identical_missions_for_two_people_in_one_second_stay_apart():
@@ -177,15 +205,14 @@ async def test_identical_missions_for_two_people_in_one_second_stay_apart():
     # in the same second: the blob must still name a mission of Kim's own.
     world.agent_key = SigningKey.generate()
     world.agent_token = encode(
-        {
-            "iss": AP,
-            "dwk": "aauth-agent.json",
-            "sub": "aauth:travel@agents.example",
-            "jti": "agent-2",
-            "iat": T0,
-            "exp": T0 + 3_600,
-            "cnf": {"jwk": world.agent_key.public_jwk},
-        },
+        AgentTokenClaims(
+            iss=AP,
+            sub="aauth:travel@agents.example",
+            jti="agent-2",
+            iat=T0,
+            exp=T0 + 3_600,
+            cnf=Confirmation(jwk=world.agent_key.public_jwk),
+        ),
         world.ap_key,
         AGENT_TOKEN,
     )
@@ -205,12 +232,12 @@ async def test_identical_missions_for_two_people_in_one_second_stay_apart():
         decided_by="dana",
         budget=usd(100_000),
     )
-    kim = (await world.follow(proposed)).json()
-    assert kim["s256"] != sam["s256"]
-    sam_sub = decode(sam["person_tokens"][RESOURCE]).claims["sub"]
-    kim_sub = decode(kim["person_tokens"][RESOURCE]).claims["sub"]
+    kim = body(await world.follow(proposed), MissionAnswer)
+    assert kim.s256 != sam.s256
+    sam_sub = read(sam.person_tokens[RESOURCE], PersonTokenClaims).sub
+    kim_sub = read(kim.person_tokens[RESOURCE], PersonTokenClaims).sub
     assert kim_sub != sam_sub
-    stored = await world.ps_store.mission(TENANT, kim["s256"])
+    stored = await world.ps_store.mission(TENANT, kim.s256)
     assert stored is not None and stored.person == "kim"
 
 

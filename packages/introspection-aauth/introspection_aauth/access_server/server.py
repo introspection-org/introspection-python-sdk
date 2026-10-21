@@ -5,38 +5,53 @@ having weighed the call against the person's mission, asks it for the auth
 token here, and this server issues it or makes the Person Server wait."""
 
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any, Unpack
+from typing import Protocol, Unpack
 
 import httpx2 as httpx
 
 from ..protocol import jwt
-from ..protocol.errors import AAuthError, Answer, VerificationError
-from ..protocol.httpsig import SignedRequest
-from ..protocol.keys import SigningKey, thumbprint
-from ..protocol.models import Budget
-from ..protocol.server import (
+from ..protocol.claims import (
     ACCESS_DWK,
     PERSON_DWK,
-    RESOURCE_DWK,
+    AgentExpectation,
+    AgentTokenClaims,
+    AuthGrant,
+    AuthTokenClaims,
+    PersonTokenClaims,
+    PresentedExpectation,
+    ResourceTokenClaims,
+    ResourceTokenExpectation,
+)
+from ..protocol.errors import AAuthError, Answer, VerificationError
+from ..protocol.httpsig import SignedRequest
+from ..protocol.keys import SigningKey
+from ..protocol.models import Budget
+from ..protocol.server import (
     Server,
     ServerOptions,
     parse,
     pending,
     verify_agent_token,
+    verify_resource_token,
     verify_server,
 )
+from ..protocol.wire import AccessServerMetadata, AuthTokenAnswer, TokenRequest
 from .models import (
     AccessRequest,
     PendingAccess,
     PendingStatus,
-    TokenRequest,
     Verdict,
+    VerifiedTokens,
 )
 from .store import MemoryStore, Store
 
 Policy = Callable[[AccessRequest], Verdict | Awaitable[Verdict]]
-#: Resource token claims an auth token carries over as they are.
-CARRIED = ("account", "mission_s256", "tenant", "r3_uri", "r3_s256")
+
+
+class PendingHook(Protocol):
+    """Told of each request the policy waits on."""
+
+    def __call__(self, pending: PendingAccess, /) -> Awaitable[None]: ...
 
 
 def _bad(token: str, detail: str) -> AAuthError:
@@ -88,7 +103,7 @@ class AccessServer(Server):
         store: Store | None = None,
         token_ttl: int = jwt.MAX_TOKEN_LIFETIME_SECONDS,
         pending_ttl: int = 86_400,
-        on_pending: Callable[[PendingAccess], Awaitable[None]] | None = None,
+        on_pending: PendingHook | None = None,
         **options: Unpack[ServerOptions],
     ):
         super().__init__(issuer, ACCESS_DWK, signing_key, http, **options)
@@ -101,23 +116,26 @@ class AccessServer(Server):
         self._pending_ttl = pending_ttl
         self._on_pending = on_pending
 
-    def metadata(self) -> dict[str, Any]:
-        return {
-            "issuer": self.issuer,
-            **({"name": self.name} if self.name else {}),
-            "jwks_uri": f"{self.issuer}/.well-known/aauth-access-jwks.json",
-            "auth_token_endpoint": f"{self.endpoint_base}/token",
-        }
+    def metadata(self) -> AccessServerMetadata:
+        return AccessServerMetadata(
+            issuer=self.issuer,
+            name=self.name or None,
+            jwks_uri=f"{self.issuer}/.well-known/aauth-access-jwks.json",
+            auth_token_endpoint=f"{self.endpoint_base}/token",
+        )
 
     def pending_url(self, pending_id: str) -> str:
         return f"{self.endpoint_base}/pending/{pending_id}"
 
     # region verification
-    async def _resource_token(self, token: str, ps: str) -> dict[str, Any]:
+    async def _resource_token(
+        self, token: str, ps: str
+    ) -> ResourceTokenClaims:
         try:
-            resource = str(jwt.decode(token).claims.get("iss", "")).rstrip("/")
+            _, unverified = jwt.peek(token)
         except VerificationError:
             raise _bad("resource", "not a JWT") from None
+        resource = (unverified.iss or "").rstrip("/")
         # Checked before verifying, since verifying fetches its keys.
         if resource not in self._resources:
             raise _bad(
@@ -125,35 +143,23 @@ class AccessServer(Server):
                 f"this Access Server does not decide for {resource}",
             )
         try:
-            rt = await self.discovery.verified(
-                resource,
-                RESOURCE_DWK,
-                lambda keys: jwt.verify(
-                    token, keys, jwt.RESOURCE_TOKEN, self.clock()
-                ),
+            rt = await verify_resource_token(
+                token, self.discovery, resource, self.clock()
             )
         except VerificationError as exc:
             raise _bad("resource", exc.detail) from None
-        if rt.get("dwk") != RESOURCE_DWK or rt.get("aud") != self.issuer:
+        wrong = ResourceTokenExpectation(
+            ps=ps, aud=self.issuer, requires_presented=True
+        ).failures(rt)
+        if wrong:
             raise _bad(
-                "resource", "not a resource token for this Access Server"
-            )
-        if rt.get("ps") != ps:
-            raise _bad(
-                "resource", "its ps is not the Person Server that sent it"
-            )
-        if any(
-            not isinstance(rt.get(c), str) or not rt[c]
-            for c in ("sub", "presented_jti", "agent_jkt")
-        ):
-            raise _bad(
-                "resource", "sub, presented_jti and agent_jkt are required"
+                "resource", f"its {', '.join(wrong)} not for this request"
             )
         return rt
 
     async def _agent_token(
-        self, token: str, rt: dict[str, Any], ps: str
-    ) -> dict[str, Any]:
+        self, token: str, rt: ResourceTokenClaims, ps: str
+    ) -> AgentTokenClaims:
         try:
             claims = await verify_agent_token(
                 token, self.discovery, self._providers, self.clock()
@@ -162,9 +168,12 @@ class AccessServer(Server):
             raise AAuthError(
                 400, "invalid_request", f"agent_token: {exc.detail}"
             ) from None
-        if thumbprint(claims["cnf"]["jwk"]) != rt["agent_jkt"]:
+        wrong = AgentExpectation(agent_jkt=rt.agent_jkt or "", ps=ps).failures(
+            claims
+        )
+        if "cnf" in wrong:
             raise _bad("resource", "agent_jkt is not the agent token's key")
-        if "ps" in claims and str(claims["ps"]).rstrip("/") != ps:
+        if wrong:
             raise AAuthError(
                 400,
                 "invalid_request",
@@ -173,8 +182,8 @@ class AccessServer(Server):
         return claims
 
     async def _presented_token(
-        self, token: str, rt: dict[str, Any], ps: str
-    ) -> dict[str, Any]:
+        self, token: str, rt: ResourceTokenClaims, ps: str
+    ) -> PersonTokenClaims:
         """The person token the resource saw, from the Person Server that sent
         it, matching the resource token exactly. Step-up with an auth token this
         server issued is not served."""
@@ -183,7 +192,11 @@ class AccessServer(Server):
                 ps,
                 PERSON_DWK,
                 lambda keys: jwt.verify(
-                    token, keys, jwt.PERSON_TOKEN, self.clock()
+                    token,
+                    keys,
+                    jwt.PERSON_TOKEN,
+                    self.clock(),
+                    PersonTokenClaims,
                 ),
             )
         except VerificationError as exc:
@@ -193,40 +206,24 @@ class AccessServer(Server):
                 else "invalid_presented_token"
             )
             raise AAuthError(400, code, exc.detail) from None
-        cnf = presented.get("cnf")
-        jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
-        if (
-            presented.get("iss") != ps
-            or presented.get("aud") != rt.get("iss")
-            or not isinstance(jwk, dict)
-            or thumbprint(jwk) != rt["agent_jkt"]
-            or any(
-                presented.get(c) != rt.get(r)
-                for c, r in (
-                    ("jti", "presented_jti"),
-                    ("sub", "sub"),
-                    ("mission_s256", "mission_s256"),
-                    ("tenant", "tenant"),
-                )
+        wrong = PresentedExpectation(ps=ps, rt=rt).failures(presented)
+        if wrong:
+            raise _bad(
+                "resource",
+                f"it does not match the presented token: {', '.join(wrong)}",
             )
-        ):
-            raise _bad("resource", "it does not match the presented token")
         return presented
 
-    async def _summary(self, rt: dict[str, Any]) -> str | None:
-        if not isinstance(rt.get("r3_uri"), str) or not isinstance(
-            rt.get("r3_s256"), str
-        ):
+    async def _summary(self, rt: ResourceTokenClaims) -> str | None:
+        if rt.r3_uri is None or rt.r3_s256 is None:
             return None
         try:
             proposal = await self.identity.read_proposal(
-                self.http, rt["r3_uri"], rt["r3_s256"], self.clock()
+                self.http, rt.r3_uri, rt.r3_s256, self.clock()
             )
         except (httpx.HTTPError, ValueError):
             return None
-        display = proposal.get("display")
-        summary = display.get("summary") if isinstance(display, dict) else None
-        return str(summary) if summary else None
+        return proposal.display.summary if proposal.display else None
 
     # endregion
 
@@ -249,61 +246,50 @@ class AccessServer(Server):
         rt = await self._resource_token(body.resource_token, ps)
         agent = await self._agent_token(body.agent_token, rt, ps)
         presented = await self._presented_token(body.presented_token, rt, ps)
-        rt_budget = (
-            Budget.model_validate(rt["budget"])
-            if rt.get("budget") is not None
-            else None
-        )
-        sent = body.budget
+        sent, asked_budget = body.budget, rt.budget
         if (
             sent is not None
-            and rt_budget is not None
+            and asked_budget is not None
             and (
-                not sent.same_scale(rt_budget)
-                or sent.amount > rt_budget.amount
+                not sent.same_scale(asked_budget)
+                or sent.amount > asked_budget.amount
             )
         ):
             raise AAuthError(
                 400, "invalid_request", "budget is above the resource token's"
             )
+        # Enforced by the resource token's expectation.
+        sub, agent_jkt = rt.sub or "", rt.agent_jkt or ""
         asked = AccessRequest(
-            resource=str(rt["iss"]),
+            resource=rt.iss,
             ps=ps,
-            sub=str(rt["sub"]),
-            tenant=rt.get("tenant"),
-            scope=rt.get("scope"),
-            mission_s256=rt.get("mission_s256"),
-            budget=sent or rt_budget,
+            sub=sub,
+            tenant=rt.tenant,
+            scope=rt.scope,
+            mission_s256=rt.mission_s256,
+            budget=sent or asked_budget,
             summary=await self._summary(rt),
-            agent_id=str(agent["sub"]),
-            agent_provider=str(agent["iss"]),
-            agent_jkt=str(rt["agent_jkt"]),
-            claims={
-                "resource_token": rt,
-                "agent_token": agent,
-                "presented_token": presented,
-            },
+            agent_id=agent.sub,
+            agent_provider=agent.iss,
+            agent_jkt=agent_jkt,
+            claims=VerifiedTokens(
+                resource_token=rt,
+                agent_token=agent,
+                presented_token=presented,
+            ),
         )
         verdict = self.policy(asked)
         verdict = verdict if isinstance(verdict, Verdict) else await verdict
-        grant = {
-            "aud": rt["iss"],
-            "ps": ps,
-            "sub": rt["sub"],
-            **{c: rt[c] for c in CARRIED if c in rt},
-        }
         record = PendingAccess(
             id=self.new_id(),
             verdict=verdict,
             request=asked,
-            grant=grant,
-            jwk=agent["cnf"]["jwk"],
-            not_after=min(int(agent["exp"]), int(presented["exp"])),
+            grant=AuthGrant.requested(rt, sub),
+            jwk=agent.cnf.jwk,
+            not_after=min(agent.exp, presented.exp),
             created_at=self.clock(),
             expires_at=min(
-                self.clock() + self._pending_ttl,
-                int(agent["exp"]),
-                int(presented["exp"]),
+                self.clock() + self._pending_ttl, agent.exp, presented.exp
             ),
         )
         if verdict.decision == "allow":
@@ -340,21 +326,22 @@ class AccessServer(Server):
         """An auth token, for no longer than an hour or the tokens it was asked with."""
         iat = self.clock()
         exp = min(iat + self._token_ttl, record.not_after)
-        token = self.identity.token(
-            {
-                "iss": self.issuer,
-                "dwk": ACCESS_DWK,
-                "jti": self.new_id(),
-                "iat": iat,
-                "exp": exp,
-                **record.grant,
-                **({"scope": scope} if scope else {}),
-                **({"budget": budget.model_dump()} if budget else {}),
-                "cnf": {"jwk": record.jwk},
-            },
-            jwt.AUTH_TOKEN,
+        claims = AuthTokenClaims.issue(
+            record.grant.model_copy(
+                update={"scope": scope or None, "budget": budget}
+            ),
+            iss=self.issuer,
+            dwk=ACCESS_DWK,
+            ps=record.request.ps,
+            jwk=record.jwk,
+            jti=self.new_id(),
+            iat=iat,
+            exp=exp,
         )
-        return Answer(200, {"auth_token": token, "expires_in": exp - iat})
+        token = self.identity.token(claims, jwt.AUTH_TOKEN)
+        return Answer(
+            200, AuthTokenAnswer(auth_token=token, expires_in=exp - iat)
+        )
 
     async def poll(self, request: SignedRequest, pending_id: str) -> Answer:
         """`GET /pending/{id}`: only the Person Server that asked may poll."""

@@ -1,11 +1,13 @@
 """What a Person Server keeps, and the requests it takes."""
 
 from enum import StrEnum
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..protocol.claims import AuthGrant
+from ..protocol.keys import Jwk
 from ..protocol.models import Budget
+from ..protocol.wire import Wire
 
 
 class ApprovalKind(StrEnum):
@@ -80,6 +82,15 @@ class Federation(BaseModel):
         )
 
 
+class MissionGrant(BaseModel):
+    """What a mission approval would grant: the resources it covers. A
+    completion's grant is empty."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    resources: list[str] = Field(default_factory=list)
+
+
 class Approval(BaseModel):
     """A decision this Person Server waits on; the host's app makes it."""
 
@@ -90,7 +101,7 @@ class Approval(BaseModel):
     version: int = 0
     agent_id: str
     agent_jkt: str
-    agent_jwk: dict[str, Any]
+    agent_jwk: Jwk
     person: str
     mission_s256: str | None = None
     #: The mission's description, the request's scope, or the completion summary.
@@ -99,8 +110,10 @@ class Approval(BaseModel):
     summary: str | None = None
     resource: str | None = None
     budget: Budget | None = None
-    #: The claims an approved auth token is issued with.
-    grant: dict[str, Any] = Field(default_factory=dict)
+    #: For an auth token, what it is issued with; for a mission, its resources.
+    grant: AuthGrant | MissionGrant = Field(
+        default_factory=MissionGrant, union_mode="left_to_right"
+    )
     federation: Federation | None = None
     decided_budget: Budget | None = None
     decided_by: str | None = None
@@ -145,3 +158,37 @@ class AuthTokenRequest(BaseModel):
     login_hint: str | None = Field(None, max_length=512)
     upstream_token: str | None = None
     subagent_token: str | None = None
+
+
+class MissionDocument(BaseModel):
+    """The mission as approved: its bytes are what `s256` hashes and what the
+    agent is handed (`#mission`). Its approval makes it, and so its hash, the
+    mission's own; it names no person, since the agent and an audit read it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    agent: str
+    approval: str
+    approved_at: str
+    expires_at: str
+    description: str
+    approved_resources: list[str]
+    budget: Budget | None = None
+
+    def to_json(self) -> str:
+        return self.model_dump_json(exclude_none=True)
+
+
+class MissionAnswer(Wire):
+    """An approved mission: its hash, its bytes and a person token for each
+    resource it covers."""
+
+    s256: str
+    mission: str
+    person_tokens: dict[str, str]
+
+
+class MissionLogged(Wire):
+    """A logged update: the hash of the entry."""
+
+    s256: str

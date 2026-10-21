@@ -5,23 +5,49 @@ R3 proposal, and answer a request that has to wait."""
 import time
 import uuid
 from collections.abc import Sequence
-from typing import Any, NotRequired, Protocol, TypedDict, TypeVar, Unpack
+from typing import NotRequired, Protocol, TypedDict, TypeVar, Unpack
 from urllib.parse import urlsplit
 
 import httpx2 as httpx
 from pydantic import BaseModel, ValidationError
 
 from . import httpsig, jwt
+from .claims import (
+    ACCESS_DWK,
+    AGENT_DWK,
+    PERSON_DWK,
+    RESOURCE_DWK,
+    AgentTokenClaims,
+    Claims,
+    ResourceTokenClaims,
+)
 from .discovery import Discovery
 from .errors import AAuthError, Answer, VerificationError
-from .keys import SigningKey, jwks, s256, thumbprint
+from .keys import Jwks, SigningKey, jwks, s256
 from .models import Agent
+from .wire import Pending, R3Proposal
 
-AGENT_DWK = "aauth-agent.json"
-PERSON_DWK = "aauth-person.json"
-ACCESS_DWK = "aauth-access.json"
-RESOURCE_DWK = "aauth-resource.json"
+__all__ = [
+    "ACCESS_DWK",
+    "AGENT_DWK",
+    "PERSON_DWK",
+    "RESOURCE_DWK",
+    "Clock",
+    "IdFactory",
+    "Identity",
+    "Server",
+    "ServerOptions",
+    "https_origin",
+    "now_seconds",
+    "parse",
+    "pending",
+    "verify_agent",
+    "verify_agent_token",
+    "verify_server",
+]
+
 Model = TypeVar("Model", bound=BaseModel)
+ClaimsModel = TypeVar("ClaimsModel", bound=Claims)
 
 
 def now_seconds() -> int:
@@ -58,7 +84,7 @@ def pending(
     """`202`: poll `location` (`#deferred-responses`)."""
     return Answer(
         202,
-        {"status": "pending"},
+        Pending(),
         {
             "Location": location,
             "Retry-After": str(retry_after),
@@ -86,15 +112,17 @@ class Identity:
         self.key = signing_key
         self.keys = [signing_key, *previous_keys]
 
-    def jwks(self) -> dict[str, Any]:
+    def jwks(self) -> Jwks:
         return jwks(self.keys)
 
-    def token(self, claims: dict[str, Any], typ: str) -> str:
+    def token(self, claims: Claims, typ: str) -> str:
         return jwt.encode(claims, self.key, typ)
 
-    def verify_own(self, token: str, typ: str, now: int) -> dict[str, Any]:
-        claims = jwt.verify(token, self.jwks(), typ, now)
-        if claims.get("iss") != self.issuer:
+    def verify_own(
+        self, token: str, typ: str, now: int, model: type[ClaimsModel]
+    ) -> ClaimsModel:
+        claims = jwt.verify(token, self.jwks(), typ, now, model)
+        if claims.iss != self.issuer:
             raise VerificationError("invalid_jwt", "not issued here")
         return claims
 
@@ -107,7 +135,7 @@ class Identity:
 
     async def read_proposal(
         self, http: httpx.AsyncClient, r3_uri: str, r3_s256: str, now: int
-    ) -> dict[str, Any]:
+    ) -> R3Proposal:
         """A resource's R3 proposal, fetched signed and checked against its hash."""
         response = await http.get(
             r3_uri, headers=self.signed("GET", r3_uri, None, now)
@@ -115,8 +143,7 @@ class Identity:
         response.raise_for_status()
         if s256(response.content) != r3_s256:
             raise ValueError("the proposal does not match its hash")
-        document = response.json()
-        return document if isinstance(document, dict) else {}
+        return R3Proposal.model_validate_json(response.content)
 
 
 def new_hex_id() -> str:
@@ -173,40 +200,44 @@ class Server:
         self.new_id: IdFactory = options.get("new_id", new_hex_id)
         self.name = options.get("name")
 
-    def jwks(self) -> dict[str, Any]:
+    def jwks(self) -> Jwks:
         return self.identity.jwks()
+
+    def metadata(self) -> BaseModel:
+        """Its `/.well-known` metadata document."""
+        raise NotImplementedError
+
+
+async def verify_resource_token(
+    token: str, discovery: Discovery, resource: str, now: int
+) -> ResourceTokenClaims:
+    """A resource token, against its resource's keys (`#resource-token`)."""
+    return await discovery.verified(
+        resource,
+        RESOURCE_DWK,
+        lambda keys: jwt.verify(
+            token, keys, jwt.RESOURCE_TOKEN, now, ResourceTokenClaims
+        ),
+    )
 
 
 async def verify_agent_token(
     token: str, discovery: Discovery, providers: set[str], now: int
-) -> dict[str, Any]:
+) -> AgentTokenClaims:
     """An agent token from a trusted agent provider (`#agent-token`)."""
-    provider = str(jwt.decode(token).claims.get("iss", "")).rstrip("/")
+    _, unverified = jwt.peek(token)
+    provider = (unverified.iss or "").rstrip("/")
     if provider not in providers:
         raise VerificationError(
             "invalid_jwt", "its agent provider is not trusted here"
         )
-    claims = await discovery.verified(
+    return await discovery.verified(
         provider,
         AGENT_DWK,
         lambda keys: jwt.verify(
-            token,
-            keys,
-            jwt.AGENT_TOKEN,
-            now,
-            max_lifetime=jwt.MAX_TOKEN_LIFETIME_SECONDS,
+            token, keys, jwt.AGENT_TOKEN, now, AgentTokenClaims
         ),
     )
-    cnf = claims.get("cnf")
-    if claims.get("dwk") != AGENT_DWK or not isinstance(
-        claims.get("sub"), str
-    ):
-        raise VerificationError("invalid_jwt", "not an agent token")
-    if not isinstance(cnf, dict) or not isinstance(cnf.get("jwk"), dict):
-        raise VerificationError(
-            "invalid_jwt", "the agent token has no cnf.jwk"
-        )
-    return claims
 
 
 async def verify_agent(
@@ -223,7 +254,7 @@ async def verify_agent(
         claims = await verify_agent_token(
             verified.token, discovery, providers, now
         )
-        if thumbprint(claims["cnf"]["jwk"]) != verified.thumbprint:
+        if claims.cnf.thumbprint != verified.thumbprint:
             raise VerificationError(
                 "invalid_signature", "not signed by the token's key"
             )
@@ -235,14 +266,12 @@ async def verify_agent(
         )
         raise AAuthError(401, exc.code, exc.detail, headers) from None
     return Agent(
-        id=claims["sub"],
-        provider=str(claims["iss"]).rstrip("/"),
+        id=claims.sub,
+        provider=claims.iss.rstrip("/"),
         jkt=verified.thumbprint,
-        jwk=claims["cnf"]["jwk"],
-        expires_at=int(claims["exp"]),
-        person_server=str(claims["ps"]).rstrip("/")
-        if "ps" in claims
-        else None,
+        jwk=claims.cnf.jwk,
+        expires_at=claims.exp,
+        person_server=claims.ps.rstrip("/") if claims.ps else None,
         token=verified.token,
     )
 

@@ -1,8 +1,8 @@
 """Values both servers exchange."""
 
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field
+
+from .keys import Jwk
 
 #: draft-hardt-aauth-budgets caps an amount at 15 digits.
 MAX_BUDGET_AMOUNT = 999_999_999_999_999
@@ -32,7 +32,7 @@ class Agent(BaseModel):
     provider: str
     #: RFC 7638 thumbprint of the key it signs with.
     jkt: str
-    jwk: dict[str, Any]
+    jwk: Jwk
     expires_at: int
     #: The Person Server its agent token names, when it names one.
     person_server: str | None = None

@@ -6,31 +6,46 @@ returns an `Answer`, or raises `AAuthError`."""
 import asyncio
 import hashlib
 import hmac
-import json
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Sequence
 from datetime import UTC, datetime
-from typing import Any, Unpack
+from typing import Protocol, Unpack
 from urllib.parse import quote, unquote
 
 import httpx2 as httpx
 
 from ..protocol import jwt
+from ..protocol.claims import (
+    PERSON_DWK,
+    RESOURCE_DWK,
+    AuthGrant,
+    AuthTokenClaims,
+    Confirmation,
+    PersonTokenClaims,
+    PresentedExpectation,
+    ResourceTokenClaims,
+    ResourceTokenExpectation,
+)
 from ..protocol.errors import AAuthError, Answer, VerificationError
 from ..protocol.httpsig import SignedRequest
 from ..protocol.keys import SigningKey, b64url, s256
 from ..protocol.models import Agent, Budget
 from ..protocol.server import (
-    PERSON_DWK,
-    RESOURCE_DWK,
     Server,
     ServerOptions,
     https_origin,
     parse,
     pending,
     verify_agent,
+    verify_resource_token,
 )
-from .federation import run
+from ..protocol.wire import (
+    AuthTokenAnswer,
+    Empty,
+    PersonServerMetadata,
+    PersonTokenAnswer,
+)
+from .federation import Step, run
 from .models import (
     Approval,
     ApprovalKind,
@@ -40,6 +55,10 @@ from .models import (
     LogEntry,
     Mission,
     MissionAction,
+    MissionAnswer,
+    MissionDocument,
+    MissionGrant,
+    MissionLogged,
     MissionProposal,
     PersonTokenRequest,
 )
@@ -47,20 +66,14 @@ from .store import AnyoneDirectory, Directory, Store
 
 logger = logging.getLogger(__name__)
 
-Hook = Callable[[str, Approval], Awaitable[None]]
 
+class Hook(Protocol):
+    """Told of an approval in `tenant`: one a person must decide, or one
+    its resource's Access Server must."""
 
-def _budget(claims: dict[str, Any]) -> Budget | None:
-    try:
-        return (
-            Budget.model_validate(claims["budget"])
-            if claims.get("budget") is not None
-            else None
-        )
-    except ValueError:
-        raise AAuthError(
-            400, "invalid_resource_token", "budget is not a budget object"
-        ) from None
+    def __call__(
+        self, tenant: str, approval: Approval, /
+    ) -> Awaitable[None]: ...
 
 
 def _fits(mission: Mission, budget: Budget | None) -> bool:
@@ -110,19 +123,19 @@ class PersonServer(Server):
         self._token_ttl, self._mission_ttl = token_ttl, mission_ttl
         self._approval_ttl = approval_ttl
         self._on_approval, self._on_federate = on_approval, on_federate
-        self._running: set[asyncio.Task[Any]] = set()
+        self._running: set[asyncio.Task[Step | None]] = set()
 
     # region documents
-    def metadata(self) -> dict[str, Any]:
-        return {
-            "issuer": self.issuer,
-            **({"name": self.name} if self.name else {}),
-            "jwks_uri": f"{self.issuer}/.well-known/aauth-person-jwks.json",
-            "person_token_endpoint": f"{self.endpoint_base}/person-token",
-            "auth_token_endpoint": f"{self.endpoint_base}/token",
-            "mission_endpoint": f"{self.endpoint_base}/mission",
-            "claims_supported": ["sub", "tenant"],
-        }
+    def metadata(self) -> PersonServerMetadata:
+        return PersonServerMetadata(
+            issuer=self.issuer,
+            name=self.name,
+            jwks_uri=f"{self.issuer}/.well-known/aauth-person-jwks.json",
+            person_token_endpoint=f"{self.endpoint_base}/person-token",
+            auth_token_endpoint=f"{self.endpoint_base}/token",
+            mission_endpoint=f"{self.endpoint_base}/mission",
+            claims_supported=["sub", "tenant"],
+        )
 
     def pending_url(self, tenant: str, approval_id: str) -> str:
         return f"{self.endpoint_base}/pending/{quote(tenant, safe='')}/{approval_id}"
@@ -189,24 +202,6 @@ class PersonServer(Server):
             hmac.new(self._subject_secret, message, hashlib.sha256).digest()
         )
 
-    def _issue(
-        self, typ: str, claims: dict[str, Any], expires_at: int, tenant: str
-    ) -> tuple[str, int]:
-        now = self.clock()
-        token = self.identity.token(
-            {
-                "iss": self.issuer,
-                "dwk": PERSON_DWK,
-                "tenant": tenant,
-                "jti": self.new_id(),
-                "iat": now,
-                "exp": expires_at,
-                **claims,
-            },
-            typ,
-        )
-        return token, expires_at - now
-
     def _expiry(self, agent: Agent, not_after: int | None = None) -> int:
         bounds = [self.clock() + self._token_ttl, agent.expires_at]
         return min([*bounds, not_after] if not_after is not None else bounds)
@@ -218,39 +213,53 @@ class PersonServer(Server):
         person: str,
         resource: str,
         mission: Mission | None,
-    ) -> dict[str, Any]:
-        token, expires_in = self._issue(
-            jwt.PERSON_TOKEN,
-            {
-                "aud": resource,
-                "sub": self.directed_subject(person, resource),
-                "cnf": {"jwk": agent.jwk},
-                **({"mission_s256": mission.s256} if mission else {}),
-            },
-            self._expiry(agent, mission.expires_at if mission else None),
-            tenant,
+    ) -> PersonTokenAnswer:
+        now = self.clock()
+        expires_at = self._expiry(
+            agent, mission.expires_at if mission else None
         )
-        return {"person_token": token, "expires_in": expires_in}
+        claims = PersonTokenClaims(
+            iss=self.issuer,
+            dwk=PERSON_DWK,
+            jti=self.new_id(),
+            iat=now,
+            exp=expires_at,
+            aud=resource,
+            sub=self.directed_subject(person, resource),
+            cnf=Confirmation(jwk=agent.jwk),
+            tenant=tenant,
+            mission_s256=mission.s256 if mission else None,
+        )
+        return PersonTokenAnswer(
+            person_token=self.identity.token(claims, jwt.PERSON_TOKEN),
+            expires_in=expires_at - now,
+        )
 
     def _auth_token(
         self,
         tenant: str,
         agent: Agent,
-        grant: dict[str, Any],
+        grant: AuthGrant,
         mission: Mission,
-    ) -> dict[str, Any]:
-        token, expires_in = self._issue(
-            jwt.AUTH_TOKEN,
-            {
-                "ps": self.issuer,
-                "cnf": {"jwk": agent.jwk},
-                "mission_s256": mission.s256,
-                **grant,
-            },
-            self._expiry(agent, mission.expires_at),
-            tenant,
+    ) -> AuthTokenAnswer:
+        now = self.clock()
+        expires_at = self._expiry(agent, mission.expires_at)
+        claims = AuthTokenClaims.issue(
+            grant.model_copy(
+                update={"tenant": tenant, "mission_s256": mission.s256}
+            ),
+            iss=self.issuer,
+            dwk=PERSON_DWK,
+            ps=self.issuer,
+            jwk=agent.jwk,
+            jti=self.new_id(),
+            iat=now,
+            exp=expires_at,
         )
-        return {"auth_token": token, "expires_in": expires_in}
+        return AuthTokenAnswer(
+            auth_token=self.identity.token(claims, jwt.AUTH_TOKEN),
+            expires_in=expires_at - now,
+        )
 
     # endregion
 
@@ -279,7 +288,7 @@ class PersonServer(Server):
             agent,
             person,
             proposal.description,
-            grant={"resources": resources},
+            grant=MissionGrant(resources=resources),
         )
         await self.store.put_approval(tenant, approval)
         return await self._ask(tenant, approval)
@@ -305,7 +314,7 @@ class PersonServer(Server):
                 raise AAuthError(
                     403, "mission_terminated", "the mission has ended"
                 )
-            return Answer(200, {"s256": s256(entry.encode())})
+            return Answer(200, MissionLogged(s256=s256(entry.encode())))
         if action.action != "completion":
             raise AAuthError(
                 400, "invalid_request", "action is update or completion"
@@ -345,11 +354,11 @@ class PersonServer(Server):
     # endregion
 
     # region auth tokens
-    def _presented(self, token: str) -> dict[str, Any]:
+    def _presented(self, token: str) -> PersonTokenClaims:
         """The presented person token; an expired one is refused before anything is federated."""
         try:
             return self.identity.verify_own(
-                token, jwt.PERSON_TOKEN, self.clock()
+                token, jwt.PERSON_TOKEN, self.clock(), PersonTokenClaims
             )
         except VerificationError as exc:
             code = (
@@ -363,38 +372,34 @@ class PersonServer(Server):
 
     async def _resource_token(
         self, token: str, tenant: str, agent: Agent
-    ) -> tuple[dict[str, Any], Mission]:
+    ) -> tuple[ResourceTokenClaims, Mission]:
         """The resource token, verified against its resource's keys, and the
         live mission it falls under; only a mission's resources are fetched."""
         try:
-            decoded = jwt.decode(token)
+            header, unverified = jwt.peek(token)
         except VerificationError:
             raise AAuthError(
                 400, "invalid_resource_token", "not a JWT"
             ) from None
-        unverified = decoded.claims
-        if (
-            decoded.header.get("typ") != jwt.RESOURCE_TOKEN
-            or unverified.get("dwk") != RESOURCE_DWK
-        ):
+        if header.typ != jwt.RESOURCE_TOKEN or unverified.dwk != RESOURCE_DWK:
             raise AAuthError(
                 400, "invalid_resource_token", "not a resource token"
             )
-        if unverified.get("tenant") != tenant:
+        if unverified.tenant != tenant:
             raise AAuthError(
                 400, "invalid_resource_token", "tenant does not match"
             )
-        if not isinstance(unverified.get("mission_s256"), str):
+        if unverified.mission_s256 is None:
             raise AAuthError(
                 403,
                 "access_denied",
                 "an auth token is issued only within a mission",
             )
         mission = self._live(
-            await self.store.mission(tenant, unverified["mission_s256"]),
+            await self.store.mission(tenant, unverified.mission_s256),
             agent.id,
         )
-        resource = str(unverified.get("iss", "")).rstrip("/")
+        resource = (unverified.iss or "").rstrip("/")
         if resource not in mission.resources:
             raise AAuthError(
                 403,
@@ -402,39 +407,35 @@ class PersonServer(Server):
                 "this mission does not cover that resource",
             )
         try:
-            rt = await self.discovery.verified(
-                resource,
-                RESOURCE_DWK,
-                lambda keys: jwt.verify(
-                    token, keys, jwt.RESOURCE_TOKEN, self.clock()
-                ),
+            rt = await verify_resource_token(
+                token, self.discovery, resource, self.clock()
             )
         except VerificationError as exc:
             raise AAuthError(
                 400, "invalid_resource_token", f"does not verify: {exc.detail}"
             ) from None
-        if str(rt.get("ps", "")).rstrip("/") != self.issuer:
+        wrong = ResourceTokenExpectation(
+            ps=self.issuer, agent_jkt=agent.jkt
+        ).failures(rt)
+        if wrong:
             raise AAuthError(
-                400, "invalid_resource_token", "not for this Person Server"
-            )
-        if rt.get("agent_jkt") != agent.jkt:
-            raise AAuthError(
-                400, "invalid_resource_token", "agent_jkt is not the signer"
+                400,
+                "invalid_resource_token",
+                f"its {', '.join(wrong)} not this request's",
             )
         return rt, mission
 
-    def _access_server(self, rt: dict[str, Any]) -> str | None:
+    def _access_server(self, rt: ResourceTokenClaims) -> str | None:
         """The resource's own Access Server, when `aud` is not this Person Server."""
-        audience = rt.get("aud")
-        if audience == self.issuer:
+        if rt.aud == self.issuer:
             return None
-        if not https_origin(audience):
+        if not https_origin(rt.aud):
             raise AAuthError(
                 400,
                 "invalid_resource_token",
                 "aud is neither this Person Server nor an Access Server",
             )
-        return str(audience).rstrip("/")
+        return rt.aud.rstrip("/")
 
     async def auth_token(self, request: SignedRequest) -> Answer:
         """`POST /token`: a call to a resource, weighed against the mission's budget."""
@@ -442,32 +443,24 @@ class PersonServer(Server):
         body = parse(AuthTokenRequest, request.body)
         tenant = self._tenant(body.tenant)
         presented = self._presented(body.presented_token)
-        if presented.get("tenant") != tenant:
+        if presented.tenant != tenant:
             raise AAuthError(
                 400, "invalid_resource_token", "tenant does not match"
             )
         rt, mission = await self._resource_token(
             body.resource_token, tenant, agent
         )
-        resource = str(rt["iss"]).rstrip("/")
-        if (
-            presented.get("jti") != rt.get("presented_jti")
-            or presented.get("sub") != rt.get("sub")
-            or presented.get("mission_s256") != rt.get("mission_s256")
-            or presented.get("aud") != resource
-        ):
+        resource = rt.iss.rstrip("/")
+        if PresentedExpectation(ps=self.issuer, rt=rt).failures(presented):
             raise AAuthError(
                 400,
                 "invalid_resource_token",
                 "does not match the presented token",
             )
-        budget = _budget(rt)
-        grant = {
-            "aud": resource,
-            "sub": rt["sub"],
-            **{k: rt[k] for k in ("scope", "r3_uri", "r3_s256") if k in rt},
-            **({"budget": budget.model_dump()} if budget else {}),
-        }
+        if rt.sub is None:
+            raise AAuthError(400, "invalid_resource_token", "sub is required")
+        budget = rt.budget
+        grant = AuthGrant.requested(rt, rt.sub)
         access_server = self._access_server(rt)
         if access_server is not None:
             if (
@@ -504,7 +497,7 @@ class PersonServer(Server):
             ApprovalKind.AUTH_TOKEN,
             agent,
             mission.person,
-            str(rt.get("scope") or "a request"),
+            rt.scope or "a request",
             mission_s256=mission.s256,
             resource=resource,
             budget=budget,
@@ -518,7 +511,7 @@ class PersonServer(Server):
         tenant: str,
         agent: Agent,
         mission: Mission,
-        grant: dict[str, Any],
+        grant: AuthGrant,
         federation: Federation,
     ) -> Answer:
         """The mission and budget are weighed first, as for any resource: a
@@ -528,9 +521,9 @@ class PersonServer(Server):
             ApprovalKind.AUTH_TOKEN,
             agent,
             mission.person,
-            str(grant.get("scope") or "a request"),
+            grant.scope or "a request",
             mission_s256=mission.s256,
-            resource=grant["aud"],
+            resource=grant.aud,
             budget=federation.budget,
             grant=grant,
             federation=federation,
@@ -557,7 +550,12 @@ class PersonServer(Server):
         agent: Agent,
         person: str,
         description: str,
-        **fields: Any,
+        *,
+        mission_s256: str | None = None,
+        resource: str | None = None,
+        budget: Budget | None = None,
+        grant: AuthGrant | MissionGrant | None = None,
+        federation: Federation | None = None,
     ) -> Approval:
         now = self.clock()
         return Approval(
@@ -568,9 +566,13 @@ class PersonServer(Server):
             agent_jwk=agent.jwk,
             person=person,
             description=description,
+            mission_s256=mission_s256,
+            resource=resource,
+            budget=budget,
+            grant=grant or MissionGrant(),
+            federation=federation,
             expires_at=now + self._approval_ttl,
             created_at=now,
-            **fields,
         )
 
     async def _ask(self, tenant: str, approval: Approval) -> Answer:
@@ -608,25 +610,29 @@ class PersonServer(Server):
                 tenant, agent, approval, federation, mission
             )
         if approval.kind is ApprovalKind.COMPLETION:
-            return Answer(200, {})
+            return Answer(200, Empty())
         if mission is None:
             raise AAuthError(404, "mission_not_found", "no such mission")
         if approval.kind is ApprovalKind.MISSION:
             person_tokens = {
                 r: self._person_token(
                     tenant, agent, mission.person, r, mission
-                )["person_token"]
+                ).person_token
                 for r in mission.resources
             }
             return Answer(
                 200,
-                {
-                    "s256": mission.s256,
-                    "mission": b64url(mission.mission.encode()),
-                    "person_tokens": person_tokens,
-                },
+                MissionAnswer(
+                    s256=mission.s256,
+                    mission=b64url(mission.mission.encode()),
+                    person_tokens=person_tokens,
+                ),
             )
         self._live(mission, agent.id)
+        if not isinstance(approval.grant, AuthGrant):
+            raise AAuthError(
+                500, "server_error", "the approval grants nothing"
+            )
         return Answer(
             200, self._auth_token(tenant, agent, approval.grant, mission)
         )
@@ -683,7 +689,9 @@ class PersonServer(Server):
             )
         return Answer(
             200,
-            {"auth_token": federation.auth_token, "expires_in": expires_in},
+            AuthTokenAnswer(
+                auth_token=federation.auth_token, expires_in=expires_in
+            ),
         )
 
     async def decide(
@@ -797,26 +805,20 @@ class PersonServer(Server):
     ) -> str | None:
         if approval.kind is ApprovalKind.MISSION:
             expires_at = now + self._mission_ttl
-            resources = list(approval.grant.get("resources", []))
-            # The approval and the person make the blob, and so its `s256`, the
-            # mission's own: two alike approvals in one second must not share it.
-            blob = json.dumps(
-                {
-                    "agent": approval.agent_id,
-                    "approval": approval.id,
-                    "person": approval.person,
-                    "approved_at": datetime.fromtimestamp(
-                        now, UTC
-                    ).isoformat(),
-                    "expires_at": datetime.fromtimestamp(
-                        expires_at, UTC
-                    ).isoformat(),
-                    "description": approval.description,
-                    "approved_resources": resources,
-                    **({"budget": budget.model_dump()} if budget else {}),
-                },
-                separators=(",", ":"),
+            resources = (
+                list(approval.grant.resources)
+                if isinstance(approval.grant, MissionGrant)
+                else []
             )
+            blob = MissionDocument(
+                agent=approval.agent_id,
+                approval=approval.id,
+                approved_at=datetime.fromtimestamp(now, UTC).isoformat(),
+                expires_at=datetime.fromtimestamp(expires_at, UTC).isoformat(),
+                description=approval.description,
+                approved_resources=resources,
+                budget=budget,
+            ).to_json()
             mission = Mission(
                 s256=s256(blob.encode()),
                 mission=blob,
@@ -877,23 +879,23 @@ class PersonServer(Server):
     async def describe(self, tenant: str, approval_id: str) -> Approval | None:
         """Read a call's R3 proposal into its approval's `summary`, for whoever decides."""
         approval = await self.store.approval(tenant, approval_id)
-        if approval is None or not isinstance(
-            approval.grant.get("r3_uri"), str
+        grant = approval.grant if approval is not None else None
+        if (
+            approval is None
+            or not isinstance(grant, AuthGrant)
+            or grant.r3_uri is None
+            or grant.r3_s256 is None
         ):
             return approval
         proposal = await self.identity.read_proposal(
-            self.http,
-            approval.grant["r3_uri"],
-            str(approval.grant.get("r3_s256")),
-            self.clock(),
+            self.http, grant.r3_uri, grant.r3_s256, self.clock()
         )
-        display = proposal.get("display")
-        summary = display.get("summary") if isinstance(display, dict) else None
+        summary = proposal.display.summary if proposal.display else None
         if not summary:
             return approval
         changed = approval.model_copy(
             update={
-                "summary": str(summary)[:2_000],
+                "summary": summary[:2_000],
                 "version": approval.version + 1,
             }
         )

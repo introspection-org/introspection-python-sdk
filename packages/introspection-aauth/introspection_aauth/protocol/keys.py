@@ -8,7 +8,6 @@ import base64
 import hashlib
 import json
 from collections.abc import Sequence
-from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -20,6 +19,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from cryptography.hazmat.primitives.asymmetric.utils import (
     encode_dss_signature,
 )
+from pydantic import BaseModel, ConfigDict
 
 from .errors import VerificationError
 
@@ -34,50 +34,75 @@ def b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
+class Jwk(BaseModel):
+    """A public JSON Web Key (RFC 7517), as AAuth's keys are: OKP or EC."""
+
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    kty: str
+    crv: str | None = None
+    x: str | None = None
+    y: str | None = None
+    alg: str | None = None
+    kid: str | None = None
+    use: str | None = None
+
+
+class Jwks(BaseModel):
+    """A JSON Web Key Set."""
+
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    keys: list[Jwk]
+
+
 def s256(data: bytes) -> str:
     """The base64url SHA-256 of `data`, as AAuth hashes missions and proposals."""
     return b64url(hashlib.sha256(data).digest())
 
 
-def thumbprint(jwk: dict[str, Any]) -> str:
+def thumbprint(jwk: Jwk) -> str:
     """RFC 7638 thumbprint of an OKP or EC public key."""
-    members = {"OKP": ("crv", "kty", "x"), "EC": ("crv", "kty", "x", "y")}
-    names = members.get(jwk.get("kty", ""))
-    if names is None or any(not isinstance(jwk.get(n), str) for n in names):
+    if jwk.kty == "OKP" and jwk.crv and jwk.x:
+        members = {"crv": jwk.crv, "kty": jwk.kty, "x": jwk.x}
+    elif jwk.kty == "EC" and jwk.crv and jwk.x and jwk.y:
+        members = {"crv": jwk.crv, "kty": jwk.kty, "x": jwk.x, "y": jwk.y}
+    else:
         raise VerificationError("invalid_key", "not an OKP or EC public key")
-    canonical = json.dumps(
-        {n: jwk[n] for n in names}, separators=(",", ":"), sort_keys=True
-    )
+    canonical = json.dumps(members, separators=(",", ":"), sort_keys=True)
     return s256(canonical.encode())
 
 
-def algorithm(jwk: dict[str, Any]) -> str:
+def algorithm(jwk: Jwk) -> str:
     """The key's algorithm, from its `alg`, which must match its type."""
-    alg = jwk.get("alg")
-    if alg not in ALGORITHMS:
+    alg = jwk.alg
+    if alg is None or alg not in ALGORITHMS:
         raise VerificationError(
             "unsupported_algorithm", "the key's alg is not Ed25519 or ES256"
         )
-    if (jwk.get("kty"), jwk.get("crv")) != ALGORITHMS[alg]:
+    if (jwk.kty, jwk.crv) != ALGORITHMS[alg]:
         raise VerificationError(
             "invalid_key", "the key's type is not its alg's"
         )
     return alg
 
 
-def verify(jwk: dict[str, Any], data: bytes, signature: bytes) -> bool:
+def verify(jwk: Jwk, data: bytes, signature: bytes) -> bool:
     """Whether `jwk` made `signature` over `data`."""
     try:
-        if algorithm(jwk) == "Ed25519":
-            Ed25519PublicKey.from_public_bytes(b64url_decode(jwk["x"])).verify(
+        alg = algorithm(jwk)
+        if jwk.x is None:
+            return False
+        if alg == "Ed25519":
+            Ed25519PublicKey.from_public_bytes(b64url_decode(jwk.x)).verify(
                 signature, data
             )
             return True
-        if len(signature) != 64:
+        if len(signature) != 64 or jwk.y is None:
             return False
         public = ec.EllipticCurvePublicNumbers(
-            int.from_bytes(b64url_decode(jwk["x"]), "big"),
-            int.from_bytes(b64url_decode(jwk["y"]), "big"),
+            int.from_bytes(b64url_decode(jwk.x), "big"),
+            int.from_bytes(b64url_decode(jwk.y), "big"),
             ec.SECP256R1(),
         ).public_key()
         der = encode_dss_signature(
@@ -98,14 +123,15 @@ class SigningKey:
         raw = private_key.public_key().public_bytes(
             serialization.Encoding.Raw, serialization.PublicFormat.Raw
         )
-        public = {"kty": "OKP", "crv": "Ed25519", "x": b64url(raw)}
-        self.kid = thumbprint(public)
-        self.public_jwk = {
-            **public,
-            "alg": "Ed25519",
-            "kid": self.kid,
-            "use": "sig",
-        }
+        self.kid = thumbprint(Jwk(kty="OKP", crv="Ed25519", x=b64url(raw)))
+        self.public_jwk = Jwk(
+            kty="OKP",
+            crv="Ed25519",
+            x=b64url(raw),
+            alg="Ed25519",
+            kid=self.kid,
+            use="sig",
+        )
 
     @classmethod
     def generate(cls) -> "SigningKey":
@@ -128,6 +154,6 @@ class SigningKey:
         return self._private.sign(data)
 
 
-def jwks(keys: Sequence[SigningKey]) -> dict[str, Any]:
+def jwks(keys: Sequence[SigningKey]) -> Jwks:
     """A JWKS publishing `keys`: the current key and any previous ones."""
-    return {"keys": [k.public_jwk for k in keys]}
+    return Jwks(keys=[k.public_jwk for k in keys])

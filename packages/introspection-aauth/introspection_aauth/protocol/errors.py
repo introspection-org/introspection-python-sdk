@@ -2,16 +2,31 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
+
+class Problem(BaseModel):
+    """`application/problem+json` (`#error-responses`)."""
+
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    error: str
+    detail: str | None = None
 
 
 @dataclass(frozen=True)
 class Answer:
-    """What a protocol request is answered with, for any web framework."""
+    """What a protocol request is answered with, for any web framework: its
+    status, its body, serialised with members that are None left out, and
+    its headers."""
 
     status: int
-    body: dict[str, Any]
+    body: BaseModel
     headers: dict[str, str] = field(default_factory=dict)
+
+    def content(self) -> bytes:
+        return self.body.model_dump_json(exclude_none=True).encode()
 
 
 class AAuthError(Exception):
@@ -31,12 +46,9 @@ class AAuthError(Exception):
         self.headers = dict(headers or {})
 
     def answer(self) -> Answer:
-        body: dict[str, Any] = {"error": self.error}
-        if self.detail:
-            body["detail"] = self.detail
         return Answer(
             self.status,
-            body,
+            Problem(error=self.error, detail=self.detail or None),
             {"Content-Type": "application/problem+json", **self.headers},
         )
 

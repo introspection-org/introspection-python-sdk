@@ -3,18 +3,33 @@ call against the mission, then redeems it at the resource's Access Server."""
 
 from urllib.parse import urlsplit
 
-from introspection_aauth.access_server import Verdict
-from introspection_aauth.person_server import ApprovalStatus, federation
-from introspection_aauth.protocol.jwt import decode
+import httpx2 as httpx
 
-from .world import AS, PS, RESOURCE, TENANT, World, usd
+from introspection_aauth.access_server import Verdict
+from introspection_aauth.person_server import (
+    Approval,
+    ApprovalStatus,
+    federation,
+)
+from introspection_aauth.protocol.claims import AuthTokenClaims
+from introspection_aauth.protocol.keys import Jwks
+from introspection_aauth.protocol.wire import (
+    AccessServerMetadata,
+    AuthTokenAnswer,
+)
+
+from .world import AS, PS, RESOURCE, TENANT, World, body, problem, read, usd
+
+
+def auth_token(response: httpx.Response) -> AuthTokenClaims:
+    return read(body(response, AuthTokenAnswer).auth_token, AuthTokenClaims)
 
 
 def inline(world: World) -> list[str]:
     """Run each federation to its end before the agent's request is answered."""
     ran: list[str] = []
 
-    async def run(tenant: str, approval) -> None:
+    async def run(tenant: str, approval: Approval) -> None:
         ran.append(approval.id)
 
         async def no_wait(_: float) -> None:
@@ -28,11 +43,12 @@ def inline(world: World) -> list[str]:
 
 async def test_the_access_server_publishes_its_metadata():
     world = World()
-    metadata = (
-        await world.http.get(f"{AS}/.well-known/aauth-access.json")
-    ).json()
-    assert metadata["auth_token_endpoint"] == f"{AS}/token"
-    keys = (await world.http.get(metadata["jwks_uri"])).json()
+    metadata = body(
+        await world.http.get(f"{AS}/.well-known/aauth-access.json"),
+        AccessServerMetadata,
+    )
+    assert metadata.auth_token_endpoint == f"{AS}/token"
+    keys = body(await world.http.get(metadata.jwks_uri), Jwks)
     assert keys == world.access.jwks()
 
 
@@ -43,17 +59,13 @@ async def test_an_allowed_call_is_issued_by_the_access_server_and_collected_once
     asked = await world.ask(mission, 60_000, aud=AS)
     issued = await world.follow(asked)
     assert issued.status_code == 200, issued.text
-    claims = decode(issued.json()["auth_token"]).claims
-    assert (
-        claims["iss"] == AS
-        and claims["aud"] == RESOURCE
-        and claims["ps"] == PS
-    )
-    assert claims["cnf"]["jwk"]["x"] == world.agent_key.public_jwk["x"]
-    assert await world.spent(mission["s256"]) == 60_000
+    claims = auth_token(issued)
+    assert claims.iss == AS and claims.aud == RESOURCE and claims.ps == PS
+    assert claims.cnf.jwk == world.agent_key.public_jwk
+    assert await world.spent(mission.s256) == 60_000
     again = await world.follow(asked)
     assert again.status_code == 410
-    assert again.json()["error"] == "invalid_code"
+    assert problem(again).error == "invalid_code"
 
 
 async def test_a_refusal_is_relayed_and_nothing_is_spent():
@@ -64,9 +76,9 @@ async def test_a_refusal_is_relayed_and_nothing_is_spent():
     mission = await world.approved_mission(budget=100_000)
     refused = await world.follow(await world.ask(mission, 60_000, aud=AS))
     assert refused.status_code == 403
-    assert refused.json()["error"] == "denied"
-    assert "no Flight Sector account" in refused.json()["detail"]
-    assert await world.spent(mission["s256"]) == 0
+    assert problem(refused).error == "denied"
+    assert "no Flight Sector account" in (problem(refused).detail or "")
+    assert await world.spent(mission.s256) == 0
 
 
 async def test_a_smaller_grant_is_all_that_is_spent():
@@ -75,11 +87,8 @@ async def test_a_smaller_grant_is_all_that_is_spent():
     mission = await world.approved_mission(budget=100_000)
     issued = await world.follow(await world.ask(mission, 60_000, aud=AS))
     assert issued.status_code == 200, issued.text
-    assert (
-        decode(issued.json()["auth_token"]).claims["budget"]["amount"]
-        == 40_000
-    )
-    assert await world.spent(mission["s256"]) == 40_000
+    assert auth_token(issued).budget == usd(40_000)
+    assert await world.spent(mission.s256) == 40_000
 
 
 async def test_the_access_servers_wait_is_journaled_step_by_step():
@@ -87,7 +96,7 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     world = World(policy=lambda request: Verdict.approval())
     kicked: list[str] = []
 
-    async def kick(tenant: str, approval) -> None:
+    async def kick(tenant: str, approval: Approval) -> None:
         kicked.append(approval.id)
 
     world.ps._on_federate = kick
@@ -116,7 +125,7 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     assert outcome.step is federation.Step.ISSUED
     assert not await federation.record(world.ps, TENANT, approval_id, outcome)
     assert (await world.follow(asked)).status_code == 200
-    assert await world.spent(mission["s256"]) == 60_000
+    assert await world.spent(mission.s256) == 60_000
 
 
 async def test_a_call_over_budget_goes_to_a_person_before_the_access_server():
@@ -136,7 +145,7 @@ async def test_a_call_over_budget_goes_to_a_person_before_the_access_server():
     assert ran == [approval_id]
     issued = await world.follow(asked)
     assert issued.status_code == 200, issued.text
-    assert await world.spent(mission["s256"]) == 60_000
+    assert await world.spent(mission.s256) == 60_000
 
 
 async def test_sub_agents_are_not_federated():
@@ -153,12 +162,12 @@ async def test_sub_agents_are_not_federated():
         },
     )
     assert refused.status_code == 400
-    assert refused.json()["error"] == "invalid_request"
+    assert problem(refused).error == "invalid_request"
 
 
 async def token_endpoint(world: World) -> str:
     metadata = await world.http.get(f"{AS}/.well-known/aauth-access.json")
-    return metadata.json()["auth_token_endpoint"]
+    return body(metadata, AccessServerMetadata).auth_token_endpoint
 
 
 async def test_an_access_server_that_cannot_be_reached_ends_as_unreachable():
@@ -169,8 +178,8 @@ async def test_an_access_server_that_cannot_be_reached_ends_as_unreachable():
     asked = await world.ask(mission, 60_000, aud=AS)
     answered = await world.follow(asked)
     assert answered.status_code == 502, answered.text
-    assert answered.json()["error"] == "as_unreachable"
-    assert await world.spent(mission["s256"]) == 0
+    assert problem(answered).error == "as_unreachable"
+    assert await world.spent(mission.s256) == 0
 
 
 async def test_a_dropped_connection_is_retried():
@@ -181,4 +190,4 @@ async def test_a_dropped_connection_is_retried():
     asked = await world.ask(mission, 60_000, aud=AS)
     issued = await world.follow(asked)
     assert issued.status_code == 200, issued.text
-    assert await world.spent(mission["s256"]) == 60_000
+    assert await world.spent(mission.s256) == 60_000

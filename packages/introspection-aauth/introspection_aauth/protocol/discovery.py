@@ -3,17 +3,27 @@
 
 import time
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Protocol, TypeVar
 
 import httpx2 as httpx
+from pydantic import BaseModel, ValidationError
 
 from .errors import VerificationError
+from .keys import Jwk, Jwks
+from .wire import ServerMetadata
 
 T = TypeVar("T")
+Document = TypeVar("Document", bound=BaseModel)
 #: How long an issuer's keys are trusted before they are fetched again.
 KEYS_TTL_SECONDS = 300
 #: The least time between refetches forced by a token that failed to verify.
 REFRESH_MIN_SECONDS = 30
+
+
+class Monotonic(Protocol):
+    """Seconds on a clock that never goes back, for timing the cache."""
+
+    def __call__(self) -> float: ...
 
 
 class Discovery:
@@ -25,18 +35,20 @@ class Discovery:
         *,
         ttl_seconds: int = KEYS_TTL_SECONDS,
         refresh_min_seconds: int = REFRESH_MIN_SECONDS,
-        clock: Callable[[], float] = time.monotonic,
+        clock: Monotonic = time.monotonic,
     ):
         self.http = http
         self._ttl = ttl_seconds
         self._refresh_min = refresh_min_seconds
         self._clock = clock
-        self._cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
+        self._cache: dict[tuple[str, str], tuple[float, Jwks]] = {}
 
-    async def metadata(self, issuer: str, dwk: str) -> dict[str, Any]:
+    async def metadata(self, issuer: str, dwk: str) -> ServerMetadata:
         """The issuer's metadata document, which must name it as `issuer`."""
-        document = await self.get_json(f"{issuer}/.well-known/{dwk}")
-        if str(document.get("issuer", "")).rstrip("/") != issuer:
+        document = await self.get(
+            f"{issuer}/.well-known/{dwk}", ServerMetadata
+        )
+        if document.issuer.rstrip("/") != issuer:
             raise VerificationError(
                 "issuer_mismatch", "metadata names another issuer"
             )
@@ -44,7 +56,7 @@ class Discovery:
 
     async def jwks(
         self, issuer: str, dwk: str, *, refresh: bool = False
-    ) -> dict[str, Any]:
+    ) -> Jwks:
         """The issuer's keys; `refresh` fetches again keys that failed, since an
         issuer may rotate a key, but no more often than `refresh_min_seconds`."""
         cached = self._cache.get((issuer, dwk))
@@ -54,12 +66,19 @@ class Discovery:
             if not refresh or now - fetched_at < self._refresh_min:
                 return cached[1]
         document = await self.metadata(issuer, dwk)
-        keys = await self.get_json(str(document.get("jwks_uri", "")))
+        if document.jwks is not None:
+            keys = document.jwks
+        elif document.jwks_uri is not None:
+            keys = await self.get(document.jwks_uri, Jwks)
+        else:
+            raise VerificationError(
+                "unknown_key", f"{issuer} publishes no keys"
+            )
         self._cache[(issuer, dwk)] = (self._clock() + self._ttl, keys)
         return keys
 
     async def verified(
-        self, issuer: str, dwk: str, check: Callable[[dict[str, Any]], T]
+        self, issuer: str, dwk: str, check: Callable[[Jwks], T]
     ) -> T:
         """`check` against the issuer's keys, and once more against fresh ones."""
         try:
@@ -67,24 +86,20 @@ class Discovery:
         except VerificationError:
             return check(await self.jwks(issuer, dwk, refresh=True))
 
-    async def key(self, issuer: str, dwk: str, kid: str) -> dict[str, Any]:
+    async def key(self, issuer: str, dwk: str, kid: str) -> Jwk:
         """One published key, by `kid`: how a `jwks_uri` signature is resolved."""
         for refresh in (False, True):
             keys = await self.jwks(issuer, dwk, refresh=refresh)
-            for key in keys.get("keys", []):
-                if isinstance(key, dict) and key.get("kid") == kid:
+            for key in keys.keys:
+                if key.kid == kid:
                     return key
         raise VerificationError("unknown_key", f"no key {kid} for {issuer}")
 
-    async def get_json(self, url: str) -> dict[str, Any]:
+    async def get(self, url: str, model: type[Document]) -> Document:
+        """The JSON document at `url`, read into `model`."""
         try:
             response = await self.http.get(url)
             response.raise_for_status()
-            document = response.json()
-        except (httpx.HTTPError, ValueError) as exc:
+            return model.model_validate_json(response.content)
+        except (httpx.HTTPError, ValidationError, ValueError) as exc:
             raise VerificationError("unknown_key", f"{url}: {exc}") from None
-        if not isinstance(document, dict):
-            raise VerificationError(
-                "unknown_key", f"{url} is not a JSON object"
-            )
-        return document

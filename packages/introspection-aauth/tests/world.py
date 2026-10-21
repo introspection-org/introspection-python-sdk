@@ -3,13 +3,14 @@ Person Server and an Access Server behind their FastAPI routers, and an agent.
 One transport stands in for the internet, routing each origin to its party."""
 
 import json
-from typing import Any
+from typing import TypeVar
 from urllib.parse import urlsplit
 
 import httpx2 as httpx
 from fastapi import FastAPI
+from pydantic import BaseModel
 
-from introspection_aauth.access_server import AccessServer, Verdict
+from introspection_aauth.access_server import AccessServer, Policy, Verdict
 from introspection_aauth.access_server import MemoryStore as AccessStore
 from introspection_aauth.fastapi import (
     access_server_router,
@@ -20,14 +21,27 @@ from introspection_aauth.person_server import (
     MemoryStore,
     PersonServer,
 )
+from introspection_aauth.person_server.models import MissionAnswer
 from introspection_aauth.protocol import Budget, SigningKey, jwks
+from introspection_aauth.protocol.claims import (
+    AgentTokenClaims,
+    Claims,
+    Confirmation,
+    PersonTokenClaims,
+    ResourceTokenClaims,
+)
+from introspection_aauth.protocol.errors import Problem
 from introspection_aauth.protocol.httpsig import jwt_key, sign
+from introspection_aauth.protocol.json import JsonObject
 from introspection_aauth.protocol.jwt import (
     AGENT_TOKEN,
     RESOURCE_TOKEN,
+    Header,
     decode,
     encode,
 )
+from introspection_aauth.protocol.keys import b64url
+from introspection_aauth.protocol.wire import ServerMetadata
 
 AP = "https://agents.example"
 RESOURCE = "https://booking.example"
@@ -35,19 +49,49 @@ PS = "https://ps.example"
 AS = "https://as.booking.example"
 TENANT = "acme"
 T0 = 1_791_000_000
-USD = {"unit": "USD", "decimals": 2}
+ClaimsModel = TypeVar("ClaimsModel", bound=Claims)
 
 
 def usd(amount: int) -> Budget:
     return Budget(amount=amount, unit="USD", decimals=2)
 
 
+def read(token: str, model: type[ClaimsModel]) -> ClaimsModel:
+    """A token's claims, unverified, as `model`."""
+    return model.model_validate(decode(token).claims)
+
+
+Body = TypeVar("Body", bound=BaseModel)
+
+
+def body(response: httpx.Response, model: type[Body]) -> Body:
+    """A response's body, as `model`."""
+    return model.model_validate_json(response.content)
+
+
+def problem(response: httpx.Response) -> Problem:
+    return body(response, Problem)
+
+
+def forge(claims: JsonObject, key: SigningKey, typ: str) -> str:
+    """A token over a raw payload no claims model would build, for tests of
+    malformed tokens."""
+    header = Header(alg="Ed25519", typ=typ, kid=key.kid)
+    signing_input = ".".join(
+        (
+            b64url(header.model_dump_json(exclude_none=True).encode()),
+            b64url(json.dumps(claims).encode()),
+        )
+    )
+    return f"{signing_input}.{b64url(key.sign(signing_input.encode()))}"
+
+
 class Net(httpx.AsyncBaseTransport):
     """Routes a request by its origin: to an app, or to a fixed document."""
 
     def __init__(self) -> None:
-        self.apps: dict[str, httpx.ASGITransport] = {}
-        self.documents: dict[str, Any] = {}
+        self.apps: dict[str, httpx.AsyncBaseTransport] = {}
+        self.documents: dict[str, BaseModel | bytes] = {}
         self.calls: list[str] = []
         #: How many more times a request to each URL fails to connect.
         self.failures: dict[str, int] = {}
@@ -64,7 +108,11 @@ class Net(httpx.AsyncBaseTransport):
             document = self.documents[url]
             if isinstance(document, bytes):
                 return httpx.Response(200, content=document)
-            return httpx.Response(200, json=document)
+            return httpx.Response(
+                200,
+                content=document.model_dump_json(exclude_none=True),
+                headers={"Content-Type": "application/json"},
+            )
         origin = f"{request.url.scheme}://{request.url.host}"
         if origin in self.apps:
             return await self.apps[origin].handle_async_request(request)
@@ -73,7 +121,7 @@ class Net(httpx.AsyncBaseTransport):
 
 class World:
     def __init__(
-        self, policy: Any = None, ps_store: MemoryStore | None = None
+        self, policy: Policy | None = None, ps_store: MemoryStore | None = None
     ) -> None:
         self.now = T0
         self.net = Net()
@@ -82,15 +130,13 @@ class World:
             SigningKey.generate() for _ in range(3)
         )
         self.net.documents |= {
-            f"{AP}/.well-known/aauth-agent.json": {
-                "issuer": AP,
-                "jwks_uri": f"{AP}/jwks.json",
-            },
+            f"{AP}/.well-known/aauth-agent.json": ServerMetadata(
+                issuer=AP, jwks_uri=f"{AP}/jwks.json"
+            ),
             f"{AP}/jwks.json": jwks([self.ap_key]),
-            f"{RESOURCE}/.well-known/aauth-resource.json": {
-                "issuer": RESOURCE,
-                "jwks_uri": f"{RESOURCE}/jwks.json",
-            },
+            f"{RESOURCE}/.well-known/aauth-resource.json": ServerMetadata(
+                issuer=RESOURCE, jwks_uri=f"{RESOURCE}/jwks.json"
+            ),
             f"{RESOURCE}/jwks.json": jwks([self.resource_key]),
         }
         self.ps_store = ps_store or MemoryStore()
@@ -105,7 +151,7 @@ class World:
             default_tenant=TENANT,
             clock=lambda: self.now,
         )
-        self.policy = policy or (lambda request: Verdict.allow())
+        self.policy: Policy = policy or (lambda request: Verdict.allow())
         self.access_store = AccessStore()
         self.access = AccessServer(
             AS,
@@ -126,24 +172,30 @@ class World:
             app.include_router(router)
             self.net.apps[origin] = httpx.ASGITransport(app=app)
         self.agent_token = encode(
-            {
-                "iss": AP,
-                "dwk": "aauth-agent.json",
-                "sub": "aauth:travel@agents.example",
-                "jti": "agent-1",
-                "iat": T0,
-                "exp": T0 + 3_600,
-                "cnf": {"jwk": self.agent_key.public_jwk},
-            },
+            AgentTokenClaims(
+                iss=AP,
+                sub="aauth:travel@agents.example",
+                jti="agent-1",
+                iat=T0,
+                exp=T0 + 3_600,
+                cnf=Confirmation(jwk=self.agent_key.public_jwk),
+            ),
             self.ap_key,
             AGENT_TOKEN,
         )
 
     async def call(
-        self, method: str, url: str, body: dict[str, Any] | None = None
+        self,
+        method: str,
+        url: str,
+        body: BaseModel | JsonObject | None = None,
     ) -> httpx.Response:
-        """A request the agent signs (`sig=jwt`, its agent token)."""
-        content = json.dumps(body).encode() if body is not None else None
+        """A request the agent signs (`sig=jwt`, its agent token); a raw
+        object is for a body no request model would build."""
+        if isinstance(body, BaseModel):
+            content = body.model_dump_json(exclude_none=True).encode()
+        else:
+            content = json.dumps(body).encode() if body is not None else None
         headers = sign(
             self.agent_key,
             jwt_key(self.agent_token),
@@ -160,7 +212,7 @@ class World:
         assert response.status_code == 202, response.text
         return await self.call("GET", response.headers["location"])
 
-    async def approved_mission(self, budget: int) -> dict[str, Any]:
+    async def approved_mission(self, budget: int) -> MissionAnswer:
         proposed = await self.call(
             "POST",
             f"{PS}/aauth/mission",
@@ -182,41 +234,41 @@ class World:
         )
         done = await self.follow(proposed)
         assert done.status_code == 200, done.text
-        return done.json()
+        return MissionAnswer.model_validate_json(done.content)
+
+    def resource_claims(
+        self, mission: MissionAnswer, amount: int | None, aud: str = PS
+    ) -> ResourceTokenClaims:
+        """A resource token's claims for a call costing `amount`."""
+        presented = read(mission.person_tokens[RESOURCE], PersonTokenClaims)
+        return ResourceTokenClaims(
+            iss=RESOURCE,
+            aud=aud,
+            ps=PS,
+            agent_jkt=self.agent_key.kid,
+            presented_jti=presented.jti,
+            sub=presented.sub,
+            mission_s256=mission.s256,
+            tenant=TENANT,
+            scope="book",
+            iat=self.now,
+            exp=self.now + 300,
+            budget=usd(amount) if amount is not None else None,
+        )
 
     def resource_token(
-        self, mission: dict[str, Any], amount: int | None, aud: str = PS
+        self, mission: MissionAnswer, amount: int | None, aud: str = PS
     ) -> tuple[str, str]:
         """A resource token for a call costing `amount`, and the person token it answers."""
-        person_token = mission["person_tokens"][RESOURCE]
-        presented = decode(person_token).claims
         token = encode(
-            {
-                "iss": RESOURCE,
-                "dwk": "aauth-resource.json",
-                "aud": aud,
-                "ps": PS,
-                "agent_jkt": self.agent_key.kid,
-                "presented_jti": presented["jti"],
-                "sub": presented["sub"],
-                "mission_s256": mission["s256"],
-                "tenant": TENANT,
-                "scope": "book",
-                "iat": self.now,
-                "exp": self.now + 300,
-                **(
-                    {"budget": {"amount": amount, **USD}}
-                    if amount is not None
-                    else {}
-                ),
-            },
+            self.resource_claims(mission, amount, aud),
             self.resource_key,
             RESOURCE_TOKEN,
         )
-        return token, person_token
+        return token, mission.person_tokens[RESOURCE]
 
     async def ask(
-        self, mission: dict[str, Any], amount: int | None, aud: str = PS
+        self, mission: MissionAnswer, amount: int | None, aud: str = PS
     ) -> httpx.Response:
         token, person_token = self.resource_token(mission, amount, aud)
         return await self.call(

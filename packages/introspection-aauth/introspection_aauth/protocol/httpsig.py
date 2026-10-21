@@ -10,16 +10,19 @@ caller's job against its issuer's keys.
 
 import base64
 import hashlib
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Protocol
 from urllib.parse import urlsplit
 
 import http_sfv
+from http_sfv.item import Parameters
+from pydantic import ValidationError
 
 from . import jwt
+from .claims import Confirmation
 from .errors import VerificationError
-from .keys import SigningKey, thumbprint
+from .keys import Jwk, SigningKey, thumbprint
 from .keys import verify as verify_with
 
 LABEL = "sig"
@@ -35,8 +38,22 @@ KNOWN_DWKS = frozenset(
     }
 )
 
-#: Finds a published key: `(id, dwk, kid)` to its JWK.
-KeyResolver = Callable[[str, str, str], Awaitable[dict[str, Any]]]
+
+class KeyResolver(Protocol):
+    """Finds a published key: a server's `id`, its `dwk` and the key's `kid`."""
+
+    def __call__(
+        self, server: str, dwk: str, kid: str, /
+    ) -> Awaitable[Jwk]: ...
+
+
+@dataclass(frozen=True)
+class _Named:
+    """How a key was named: the token presented, or the server and document."""
+
+    token: str | None = None
+    server: str | None = None
+    dwk: str | None = None
 
 
 def _quoted(value: str) -> str:
@@ -152,7 +169,7 @@ class Verified:
     """A signature that verified, and how its key was named."""
 
     scheme: str
-    jwk: dict[str, Any]
+    jwk: Jwk
     thumbprint: str
     created: int
     #: The presented token, for the `jwt` scheme: decoded, not verified.
@@ -197,8 +214,8 @@ def _covered(signature_input: http_sfv.InnerList) -> list[str]:
 
 
 async def _key(
-    scheme: str, params: dict[str, Any], resolve: KeyResolver | None
-):
+    scheme: str, params: Parameters, resolve: KeyResolver | None
+) -> tuple[Jwk, _Named]:
     if scheme == "jwt":
         token = params.get("jwt")
         if not isinstance(token, str):
@@ -206,13 +223,20 @@ async def _key(
                 "invalid_key", "the jwt scheme carries a jwt"
             )
         cnf = jwt.decode(token).claims.get("cnf")
-        jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
-        if not isinstance(jwk, dict):
-            raise VerificationError("invalid_jwt", "the token has no cnf.jwk")
-        return jwk, {"token": token}
+        try:
+            jwk = Confirmation.model_validate(cnf).jwk
+        except ValidationError:
+            raise VerificationError(
+                "invalid_jwt", "the token has no cnf.jwk"
+            ) from None
+        return jwk, _Named(token=token)
     if scheme == "jwks_uri":
         server, dwk, kid = (params.get(n) for n in ("id", "dwk", "kid"))
-        if not all(isinstance(v, str) for v in (server, dwk, kid)):
+        if not (
+            isinstance(server, str)
+            and isinstance(dwk, str)
+            and isinstance(kid, str)
+        ):
             raise VerificationError(
                 "invalid_key", "jwks_uri needs id, dwk and kid"
             )
@@ -220,10 +244,7 @@ async def _key(
             raise VerificationError(
                 "invalid_key", "not a server this verifier reads"
             )
-        return await resolve(str(server), str(dwk), str(kid)), {
-            "server": server,
-            "dwk": dwk,
-        }
+        return await resolve(server, dwk, kid), _Named(server=server, dwk=dwk)
     raise VerificationError("unsupported_scheme", f"the {scheme} scheme")
 
 
@@ -275,7 +296,7 @@ async def verify(
         raise VerificationError("clock_skew", "created is ahead of this clock")
     if now - created > MAX_CLOCK_SKEW_SECONDS:
         raise VerificationError("invalid_signature", "the signature is stale")
-    jwk, named = await _key(str(item.value), dict(item.params), resolve)
+    jwk, named = await _key(str(item.value), item.params, resolve)
     if body and require_content_digest and "content-digest" not in names:
         raise VerificationError(
             "invalid_input", "content-digest must be covered"
@@ -299,4 +320,12 @@ async def verify(
         raise VerificationError(
             "invalid_signature", "the signature does not verify"
         )
-    return Verified(str(item.value), jwk, thumbprint(jwk), created, **named)
+    return Verified(
+        str(item.value),
+        jwk,
+        thumbprint(jwk),
+        created,
+        token=named.token,
+        server=named.server,
+        dwk=named.dwk,
+    )

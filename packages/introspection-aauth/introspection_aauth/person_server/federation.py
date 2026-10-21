@@ -10,12 +10,10 @@ The loop is steps a host can journal: `discover`, `request`, `record`, wait
 """
 
 import asyncio
-import json
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
 from enum import StrEnum
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlsplit
 
 import http_sfv
@@ -23,10 +21,17 @@ import httpx2 as httpx
 from pydantic import BaseModel, ValidationError
 
 from ..protocol import jwt
-from ..protocol.errors import VerificationError
-from ..protocol.keys import thumbprint
+from ..protocol.claims import (
+    ACCESS_DWK,
+    AuthTokenClaims,
+    DeliveryExpectation,
+    PersonTokenClaims,
+    ResourceTokenClaims,
+)
+from ..protocol.errors import Problem, VerificationError
+from ..protocol.keys import Jwks
 from ..protocol.models import Budget
-from ..protocol.server import ACCESS_DWK
+from ..protocol.wire import AccessServerMetadata, AuthTokenAnswer, TokenRequest
 from .models import Approval, ApprovalStatus, Federation, Refusal
 from .store import Store
 
@@ -61,11 +66,7 @@ class Outcome(BaseModel):
     refusal: Refusal | None = None
 
 
-@dataclass(frozen=True)
-class Metadata:
-    issuer: str
-    jwks_uri: str
-    auth_token_endpoint: str
+Metadata = AccessServerMetadata
 
 
 def refused(status: int, error: str, detail: str) -> Outcome:
@@ -87,9 +88,7 @@ def poll_delay(outcome: Outcome) -> int:
     return min(max(outcome.retry_after, MIN_DELAY), MAX_DELAY)
 
 
-def _https(value: Any, endpoint: bool) -> bool:
-    if not isinstance(value, str):
-        return False
+def _https(value: str, endpoint: bool) -> bool:
     parts = urlsplit(value)
     return (
         parts.scheme == "https"
@@ -120,10 +119,6 @@ def _requirement(header: str) -> str | None:
     return str(item.value) if item is not None else None
 
 
-def _scopes(value: Any) -> set[str]:
-    return set(value.split()) if isinstance(value, str) else set()
-
-
 class AccessServerClient:
     """Talks to the Access Server a verified resource token names, signed as the Person Server."""
 
@@ -133,42 +128,32 @@ class AccessServerClient:
     async def discover(self, access_server: str) -> Metadata | Outcome:
         """`{aud}/.well-known/aauth-access.json`, whose `issuer` is the `aud`."""
         try:
-            document = await self._ps.discovery.get_json(
-                f"{access_server}/.well-known/{ACCESS_DWK}"
+            document = await self._ps.discovery.get(
+                f"{access_server}/.well-known/{ACCESS_DWK}",
+                AccessServerMetadata,
             )
         except VerificationError as exc:
             return unreachable(f"its metadata could not be read: {exc.detail}")
-        if document.get("issuer") != access_server:
+        if document.issuer != access_server:
             return unreachable("its metadata names another issuer")
-        if not _https(document.get("auth_token_endpoint"), True) or not _https(
-            document.get("jwks_uri"), False
+        if not _https(document.auth_token_endpoint, True) or not _https(
+            document.jwks_uri, False
         ):
             return unreachable(
                 "its metadata lacks an https auth_token_endpoint and jwks_uri"
             )
-        return Metadata(
-            access_server,
-            str(document["jwks_uri"]),
-            str(document["auth_token_endpoint"]),
-        )
+        return document
 
     async def request(
         self, federation: Federation, agent_jkt: str, metadata: Metadata
     ) -> Outcome:
         """The token request, with the budget the Person Server allows."""
-        body = json.dumps(
-            {
-                "resource_token": federation.resource_token,
-                "agent_token": federation.agent_token,
-                "presented_token": federation.presented_token,
-                **(
-                    {"budget": federation.budget.model_dump()}
-                    if federation.budget
-                    else {}
-                ),
-            },
-            separators=(",", ":"),
-        ).encode()
+        body = TokenRequest(
+            resource_token=federation.resource_token,
+            agent_token=federation.agent_token,
+            presented_token=federation.presented_token,
+            budget=federation.budget,
+        ).to_json()
         url = metadata.auth_token_endpoint
         headers = self._ps.identity.signed("POST", url, body, self._ps.clock())
         response = await self._ps.http.post(url, content=body, headers=headers)
@@ -202,13 +187,11 @@ class AccessServerClient:
         status = response.status_code
         if status == 200:
             try:
-                auth_token = response.json().get("auth_token")
-            except (ValueError, AttributeError):
-                auth_token = None
-            if not isinstance(auth_token, str):
+                answer = AuthTokenAnswer.model_validate_json(response.content)
+            except ValidationError:
                 return unreachable("it answered 200 without an auth_token")
             return await self._delivered(
-                auth_token, federation, agent_jkt, metadata
+                answer.auth_token, federation, agent_jkt, metadata
             )
         if status == 202:
             return self._waiting(response, requested)
@@ -227,18 +210,14 @@ class AccessServerClient:
                 retry_after=retry + 5 if status == 429 else retry,
             )
         try:
-            problem = response.json()
-        except ValueError:
+            problem = Problem.model_validate_json(response.content)
+        except ValidationError:
             problem = None
-        error = problem.get("error") if isinstance(problem, dict) else None
-        if 400 <= status < 500 and isinstance(error, str) and error:
-            detail = (
-                problem.get("detail") if isinstance(problem, dict) else None
-            )
+        if 400 <= status < 500 and problem is not None and problem.error:
             return refused(
                 status,
-                error,
-                f"the Access Server refused: {detail if isinstance(detail, str) else error}",
+                problem.error,
+                f"the Access Server refused: {problem.detail or problem.error}",
             )
         return unreachable(f"it answered {status}")
 
@@ -276,48 +255,34 @@ class AccessServerClient:
         metadata: Metadata,
     ) -> Outcome:
         """`#auth-token-delivery`, and the budget granted no more than was sent."""
-        rt = jwt.decode(federation.resource_token).claims
-        presented = jwt.decode(federation.presented_token).claims
         try:
-            keys = await self._ps.discovery.get_json(metadata.jwks_uri)
+            rt = ResourceTokenClaims.model_validate(
+                jwt.decode(federation.resource_token).claims
+            )
+            presented = PersonTokenClaims.model_validate(
+                jwt.decode(federation.presented_token).claims
+            )
+        except (VerificationError, ValidationError):
+            return unreachable("its request's tokens cannot be read back")
+        try:
+            keys = await self._ps.discovery.get(metadata.jwks_uri, Jwks)
             claims = jwt.verify(
-                auth_token, keys, jwt.AUTH_TOKEN, self._ps.clock()
+                auth_token,
+                keys,
+                jwt.AUTH_TOKEN,
+                self._ps.clock(),
+                AuthTokenClaims,
             )
-            granted = (
-                Budget.model_validate(claims["budget"])
-                if "budget" in claims
-                else None
-            )
-        except (VerificationError, ValidationError) as exc:
-            return unreachable(f"its auth token does not verify: {exc}")
-        cnf = claims.get("cnf")
-        jwk = cnf.get("jwk") if isinstance(cnf, dict) else None
-        sent = federation.budget
-        checks = {
-            "dwk": claims.get("dwk") != ACCESS_DWK,
-            "iss": claims.get("iss") != metadata.issuer,
-            "aud": claims.get("aud") != rt.get("iss"),
-            "cnf": not isinstance(jwk, dict) or _thumbprint(jwk) != agent_jkt,
-            "sub": claims.get("sub") != rt.get("sub"),
-            "ps": claims.get("ps") != self._ps.issuer,
-            "mission_s256": claims.get("mission_s256")
-            != rt.get("mission_s256"),
-            "scope": not _scopes(claims.get("scope"))
-            <= _scopes(rt.get("scope")),
-            "exp": claims["exp"] > presented.get("exp", 0),
-            "lifetime": claims["exp"] - claims["iat"]
-            > jwt.MAX_TOKEN_LIFETIME_SECONDS,
-            "budget": (sent is None) != (granted is None)
-            or (
-                sent is not None
-                and granted is not None
-                and (
-                    not sent.same_scale(granted)
-                    or granted.amount > sent.amount
-                )
-            ),
-        }
-        wrong = [name for name, failed in checks.items() if failed]
+        except VerificationError as exc:
+            return unreachable(f"its auth token does not verify: {exc.detail}")
+        wrong = DeliveryExpectation(
+            issuer=metadata.issuer,
+            ps=self._ps.issuer,
+            rt=rt,
+            agent_jkt=agent_jkt,
+            not_after=presented.exp,
+            sent=federation.budget,
+        ).failures(claims)
         if wrong:
             return unreachable(
                 f"its auth token has the wrong {', '.join(wrong)}"
@@ -325,16 +290,9 @@ class AccessServerClient:
         return Outcome(
             step=Step.ISSUED,
             auth_token=auth_token,
-            auth_token_expires_at=int(claims["exp"]),
-            granted=granted,
+            auth_token_expires_at=claims.exp,
+            granted=claims.budget,
         )
-
-
-def _thumbprint(jwk: dict[str, Any]) -> str | None:
-    try:
-        return thumbprint(jwk)
-    except VerificationError:
-        return None
 
 
 async def due(
