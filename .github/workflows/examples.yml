@@ -48,6 +48,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-uv-examples-
 
+      - name: Run the AAuth example
+        # Every party runs in process; it needs no secrets.
+        if: inputs.run_examples || startsWith(github.ref, 'refs/tags/v')
+        working-directory: examples
+        run: uv run -m introspection_examples.aauth.four_party
+
       - name: Run pattern examples
         # The docs' pattern pages show these modules' snippet regions.
         # patterns.add_to_your_app and patterns.web_chat also need a service

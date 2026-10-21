@@ -205,3 +205,50 @@ jobs:
           node-version: "24"
       - name: Duplicate code stays under the threshold
         run: npx --yes jscpd@5.4.1
+
+  aauth:
+    # packages/introspection-aauth is its own distribution, with its own
+    # lock, coverage floor and duplicate-code check (its pyproject.toml and
+    # .jscpd.json).
+    name: introspection-aauth
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/introspection-aauth
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Run linting
+        run: uv run ruff check .
+
+      - name: Run type checking
+        run: uv run ty check introspection_aauth
+
+      - name: Run tests with coverage
+        run: uv run pytest tests/ -v --cov=introspection_aauth --cov-report=term-missing
+
+      - name: Check dependencies
+        run: uv run deptry .
+
+      - name: Duplicate code stays at zero
+        run: npx --yes jscpd@5.4.1

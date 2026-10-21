@@ -169,7 +169,8 @@ dev = [
 # examples/ is its own uv project with its own pyproject.toml and lock.
 # tests/ stays excluded (deptry's default): it imports the dev/test tools,
 # which would read as dev dependencies leaking into shipped code (DEP004).
-extend_exclude = ["examples"]
+# packages/ holds its own distributions, each with its own [tool.deptry].
+extend_exclude = ["examples", "packages"]
 known_first_party = ["introspection_sdk"]
 # The `dev` and `test` extras are tooling, not runtime dependencies.
 optional_dependencies_dev_groups = ["dev", "test"]
