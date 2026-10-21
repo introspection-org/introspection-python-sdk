@@ -9,7 +9,7 @@ from introspection_aauth.access_server import Verdict
 from introspection_aauth.person_server import (
     Approval,
     ApprovalStatus,
-    federation,
+    Step,
 )
 from introspection_aauth.person_server.models import (
     AuthTokenRequest,
@@ -122,9 +122,9 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     fed, jkt = due
     client = world.ps.access_server_client()
     metadata = await client.discover(fed.access_server)
-    assert isinstance(metadata, federation.Metadata)
+    assert isinstance(metadata, AccessServerMetadata)
     outcome = await client.request(fed, jkt, metadata)
-    assert outcome.step is federation.Step.PENDING
+    assert outcome.step is Step.PENDING
     assert await world.ps.record_federation(TENANT, approval_id, outcome)
     waiting = await world.follow(asked)
     assert waiting.status_code == 202
@@ -135,7 +135,7 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     await world.access.decide(pending.id, True, decided_by="flight-sector")
     assert outcome.location is not None
     outcome = await client.poll(outcome.location, fed, jkt, metadata)
-    assert outcome.step is federation.Step.ISSUED
+    assert outcome.step is Step.ISSUED
     assert not await world.ps.record_federation(TENANT, approval_id, outcome)
     assert (await world.follow(asked)).status_code == 200
     assert await world.spent(mission.s256) == 60_000

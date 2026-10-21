@@ -15,7 +15,9 @@ from urllib.parse import quote, unquote
 
 import httpx2 as httpx
 
-from introspection_aauth.person_server.federation import AccessServerClient
+from introspection_aauth.person_server.access_server_client import (
+    AccessServerClient,
+)
 from introspection_aauth.person_server.models import (
     Approval,
     ApprovalKind,

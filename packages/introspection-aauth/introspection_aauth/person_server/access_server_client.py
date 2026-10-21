@@ -1,15 +1,8 @@
-"""The Person Server's side of four-party access (`#access-server-federation`).
-
-A resource token whose `aud` is the resource's own Access Server is redeemed
-there: the Person Server signs as itself (`#ps-to-as-token-request`), follows
-the deferred loop (`#deferred-responses`), and checks the auth token before
-the agent gets it (`#auth-token-delivery`).
-
-The loop is steps a host can journal: `PersonServer.federation_due`, then
-`discover`, `request`, `PersonServer.record_federation`, wait `poll_delay`,
-`poll`, `record_federation`, and so on; `PersonServer.federate` is that loop
-in-process.
-"""
+"""The Person Server's client for a resource's own Access Server
+(`#access-server-federation`): it discovers the Access Server, redeems a
+resource token there signed as the Person Server (`#ps-to-as-token-request`),
+polls while it decides (`#deferred-responses`), and checks the auth token it
+delivers (`#auth-token-delivery`). `PersonServer.federate` drives it."""
 
 from urllib.parse import urljoin
 
@@ -48,9 +41,6 @@ SERVED = frozenset({"approval", "interaction"})
 NOT_SERVED = frozenset({"claims", "clarification"})
 
 
-Metadata = AccessServerMetadata
-
-
 class AccessServerClient:
     """Talks to the Access Server a verified resource token names, signed as the Person Server."""
 
@@ -66,7 +56,9 @@ class AccessServerClient:
         self._http = http
         self._clock = clock
 
-    async def discover(self, access_server: str) -> Metadata | Outcome:
+    async def discover(
+        self, access_server: str
+    ) -> AccessServerMetadata | Outcome:
         """`{aud}/.well-known/aauth-access.json`, whose `issuer` is the `aud`."""
         try:
             document = await self._discovery.get(
@@ -91,7 +83,10 @@ class AccessServerClient:
         return document
 
     async def request(
-        self, federation: Federation, agent_jkt: str, metadata: Metadata
+        self,
+        federation: Federation,
+        agent_jkt: str,
+        metadata: AccessServerMetadata,
     ) -> Outcome:
         """The token request, with the budget the Person Server allows."""
         body = TokenRequest(
@@ -114,7 +109,7 @@ class AccessServerClient:
         location: str,
         federation: Federation,
         agent_jkt: str,
-        metadata: Metadata,
+        metadata: AccessServerMetadata,
     ) -> Outcome:
         headers = self._identity.signed("GET", location, None, self._clock())
         response = await self._http.get(
@@ -130,7 +125,7 @@ class AccessServerClient:
         requested: str,
         federation: Federation,
         agent_jkt: str,
-        metadata: Metadata,
+        metadata: AccessServerMetadata,
     ) -> Outcome:
         status = response.status_code
         if status == 200:
@@ -207,7 +202,7 @@ class AccessServerClient:
         auth_token: str,
         federation: Federation,
         agent_jkt: str,
-        metadata: Metadata,
+        metadata: AccessServerMetadata,
     ) -> Outcome:
         """`#auth-token-delivery`, and the budget granted no more than was sent."""
         try:

@@ -9,7 +9,7 @@ from introspection_aauth.access_server import Verdict
 from introspection_aauth.person_server import (
     Approval,
     ApprovalStatus,
-    federation,
+    Step,
 )
 from introspection_aauth.person_server.models import (
     AuthTokenRequest,
@@ -20,6 +20,7 @@ from introspection_aauth.protocol import AAuthError, SigningKey, s256
 from introspection_aauth.protocol.httpsig import jwks_uri_key, sign
 from introspection_aauth.protocol.jwt import RESOURCE_TOKEN, encode
 from introspection_aauth.protocol.wire import (
+    AccessServerMetadata,
     PersonTokenAnswer,
     R3Display,
     R3Proposal,
@@ -189,7 +190,7 @@ async def test_a_busy_access_server_is_polled_again_later():
     assert due is not None
     client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
-    assert isinstance(metadata, federation.Metadata)
+    assert isinstance(metadata, AccessServerMetadata)
     first = await client.request(due[0], due[1], metadata)
     app = world.net.apps[AS]
 
@@ -204,7 +205,7 @@ async def test_a_busy_access_server_is_polled_again_later():
     world.net.apps[AS] = Busy()
     assert first.location is not None
     busy = await client.poll(first.location, due[0], due[1], metadata)
-    assert busy.step is federation.Step.PENDING and busy.poll_delay() == 7
+    assert busy.step is Step.PENDING and busy.poll_delay() == 7
 
 
 async def test_the_access_server_refuses_what_it_does_not_decide():
@@ -258,7 +259,7 @@ async def test_an_interaction_is_relayed_and_a_decision_settles_once():
     assert due is not None
     client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
-    assert isinstance(metadata, federation.Metadata)
+    assert isinstance(metadata, AccessServerMetadata)
     outcome = await client.request(due[0], due[1], metadata)
     await world.ps.record_federation(TENANT, kicked[0], outcome)
     relayed = await world.follow(asked)
@@ -269,7 +270,7 @@ async def test_an_interaction_is_relayed_and_a_decision_settles_once():
         await world.access.decide(pending.id, True)
     assert outcome.location is not None
     denied = await client.poll(outcome.location, due[0], due[1], metadata)
-    assert denied.step is federation.Step.REFUSED
+    assert denied.step is Step.REFUSED
     await world.ps.record_federation(TENANT, kicked[0], denied)
     assert (await world.follow(asked)).status_code == 403
 
@@ -373,7 +374,7 @@ async def test_a_summary_written_meanwhile_does_not_drop_a_federated_token():
     assert due is not None
     client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
-    assert isinstance(metadata, federation.Metadata)
+    assert isinstance(metadata, AccessServerMetadata)
     first = await client.request(due[0], due[1], metadata)
     assert await world.ps.record_federation(TENANT, kicked[0], first)
     [pending] = list(world.access_store.requests.values())

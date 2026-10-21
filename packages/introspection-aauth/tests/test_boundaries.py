@@ -12,7 +12,8 @@ from introspection_aauth.access_server import PendingStatus, Verdict
 from introspection_aauth.person_server import (
     Approval,
     ApprovalStatus,
-    federation,
+    Outcome,
+    Step,
 )
 from introspection_aauth.person_server.models import (
     MissionAction,
@@ -147,7 +148,7 @@ async def test_an_access_servers_refusal_is_answered_once():
     assert due is not None
     client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
-    assert isinstance(metadata, federation.Metadata)
+    assert isinstance(metadata, AccessServerMetadata)
     first = await client.request(due[0], due[1], metadata)
     [pending] = list(world.access_store.requests.values())
     await world.access.decide(pending.id, False)
@@ -345,7 +346,7 @@ async def test_an_unknown_requirement_is_relayed_as_approval():
     assert due is not None
     client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
-    assert isinstance(metadata, federation.Metadata)
+    assert isinstance(metadata, AccessServerMetadata)
     world.net.apps[AS] = Scripted(
         world.net.apps[AS],
         httpx.Response(
@@ -357,7 +358,7 @@ async def test_an_unknown_requirement_is_relayed_as_approval():
         ),
     )
     outcome = await client.request(due[0], due[1], metadata)
-    assert outcome.step is federation.Step.PENDING
+    assert outcome.step is Step.PENDING
     assert outcome.requirement == "requirement=approval"
 
 
@@ -434,7 +435,7 @@ async def test_access_server_metadata_keeps_its_endpoints_on_its_origin(
         )
     )
     found = await world.ps.access_server_client().discover(AS)
-    assert isinstance(found, federation.Outcome)
+    assert isinstance(found, Outcome)
     assert found.refusal is not None
     assert found.refusal.error == "as_unreachable"
 
