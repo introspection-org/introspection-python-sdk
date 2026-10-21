@@ -21,7 +21,12 @@ import os
 import sys
 from typing import Literal
 
-from ag_ui.core import ToolCallArgsEvent, ToolCallStartEvent
+from ag_ui.core import (
+    AssistantMessage,
+    MessagesSnapshotEvent,
+    ToolCallArgsEvent,
+    ToolCallStartEvent,
+)
 from dotenv import load_dotenv
 from introspection_sdk import IntrospectionClient, Runner
 from pydantic import BaseModel, Field, ValidationError
@@ -29,11 +34,30 @@ from pydantic import BaseModel, Field, ValidationError
 
 def read_stream(runner: Runner) -> tuple[str, str | None]:
     # #region docs:patterns/structured-output/read-stream
+    def from_snapshot(
+        event: MessagesSnapshotEvent, args: dict[str, str]
+    ) -> str | None:
+        """A reconnect behind the replay buffer sends the run so far instead of
+        the frames, so replace the collected arguments with its tool calls and
+        return the ``submit_result`` call's id."""
+        args.clear()
+        submit_id = None
+        for message in event.messages:
+            if not isinstance(message, AssistantMessage):
+                continue
+            for call in message.tool_calls or []:
+                args[call.id] = call.function.arguments
+                if call.function.name == "submit_result":
+                    submit_id = call.id
+        return submit_id
+
     handle = runner.tasks.start(prompt="Triage ticket 4411: ...")
     args: dict[str, str] = {}
     submit_id: str | None = None
 
     for event in handle.stream():
+        if isinstance(event, MessagesSnapshotEvent):
+            submit_id = from_snapshot(event, args)
         if (
             isinstance(event, ToolCallStartEvent)
             and event.tool_call_name == "submit_result"
