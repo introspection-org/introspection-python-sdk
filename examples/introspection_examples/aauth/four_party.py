@@ -17,16 +17,18 @@ Or serve the two servers for your own agents, each on its own https origin
 (a tunnel in front of each), with the agent provider you trust:
 
     PERSON_SERVER=https://ps.example AGENT_PROVIDER=https://agents.example \\
-        uv run --with uvicorn uvicorn introspection_examples.aauth.four_party:person_server_app --port 8001
+        uv run --with uvicorn uvicorn --factory introspection_examples.aauth.four_party:serve_person_server --port 8001
     ACCESS_SERVER=https://as.example RESOURCE=https://booking.example \\
         PERSON_SERVER=https://ps.example AGENT_PROVIDER=https://agents.example \\
-        uv run --with uvicorn uvicorn introspection_examples.aauth.four_party:access_server_app --port 8002
+        uv run --with uvicorn uvicorn --factory introspection_examples.aauth.four_party:serve_access_server --port 8002
 """
 
 from __future__ import annotations
 
 import asyncio
 import os
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 import httpx2 as httpx
 from fastapi import FastAPI
@@ -118,11 +120,44 @@ def access_server(http: httpx.AsyncClient) -> AccessServer:
 
 # #endregion docs:aauth-servers
 
-_http = httpx.AsyncClient()
-person_server_app = FastAPI()
-person_server_app.include_router(person_server_router(person_server(_http)))
-access_server_app = FastAPI()
-access_server_app.include_router(access_server_router(access_server(_http)))
+
+def closing(
+    http: httpx.AsyncClient,
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    """A lifespan that closes the server's http client when the app stops."""
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        yield
+        await http.aclose()
+
+    return lifespan
+
+
+# #region docs:aauth-apps
+def person_server_app(ps: PersonServer) -> FastAPI:
+    app = FastAPI(lifespan=closing(ps.http))
+    app.include_router(person_server_router(ps))
+    return app
+
+
+def access_server_app(server: AccessServer) -> FastAPI:
+    app = FastAPI(lifespan=closing(server.http))
+    app.include_router(access_server_router(server))
+    return app
+
+
+# #endregion docs:aauth-apps
+
+
+def serve_person_server() -> FastAPI:
+    """For `uvicorn --factory`: a Person Server with its own http client."""
+    return person_server_app(person_server(httpx.AsyncClient()))
+
+
+def serve_access_server() -> FastAPI:
+    """For `uvicorn --factory`: an Access Server with its own http client."""
+    return access_server_app(access_server(httpx.AsyncClient()))
 
 
 class Internet(httpx.AsyncBaseTransport):
@@ -149,14 +184,16 @@ class Internet(httpx.AsyncBaseTransport):
 
 async def main() -> None:
     internet = Internet()
-    http = httpx.AsyncClient(transport=internet)
+    async with httpx.AsyncClient(transport=internet) as http:
+        await run(internet, http)
+
+
+async def run(internet: Internet, http: httpx.AsyncClient) -> None:
     ps = person_server(http)
-    ps_app = FastAPI()
-    ps_app.include_router(person_server_router(ps))
-    as_app = FastAPI()
-    as_app.include_router(access_server_router(access_server(http)))
-    internet.parties[PS] = httpx.ASGITransport(app=ps_app)
-    internet.parties[AS] = httpx.ASGITransport(app=as_app)
+    internet.parties[PS] = httpx.ASGITransport(app=person_server_app(ps))
+    internet.parties[AS] = httpx.ASGITransport(
+        app=access_server_app(access_server(http))
+    )
 
     # The agent provider and the airline's booking API, as fixed documents.
     provider, airline, agent = (SigningKey.generate() for _ in range(3))
