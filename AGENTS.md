@@ -115,10 +115,6 @@ uv run ty check
 These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 `--no-verify` — fix the underlying issue.
 
-The prek `ty` hook runs unpinned `uvx ty check`, which can resolve to a
-newer ty than `uv.lock` and report diagnostics that CI's locked ty doesn't.
-Trust `uv run ty check`; it matches CI.
-
 ## Dependency check
 
 ```shell
