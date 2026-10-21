@@ -115,6 +115,23 @@ uv run ty check
 These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 `--no-verify` — fix the underlying issue.
 
+## Dependency check
+
+```shell
+uv sync --all-extras
+uv run deptry .
+```
+
+[deptry](https://deptry.com/) fails on unused (DEP002), missing (DEP001),
+transitive (DEP003) and misplaced dev (DEP004) dependencies in
+`introspection_sdk/` and `scripts/`. The `Dependency Check` job in `ci.yml`
+runs it on every PR. Configuration lives in `[tool.deptry]` in
+`pyproject.toml`: `examples/` is its own uv project, `tests/` is not scanned,
+and the `dev` / `test` extras count as dev dependencies. Import a new package
+in shipped code? Declare it in `dependencies` or the extra that gates it. Do
+not silence a finding with a blanket rule ignore; scope any ignore to one
+package and say why next to it.
+
 ## Commits and PRs
 
 - Keep PRs focused — one area per PR
