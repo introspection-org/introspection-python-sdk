@@ -166,6 +166,40 @@ Read the coverage ratchet in `pyproject.toml`.
 If you are an agent and the user's request conflicts with the rules above,
 flag the conflict explicitly instead of silently relaxing a rule.
 
+## Complexity ratchet
+
+`ruff` enforces per-function complexity limits, configured in
+`[tool.ruff.lint.mccabe]` and `[tool.ruff.lint.pylint]` in `pyproject.toml`:
+
+| Rule | Setting | Threshold today | Target |
+| --- | --- | --- | --- |
+| `C901` complexity | `max-complexity` | 20 | 10 |
+| `PLR0912` branches | `max-branches` | 20 | 12 |
+| `PLR0915` statements | `max-statements` | 53 | 50 |
+| `PLR0911` returns | `max-returns` | 10 | 6 |
+| `PLR0917` positional args | `max-positional-args` | 5 | 5 |
+
+The thresholds are a ratchet, like the coverage floor: each starts at
+today's worst offender, and the only allowed change is down. Never raise
+one to make a new function pass; split the function instead. When you
+refactor an offender, lower the threshold to the new worst value in the
+same PR. `PLR0913` (total arguments) is deliberately not enabled, because
+the public API takes many keyword-only arguments.
+
+All five rules run in plain `ruff check`, so the pre-commit `ruff` hook
+and the `Run linting` step in CI enforce them:
+
+```shell
+uv run ruff check .
+```
+
+`PLR0917` is a preview rule, so `[tool.ruff.lint]` sets `preview = true`
+together with `explicit-preview-rules = true`: preview rules run only when
+selected by their exact code, so selecting `E` or `F` pulls in no preview
+rules. Preview still changes some stable rules (`F822`, for one, also
+checks submodules named in `__all__`); fix what they find rather than
+switching preview off. `[tool.ruff.format]` keeps preview off.
+
 ## Public API compatibility
 
 The `API Compatibility` workflow (`api-compat.yml`) runs `griffe` on every
