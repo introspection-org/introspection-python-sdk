@@ -144,3 +144,38 @@ jobs:
 
   # Examples live in their own workflow (./examples.yml) so they don't burn
   # LLM tokens on every push. They run on `workflow_dispatch` + tag pushes.
+
+  deptry:
+    # Unused, missing, transitive and misplaced dev dependencies of
+    # introspection_sdk/ and scripts/, configured in [tool.deptry] in
+    # pyproject.toml. Local equivalent: `uv run deptry .`.
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # deptry maps each declared distribution to its import names from the
+      # installed metadata, so every extra has to be installed.
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Check dependencies
+        run: uv run deptry .
