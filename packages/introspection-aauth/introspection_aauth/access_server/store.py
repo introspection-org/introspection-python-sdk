@@ -7,7 +7,9 @@ from .models import PendingAccess
 
 
 class Store(Protocol):
-    async def pending(self, pending_id: str) -> PendingAccess | None: ...
+    async def select_pending(
+        self, pending_id: str
+    ) -> PendingAccess | None: ...
 
     async def insert_pending(self, pending: PendingAccess) -> None: ...
 
@@ -25,7 +27,7 @@ class MemoryStore:
     def __init__(self) -> None:
         self.requests: dict[str, PendingAccess] = {}
 
-    async def pending(self, pending_id: str) -> PendingAccess | None:
+    async def select_pending(self, pending_id: str) -> PendingAccess | None:
         return self.requests.get(pending_id)
 
     async def insert_pending(self, pending: PendingAccess) -> None:

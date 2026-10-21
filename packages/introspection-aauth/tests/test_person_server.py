@@ -11,9 +11,15 @@ from introspection_aauth.person_server import (
     MemoryStore,
     Mission,
 )
-from introspection_aauth.person_server.models import MissionAnswer
+from introspection_aauth.person_server.models import (
+    MissionAction,
+    MissionAnswer,
+    MissionProposal,
+    PersonTokenRequest,
+)
 from introspection_aauth.protocol import AAuthError, SigningKey
 from introspection_aauth.protocol.claims import (
+    AGENT_DWK,
     AgentTokenClaims,
     AuthTokenClaims,
     Confirmation,
@@ -62,11 +68,11 @@ async def test_a_mission_goes_to_a_person_who_sets_its_budget():
     proposed = await world.call(
         "POST",
         f"{PS}/aauth/mission",
-        {
-            "description": "Book Sydney",
-            "resources": [RESOURCE],
-            "login_hint": "sam",
-        },
+        MissionProposal(
+            description="Book Sydney",
+            resources=[RESOURCE],
+            login_hint="sam",
+        ),
     )
     assert proposed.status_code == 202
     assert proposed.headers["aauth-requirement"] == "requirement=approval"
@@ -124,7 +130,7 @@ async def test_only_the_missions_person_accepts_its_completion():
     done = await world.call(
         "POST",
         f"{PS}/aauth/mission/{mission.s256}",
-        {"action": "completion", "summary": "Booked"},
+        MissionAction(action="completion", summary="Booked"),
     )
     assert done.status_code == 202
     with pytest.raises(AAuthError) as refused:
@@ -139,7 +145,7 @@ async def test_only_the_missions_person_accepts_its_completion():
         TENANT, approval_id(done), ApprovalStatus.APPROVED, decided_by="sam"
     )
     assert (await world.follow(done)).status_code == 200
-    stored = await world.ps_store.mission(TENANT, mission.s256)
+    stored = await world.ps_store.select_mission(TENANT, mission.s256)
     assert stored is not None and stored.completed_at == world.now
     after = await world.ask(mission, 10)
     assert after.status_code == 403
@@ -152,10 +158,10 @@ async def test_a_mission_logs_updates():
     logged = await world.call(
         "POST",
         f"{PS}/aauth/mission/{mission.s256}",
-        {"action": "update", "description": "Found two flights"},
+        MissionAction(action="update", description="Found two flights"),
     )
     assert logged.status_code == 200
-    stored = await world.ps_store.mission(TENANT, mission.s256)
+    stored = await world.ps_store.select_mission(TENANT, mission.s256)
     assert stored is not None and stored.log[0].entry == "Found two flights"
 
 
@@ -173,7 +179,7 @@ async def test_an_agent_from_an_untrusted_provider_is_refused():
     refused = await world.call(
         "POST",
         f"{PS}/aauth/mission",
-        {"description": "x", "login_hint": "sam"},
+        MissionProposal(description="x", login_hint="sam"),
     )
     assert refused.status_code == 401
     assert problem(refused).error == "invalid_jwt"
@@ -185,11 +191,13 @@ async def test_a_key_acts_for_one_person():
     other = await world.call(
         "POST",
         f"{PS}/aauth/person-token",
-        {"resource": RESOURCE, "login_hint": "someone-else"},
+        PersonTokenRequest(resource=RESOURCE, login_hint="someone-else"),
     )
     assert other.status_code == 403
     same = await world.call(
-        "POST", f"{PS}/aauth/person-token", {"resource": RESOURCE}
+        "POST",
+        f"{PS}/aauth/person-token",
+        PersonTokenRequest(resource=RESOURCE),
     )
     assert same.status_code == 200
     claims = read(
@@ -206,6 +214,7 @@ async def test_identical_missions_for_two_people_in_one_second_stay_apart():
     world.agent_key = SigningKey.generate()
     world.agent_token = encode(
         AgentTokenClaims(
+            dwk=AGENT_DWK,
             iss=AP,
             sub="aauth:travel@agents.example",
             jti="agent-2",
@@ -219,11 +228,11 @@ async def test_identical_missions_for_two_people_in_one_second_stay_apart():
     proposed = await world.call(
         "POST",
         f"{PS}/aauth/mission",
-        {
-            "description": "Book Sydney",
-            "resources": [RESOURCE],
-            "login_hint": "kim",
-        },
+        MissionProposal(
+            description="Book Sydney",
+            resources=[RESOURCE],
+            login_hint="kim",
+        ),
     )
     await world.ps.decide(
         TENANT,
@@ -237,7 +246,7 @@ async def test_identical_missions_for_two_people_in_one_second_stay_apart():
     sam_sub = read(sam.person_tokens[RESOURCE], PersonTokenClaims).sub
     kim_sub = read(kim.person_tokens[RESOURCE], PersonTokenClaims).sub
     assert kim_sub != sam_sub
-    stored = await world.ps_store.mission(TENANT, kim.s256)
+    stored = await world.ps_store.select_mission(TENANT, kim.s256)
     assert stored is not None and stored.person == "kim"
 
 
@@ -253,11 +262,11 @@ async def test_a_mission_whose_hash_is_taken_is_refused_not_reused():
     proposed = await world.call(
         "POST",
         f"{PS}/aauth/mission",
-        {
-            "description": "Book Sydney",
-            "resources": [RESOURCE],
-            "login_hint": "sam",
-        },
+        MissionProposal(
+            description="Book Sydney",
+            resources=[RESOURCE],
+            login_hint="sam",
+        ),
     )
     with pytest.raises(AAuthError) as refused:
         await world.ps.decide(
@@ -268,7 +277,9 @@ async def test_a_mission_whose_hash_is_taken_is_refused_not_reused():
             budget=usd(100_000),
         )
     assert refused.value.status == 409
-    approval = await world.ps_store.approval(TENANT, approval_id(proposed))
+    approval = await world.ps_store.select_approval(
+        TENANT, approval_id(proposed)
+    )
     assert approval is not None and approval.status is ApprovalStatus.PENDING
 
 
@@ -276,11 +287,11 @@ async def propose(world: World) -> str:
     proposed = await world.call(
         "POST",
         f"{PS}/aauth/mission",
-        {
-            "description": "Book Sydney",
-            "resources": [RESOURCE],
-            "login_hint": "sam",
-        },
+        MissionProposal(
+            description="Book Sydney",
+            resources=[RESOURCE],
+            login_hint="sam",
+        ),
     )
     return approval_id(proposed)
 
@@ -300,7 +311,8 @@ async def test_a_decision_in_the_callers_unit_of_work_commits_with_it():
     assert decided is not None and decided.mission_s256 is not None
     await world.ps.decided(TENANT, decided)
     assert (
-        await world.ps_store.mission(TENANT, decided.mission_s256) is not None
+        await world.ps_store.select_mission(TENANT, decided.mission_s256)
+        is not None
     )
 
 
@@ -319,6 +331,9 @@ async def test_a_decision_in_the_callers_unit_of_work_rolls_back_with_it():
             )
             raise RuntimeError("the host's own write failed")
     assert decided is not None and decided.mission_s256 is not None
-    assert await world.ps_store.mission(TENANT, decided.mission_s256) is None
-    approval = await world.ps_store.approval(TENANT, pending)
+    assert (
+        await world.ps_store.select_mission(TENANT, decided.mission_s256)
+        is None
+    )
+    approval = await world.ps_store.select_approval(TENANT, pending)
     assert approval is not None and approval.status is ApprovalStatus.PENDING

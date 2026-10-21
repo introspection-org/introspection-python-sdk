@@ -11,6 +11,11 @@ from introspection_aauth.person_server import (
     ApprovalStatus,
     federation,
 )
+from introspection_aauth.person_server.models import (
+    AuthTokenRequest,
+    MissionProposal,
+    PersonTokenRequest,
+)
 from introspection_aauth.protocol import AAuthError, SigningKey, s256
 from introspection_aauth.protocol.httpsig import jwks_uri_key, sign
 from introspection_aauth.protocol.jwt import RESOURCE_TOKEN, encode
@@ -35,7 +40,7 @@ async def test_an_approval_nobody_answers_expires():
     proposed = await world.call(
         "POST",
         f"{PS}/aauth/mission",
-        {"description": "x", "login_hint": "sam"},
+        MissionProposal(description="x", login_hint="sam"),
     )
     world.now += 120
     expired = await world.follow(proposed)
@@ -93,7 +98,7 @@ async def test_a_resource_the_mission_does_not_cover_is_refused_before_its_keys_
     refused = await world.call(
         "POST",
         f"{PS}/aauth/token",
-        {"resource_token": forged, "presented_token": person_token},
+        AuthTokenRequest(resource_token=forged, presented_token=person_token),
     )
     assert refused.status_code == 403
     assert not any("elsewhere" in c for c in world.net.calls)
@@ -104,15 +109,17 @@ async def test_a_resource_token_not_matching_the_presented_token_is_refused():
     mission = await world.approved_mission(budget=1_000)
     token, _ = world.resource_token(mission, 10)
     other = await world.call(
-        "POST", f"{PS}/aauth/person-token", {"resource": RESOURCE}
+        "POST",
+        f"{PS}/aauth/person-token",
+        PersonTokenRequest(resource=RESOURCE),
     )
     refused = await world.call(
         "POST",
         f"{PS}/aauth/token",
-        {
-            "resource_token": token,
-            "presented_token": body(other, PersonTokenAnswer).person_token,
-        },
+        AuthTokenRequest(
+            resource_token=token,
+            presented_token=body(other, PersonTokenAnswer).person_token,
+        ),
     )
     assert refused.status_code == 400
     assert problem(refused).error == "invalid_resource_token"
@@ -127,7 +134,7 @@ async def test_an_expired_presented_token_is_never_federated():
     refused = await world.call(
         "POST",
         f"{PS}/aauth/token",
-        {"resource_token": token, "presented_token": person_token},
+        AuthTokenRequest(resource_token=token, presented_token=person_token),
     )
     assert problem(refused).error == "expired_presented_token"
 
@@ -295,7 +302,9 @@ async def test_a_calls_r3_proposal_is_read_into_its_approval():
     over = await world.call(
         "POST",
         f"{PS}/aauth/token",
-        {"resource_token": with_proposal, "presented_token": person_token},
+        AuthTokenRequest(
+            resource_token=with_proposal, presented_token=person_token
+        ),
     )
     described = await world.ps.describe(TENANT, approval_id(over))
     assert described is not None and described.summary == "Book QF1 for $600"

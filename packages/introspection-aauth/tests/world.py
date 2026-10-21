@@ -21,9 +21,15 @@ from introspection_aauth.person_server import (
     MemoryStore,
     PersonServer,
 )
-from introspection_aauth.person_server.models import MissionAnswer
+from introspection_aauth.person_server.models import (
+    AuthTokenRequest,
+    MissionAnswer,
+    MissionProposal,
+)
 from introspection_aauth.protocol import Budget, SigningKey, jwks
 from introspection_aauth.protocol.claims import (
+    AGENT_DWK,
+    RESOURCE_DWK,
     AgentTokenClaims,
     Claims,
     Confirmation,
@@ -174,6 +180,7 @@ class World:
         self.agent_token = encode(
             AgentTokenClaims(
                 iss=AP,
+                dwk=AGENT_DWK,
                 sub="aauth:travel@agents.example",
                 jti="agent-1",
                 iat=T0,
@@ -188,14 +195,20 @@ class World:
         self,
         method: str,
         url: str,
-        body: BaseModel | JsonObject | None = None,
+        body: BaseModel | None = None,
     ) -> httpx.Response:
-        """A request the agent signs (`sig=jwt`, its agent token); a raw
-        object is for a body no request model would build."""
-        if isinstance(body, BaseModel):
-            content = body.model_dump_json(exclude_none=True).encode()
-        else:
-            content = json.dumps(body).encode() if body is not None else None
+        """A request the agent signs (`sig=jwt`, its agent token)."""
+        content = (
+            body.model_dump_json(exclude_none=True).encode()
+            if body is not None
+            else None
+        )
+        return await self.call_raw(method, url, content)
+
+    async def call_raw(
+        self, method: str, url: str, content: bytes | None
+    ) -> httpx.Response:
+        """A request the agent signs, with a body no request model would build."""
         headers = sign(
             self.agent_key,
             jwt_key(self.agent_token),
@@ -216,11 +229,11 @@ class World:
         proposed = await self.call(
             "POST",
             f"{PS}/aauth/mission",
-            {
-                "description": "Book Sydney",
-                "resources": [RESOURCE],
-                "login_hint": "sam",
-            },
+            MissionProposal(
+                description="Book Sydney",
+                resources=[RESOURCE],
+                login_hint="sam",
+            ),
         )
         approval_id = urlsplit(proposed.headers["location"]).path.rsplit(
             "/", 1
@@ -243,6 +256,8 @@ class World:
         presented = read(mission.person_tokens[RESOURCE], PersonTokenClaims)
         return ResourceTokenClaims(
             iss=RESOURCE,
+            dwk=RESOURCE_DWK,
+            jti=f"rt-{self.now}-{amount}-{aud}",
             aud=aud,
             ps=PS,
             agent_jkt=self.agent_key.kid,
@@ -274,10 +289,12 @@ class World:
         return await self.call(
             "POST",
             f"{PS}/aauth/token",
-            {"resource_token": token, "presented_token": person_token},
+            AuthTokenRequest(
+                resource_token=token, presented_token=person_token
+            ),
         )
 
     async def spent(self, s256: str) -> int:
-        mission = await self.ps_store.mission(TENANT, s256)
+        mission = await self.ps_store.select_mission(TENANT, s256)
         assert mission is not None
         return mission.spent

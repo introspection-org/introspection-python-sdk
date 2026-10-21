@@ -24,10 +24,14 @@ from introspection_aauth.protocol import (
     jwt,
 )
 from introspection_aauth.protocol.claims import (
+    AGENT_DWK,
+    PERSON_DWK,
+    RESOURCE_DWK,
     AgentExpectation,
     AgentTokenClaims,
     AuthGrant,
     AuthTokenClaims,
+    Claims,
     Confirmation,
     DeliveryExpectation,
     PersonTokenClaims,
@@ -48,11 +52,25 @@ AGENT = SigningKey.generate()
 OTHER = SigningKey.generate()
 
 
-def test_no_module_uses_typing_any():
+def _annotations(tree: ast.AST) -> list[ast.expr]:
+    found: list[ast.expr] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.arg) and node.annotation is not None:
+            found.append(node.annotation)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.returns is not None:
+                found.append(node.returns)
+        elif isinstance(node, ast.AnnAssign):
+            found.append(node.annotation)
+    return found
+
+
+def test_no_module_types_anything_as_any_or_object():
     """Bodies and claims are models; `JsonValue` is for arbitrary JSON."""
     found = []
     for path in [*PACKAGE.rglob("*.py"), *TESTS.rglob("*.py")]:
-        for node in ast.walk(ast.parse(path.read_text())):
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
             if (
                 isinstance(node, ast.ImportFrom)
                 and node.module == "typing"
@@ -64,11 +82,19 @@ def test_no_module_uses_typing_any():
                 and node.value.id == "typing"
             ):
                 found.append(f"{path.name}:{node.lineno}")
+        for annotation in _annotations(tree):
+            if any(
+                isinstance(n, ast.Name) and n.id == "object"
+                for n in ast.walk(annotation)
+            ):
+                found.append(f"{path.name}:{annotation.lineno}")
     assert found == []
 
 
 def resource_claims(**update: str | None) -> ResourceTokenClaims:
     claims = ResourceTokenClaims(
+        dwk=RESOURCE_DWK,
+        jti="rt-1",
         iss=RESOURCE,
         aud=AS,
         ps=PS,
@@ -77,6 +103,9 @@ def resource_claims(**update: str | None) -> ResourceTokenClaims:
         presented_jti="pt-1",
         mission_s256="m-1",
         tenant="acme",
+        account="acct-1",
+        r3_uri=f"{RESOURCE}/r3/1",
+        r3_s256="h-1",
         scope="book",
         budget=usd(60_000),
         iat=100,
@@ -109,6 +138,13 @@ def delivery(rt: ResourceTokenClaims) -> DeliveryExpectation:
     )
 
 
+def test_a_trailing_slash_on_the_resource_is_the_same_audience():
+    rt = resource_claims()
+    grant = AuthGrant.requested(rt, "person-1")
+    claims = auth_claims(grant).model_copy(update={"aud": f"{RESOURCE}/"})
+    assert delivery(rt).failures(claims) == []
+
+
 def test_an_auth_token_for_exactly_the_call_passes():
     rt = resource_claims()
     assert (
@@ -128,6 +164,9 @@ def test_an_auth_token_for_exactly_the_call_passes():
         ({"budget": usd(70_000)}, ["budget"]),
         ({"budget": None}, ["budget"]),
         ({"sub": "person-2", "tenant": "other"}, ["sub", "tenant"]),
+        ({"account": "acct-2"}, ["account"]),
+        ({"r3_uri": f"{RESOURCE}/r3/2"}, ["r3_uri"]),
+        ({"r3_s256": "other"}, ["r3_s256"]),
     ],
 )
 def test_each_failed_delivery_check_is_named(
@@ -158,6 +197,7 @@ def test_resource_presented_and_agent_expectations_name_their_failures():
         ps=PS, aud=PS, agent_jkt=OTHER.kid, tenant="x", requires_presented=True
     ).failures(rt) == ["ps", "aud", "agent_jkt", "tenant", "sub"]
     presented = PersonTokenClaims(
+        dwk=PERSON_DWK,
         iss=PS,
         aud=RESOURCE,
         sub="person-1",
@@ -176,6 +216,8 @@ def test_resource_presented_and_agent_expectations_name_their_failures():
         ps=AS, rt=resource_claims(tenant="x")
     ).failures(presented) == ["iss", "tenant"]
     agent = AgentTokenClaims(
+        dwk=AGENT_DWK,
+        jti="agent-x",
         iss="https://agents.example",
         sub="aauth:a@agents.example",
         cnf=Confirmation(jwk=AGENT.public_jwk),
@@ -193,7 +235,7 @@ def test_resource_presented_and_agent_expectations_name_their_failures():
     ("payload", "detail"),
     [
         ({"iat": 200, "exp": 100}, "exp is not after iat"),
-        ({"iat": 100, "exp": 100 + 7_200}, "too long a life"),
+        ({"iat": 100, "exp": 100 + 86_401}, "lifetime is over 86400"),
         ({"cnf": {"jwk": {"kty": "oct"}}}, "cnf"),
         ({"cnf": {}}, "cnf.jwk"),
         ({"sub": ""}, "sub"),
@@ -209,6 +251,7 @@ def test_malformed_agent_token_claims_do_not_verify(
         "dwk": "aauth-agent.json",
         "sub": "aauth:a@agents.example",
         "cnf": {"jwk": AGENT.public_jwk.model_dump(exclude_none=True)},
+        "jti": "agent-1",
         "iat": 100,
         "exp": 400,
     } | payload
@@ -245,6 +288,7 @@ def test_a_stored_grant_of_any_shape_decodes():
         "agent_id": "aauth:a@agents.example",
         "agent_jkt": AGENT.kid,
         "agent_jwk": AGENT.public_jwk.model_dump(exclude_none=True),
+        "agent_expires_at": 1,
         "person": "sam",
         "description": "Book Sydney",
         "expires_at": 1,
@@ -353,6 +397,8 @@ async def test_an_authorization_header_must_be_signed_when_present():
     url = "https://ps.example/aauth/mission"
     token = jwt.encode(
         AgentTokenClaims(
+            dwk=AGENT_DWK,
+            jti="agent-x",
             iss="https://agents.example",
             sub="aauth:a@agents.example",
             cnf=Confirmation(jwk=AGENT.public_jwk),
@@ -390,3 +436,47 @@ async def test_an_authorization_header_must_be_signed_when_present():
 def test_a_jwk_needs_a_key_type():
     with pytest.raises(ValidationError):
         Jwk.model_validate({"crv": "Ed25519"})
+
+
+def lifetime_claims(seconds: int) -> JsonObject:
+    return {
+        "iss": "https://ps.example",
+        "dwk": "aauth-person.json",
+        "aud": RESOURCE,
+        "sub": "person-1",
+        "cnf": {"jwk": AGENT.public_jwk.model_dump(exclude_none=True)},
+        "jti": "t-1",
+        "iat": 100,
+        "exp": 100 + seconds,
+    }
+
+
+@pytest.mark.parametrize(
+    ("model", "dwk", "seconds", "allowed"),
+    [
+        (AgentTokenClaims, "aauth-agent.json", 2 * 3_600, True),
+        (AgentTokenClaims, "aauth-agent.json", 24 * 3_600, True),
+        (AgentTokenClaims, "aauth-agent.json", 24 * 3_600 + 1, False),
+        (PersonTokenClaims, "aauth-person.json", 3_600, True),
+        (PersonTokenClaims, "aauth-person.json", 3_601, False),
+        (AuthTokenClaims, "aauth-access.json", 3_601, False),
+        (ResourceTokenClaims, "aauth-resource.json", 3_600, True),
+    ],
+)
+def test_each_token_type_caps_its_own_lifetime(
+    model: type[Claims], dwk: str, seconds: int, allowed: bool
+):
+    claims = lifetime_claims(seconds) | {"dwk": dwk, "ps": PS}
+    if allowed:
+        assert model.model_validate(claims).exp == 100 + seconds
+    else:
+        with pytest.raises(ValidationError, match="lifetime is over"):
+            model.model_validate(claims)
+
+
+@pytest.mark.parametrize("missing", ["dwk", "jti"])
+def test_a_token_without_its_dwk_or_jti_is_malformed(missing: str):
+    claims = lifetime_claims(60)
+    del claims[missing]
+    with pytest.raises(ValidationError):
+        PersonTokenClaims.model_validate(claims)

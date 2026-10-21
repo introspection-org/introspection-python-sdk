@@ -19,11 +19,12 @@ whatever proxy delivered it.
 
 from collections.abc import Awaitable
 from http import HTTPStatus
+from types import UnionType
 from typing import Protocol, TypedDict, TypeVar, Unpack
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from .access_server.server import AccessServer
 from .person_server.models import (
@@ -37,6 +38,7 @@ from .person_server.models import (
 from .person_server.server import PersonServer
 from .protocol.errors import AAuthError, Answer, Problem
 from .protocol.httpsig import SignedRequest
+from .protocol.json import JsonObject
 from .protocol.keys import Jwks
 from .protocol.server import Server
 from .protocol.wire import (
@@ -54,13 +56,23 @@ _Server = TypeVar("_Server", bound=Server)
 _Acting = TypeVar("_Acting", bound=Server, contravariant=True)
 
 
+class _Response(TypedDict, total=False):
+    """One of a route's documented responses."""
+
+    model: type[BaseModel]
+    description: str
+    content: JsonObject
+
+
+Responses = dict[int | str, _Response]
+
+
 class _Docs(TypedDict, total=False):
     summary: str
     description: str
     operation_id: str
     status_code: int
-    response_model: object
-    responses: dict[int | str, dict[str, object]]
+    response_model: type[BaseModel] | UnionType
 
 
 class PersonServerResolver(Protocol):
@@ -85,14 +97,14 @@ SIGNED = (
     "Signed: the request carries an RFC 9421 signature with `Signature-Key`, "
     "and errors are AAuth problem+json."
 )
-PROBLEM_RESPONSES: dict[int | str, dict[str, object]] = {
+PROBLEM_RESPONSES: Responses = {
     "4XX": {
         "model": Problem,
         "description": "Refused",
         "content": {"application/problem+json": {}},
     },
 }
-PENDING_RESPONSE: dict[int | str, dict[str, object]] = {
+PENDING_RESPONSE: Responses = {
     HTTPStatus.ACCEPTED.value: {
         "model": Pending,
         "description": "Put to whoever decides; poll the `Location` it names",
@@ -101,7 +113,7 @@ PENDING_RESPONSE: dict[int | str, dict[str, object]] = {
 }
 
 
-def _body(model: type[BaseModel]) -> dict[str, object]:
+def _body(model: type[BaseModel]) -> JsonObject:
     """The signed JSON body, read raw so the signature covers its bytes."""
     return {
         "requestBody": {
@@ -210,7 +222,11 @@ def _well_known(
 
 
 def _endpoint_path(
-    source: PersonServer | AccessServer | object, endpoint_path: str | None
+    source: PersonServer
+    | AccessServer
+    | PersonServerResolver
+    | AccessServerResolver,
+    endpoint_path: str | None,
 ) -> str:
     if isinstance(source, (PersonServer, AccessServer)):
         return urlsplit(source.endpoint_base).path
@@ -244,7 +260,7 @@ class _Act(Protocol[_Acting]):
     ) -> Awaitable[Answer]: ...
 
 
-def _parameters(path: str) -> list[dict[str, object]]:
+def _parameters(path: str) -> list[JsonValue]:
     names = [
         segment.strip("{}").split(":")[0]
         for segment in path.split("/")
@@ -269,10 +285,11 @@ def _signed_route(
     act: _Act[_Server],
     *,
     body: type[BaseModel] | None = None,
+    responses: Responses | None = None,
     **docs: Unpack[_Docs],
 ) -> None:
     """A signed protocol route: the server `find` resolves answers it by `act`."""
-    extra: dict[str, object] = _body(body) if body is not None else {}
+    extra: JsonObject = _body(body) if body is not None else {}
     if parameters := _parameters(path):
         extra["parameters"] = parameters
 
@@ -289,6 +306,7 @@ def _signed_route(
         endpoint,
         methods=[method],
         openapi_extra=extra or None,
+        responses={code: {**r} for code, r in (responses or {}).items()},
         **docs,
     )
 

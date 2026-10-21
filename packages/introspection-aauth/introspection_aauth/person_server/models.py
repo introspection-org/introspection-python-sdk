@@ -1,6 +1,7 @@
 """What a Person Server keeps, and the requests it takes."""
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -102,6 +103,8 @@ class Approval(BaseModel):
     agent_id: str
     agent_jkt: str
     agent_jwk: Jwk
+    #: When the agent token the request came with expires.
+    agent_expires_at: int
     person: str
     mission_s256: str | None = None
     #: The mission's description, the request's scope, or the completion summary.
@@ -115,6 +118,8 @@ class Approval(BaseModel):
         default_factory=MissionGrant, union_mode="left_to_right"
     )
     federation: Federation | None = None
+    #: Set once the agent collects the auth token it issued; a second collect is refused.
+    collected: bool = False
     decided_budget: Budget | None = None
     decided_by: str | None = None
     decided_at: int | None = None
@@ -134,7 +139,7 @@ class MissionProposal(BaseModel):
 class MissionAction(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    action: str
+    action: Literal["update", "completion"]
     description: str | None = Field(None, max_length=8_000)
     summary: str | None = Field(None, max_length=8_000)
     tenant: str | None = None

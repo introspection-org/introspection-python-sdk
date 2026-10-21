@@ -10,10 +10,10 @@ The loop is steps a host can journal: `discover`, `request`, `record`, wait
 """
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable
 from enum import StrEnum
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 from urllib.parse import urljoin, urlsplit
 
 import http_sfv
@@ -23,6 +23,7 @@ from pydantic import BaseModel, ValidationError
 from ..protocol import jwt
 from ..protocol.claims import (
     ACCESS_DWK,
+    AgentTokenClaims,
     AuthTokenClaims,
     DeliveryExpectation,
     PersonTokenClaims,
@@ -46,6 +47,18 @@ TRANSPORT_RETRY_DELAYS = (1.0, 2.0, 4.0)
 DEFAULT_DELAY, MIN_DELAY, MAX_DELAY = 5, 1, 300
 
 
+class Sleep(Protocol):
+    """Waits `seconds`; a durable host passes its own."""
+
+    def __call__(self, seconds: float, /) -> Awaitable[None]: ...
+
+
+class Exchange(Protocol):
+    """One exchange with the Access Server."""
+
+    def __call__(self) -> Awaitable["Outcome"]: ...
+
+
 class Step(StrEnum):
     ISSUED = "issued"
     PENDING = "pending"
@@ -60,6 +73,7 @@ class Outcome(BaseModel):
     auth_token_expires_at: int | None = None
     #: The budget the Access Server granted, from its auth token.
     granted: Budget | None = None
+    #: Where to poll next; on a pending outcome, None sends the request again.
     location: str | None = None
     requirement: str | None = None
     retry_after: int | None = None
@@ -205,11 +219,14 @@ class AccessServerClient:
                 "denied",
                 "the Access Server asks for payment, which this Person Server does not make",
             )
-        if status in (429, 503) and requested != metadata.auth_token_endpoint:
+        if status in (429, 503):
+            # Slow down and ask again: poll again, or send the request again.
             retry = _retry_after(response) or 0
             return Outcome(
                 step=Step.PENDING,
-                location=requested,
+                location=None
+                if requested == metadata.auth_token_endpoint
+                else requested,
                 requirement=federation.requirement or "requirement=approval",
                 retry_after=retry + 5 if status == 429 else retry,
             )
@@ -266,6 +283,9 @@ class AccessServerClient:
             presented = PersonTokenClaims.model_validate(
                 jwt.decode(federation.presented_token).claims
             )
+            agent = AgentTokenClaims.model_validate(
+                jwt.decode(federation.agent_token).claims
+            )
         except (VerificationError, ValidationError):
             return unreachable("its request's tokens cannot be read back")
         try:
@@ -284,7 +304,7 @@ class AccessServerClient:
             ps=self._ps.issuer,
             rt=rt,
             agent_jkt=agent_jkt,
-            not_after=presented.exp,
+            not_after=min(presented.exp, agent.exp),
             sent=federation.budget,
         ).failures(claims)
         if wrong:
@@ -303,7 +323,7 @@ async def due(
     ps: "PersonServer", tenant: str, approval_id: str
 ) -> tuple[Federation, str] | None:
     """The federation still to run for an approval, and the agent's key thumbprint."""
-    approval = await ps.store.approval(tenant, approval_id)
+    approval = await ps.store.select_approval(tenant, approval_id)
     if (
         approval is None
         or approval.federation is None
@@ -329,7 +349,7 @@ async def _record(
     ps: "PersonServer", tenant: str, approval_id: str, outcome: Outcome
 ) -> bool:
     async with ps.store.transaction() as tx:
-        approval = await tx.approval(tenant, approval_id)
+        approval = await tx.select_approval(tenant, approval_id)
         federation = approval.federation if approval else None
         if (
             approval is None
@@ -399,7 +419,7 @@ async def _spend(
         return Refusal(
             status=404, error="mission_not_found", detail="no such mission"
         )
-    mission = await tx.mission(tenant, mission_s256)
+    mission = await tx.select_mission(tenant, mission_s256)
     granted = outcome.granted
     spend = (
         granted.amount
@@ -409,7 +429,7 @@ async def _spend(
         and mission.budget.same_scale(granted)
         else None
     )
-    if await tx.spend(
+    if await tx.update_spend(
         tenant,
         mission_s256,
         spend,
@@ -438,7 +458,7 @@ async def run(
     ps: "PersonServer",
     tenant: str,
     approval_id: str,
-    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    sleep: Sleep = asyncio.sleep,
 ) -> Step | None:
     """Redeem an approved request at its Access Server, polling while it decides."""
     found = await due(ps, tenant, approval_id)
@@ -448,7 +468,7 @@ async def run(
     client = AccessServerClient(ps)
     metadata = await client.discover(federation.access_server)
 
-    async def attempt(call: Callable[[], Awaitable[Outcome]]) -> Outcome:
+    async def attempt(call: Exchange) -> Outcome:
         """`call`, retried while the Access Server cannot be reached, then `as_unreachable`."""
         for delay in TRANSPORT_RETRY_DELAYS:
             try:
@@ -469,18 +489,16 @@ async def run(
     )
     while True:
         waiting = await record(ps, tenant, approval_id, outcome)
-        if (
-            not waiting
-            or outcome.location is None
-            or isinstance(metadata, Outcome)
-        ):
+        if not waiting or isinstance(metadata, Outcome):
             return outcome.step
         await sleep(poll_delay(outcome))
         federation = federation.model_copy(
             update={"requirement": outcome.requirement}
         )
         outcome = await attempt(
-            partial(
+            partial(client.request, federation, agent_jkt, metadata)
+            if outcome.location is None
+            else partial(
                 client.poll, outcome.location, federation, agent_jkt, metadata
             )
         )

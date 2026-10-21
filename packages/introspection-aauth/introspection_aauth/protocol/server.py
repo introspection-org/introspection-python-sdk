@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from typing import NotRequired, Protocol, TypedDict, TypeVar, Unpack
 from urllib.parse import urlsplit
 
+import http_sfv
 import httpx2 as httpx
 from pydantic import BaseModel, ValidationError
 
@@ -20,10 +21,11 @@ from .claims import (
     AgentTokenClaims,
     Claims,
     ResourceTokenClaims,
+    ResourceTokenExpectation,
 )
 from .discovery import Discovery
 from .errors import AAuthError, Answer, VerificationError
-from .keys import Jwks, SigningKey, jwks, s256
+from .keys import Jwk, Jwks, SigningKey, jwks, s256
 from .models import Agent
 from .wire import Pending, R3Proposal
 
@@ -41,8 +43,12 @@ __all__ = [
     "now_seconds",
     "parse",
     "pending",
+    "presented_token_error",
+    "requirement",
+    "same_origin",
     "verify_agent",
     "verify_agent_token",
+    "verify_resource_token",
     "verify_server",
 ]
 
@@ -54,10 +60,12 @@ def now_seconds() -> int:
     return int(time.time())
 
 
-def https_origin(value: object) -> bool:
+#: How a `401` names the scheme an agent should sign with.
+ACCEPT_JWT_SCHEME = {"Accept-Signature-Scheme": "jwt"}
+
+
+def https_origin(value: str) -> bool:
     """A server identifier: `https://host`, with no path, query or fragment."""
-    if not isinstance(value, str):
-        return False
     parts = urlsplit(value)
     return (
         parts.scheme == "https"
@@ -78,6 +86,51 @@ def parse(model: type[Model], body: bytes | None) -> Model:
         ) from None
 
 
+def _origin(url: str) -> str | None:
+    """The https origin `url` is on, or None for any other URL or one
+    carrying credentials."""
+    parts = urlsplit(url)
+    if (
+        parts.scheme != "https"
+        or not parts.hostname
+        or parts.username is not None
+        or parts.password is not None
+    ):
+        return None
+    return f"https://{parts.netloc.lower()}"
+
+
+def same_origin(url: str, origin: str) -> bool:
+    """Whether `url` is an https URL on `origin`, with no credentials in it."""
+    found = _origin(url)
+    return found is not None and found == _origin(origin)
+
+
+def requirement(
+    name: str, *, url: str | None = None, code: str | None = None
+) -> str:
+    """An `AAuth-Requirement` header (`#requirement-values`): an RFC 9651
+    Dictionary whose `requirement` carries its parameters, strings escaped."""
+    item = http_sfv.Item(http_sfv.Token(name))
+    if url is not None:
+        item.params["url"] = url
+    if code is not None:
+        item.params["code"] = code
+    header = http_sfv.Dictionary()
+    header["requirement"] = item
+    return str(header)
+
+
+def presented_token_error(exc: VerificationError) -> AAuthError:
+    """The refusal of a presented person token that does not verify."""
+    code = (
+        "expired_presented_token"
+        if exc.code == "expired_jwt"
+        else "invalid_presented_token"
+    )
+    return AAuthError(400, code, exc.detail)
+
+
 def pending(
     location: str, retry_after: int, requirement: str | None = None
 ) -> Answer:
@@ -89,9 +142,12 @@ def pending(
             "Location": location,
             "Retry-After": str(retry_after),
             "Cache-Control": "no-store",
-            "AAuth-Requirement": requirement or "requirement=approval",
+            "AAuth-Requirement": requirement or APPROVAL_REQUIREMENT,
         },
     )
+
+
+APPROVAL_REQUIREMENT = "requirement=approval"
 
 
 class Identity:
@@ -134,9 +190,18 @@ class Identity:
         return httpsig.sign(self.key, key, method, url, body=body, created=now)
 
     async def read_proposal(
-        self, http: httpx.AsyncClient, r3_uri: str, r3_s256: str, now: int
+        self,
+        http: httpx.AsyncClient,
+        resource: str,
+        r3_uri: str,
+        r3_s256: str,
+        now: int,
     ) -> R3Proposal:
-        """A resource's R3 proposal, fetched signed and checked against its hash."""
+        """A resource's R3 proposal, fetched signed and checked against its
+        hash; only from the resource's own https origin, so a resource token
+        cannot send this server anywhere else."""
+        if not same_origin(r3_uri, resource):
+            raise ValueError("the proposal is not on the resource's origin")
         response = await http.get(
             r3_uri,
             headers=self.signed("GET", r3_uri, None, now),
@@ -175,6 +240,8 @@ class ServerOptions(TypedDict):
     clock: NotRequired[Clock]
     new_id: NotRequired[IdFactory]
     name: NotRequired[str]
+    #: How it reads metadata and keys; by default, over its `http`.
+    discovery: NotRequired[Discovery]
 
 
 class Server:
@@ -193,7 +260,7 @@ class Server:
         )
         self.issuer = self.identity.issuer
         self.http = http
-        self.discovery = Discovery(http)
+        self.discovery = options.get("discovery") or Discovery(http)
         self.endpoint_base = options.get("endpoint_base", self.issuer).rstrip(
             "/"
         )
@@ -211,16 +278,35 @@ class Server:
 
 
 async def verify_resource_token(
-    token: str, discovery: Discovery, resource: str, now: int
+    token: str,
+    discovery: Discovery,
+    resource: str,
+    now: int,
+    expectation: ResourceTokenExpectation,
 ) -> ResourceTokenClaims:
-    """A resource token, against its resource's keys (`#resource-token`)."""
-    return await discovery.verified(
-        resource,
-        RESOURCE_DWK,
-        lambda keys: jwt.verify(
-            token, keys, jwt.RESOURCE_TOKEN, now, ResourceTokenClaims
-        ),
-    )
+    """A resource token, against its resource's keys (`#resource-token`),
+    and what it must say for this server; `400 invalid_resource_token`
+    otherwise."""
+    try:
+        rt = await discovery.verified(
+            resource,
+            RESOURCE_DWK,
+            lambda keys: jwt.verify(
+                token, keys, jwt.RESOURCE_TOKEN, now, ResourceTokenClaims
+            ),
+        )
+    except VerificationError as exc:
+        raise AAuthError(
+            400, "invalid_resource_token", f"does not verify: {exc.detail}"
+        ) from None
+    wrong = expectation.failures(rt)
+    if wrong:
+        raise AAuthError(
+            400,
+            "invalid_resource_token",
+            f"its {', '.join(wrong)} not this request's",
+        )
+    return rt
 
 
 async def verify_agent_token(
@@ -248,8 +334,14 @@ async def verify_agent(
     providers: set[str],
     now: int,
 ) -> Agent:
-    """An agent's signed request (`sig=jwt`, its agent token), or a `401`."""
+    """An agent's signed request (`sig=jwt`, its agent token), or a `401`.
+    Any other scheme is refused before anything is read or fetched."""
     try:
+        scheme = httpsig.signature_scheme(
+            request.headers.get("signature-key", "")
+        )
+        if scheme != "jwt":
+            raise VerificationError("unsupported_scheme", "sign with sig=jwt")
         verified = await httpsig.verify(request, now)
         if verified.scheme != "jwt" or verified.token is None:
             raise VerificationError("unsupported_scheme", "sign with sig=jwt")
@@ -261,12 +353,8 @@ async def verify_agent(
                 "invalid_signature", "not signed by the token's key"
             )
     except VerificationError as exc:
-        headers = (
-            {"Accept-Signature-Scheme": "jwt"}
-            if exc.code == "unsupported_scheme"
-            else {}
-        )
-        raise AAuthError(401, exc.code, exc.detail, headers) from None
+        hint = ACCEPT_JWT_SCHEME if exc.code == "unsupported_scheme" else None
+        raise AAuthError(401, exc.code, exc.detail, hint) from None
     return Agent(
         id=claims.sub,
         provider=claims.iss.rstrip("/"),
@@ -294,8 +382,17 @@ async def verify_server(
             "invalid_signature",
             "sign as a server this one takes requests from",
         )
+
+    async def resolve(issuer: str, signed_dwk: str, kid: str) -> Jwk:
+        # Only `dwk` is fetched, and only from an allowed server.
+        if signed_dwk != dwk or issuer not in servers:
+            raise VerificationError(
+                "unsupported_scheme", f"sign with sig=jwks_uri and {dwk}"
+            )
+        return await discovery.key(issuer, signed_dwk, kid)
+
     try:
-        verified = await httpsig.verify(request, now, discovery.key)
+        verified = await httpsig.verify(request, now, resolve)
     except VerificationError as exc:
         raise AAuthError(401, exc.code, exc.detail) from None
     if verified.scheme != "jwks_uri" or verified.dwk != dwk:

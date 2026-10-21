@@ -2,7 +2,6 @@
 (`#metadata-documents`), cached for a bounded time."""
 
 import time
-from collections.abc import Callable
 from typing import Protocol, TypeVar
 from urllib.parse import urlsplit
 
@@ -14,6 +13,7 @@ from .keys import Jwk, Jwks
 from .wire import ServerMetadata
 
 T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
 Document = TypeVar("Document", bound=BaseModel)
 #: How long an issuer's keys are trusted before they are fetched again.
 KEYS_TTL_SECONDS = 300
@@ -45,6 +45,12 @@ def is_identifier(value: str) -> bool:
 def is_https(value: str) -> bool:
     parts = urlsplit(value)
     return parts.scheme == "https" and bool(parts.hostname)
+
+
+class Check(Protocol[T_co]):
+    """What a document must pass, against an issuer's keys."""
+
+    def __call__(self, keys: Jwks, /) -> T_co: ...
 
 
 class Monotonic(Protocol):
@@ -113,9 +119,7 @@ class Discovery:
         self._cache[(issuer, dwk)] = (self._clock() + self._ttl, keys)
         return keys
 
-    async def verified(
-        self, issuer: str, dwk: str, check: Callable[[Jwks], T]
-    ) -> T:
+    async def verified(self, issuer: str, dwk: str, check: Check[T]) -> T:
         """`check` against the issuer's keys, and once more against fresh ones."""
         try:
             return check(await self.jwks(issuer, dwk))

@@ -36,6 +36,7 @@ from ..protocol.server import (
     https_origin,
     parse,
     pending,
+    presented_token_error,
     verify_agent,
     verify_resource_token,
 )
@@ -78,11 +79,14 @@ class Hook(Protocol):
 
 def _fits(mission: Mission, budget: Budget | None) -> bool:
     """Whether a request is within what is left of its mission's budget."""
-    return budget is None or (
-        mission.budget is not None
-        and mission.budget.same_scale(budget)
-        and mission.budget.amount - mission.spent >= budget.amount
+    if budget is None:
+        return True
+    if mission.budget is None:
+        return False
+    left = mission.budget.model_copy(
+        update={"amount": mission.budget.amount - mission.spent}
     )
+    return budget.at_most(left)
 
 
 class PersonServer(Server):
@@ -120,7 +124,8 @@ class PersonServer(Server):
         self._subject_secret = subject_secret
         self._providers = {p.rstrip("/") for p in agent_providers}
         self._default_tenant = default_tenant
-        self._token_ttl, self._mission_ttl = token_ttl, mission_ttl
+        self._token_ttl = min(token_ttl, jwt.MAX_TOKEN_LIFETIME_SECONDS)
+        self._mission_ttl = mission_ttl
         self._approval_ttl = approval_ttl
         self._on_approval, self._on_federate = on_approval, on_federate
         self._running: set[asyncio.Task[Step | None]] = set()
@@ -176,7 +181,7 @@ class PersonServer(Server):
     ) -> str:
         """Who the agent acts for. A key is bound to the first person it names."""
         if login_hint is None:
-            bound = await self.store.binding(tenant, agent.jkt)
+            bound = await self.store.select_binding(tenant, agent.jkt)
             if bound is None:
                 raise AAuthError(
                     400, "invalid_request", "name the person: login_hint"
@@ -189,7 +194,10 @@ class PersonServer(Server):
                 "access_denied",
                 "this Person Server does not speak for them",
             )
-        if await self.store.bind(tenant, agent.jkt, person) != person:
+        if (
+            await self.store.insert_binding(tenant, agent.jkt, person)
+            != person
+        ):
             raise AAuthError(
                 403, "invalid_request", "this agent acts for another person"
             )
@@ -301,11 +309,11 @@ class PersonServer(Server):
         action = parse(MissionAction, request.body)
         tenant = self._tenant(action.tenant)
         mission = self._live(
-            await self.store.mission(tenant, mission_s256), agent.id
+            await self.store.select_mission(tenant, mission_s256), agent.id
         )
         if action.action == "update":
             entry = action.description or ""
-            if not await self.store.log_mission(
+            if not await self.store.update_mission_log(
                 tenant,
                 mission.s256,
                 LogEntry(at=self.clock(), entry=entry),
@@ -315,10 +323,6 @@ class PersonServer(Server):
                     403, "mission_terminated", "the mission has ended"
                 )
             return Answer(200, MissionLogged(s256=s256(entry.encode())))
-        if action.action != "completion":
-            raise AAuthError(
-                400, "invalid_request", "action is update or completion"
-            )
         approval = self._new_approval(
             ApprovalKind.COMPLETION,
             agent,
@@ -343,7 +347,8 @@ class PersonServer(Server):
         mission = None
         if body.mission_s256 is not None:
             mission = self._live(
-                await self.store.mission(tenant, body.mission_s256), agent.id
+                await self.store.select_mission(tenant, body.mission_s256),
+                agent.id,
             )
             if mission.person != person:
                 raise AAuthError(404, "mission_not_found", "no such mission")
@@ -361,14 +366,7 @@ class PersonServer(Server):
                 token, jwt.PERSON_TOKEN, self.clock(), PersonTokenClaims
             )
         except VerificationError as exc:
-            code = (
-                "expired_presented_token"
-                if exc.code == "expired_jwt"
-                else "invalid_presented_token"
-            )
-            raise AAuthError(
-                400, code, "not a live token this Person Server issued"
-            ) from None
+            raise presented_token_error(exc) from None
 
     async def _resource_token(
         self, token: str, tenant: str, agent: Agent
@@ -396,7 +394,7 @@ class PersonServer(Server):
                 "an auth token is issued only within a mission",
             )
         mission = self._live(
-            await self.store.mission(tenant, unverified.mission_s256),
+            await self.store.select_mission(tenant, unverified.mission_s256),
             agent.id,
         )
         resource = (unverified.iss or "").rstrip("/")
@@ -406,23 +404,13 @@ class PersonServer(Server):
                 "access_denied",
                 "this mission does not cover that resource",
             )
-        try:
-            rt = await verify_resource_token(
-                token, self.discovery, resource, self.clock()
-            )
-        except VerificationError as exc:
-            raise AAuthError(
-                400, "invalid_resource_token", f"does not verify: {exc.detail}"
-            ) from None
-        wrong = ResourceTokenExpectation(
-            ps=self.issuer, agent_jkt=agent.jkt
-        ).failures(rt)
-        if wrong:
-            raise AAuthError(
-                400,
-                "invalid_resource_token",
-                f"its {', '.join(wrong)} not this request's",
-            )
+        rt = await verify_resource_token(
+            token,
+            self.discovery,
+            resource,
+            self.clock(),
+            ResourceTokenExpectation(ps=self.issuer, agent_jkt=agent.jkt),
+        )
         return rt, mission
 
     def _access_server(self, rt: ResourceTokenClaims) -> str | None:
@@ -486,7 +474,7 @@ class PersonServer(Server):
         if budget is None:
             return Answer(200, self._auth_token(tenant, agent, grant, mission))
         if mission.budget is not None and mission.budget.same_scale(budget):
-            spent = await self.store.spend(
+            spent = await self.store.update_spend(
                 tenant, mission.s256, budget.amount, True, self.clock()
             )
             if spent is not None:
@@ -564,6 +552,7 @@ class PersonServer(Server):
             agent_id=agent.id,
             agent_jkt=agent.jkt,
             agent_jwk=agent.jwk,
+            agent_expires_at=agent.expires_at,
             person=person,
             description=description,
             mission_s256=mission_s256,
@@ -585,11 +574,11 @@ class PersonServer(Server):
     ) -> Answer:
         """`GET /pending/{tenant}/{id}`: only the key that asked may read it."""
         agent = await self._agent(request)
-        approval = await self.store.approval(tenant, approval_id)
+        approval = await self.store.select_approval(tenant, approval_id)
         if approval is None or approval.agent_jkt != agent.jkt:
             raise AAuthError(404, "not_found", "no such pending request")
         mission = (
-            await self.store.mission(tenant, approval.mission_s256)
+            await self.store.select_mission(tenant, approval.mission_s256)
             if approval.mission_s256
             else None
         )
@@ -611,8 +600,7 @@ class PersonServer(Server):
             )
         if approval.kind is ApprovalKind.COMPLETION:
             return Answer(200, Empty())
-        if mission is None:
-            raise AAuthError(404, "mission_not_found", "no such mission")
+        mission = self._live(mission, agent.id)
         if approval.kind is ApprovalKind.MISSION:
             person_tokens = {
                 r: self._person_token(
@@ -628,14 +616,32 @@ class PersonServer(Server):
                     person_tokens=person_tokens,
                 ),
             )
-        self._live(mission, agent.id)
         if not isinstance(approval.grant, AuthGrant):
             raise AAuthError(
                 500, "server_error", "the approval grants nothing"
             )
+        await self._collect_once(tenant, approval)
         return Answer(
             200, self._auth_token(tenant, agent, approval.grant, mission)
         )
+
+    async def _collect_once(self, tenant: str, approval: Approval) -> None:
+        """Mark an approved auth token collected, or refuse a second collect."""
+        if approval.expires_at <= self.clock():
+            raise AAuthError(
+                408, "expired", "the auth token was not collected in time"
+            )
+        collected = approval.model_copy(
+            update={"collected": True, "version": approval.version + 1}
+        )
+        if approval.collected or not await self.store.transition_approval(
+            tenant, approval, collected
+        ):
+            raise AAuthError(
+                410,
+                "invalid_code",
+                "this request's auth token was already collected",
+            )
 
     async def _collect(
         self,
@@ -746,7 +752,7 @@ class PersonServer(Server):
         decided_by: str,
         budget: Budget | None,
     ) -> Approval | None:
-        approval = await tx.approval(tenant, approval_id)
+        approval = await tx.select_approval(tenant, approval_id)
         if approval is None:
             return None
         if approval.kind is not ApprovalKind.MISSION and budget is not None:
@@ -837,9 +843,11 @@ class PersonServer(Server):
             return mission.s256
         if approval.mission_s256 is None:
             return None
-        current = await tx.mission(tenant, approval.mission_s256)
+        current = await tx.select_mission(tenant, approval.mission_s256)
         if approval.kind is ApprovalKind.COMPLETION:
-            ended = await tx.end_mission(tenant, approval.mission_s256, now)
+            ended = await tx.update_mission_end(
+                tenant, approval.mission_s256, now
+            )
         else:
             # A call in another unit than the mission's budget is approved without
             # spending; a federated one is spent once its Access Server issues.
@@ -852,7 +860,7 @@ class PersonServer(Server):
                 and current.budget.same_scale(approval.budget)
                 else None
             )
-            ended = await tx.spend(
+            ended = await tx.update_spend(
                 tenant, approval.mission_s256, spend, False, now
             )
         if ended is None:
@@ -878,7 +886,7 @@ class PersonServer(Server):
 
     async def describe(self, tenant: str, approval_id: str) -> Approval | None:
         """Read a call's R3 proposal into its approval's `summary`, for whoever decides."""
-        approval = await self.store.approval(tenant, approval_id)
+        approval = await self.store.select_approval(tenant, approval_id)
         grant = approval.grant if approval is not None else None
         if (
             approval is None
@@ -888,7 +896,7 @@ class PersonServer(Server):
         ):
             return approval
         proposal = await self.identity.read_proposal(
-            self.http, grant.r3_uri, grant.r3_s256, self.clock()
+            self.http, grant.aud, grant.r3_uri, grant.r3_s256, self.clock()
         )
         summary = proposal.display.summary if proposal.display else None
         if not summary:

@@ -30,7 +30,11 @@ public key, a budget of non-negative integers. Whether a token that
 verified is the one a caller expected is an expectation's `failures`,
 which names every check it fails (`["sub", "tenant"]`). Discovery reads
 only AAuth server identifiers (`https://` and a lowercase host, nothing
-more), requires an https `jwks_uri`, and follows no redirect.
+more), requires an https `jwks_uri`, and follows no redirect. An agent's
+request is signed `sig=jwt` and a server's `sig=jwks_uri`; any other scheme,
+server or `dwk` is refused before anything is fetched. An R3 proposal is
+read only from its resource's own https origin. An approved auth token is
+collected once; a second poll is `410 invalid_code`.
 
 ## Dependencies
 
@@ -98,16 +102,18 @@ app.include_router(access_server_router(access_server))
 
 ## Bring your own store
 
-`person_server.Store` is the Person Server's state in logical operations:
-bind an agent key to a person, read and insert missions, spend from a
-mission only if it fits (atomically), log and end missions, read and save
-approvals, and replace an approval only if its status and version have not
-changed. `transaction()` groups the writes that commit together: a decision
+`person_server.Store` is the Person Server's state in logical operations,
+named by their CRUD verb: `select_binding` and `insert_binding` (bind a key
+to the first person it names), `select_mission`, `insert_mission`,
+`update_spend` (spend only if it fits, atomically), `update_mission_log`,
+`update_mission_end`, `select_approval`, `insert_approval`, and
+`transition_approval`, which replaces an approval only if its status and
+version have not changed. `transaction()` groups the writes that commit together: a decision
 with the mission it creates or spends, and a federated auth token with the
 spend it pays for. `transaction()` yields a store scoped to it; pass it as
 `decide(..., store=tx)` to make a decision part of a unit of work of your
 own, and call `decided` once that commits. Whether a store encrypts what it keeps is its own
-choice. `access_server.Store` is three methods over pending requests.
+choice. `access_server.Store` is `select_pending`, `insert_pending` and `transition_pending`.
 
 ## Durable federation
 

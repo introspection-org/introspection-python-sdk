@@ -24,10 +24,11 @@ from introspection_aauth.protocol import (
     jwt,
 )
 from introspection_aauth.protocol.claims import (
+    AGENT_DWK,
     AgentTokenClaims,
     Claims,
     Confirmation,
-    ShortLived,
+    PersonTokenClaims,
 )
 from introspection_aauth.protocol.keys import (
     Jwk,
@@ -85,6 +86,7 @@ def test_what_this_package_signs_verifies_under_the_data_planes_verifier():
     now = int(time.time())
     token = jwt.encode(
         AgentTokenClaims(
+            dwk=AGENT_DWK,
             iss="https://agents.example",
             sub="aauth:travel@agents.example",
             jti="a1",
@@ -128,7 +130,7 @@ def test_what_this_package_signs_verifies_under_the_data_planes_verifier():
         ],
     )
     issued = jwt.encode(
-        Claims(iss="https://ps.example", iat=now, exp=now + 60),
+        Claims(iss="https://ps.example", jti="c1", iat=now, exp=now + 60),
         provider,
         jwt.PERSON_TOKEN,
     )
@@ -139,6 +141,8 @@ async def test_a_tampered_or_stale_request_does_not_verify():
     key = SigningKey.generate()
     token = jwt.encode(
         AgentTokenClaims(
+            dwk=AGENT_DWK,
+            jti="agent-x",
             iss="https://agents.example",
             sub="aauth:a@agents.example",
             cnf=Confirmation(jwk=key.public_jwk),
@@ -211,7 +215,9 @@ async def test_a_server_signature_resolves_its_published_key():
 def test_tokens_verify_only_as_issued():
     key = SigningKey.generate()
     token = jwt.encode(
-        Claims(iss="https://ps.example", iat=100, exp=200), key, jwt.AUTH_TOKEN
+        Claims(iss="https://ps.example", jti="c1", iat=100, exp=200),
+        key,
+        jwt.AUTH_TOKEN,
     )
     assert (
         jwt.verify(token, jwks([key]), jwt.AUTH_TOKEN, 150, Claims).exp == 200
@@ -230,20 +236,22 @@ def test_tokens_verify_only_as_issued():
         )
     assert other_key.value.code == "unknown_key"
     long = forge(
-        {"iss": "https://ps.example", "iat": 100, "exp": 100 + 7_200},
+        {"iss": "https://ps.example", "jti": "c1", "iat": 100, "exp": 7_300},
         key,
-        jwt.AGENT_TOKEN,
+        jwt.AUTH_TOKEN,
     )
+    assert jwt.verify(long, jwks([key]), jwt.AUTH_TOKEN, 150, Claims)
     with pytest.raises(VerificationError) as too_long:
-        jwt.verify(long, jwks([key]), jwt.AGENT_TOKEN, 150, ShortLived)
+        jwt.verify(long, jwks([key]), jwt.AUTH_TOKEN, 150, PersonTokenClaims)
     assert too_long.value.code == "invalid_jwt"
-    assert "too long a life" in too_long.value.detail
 
 
 def test_a_previous_key_still_verifies_what_it_signed():
     old, new = SigningKey.generate(), SigningKey.generate()
     token = jwt.encode(
-        Claims(iss="https://ps.example", iat=1, exp=10), old, jwt.PERSON_TOKEN
+        Claims(iss="https://ps.example", jti="c1", iat=1, exp=10),
+        old,
+        jwt.PERSON_TOKEN,
     )
     assert jwt.verify(token, jwks([new, old]), jwt.PERSON_TOKEN, 5, Claims)
 

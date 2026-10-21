@@ -62,7 +62,8 @@ def s256(data: bytes) -> str:
 
 
 def thumbprint(jwk: Jwk) -> str:
-    """RFC 7638 thumbprint of an OKP or EC public key."""
+    """RFC 7638 thumbprint of an OKP or EC public key: SHA-256 over its
+    required members only, as JSON with sorted keys and no whitespace."""
     if jwk.kty == "OKP" and jwk.crv and jwk.x:
         members = {"crv": jwk.crv, "kty": jwk.kty, "x": jwk.x}
     elif jwk.kty == "EC" and jwk.crv and jwk.x and jwk.y:
@@ -111,7 +112,7 @@ def verify(jwk: Jwk, data: bytes, signature: bytes) -> bool:
         )
         public.verify(der, data, ec.ECDSA(hashes.SHA256()))
         return True
-    except (InvalidSignature, ValueError):
+    except (InvalidSignature, ValueError, VerificationError):
         return False
 
 

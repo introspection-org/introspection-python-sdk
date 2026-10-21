@@ -11,6 +11,9 @@ from introspection_aauth.person_server import (
     ApprovalStatus,
     federation,
 )
+from introspection_aauth.person_server.models import (
+    AuthTokenRequest,
+)
 from introspection_aauth.protocol.claims import AuthTokenClaims
 from introspection_aauth.protocol.keys import Jwks
 from introspection_aauth.protocol.wire import (
@@ -155,11 +158,11 @@ async def test_sub_agents_are_not_federated():
     refused = await world.call(
         "POST",
         f"{PS}/aauth/token",
-        {
-            "resource_token": token,
-            "presented_token": person_token,
-            "subagent_token": "x",
-        },
+        AuthTokenRequest(
+            resource_token=token,
+            presented_token=person_token,
+            subagent_token="x",
+        ),
     )
     assert refused.status_code == 400
     assert problem(refused).error == "invalid_request"

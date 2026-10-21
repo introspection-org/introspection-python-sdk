@@ -20,6 +20,10 @@ class Budget(BaseModel):
     def same_scale(self, other: "Budget") -> bool:
         return self.unit == other.unit and self.decimals == other.decimals
 
+    def at_most(self, limit: "Budget") -> bool:
+        """Whether this is no more than `limit`, in the same unit."""
+        return self.same_scale(limit) and self.amount <= limit.amount
+
 
 class Agent(BaseModel):
     """The agent a request came from, once its signature and token verify."""

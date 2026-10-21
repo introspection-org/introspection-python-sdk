@@ -51,6 +51,8 @@ from introspection_aauth.person_server.models import (
 )
 from introspection_aauth.protocol import Budget, SigningKey, jwks
 from introspection_aauth.protocol.claims import (
+    AGENT_DWK,
+    RESOURCE_DWK,
     AgentTokenClaims,
     AuthTokenClaims,
     Confirmation,
@@ -171,6 +173,7 @@ async def main() -> None:
     now = ps.clock()
     agent_token = encode(
         AgentTokenClaims(
+            dwk=AGENT_DWK,
             iss=AP,
             sub="aauth:travel@agents.example",
             jti="agent-1",
@@ -229,6 +232,8 @@ async def main() -> None:
     presented = PersonTokenClaims.model_validate(decode(person_token).claims)
     resource_token = encode(
         ResourceTokenClaims(
+            dwk=RESOURCE_DWK,
+            jti="quote-1",
             iss=RESOURCE,
             aud=AS,
             ps=PS,
@@ -268,7 +273,7 @@ async def main() -> None:
         f"4. {answered.status_code}: an auth token from {claims.iss}"
         f" for {claims.aud}, ${amount / 100:,.2f}"
     )
-    stored = await ps.store.mission(TENANT, mission.s256)
+    stored = await ps.store.select_mission(TENANT, mission.s256)
     assert stored is not None
     print(f"5. The trip has spent ${stored.spent / 100:,.2f} of its budget")
 

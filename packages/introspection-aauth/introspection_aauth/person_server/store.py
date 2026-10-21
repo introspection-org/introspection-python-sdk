@@ -21,21 +21,23 @@ class Store(Protocol):
     spend it pays for.
     """
 
-    async def binding(self, tenant: str, jkt: str) -> str | None:
+    async def select_binding(self, tenant: str, jkt: str) -> str | None:
         """The person an agent key is bound to."""
         ...
 
-    async def bind(self, tenant: str, jkt: str, person: str) -> str:
+    async def insert_binding(self, tenant: str, jkt: str, person: str) -> str:
         """Bind a key to a person unless it is bound; whoever it is bound to."""
         ...
 
-    async def mission(self, tenant: str, s256: str) -> Mission | None: ...
+    async def select_mission(
+        self, tenant: str, s256: str
+    ) -> Mission | None: ...
 
     async def insert_mission(self, tenant: str, mission: Mission) -> bool:
         """Save an approved mission unless one with its hash exists."""
         ...
 
-    async def spend(
+    async def update_spend(
         self,
         tenant: str,
         s256: str,
@@ -48,19 +50,19 @@ class Store(Protocol):
         not fit. `amount` None checks only that it is live."""
         ...
 
-    async def log_mission(
+    async def update_mission_log(
         self, tenant: str, s256: str, entry: LogEntry, now: int
     ) -> bool:
         """Append to a live mission's log; whether it was live."""
         ...
 
-    async def end_mission(
+    async def update_mission_end(
         self, tenant: str, s256: str, at: int
     ) -> Mission | None:
         """Complete a live mission at `at`; it, or None if it was not live."""
         ...
 
-    async def approval(
+    async def select_approval(
         self, tenant: str, approval_id: str
     ) -> Approval | None: ...
 
@@ -111,13 +113,13 @@ class MemoryStore:
         self.approvals: dict[tuple[str, str], Approval] = {}
         self._lock = asyncio.Lock()
 
-    async def binding(self, tenant: str, jkt: str) -> str | None:
+    async def select_binding(self, tenant: str, jkt: str) -> str | None:
         return self.bindings.get((tenant, jkt))
 
-    async def bind(self, tenant: str, jkt: str, person: str) -> str:
+    async def insert_binding(self, tenant: str, jkt: str, person: str) -> str:
         return self.bindings.setdefault((tenant, jkt), person)
 
-    async def mission(self, tenant: str, s256: str) -> Mission | None:
+    async def select_mission(self, tenant: str, s256: str) -> Mission | None:
         return self.missions.get((tenant, s256))
 
     async def insert_mission(self, tenant: str, mission: Mission) -> bool:
@@ -126,7 +128,7 @@ class MemoryStore:
         self.missions[(tenant, mission.s256)] = mission
         return True
 
-    async def spend(
+    async def update_spend(
         self,
         tenant: str,
         s256: str,
@@ -147,7 +149,7 @@ class MemoryStore:
         mission.spent += amount
         return mission
 
-    async def log_mission(
+    async def update_mission_log(
         self, tenant: str, s256: str, entry: LogEntry, now: int
     ) -> bool:
         mission = _live(self.missions.get((tenant, s256)), now)
@@ -155,7 +157,7 @@ class MemoryStore:
             mission.log.append(entry)
         return mission is not None
 
-    async def end_mission(
+    async def update_mission_end(
         self, tenant: str, s256: str, at: int
     ) -> Mission | None:
         mission = _live(self.missions.get((tenant, s256)), at)
@@ -163,7 +165,9 @@ class MemoryStore:
             mission.completed_at = at
         return mission
 
-    async def approval(self, tenant: str, approval_id: str) -> Approval | None:
+    async def select_approval(
+        self, tenant: str, approval_id: str
+    ) -> Approval | None:
         return self.approvals.get((tenant, approval_id))
 
     async def insert_approval(self, tenant: str, approval: Approval) -> None:

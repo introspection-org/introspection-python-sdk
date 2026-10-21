@@ -4,7 +4,7 @@ this server as the `aud` of its resource tokens; the person's Person Server,
 having weighed the call against the person's mission, asks it for the auth
 token here, and this server issues it or makes the Person Server wait."""
 
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Sequence
 from typing import Protocol, Unpack
 
 import httpx2 as httpx
@@ -31,6 +31,8 @@ from ..protocol.server import (
     ServerOptions,
     parse,
     pending,
+    presented_token_error,
+    requirement,
     verify_agent_token,
     verify_resource_token,
     verify_server,
@@ -45,7 +47,13 @@ from .models import (
 )
 from .store import MemoryStore, Store
 
-Policy = Callable[[AccessRequest], Verdict | Awaitable[Verdict]]
+
+class Policy(Protocol):
+    """A resource's policy: its verdict on one request, now or awaited."""
+
+    def __call__(
+        self, request: AccessRequest, /
+    ) -> Verdict | Awaitable[Verdict]: ...
 
 
 class PendingHook(Protocol):
@@ -75,11 +83,7 @@ def _lowered(asked: Budget | None, granted: Budget | None) -> Budget | None:
     """`granted`, which may be no more than what was asked."""
     if granted is None:
         return asked
-    if (
-        asked is None
-        or not asked.same_scale(granted)
-        or granted.amount > asked.amount
-    ):
+    if asked is None or not granted.at_most(asked):
         raise AAuthError(
             500, "server_error", "the policy granted more than was asked"
         )
@@ -142,20 +146,15 @@ class AccessServer(Server):
                 "resource",
                 f"this Access Server does not decide for {resource}",
             )
-        try:
-            rt = await verify_resource_token(
-                token, self.discovery, resource, self.clock()
-            )
-        except VerificationError as exc:
-            raise _bad("resource", exc.detail) from None
-        wrong = ResourceTokenExpectation(
-            ps=ps, aud=self.issuer, requires_presented=True
-        ).failures(rt)
-        if wrong:
-            raise _bad(
-                "resource", f"its {', '.join(wrong)} not for this request"
-            )
-        return rt
+        return await verify_resource_token(
+            token,
+            self.discovery,
+            resource,
+            self.clock(),
+            ResourceTokenExpectation(
+                ps=ps, aud=self.issuer, requires_presented=True
+            ),
+        )
 
     async def _agent_token(
         self, token: str, rt: ResourceTokenClaims, ps: str
@@ -200,12 +199,7 @@ class AccessServer(Server):
                 ),
             )
         except VerificationError as exc:
-            code = (
-                "expired_presented_token"
-                if exc.code == "expired_jwt"
-                else "invalid_presented_token"
-            )
-            raise AAuthError(400, code, exc.detail) from None
+            raise presented_token_error(exc) from None
         wrong = PresentedExpectation(ps=ps, rt=rt).failures(presented)
         if wrong:
             raise _bad(
@@ -219,7 +213,7 @@ class AccessServer(Server):
             return None
         try:
             proposal = await self.identity.read_proposal(
-                self.http, rt.r3_uri, rt.r3_s256, self.clock()
+                self.http, rt.iss, rt.r3_uri, rt.r3_s256, self.clock()
             )
         except (httpx.HTTPError, ValueError):
             return None
@@ -250,10 +244,7 @@ class AccessServer(Server):
         if (
             sent is not None
             and asked_budget is not None
-            and (
-                not sent.same_scale(asked_budget)
-                or sent.amount > asked_budget.amount
-            )
+            and not sent.at_most(asked_budget)
         ):
             raise AAuthError(
                 400, "invalid_request", "budget is above the resource token's"
@@ -311,13 +302,13 @@ class AccessServer(Server):
 
     def _waiting(self, record: PendingAccess) -> Answer:
         verdict = record.verdict
-        requirement = (
-            f'requirement=interaction;url="{verdict.url}";code="{verdict.code}"'
+        waiting_on = (
+            requirement("interaction", url=verdict.url, code=verdict.code)
             if verdict.decision == "interaction"
-            else "requirement=approval"
+            else None
         )
         return pending(
-            self.pending_url(record.id), self.retry_after, requirement
+            self.pending_url(record.id), self.retry_after, waiting_on
         )
 
     def _issue(
@@ -352,7 +343,7 @@ class AccessServer(Server):
             PERSON_DWK,
             self.clock(),
         )
-        record = await self.store.pending(pending_id)
+        record = await self.store.select_pending(pending_id)
         if record is None or record.request.ps != ps:
             raise AAuthError(404, "not_found", "no such pending request")
         if record.status is PendingStatus.DENIED:
@@ -390,7 +381,7 @@ class AccessServer(Server):
     ) -> PendingAccess:
         """Settle a request the policy waited on, once; approving may narrow
         the scope or lower the budget."""
-        record = await self.store.pending(pending_id)
+        record = await self.store.select_pending(pending_id)
         if record is None:
             raise AAuthError(404, "not_found", "no such request")
         if record.status is not PendingStatus.PENDING:

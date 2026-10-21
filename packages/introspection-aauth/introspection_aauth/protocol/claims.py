@@ -3,7 +3,7 @@ issue a token and to read one that verified. Each model checks what a token
 must be on its own; whether it is the token a caller expected is the job of
 an expectation's `failures`, which names every check that failed."""
 
-from typing import Literal, Self
+from typing import ClassVar, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -15,9 +15,10 @@ AGENT_DWK = "aauth-agent.json"
 PERSON_DWK = "aauth-person.json"
 ACCESS_DWK = "aauth-access.json"
 RESOURCE_DWK = "aauth-resource.json"
-#: The longest an agent or auth token may claim to live, so a forged one
-#: cannot outlive the revocation of the key that signed it.
+#: The longest a person or auth token may live (`#person-token`, `#auth-token`).
 MAX_TOKEN_LIFETIME_SECONDS = 3_600
+#: The longest an agent token should live (`#agent-token`).
+MAX_AGENT_TOKEN_LIFETIME_SECONDS = 86_400
 
 
 class Confirmation(BaseModel):
@@ -41,36 +42,33 @@ class Confirmation(BaseModel):
 
 
 class Claims(BaseModel):
-    """What every AAuth token carries."""
+    """What every AAuth token carries; a token type that caps its lifetime
+    sets `max_lifetime`."""
 
     model_config = ConfigDict(frozen=True, extra="ignore")
+    max_lifetime: ClassVar[int | None] = None
 
     iss: str
     iat: int
     exp: int
-    jti: str | None = None
+    jti: str = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _exp_after_iat(self) -> Self:
+    def _a_bounded_life(self) -> Self:
         if self.exp <= self.iat:
             raise ValueError("exp is not after iat")
+        cap = type(self).max_lifetime
+        if cap is not None and self.exp - self.iat > cap:
+            raise ValueError(f"the token's lifetime is over {cap} seconds")
         return self
 
 
-class ShortLived(Claims):
-    """A token that may live no longer than `MAX_TOKEN_LIFETIME_SECONDS`."""
-
-    @model_validator(mode="after")
-    def _short_lived(self) -> Self:
-        if self.exp - self.iat > MAX_TOKEN_LIFETIME_SECONDS:
-            raise ValueError("the token claims too long a life")
-        return self
-
-
-class AgentTokenClaims(ShortLived):
+class AgentTokenClaims(Claims):
     """`aa-agent+jwt` (`#agent-token`): the agent, and the key it signs with."""
 
-    dwk: Literal["aauth-agent.json"] = AGENT_DWK
+    max_lifetime: ClassVar[int | None] = MAX_AGENT_TOKEN_LIFETIME_SECONDS
+
+    dwk: Literal["aauth-agent.json"]
     #: `aauth:local@domain`.
     sub: str = Field(min_length=1)
     cnf: Confirmation
@@ -81,7 +79,9 @@ class AgentTokenClaims(ShortLived):
 class PersonTokenClaims(Claims):
     """`aa-person+jwt` (`#person-token`): who the agent acts for, at one resource."""
 
-    dwk: Literal["aauth-person.json"] = PERSON_DWK
+    max_lifetime: ClassVar[int | None] = MAX_TOKEN_LIFETIME_SECONDS
+
+    dwk: Literal["aauth-person.json"]
     aud: str
     #: The person's directed identifier at `aud`.
     sub: str = Field(min_length=1)
@@ -109,9 +109,10 @@ class Carried(BaseModel):
 
 class ResourceTokenClaims(Claims, Carried):
     """`aa-resource+jwt` (`#resource-token`): a call a resource asks to be
-    authorized, for the server named in `aud`."""
+    authorized, for the server named in `aud`. It should live five minutes
+    at most; a longer one is still read, since its resource bounds it."""
 
-    dwk: Literal["aauth-resource.json"] = RESOURCE_DWK
+    dwk: Literal["aauth-resource.json"]
     aud: str
     ps: str | None = None
     sub: str | None = None
@@ -145,9 +146,11 @@ class AuthGrant(Carried):
         )
 
 
-class AuthTokenClaims(ShortLived, Carried):
+class AuthTokenClaims(Claims, Carried):
     """`aa-auth+jwt` (`#auth-token`): a grant for one call, from a Person
     Server (`dwk` its document) or a resource's Access Server."""
+
+    max_lifetime: ClassVar[int | None] = MAX_TOKEN_LIFETIME_SECONDS
 
     dwk: Literal["aauth-person.json", "aauth-access.json"]
     aud: str
@@ -200,7 +203,8 @@ class DeliveryExpectation(BaseModel):
     ps: str
     rt: ResourceTokenClaims
     agent_jkt: str
-    #: The presented person token's `exp`, which the auth token may not outlive.
+    #: The earlier of the presented person token's and the agent token's
+    #: `exp`, which the auth token may not outlive.
     not_after: int
     sent: Budget | None = None
 
@@ -210,12 +214,15 @@ class DeliveryExpectation(BaseModel):
         checks = {
             "dwk": claims.dwk != ACCESS_DWK,
             "iss": claims.iss != self.issuer,
-            "aud": claims.aud != rt.iss,
+            "aud": claims.aud.rstrip("/") != rt.iss.rstrip("/"),
             "cnf": claims.cnf.thumbprint != self.agent_jkt,
             "sub": claims.sub != rt.sub,
             "ps": claims.ps != self.ps,
             "mission_s256": claims.mission_s256 != rt.mission_s256,
             "tenant": claims.tenant != rt.tenant,
+            "account": claims.account != rt.account,
+            "r3_uri": claims.r3_uri != rt.r3_uri,
+            "r3_s256": claims.r3_s256 != rt.r3_s256,
             "scope": not claims.scopes() <= rt.scopes(),
             "exp": claims.exp > self.not_after,
             "budget": (sent is None) != (granted is None)

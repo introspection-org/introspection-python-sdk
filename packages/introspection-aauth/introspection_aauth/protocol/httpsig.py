@@ -75,9 +75,7 @@ def jwks_uri_key(server: str, dwk: str, kid: str) -> str:
     )
 
 
-def named_server(signature_key: str) -> str | None:
-    """The server a `jwks_uri` Signature-Key names, read before any key is
-    fetched, so a verifier can refuse a server it does not take requests from."""
+def _signature_key(signature_key: str) -> http_sfv.Item | None:
     parsed = http_sfv.Dictionary()
     try:
         parsed.parse(signature_key.encode("ascii"))
@@ -86,7 +84,20 @@ def named_server(signature_key: str) -> str | None:
     if len(parsed) != 1:
         return None
     item = next(iter(parsed.values()))
-    if not isinstance(item, http_sfv.Item) or str(item.value) != "jwks_uri":
+    return item if isinstance(item, http_sfv.Item) else None
+
+
+def signature_scheme(signature_key: str) -> str | None:
+    """The scheme a Signature-Key names, read before anything is fetched."""
+    item = _signature_key(signature_key)
+    return str(item.value) if item is not None else None
+
+
+def named_server(signature_key: str) -> str | None:
+    """The server a `jwks_uri` Signature-Key names, read before any key is
+    fetched, so a verifier can refuse a server it does not take requests from."""
+    item = _signature_key(signature_key)
+    if item is None or str(item.value) != "jwks_uri":
         return None
     server = item.params.get("id")
     return server if isinstance(server, str) else None
@@ -272,8 +283,6 @@ async def verify(
     request: SignedRequest,
     now: int,
     resolve: KeyResolver | None = None,
-    *,
-    require_content_digest: bool = True,
 ) -> Verified:
     """Verify `request`'s signature; `resolve` finds a `jwks_uri` key."""
     headers, body = request.headers, request.body
@@ -302,10 +311,12 @@ async def verify(
     if now - created > MAX_CLOCK_SKEW_SECONDS:
         raise VerificationError("invalid_signature", "the signature is stale")
     jwk, named = await _key(str(item.value), item.params, resolve)
-    if body and require_content_digest and "content-digest" not in names:
-        raise VerificationError(
-            "invalid_input", "content-digest must be covered"
-        )
+    if body:
+        for required in ("content-digest", "content-type"):
+            if required not in names:
+                raise VerificationError(
+                    "invalid_input", f"{required} must be covered"
+                )
     # Required when present, per the AAuth-Access rule; this library does
     # not issue AAuth-Access yet.
     if "authorization" in headers and "authorization" not in names:
@@ -323,7 +334,9 @@ async def verify(
         + [f'"@signature-params": {signature_input}']
     )
     signature = _dictionary(headers, "signature").get(label)
-    if signature is None or not isinstance(signature.value, bytes):
+    if not isinstance(signature, http_sfv.Item) or not isinstance(
+        signature.value, bytes
+    ):
         raise VerificationError(
             "invalid_signature", "no Signature for the key"
         )
