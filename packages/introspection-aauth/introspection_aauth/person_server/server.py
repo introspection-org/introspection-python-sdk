@@ -290,7 +290,7 @@ class PersonServer(Server):
             proposal.description,
             grant=MissionGrant(resources=resources),
         )
-        await self.store.put_approval(tenant, approval)
+        await self.store.insert_approval(tenant, approval)
         return await self._ask(tenant, approval)
 
     async def mission_action(
@@ -326,7 +326,7 @@ class PersonServer(Server):
             action.summary or "The agent says the mission is done",
             mission_s256=mission.s256,
         )
-        await self.store.put_approval(tenant, approval)
+        await self.store.insert_approval(tenant, approval)
         return await self._ask(tenant, approval)
 
     async def person_token(self, request: SignedRequest) -> Answer:
@@ -503,7 +503,7 @@ class PersonServer(Server):
             budget=budget,
             grant=grant,
         )
-        await self.store.put_approval(tenant, approval)
+        await self.store.insert_approval(tenant, approval)
         return await self._ask(tenant, approval)
 
     async def _federated(
@@ -529,7 +529,7 @@ class PersonServer(Server):
             federation=federation,
         )
         if not federation.within_budget:
-            await self.store.put_approval(tenant, approval)
+            await self.store.insert_approval(tenant, approval)
             return await self._ask(tenant, approval)
         approval = approval.model_copy(
             update={
@@ -537,7 +537,7 @@ class PersonServer(Server):
                 "decided_at": self.clock(),
             }
         )
-        await self.store.put_approval(tenant, approval)
+        await self.store.insert_approval(tenant, approval)
         await self.decided(tenant, approval)
         return pending(self.pending_url(tenant, approval.id), self.retry_after)
 

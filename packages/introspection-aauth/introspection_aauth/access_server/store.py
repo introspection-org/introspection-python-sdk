@@ -9,7 +9,7 @@ from .models import PendingAccess
 class Store(Protocol):
     async def pending(self, pending_id: str) -> PendingAccess | None: ...
 
-    async def put_pending(self, pending: PendingAccess) -> None: ...
+    async def insert_pending(self, pending: PendingAccess) -> None: ...
 
     async def transition_pending(
         self, current: PendingAccess, changed: PendingAccess
@@ -28,7 +28,7 @@ class MemoryStore:
     async def pending(self, pending_id: str) -> PendingAccess | None:
         return self.requests.get(pending_id)
 
-    async def put_pending(self, pending: PendingAccess) -> None:
+    async def insert_pending(self, pending: PendingAccess) -> None:
         self.requests[pending.id] = pending
 
     async def transition_pending(

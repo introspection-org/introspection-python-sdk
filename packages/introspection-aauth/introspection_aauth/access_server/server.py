@@ -304,7 +304,7 @@ class AccessServer(Server):
                 "denied",
                 verdict.detail or "this resource's policy refuses it",
             )
-        await self.store.put_pending(record)
+        await self.store.insert_pending(record)
         if self._on_pending is not None:
             await self._on_pending(record)
         return self._waiting(record)

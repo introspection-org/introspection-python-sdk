@@ -64,7 +64,7 @@ class Store(Protocol):
         self, tenant: str, approval_id: str
     ) -> Approval | None: ...
 
-    async def put_approval(self, tenant: str, approval: Approval) -> None:
+    async def insert_approval(self, tenant: str, approval: Approval) -> None:
         """Save a new approval."""
         ...
 
@@ -166,7 +166,7 @@ class MemoryStore:
     async def approval(self, tenant: str, approval_id: str) -> Approval | None:
         return self.approvals.get((tenant, approval_id))
 
-    async def put_approval(self, tenant: str, approval: Approval) -> None:
+    async def insert_approval(self, tenant: str, approval: Approval) -> None:
         self.approvals[(tenant, approval.id)] = approval
 
     async def transition_approval(
