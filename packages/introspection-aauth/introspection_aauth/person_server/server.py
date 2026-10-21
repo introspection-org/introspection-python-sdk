@@ -14,6 +14,7 @@ from typing import Unpack
 from urllib.parse import quote, unquote
 
 import httpx2 as httpx
+from opentelemetry import trace
 
 from introspection_aauth.person_server.access_server_client import (
     AccessServerClient,
@@ -111,6 +112,7 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class PersonServer(Server):
@@ -498,9 +500,25 @@ class PersonServer(Server):
         """Record what the Access Server answered; whether to keep polling. The
         spend lands only when it issues, in the same transaction as its token."""
         try:
-            return await self._record_federation(tenant, approval_id, outcome)
+            waiting = await self._record_federation(
+                tenant, approval_id, outcome
+            )
         except StaleRecord:
+            logger.info(
+                "federation outcome not recorded: the approval changed",
+                extra={"tenant": tenant, "approval_id": approval_id},
+            )
             return False
+        logger.info(
+            "federation outcome recorded",
+            extra={
+                "tenant": tenant,
+                "approval_id": approval_id,
+                "step": outcome.step.value,
+                "error": outcome.refusal.error if outcome.refusal else None,
+            },
+        )
+        return waiting
 
     async def federate(
         self,
@@ -509,49 +527,55 @@ class PersonServer(Server):
         sleep: Sleep = asyncio.sleep,
     ) -> Step | None:
         """Redeem an approved request at its Access Server, polling while it decides."""
-        found = await self.federation_due(tenant, approval_id)
-        if found is None:
-            return None
-        federation, agent_jkt = found
-        client = self.access_server_client()
-        metadata = await client.discover(federation.access_server)
+        with tracer.start_as_current_span(
+            "person_server.federate",
+            attributes={"aauth.approval_id": approval_id},
+        ):
+            found = await self.federation_due(tenant, approval_id)
+            if found is None:
+                return None
+            federation, agent_jkt = found
+            client = self.access_server_client()
+            metadata = await client.discover(federation.access_server)
 
-        async def attempt(call: Exchange) -> Outcome:
-            """`call`, or `as_unreachable` when the Access Server cannot be
-            reached; retrying a connection is the http client's transport's."""
-            try:
-                return await call()
-            except httpx.TransportError as exc:
-                return Outcome.unreachable(f"it could not be reached: {exc}")
+            async def attempt(call: Exchange) -> Outcome:
+                """`call`, or `as_unreachable` when the Access Server cannot be
+                reached; retrying a connection is the http client's transport's."""
+                try:
+                    return await call()
+                except httpx.TransportError as exc:
+                    return Outcome.unreachable(
+                        f"it could not be reached: {exc}"
+                    )
 
-        outcome = (
-            metadata
-            if isinstance(metadata, Outcome)
-            else await attempt(
-                partial(client.request, federation, agent_jkt, metadata)
-            )
-        )
-        while True:
-            waiting = await self.record_federation(
-                tenant, approval_id, outcome
-            )
-            if not waiting or isinstance(metadata, Outcome):
-                return outcome.step
-            await sleep(outcome.poll_delay())
-            federation = federation.model_copy(
-                update={"requirement": outcome.requirement}
-            )
-            outcome = await attempt(
-                partial(client.request, federation, agent_jkt, metadata)
-                if outcome.location is None
-                else partial(
-                    client.poll,
-                    outcome.location,
-                    federation,
-                    agent_jkt,
-                    metadata,
+            outcome = (
+                metadata
+                if isinstance(metadata, Outcome)
+                else await attempt(
+                    partial(client.request, federation, agent_jkt, metadata)
                 )
             )
+            while True:
+                waiting = await self.record_federation(
+                    tenant, approval_id, outcome
+                )
+                if not waiting or isinstance(metadata, Outcome):
+                    return outcome.step
+                await sleep(outcome.poll_delay())
+                federation = federation.model_copy(
+                    update={"requirement": outcome.requirement}
+                )
+                outcome = await attempt(
+                    partial(client.request, federation, agent_jkt, metadata)
+                    if outcome.location is None
+                    else partial(
+                        client.poll,
+                        outcome.location,
+                        federation,
+                        agent_jkt,
+                        metadata,
+                    )
+                )
 
     # endregion
 

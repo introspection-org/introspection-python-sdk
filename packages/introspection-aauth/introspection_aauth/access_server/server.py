@@ -4,6 +4,7 @@ this server as the `aud` of its resource tokens; the person's Person Server,
 having weighed the call against the person's mission, asks it for the auth
 token here, and this server issues it or makes the Person Server wait."""
 
+import logging
 from collections.abc import Sequence
 from typing import Unpack
 
@@ -70,6 +71,8 @@ from introspection_aauth.protocol.wire import (
     AuthTokenAnswer,
     TokenRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AccessServer(Server):
@@ -159,6 +162,15 @@ class AccessServer(Server):
         )
         verdict = self.policy(asked)
         verdict = verdict if isinstance(verdict, Verdict) else await verdict
+        logger.info(
+            "access request decided",
+            extra={
+                "resource": asked.resource,
+                "ps": asked.ps,
+                "tenant": asked.tenant,
+                "decision": verdict.decision,
+            },
+        )
         record = PendingAccess(
             id=self.new_id(),
             verdict=verdict,

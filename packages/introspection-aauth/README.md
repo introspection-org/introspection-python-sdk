@@ -129,6 +129,18 @@ retrying a dropped connection is that client's: pass one with
 `transport=httpx.AsyncHTTPTransport(retries=3)` to retry, or a mock transport
 in tests.
 
+## Logging and tracing
+
+The package configures no logging and no tracer provider; it writes through
+`logging.getLogger(__name__)` and the OpenTelemetry API, so your formatter
+and exporter carry its records and spans. Each record has a fixed message and
+its values as `extra` fields: identifiers (`tenant`, `approval_id`,
+`resource`, `ps`) and enumerated values (`step`, `decision`, `error`), never a
+token, a person's identity or a request body. Federation is traced as
+`person_server.federate`, with a child span for each exchange with the Access
+Server (`.metadata`, `.request`, `.poll`, `.delivery`); reading an R3
+proposal is `aauth.r3.read`.
+
 ## Not served
 
 As in the hosted Person Server: `requirement=claims` and `clarification`,

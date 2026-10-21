@@ -4,9 +4,11 @@ resource token there signed as the Person Server (`#ps-to-as-token-request`),
 polls while it decides (`#deferred-responses`), and checks the auth token it
 delivers (`#auth-token-delivery`). `PersonServer.federate` drives it."""
 
+import logging
 from urllib.parse import urljoin
 
 import httpx2 as httpx
+from opentelemetry import trace
 from pydantic import ValidationError
 
 from introspection_aauth.person_server.models import Federation, Outcome, Step
@@ -44,6 +46,9 @@ from introspection_aauth.protocol.wire import (
     TokenRequest,
 )
 
+logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
+
 SERVED = frozenset({"approval", "interaction"})
 #: Requirements draft -11 defines that this Person Server does not serve.
 NOT_SERVED = frozenset({"claims", "clarification"})
@@ -68,27 +73,31 @@ class AccessServerClient:
         self, access_server: str
     ) -> AccessServerMetadata | Outcome:
         """`{aud}/.well-known/aauth-access.json`, whose `issuer` is the `aud`."""
-        try:
-            document = await self._discovery.get(
-                f"{access_server}/.well-known/{ACCESS_DWK}",
-                AccessServerMetadata,
-            )
-        except VerificationError as exc:
-            return Outcome.unreachable(
-                f"its metadata could not be read: {exc.detail}"
-            )
-        if document.issuer != access_server:
-            return Outcome.unreachable("its metadata names another issuer")
-        if not (
-            https_endpoint(document.auth_token_endpoint)
-            and same_origin(document.auth_token_endpoint, access_server)
-            and same_origin(document.jwks_uri, access_server)
+        with tracer.start_as_current_span(
+            "person_server.federate.metadata",
+            attributes={"aauth.access_server": access_server},
         ):
-            return Outcome.unreachable(
-                "its metadata keeps its auth_token_endpoint and jwks_uri "
-                "off its own https origin"
-            )
-        return document
+            try:
+                document = await self._discovery.get(
+                    f"{access_server}/.well-known/{ACCESS_DWK}",
+                    AccessServerMetadata,
+                )
+            except VerificationError as exc:
+                return Outcome.unreachable(
+                    f"its metadata could not be read: {exc.detail}"
+                )
+            if document.issuer != access_server:
+                return Outcome.unreachable("its metadata names another issuer")
+            if not (
+                https_endpoint(document.auth_token_endpoint)
+                and same_origin(document.auth_token_endpoint, access_server)
+                and same_origin(document.jwks_uri, access_server)
+            ):
+                return Outcome.unreachable(
+                    "its metadata keeps its auth_token_endpoint and jwks_uri "
+                    "off its own https origin"
+                )
+            return document
 
     async def request(
         self,
@@ -97,20 +106,24 @@ class AccessServerClient:
         metadata: AccessServerMetadata,
     ) -> Outcome:
         """The token request, with the budget the Person Server allows."""
-        body = TokenRequest(
-            resource_token=federation.resource_token,
-            agent_token=federation.agent_token,
-            presented_token=federation.presented_token,
-            budget=federation.budget,
-        ).to_json()
-        url = metadata.auth_token_endpoint
-        headers = self._identity.signed("POST", url, body, self._clock())
-        response = await self._http.post(
-            url, content=body, headers=headers, follow_redirects=False
-        )
-        return await self._outcome(
-            response, url, federation, agent_jkt, metadata
-        )
+        with tracer.start_as_current_span(
+            "person_server.federate.request",
+            attributes={"aauth.access_server": metadata.issuer},
+        ):
+            body = TokenRequest(
+                resource_token=federation.resource_token,
+                agent_token=federation.agent_token,
+                presented_token=federation.presented_token,
+                budget=federation.budget,
+            ).to_json()
+            url = metadata.auth_token_endpoint
+            headers = self._identity.signed("POST", url, body, self._clock())
+            response = await self._http.post(
+                url, content=body, headers=headers, follow_redirects=False
+            )
+            return await self._outcome(
+                response, url, federation, agent_jkt, metadata
+            )
 
     async def poll(
         self,
@@ -119,13 +132,19 @@ class AccessServerClient:
         agent_jkt: str,
         metadata: AccessServerMetadata,
     ) -> Outcome:
-        headers = self._identity.signed("GET", location, None, self._clock())
-        response = await self._http.get(
-            location, headers=headers, follow_redirects=False
-        )
-        return await self._outcome(
-            response, location, federation, agent_jkt, metadata
-        )
+        with tracer.start_as_current_span(
+            "person_server.federate.poll",
+            attributes={"aauth.access_server": metadata.issuer},
+        ):
+            headers = self._identity.signed(
+                "GET", location, None, self._clock()
+            )
+            response = await self._http.get(
+                location, headers=headers, follow_redirects=False
+            )
+            return await self._outcome(
+                response, location, federation, agent_jkt, metadata
+            )
 
     async def _outcome(  # noqa: PLR0911
         self,
@@ -213,48 +232,52 @@ class AccessServerClient:
         metadata: AccessServerMetadata,
     ) -> Outcome:
         """`#auth-token-delivery`, and the budget granted no more than was sent."""
-        try:
-            rt = ResourceTokenClaims.model_validate(
-                jwt.decode(federation.resource_token).claims
+        with tracer.start_as_current_span(
+            "person_server.federate.delivery",
+            attributes={"aauth.access_server": metadata.issuer},
+        ):
+            try:
+                rt = ResourceTokenClaims.model_validate(
+                    jwt.decode(federation.resource_token).claims
+                )
+                presented = PersonTokenClaims.model_validate(
+                    jwt.decode(federation.presented_token).claims
+                )
+                agent = AgentTokenClaims.model_validate(
+                    jwt.decode(federation.agent_token).claims
+                )
+            except (VerificationError, ValidationError):
+                return Outcome.unreachable(
+                    "its request's tokens cannot be read back"
+                )
+            try:
+                keys = await self._discovery.get(metadata.jwks_uri, Jwks)
+                claims = jwt.verify(
+                    auth_token,
+                    keys,
+                    jwt.AUTH_TOKEN,
+                    self._clock(),
+                    AuthTokenClaims,
+                )
+            except VerificationError as exc:
+                return Outcome.unreachable(
+                    f"its auth token does not verify: {exc.detail}"
+                )
+            wrong = DeliveryExpectation(
+                issuer=metadata.issuer,
+                ps=self._identity.issuer,
+                rt=rt,
+                agent_jkt=agent_jkt,
+                not_after=min(presented.exp, agent.exp),
+                sent=federation.budget,
+            ).failures(claims)
+            if wrong:
+                return Outcome.unreachable(
+                    f"its auth token has the wrong {', '.join(wrong)}"
+                )
+            return Outcome(
+                step=Step.ISSUED,
+                auth_token=auth_token,
+                auth_token_expires_at=claims.exp,
+                granted=claims.budget,
             )
-            presented = PersonTokenClaims.model_validate(
-                jwt.decode(federation.presented_token).claims
-            )
-            agent = AgentTokenClaims.model_validate(
-                jwt.decode(federation.agent_token).claims
-            )
-        except (VerificationError, ValidationError):
-            return Outcome.unreachable(
-                "its request's tokens cannot be read back"
-            )
-        try:
-            keys = await self._discovery.get(metadata.jwks_uri, Jwks)
-            claims = jwt.verify(
-                auth_token,
-                keys,
-                jwt.AUTH_TOKEN,
-                self._clock(),
-                AuthTokenClaims,
-            )
-        except VerificationError as exc:
-            return Outcome.unreachable(
-                f"its auth token does not verify: {exc.detail}"
-            )
-        wrong = DeliveryExpectation(
-            issuer=metadata.issuer,
-            ps=self._identity.issuer,
-            rt=rt,
-            agent_jkt=agent_jkt,
-            not_after=min(presented.exp, agent.exp),
-            sent=federation.budget,
-        ).failures(claims)
-        if wrong:
-            return Outcome.unreachable(
-                f"its auth token has the wrong {', '.join(wrong)}"
-            )
-        return Outcome(
-            step=Step.ISSUED,
-            auth_token=auth_token,
-            auth_token_expires_at=claims.exp,
-            granted=claims.budget,
-        )

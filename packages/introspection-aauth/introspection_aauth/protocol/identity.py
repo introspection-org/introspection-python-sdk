@@ -5,6 +5,7 @@ import logging
 from collections.abc import Sequence
 
 import httpx2 as httpx
+from opentelemetry import trace
 
 from introspection_aauth.protocol import httpsig, jwt
 from introspection_aauth.protocol.claims import (
@@ -25,6 +26,7 @@ from introspection_aauth.protocol.verification import (
 from introspection_aauth.protocol.wire import R3Proposal
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class Identity:
@@ -77,17 +79,22 @@ class Identity:
         """A resource's R3 proposal, fetched signed and checked against its
         hash; only from the resource's own https origin, so a resource token
         cannot send this server anywhere else."""
-        if not same_origin(r3_uri, resource):
-            raise ValueError("the proposal is not on the resource's origin")
-        response = await http.get(
-            r3_uri,
-            headers=self.signed("GET", r3_uri, None, now),
-            follow_redirects=False,
-        )
-        response.raise_for_status()
-        if s256(response.content) != r3_s256:
-            raise ValueError("the proposal does not match its hash")
-        return R3Proposal.model_validate_json(response.content)
+        with tracer.start_as_current_span(
+            "aauth.r3.read", attributes={"aauth.resource": resource}
+        ):
+            if not same_origin(r3_uri, resource):
+                raise ValueError(
+                    "the proposal is not on the resource's origin"
+                )
+            response = await http.get(
+                r3_uri,
+                headers=self.signed("GET", r3_uri, None, now),
+                follow_redirects=False,
+            )
+            response.raise_for_status()
+            if s256(response.content) != r3_s256:
+                raise ValueError("the proposal does not match its hash")
+            return R3Proposal.model_validate_json(response.content)
 
     async def summary(
         self,
