@@ -5,14 +5,14 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict
 
-from ..protocol.claims import (
+from introspection_aauth.protocol.claims import (
     AgentTokenClaims,
     AuthGrant,
     PersonTokenClaims,
     ResourceTokenClaims,
 )
-from ..protocol.keys import Jwk
-from ..protocol.models import Budget
+from introspection_aauth.protocol.keys import Jwk
+from introspection_aauth.protocol.models import Budget
 
 
 class VerifiedTokens(BaseModel):

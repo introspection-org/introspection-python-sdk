@@ -21,7 +21,17 @@ from introspection_aauth.protocol.wire import (
     AuthTokenAnswer,
 )
 
-from .world import AS, PS, RESOURCE, TENANT, World, body, problem, read, usd
+from .world import (
+    AS,
+    PS,
+    RESOURCE,
+    TENANT,
+    World,
+    body,
+    problem,
+    read,
+    usd,
+)
 
 
 def auth_token(response: httpx.Response) -> AuthTokenClaims:

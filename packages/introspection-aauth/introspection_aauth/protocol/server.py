@@ -13,8 +13,8 @@ import http_sfv
 import httpx2 as httpx
 from pydantic import BaseModel, ValidationError
 
-from . import httpsig, jwt
-from .claims import (
+from introspection_aauth.protocol import httpsig, jwt
+from introspection_aauth.protocol.claims import (
     ACCESS_DWK,
     AGENT_DWK,
     PERSON_DWK,
@@ -25,17 +25,17 @@ from .claims import (
     ResourceTokenExpectation,
     ServerDwk,
 )
-from .discovery import Discovery
-from .errors import (
+from introspection_aauth.protocol.discovery import Discovery
+from introspection_aauth.protocol.errors import (
     Answer,
     InvalidRequest,
     InvalidToken,
     Unauthorized,
     VerificationError,
 )
-from .keys import Jwk, Jwks, SigningKey, jwks, s256
-from .models import Agent
-from .wire import Pending, R3Proposal
+from introspection_aauth.protocol.keys import Jwk, Jwks, SigningKey, jwks, s256
+from introspection_aauth.protocol.models import Agent
+from introspection_aauth.protocol.wire import Pending, R3Proposal
 
 __all__ = [
     "ACCESS_DWK",

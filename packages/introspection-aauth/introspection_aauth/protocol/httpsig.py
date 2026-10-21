@@ -19,11 +19,11 @@ import http_sfv
 from http_sfv.item import Parameters
 from pydantic import ValidationError
 
-from . import jwt
-from .claims import Confirmation
-from .errors import VerificationError
-from .keys import Jwk, SigningKey, thumbprint
-from .keys import verify as verify_with
+from introspection_aauth.protocol import jwt
+from introspection_aauth.protocol.claims import Confirmation
+from introspection_aauth.protocol.errors import VerificationError
+from introspection_aauth.protocol.keys import Jwk, SigningKey, thumbprint
+from introspection_aauth.protocol.keys import verify as verify_with
 
 LABEL = "sig"
 REQUIRED = ("@method", "@authority", "@path", "signature-key")

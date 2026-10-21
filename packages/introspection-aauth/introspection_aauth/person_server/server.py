@@ -15,55 +15,8 @@ from urllib.parse import quote, unquote
 
 import httpx2 as httpx
 
-from ..protocol import jwt
-from ..protocol.claims import (
-    PERSON_DWK,
-    RESOURCE_DWK,
-    AuthGrant,
-    AuthTokenClaims,
-    Confirmation,
-    PersonTokenClaims,
-    PresentedExpectation,
-    ResourceTokenClaims,
-    ResourceTokenExpectation,
-)
-from ..protocol.errors import (
-    AAuthError,
-    AccessDenied,
-    Answer,
-    Denied,
-    Expired,
-    InvalidCode,
-    InvalidRequest,
-    InvalidToken,
-    MissionNotFound,
-    MissionTerminated,
-    NotFound,
-    ServerError,
-    VerificationError,
-)
-from ..protocol.httpsig import SignedRequest
-from ..protocol.keys import SigningKey, b64url, s256
-from ..protocol.models import Agent, Budget
-from ..protocol.server import (
-    Server,
-    ServerOptions,
-    https_origin,
-    parse,
-    pending,
-    verify_agent,
-    verify_resource_token,
-)
-from ..protocol.wire import (
-    AuthTokenAnswer,
-    Empty,
-    PersonServerMetadata,
-    PersonTokenAnswer,
-)
-from .federation import (
-    AccessServerClient,
-)
-from .models import (
+from introspection_aauth.person_server.federation import AccessServerClient
+from introspection_aauth.person_server.models import (
     Approval,
     ApprovalKind,
     ApprovalStatus,
@@ -82,7 +35,56 @@ from .models import (
     Refusal,
     Step,
 )
-from .store import AnyoneDirectory, Directory, Store
+from introspection_aauth.person_server.store import (
+    AnyoneDirectory,
+    Directory,
+    Store,
+)
+from introspection_aauth.protocol import jwt
+from introspection_aauth.protocol.claims import (
+    PERSON_DWK,
+    RESOURCE_DWK,
+    AuthGrant,
+    AuthTokenClaims,
+    Confirmation,
+    PersonTokenClaims,
+    PresentedExpectation,
+    ResourceTokenClaims,
+    ResourceTokenExpectation,
+)
+from introspection_aauth.protocol.errors import (
+    AAuthError,
+    AccessDenied,
+    Answer,
+    Denied,
+    Expired,
+    InvalidCode,
+    InvalidRequest,
+    InvalidToken,
+    MissionNotFound,
+    MissionTerminated,
+    NotFound,
+    ServerError,
+    VerificationError,
+)
+from introspection_aauth.protocol.httpsig import SignedRequest
+from introspection_aauth.protocol.keys import SigningKey, b64url, s256
+from introspection_aauth.protocol.models import Agent, Budget
+from introspection_aauth.protocol.server import (
+    Server,
+    ServerOptions,
+    https_origin,
+    parse,
+    pending,
+    verify_agent,
+    verify_resource_token,
+)
+from introspection_aauth.protocol.wire import (
+    AuthTokenAnswer,
+    Empty,
+    PersonServerMetadata,
+    PersonTokenAnswer,
+)
 
 logger = logging.getLogger(__name__)
 

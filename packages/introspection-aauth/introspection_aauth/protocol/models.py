@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .keys import Jwk
+from introspection_aauth.protocol.keys import Jwk
 
 #: draft-hardt-aauth-budgets caps an amount at 15 digits.
 MAX_BUDGET_AMOUNT = 999_999_999_999_999

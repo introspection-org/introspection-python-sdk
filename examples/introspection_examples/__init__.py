@@ -7,7 +7,7 @@ observability platforms for dual-export tracing patterns.
 
 from dotenv import load_dotenv
 
-from . import api, otel
+from introspection_examples import api, otel
 
 load_dotenv()
 

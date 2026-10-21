@@ -5,10 +5,10 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..protocol.claims import AuthGrant
-from ..protocol.keys import Jwk
-from ..protocol.models import Budget
-from ..protocol.wire import Wire
+from introspection_aauth.protocol.claims import AuthGrant
+from introspection_aauth.protocol.keys import Jwk
+from introspection_aauth.protocol.models import Budget
+from introspection_aauth.protocol.wire import Wire
 
 
 class ApprovalKind(StrEnum):

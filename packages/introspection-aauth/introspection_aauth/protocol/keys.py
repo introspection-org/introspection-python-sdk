@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
 )
 from pydantic import BaseModel, ConfigDict
 
-from .errors import VerificationError
+from introspection_aauth.protocol.errors import VerificationError
 
 ALGORITHMS = {"Ed25519": ("OKP", "Ed25519"), "ES256": ("EC", "P-256")}
 

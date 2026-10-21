@@ -7,9 +7,9 @@ from typing import ClassVar, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .errors import VerificationError
-from .keys import Jwk, thumbprint
-from .models import Budget
+from introspection_aauth.protocol.errors import VerificationError
+from introspection_aauth.protocol.keys import Jwk, thumbprint
+from introspection_aauth.protocol.models import Budget
 
 AGENT_DWK = "aauth-agent.json"
 #: The well-known document a Person Server or Access Server signs under.

@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
-from ..protocol.memory import compare_and_set
-from .models import PendingAccess
+from introspection_aauth.access_server.models import PendingAccess
+from introspection_aauth.protocol.memory import compare_and_set
 
 
 class Store(Protocol):

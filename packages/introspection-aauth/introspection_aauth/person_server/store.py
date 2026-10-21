@@ -9,8 +9,12 @@ from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Protocol
 
-from ..protocol.memory import compare_and_set
-from .models import Approval, LogEntry, Mission
+from introspection_aauth.person_server.models import (
+    Approval,
+    LogEntry,
+    Mission,
+)
+from introspection_aauth.protocol.memory import compare_and_set
 
 
 class Store(Protocol):

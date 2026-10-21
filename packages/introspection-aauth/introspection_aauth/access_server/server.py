@@ -9,8 +9,16 @@ from typing import Protocol, Unpack
 
 import httpx2 as httpx
 
-from ..protocol import jwt
-from ..protocol.claims import (
+from introspection_aauth.access_server.models import (
+    AccessRequest,
+    PendingAccess,
+    PendingStatus,
+    Verdict,
+    VerifiedTokens,
+)
+from introspection_aauth.access_server.store import MemoryStore, Store
+from introspection_aauth.protocol import jwt
+from introspection_aauth.protocol.claims import (
     ACCESS_DWK,
     PERSON_DWK,
     AgentExpectation,
@@ -22,7 +30,7 @@ from ..protocol.claims import (
     ResourceTokenClaims,
     ResourceTokenExpectation,
 )
-from ..protocol.errors import (
+from introspection_aauth.protocol.errors import (
     Answer,
     Denied,
     Expired,
@@ -33,10 +41,10 @@ from ..protocol.errors import (
     ServerError,
     VerificationError,
 )
-from ..protocol.httpsig import SignedRequest
-from ..protocol.keys import SigningKey
-from ..protocol.models import Budget
-from ..protocol.server import (
+from introspection_aauth.protocol.httpsig import SignedRequest
+from introspection_aauth.protocol.keys import SigningKey
+from introspection_aauth.protocol.models import Budget
+from introspection_aauth.protocol.server import (
     Server,
     ServerOptions,
     parse,
@@ -46,15 +54,11 @@ from ..protocol.server import (
     verify_resource_token,
     verify_server,
 )
-from ..protocol.wire import AccessServerMetadata, AuthTokenAnswer, TokenRequest
-from .models import (
-    AccessRequest,
-    PendingAccess,
-    PendingStatus,
-    Verdict,
-    VerifiedTokens,
+from introspection_aauth.protocol.wire import (
+    AccessServerMetadata,
+    AuthTokenAnswer,
+    TokenRequest,
 )
-from .store import MemoryStore, Store
 
 
 class Policy(Protocol):

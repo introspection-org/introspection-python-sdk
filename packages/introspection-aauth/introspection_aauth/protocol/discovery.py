@@ -8,9 +8,9 @@ from urllib.parse import urlsplit
 import httpx2 as httpx
 from pydantic import BaseModel, ValidationError
 
-from .errors import VerificationError
-from .keys import Jwk, Jwks
-from .wire import ServerMetadata
+from introspection_aauth.protocol.errors import VerificationError
+from introspection_aauth.protocol.keys import Jwk, Jwks
+from introspection_aauth.protocol.wire import ServerMetadata
 
 T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)

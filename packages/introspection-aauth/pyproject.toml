@@ -44,7 +44,7 @@ source = ["introspection_aauth"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 84
+fail_under = 88
 show_missing = true
 precision = 1
 

@@ -26,8 +26,8 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, JsonValue
 
-from .access_server.server import AccessServer
-from .person_server.models import (
+from introspection_aauth.access_server.server import AccessServer
+from introspection_aauth.person_server.models import (
     AuthTokenRequest,
     MissionAction,
     MissionAnswer,
@@ -35,18 +35,18 @@ from .person_server.models import (
     MissionProposal,
     PersonTokenRequest,
 )
-from .person_server.server import PersonServer
-from .protocol.errors import (
+from introspection_aauth.person_server.server import PersonServer
+from introspection_aauth.protocol.errors import (
     AAuthError,
     Answer,
     NotFound,
     Problem,
 )
-from .protocol.httpsig import SignedRequest
-from .protocol.json import JsonObject
-from .protocol.keys import Jwks
-from .protocol.server import Server
-from .protocol.wire import (
+from introspection_aauth.protocol.httpsig import SignedRequest
+from introspection_aauth.protocol.json import JsonObject
+from introspection_aauth.protocol.keys import Jwks
+from introspection_aauth.protocol.server import Server
+from introspection_aauth.protocol.wire import (
     AccessServerMetadata,
     AuthTokenAnswer,
     Empty,

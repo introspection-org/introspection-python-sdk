@@ -16,8 +16,9 @@ from urllib.parse import urljoin
 import httpx2 as httpx
 from pydantic import ValidationError
 
-from ..protocol import jwt
-from ..protocol.claims import (
+from introspection_aauth.person_server.models import Federation, Outcome, Step
+from introspection_aauth.protocol import jwt
+from introspection_aauth.protocol.claims import (
     ACCESS_DWK,
     AgentTokenClaims,
     AuthTokenClaims,
@@ -25,10 +26,10 @@ from ..protocol.claims import (
     PersonTokenClaims,
     ResourceTokenClaims,
 )
-from ..protocol.discovery import Discovery
-from ..protocol.errors import Problem, VerificationError
-from ..protocol.keys import Jwks
-from ..protocol.server import (
+from introspection_aauth.protocol.discovery import Discovery
+from introspection_aauth.protocol.errors import Problem, VerificationError
+from introspection_aauth.protocol.keys import Jwks
+from introspection_aauth.protocol.server import (
     Clock,
     Identity,
     https_endpoint,
@@ -36,8 +37,11 @@ from ..protocol.server import (
     retry_after,
     same_origin,
 )
-from ..protocol.wire import AccessServerMetadata, AuthTokenAnswer, TokenRequest
-from .models import Federation, Outcome, Step
+from introspection_aauth.protocol.wire import (
+    AccessServerMetadata,
+    AuthTokenAnswer,
+    TokenRequest,
+)
 
 SERVED = frozenset({"approval", "interaction"})
 #: Requirements draft -11 defines that this Person Server does not serve.

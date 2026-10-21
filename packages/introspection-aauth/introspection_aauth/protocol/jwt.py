@@ -6,11 +6,21 @@ from typing import TypeVar
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
-from .claims import MAX_TOKEN_LIFETIME_SECONDS, Claims
-from .errors import VerificationError
-from .json import JsonObject
-from .keys import Jwk, Jwks, SigningKey, algorithm, b64url, b64url_decode
-from .keys import verify as verify_signature
+from introspection_aauth.protocol.claims import (
+    MAX_TOKEN_LIFETIME_SECONDS,
+    Claims,
+)
+from introspection_aauth.protocol.errors import VerificationError
+from introspection_aauth.protocol.json import JsonObject
+from introspection_aauth.protocol.keys import (
+    Jwk,
+    Jwks,
+    SigningKey,
+    algorithm,
+    b64url,
+    b64url_decode,
+)
+from introspection_aauth.protocol.keys import verify as verify_signature
 
 AGENT_TOKEN = "aa-agent+jwt"
 PERSON_TOKEN = "aa-person+jwt"

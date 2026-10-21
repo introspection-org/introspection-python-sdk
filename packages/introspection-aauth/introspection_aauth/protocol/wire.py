@@ -6,9 +6,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from .errors import Problem
-from .keys import Jwks
-from .models import Budget
+from introspection_aauth.protocol.errors import Problem
+from introspection_aauth.protocol.keys import Jwks
+from introspection_aauth.protocol.models import Budget
 
 
 class Wire(BaseModel):

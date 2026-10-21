@@ -242,7 +242,7 @@ jobs:
         run: uv run ruff check .
 
       - name: Run type checking
-        run: uv run ty check introspection_aauth
+        run: uv run ty check introspection_aauth tests
 
       - name: Run tests with coverage
         run: uv run pytest tests/ -v --cov=introspection_aauth --cov-report=term-missing

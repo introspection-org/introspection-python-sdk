@@ -1,8 +1,8 @@
 """An AAuth Person Server: missions, person and auth tokens, budgets,
 approvals, and federation with a resource's own Access Server."""
 
-from . import federation
-from .models import (
+from introspection_aauth.person_server import federation
+from introspection_aauth.person_server.models import (
     Approval,
     ApprovalKind,
     ApprovalStatus,
@@ -13,8 +13,13 @@ from .models import (
     Outcome,
     Step,
 )
-from .server import PersonServer
-from .store import AnyoneDirectory, Directory, MemoryStore, Store
+from introspection_aauth.person_server.server import PersonServer
+from introspection_aauth.person_server.store import (
+    AnyoneDirectory,
+    Directory,
+    MemoryStore,
+    Store,
+)
 
 __all__ = [
     "AnyoneDirectory",
