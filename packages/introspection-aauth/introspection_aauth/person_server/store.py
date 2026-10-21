@@ -74,7 +74,15 @@ class Store(Protocol):
         self, tenant: str, current: Approval, changed: Approval
     ) -> bool:
         """Replace `current` with `changed` only if what is stored still has
-        `current`'s status and version; whether it did."""
+        `current`'s status and version; whether it did. The stored `summary`
+        is kept: only `update_approval_summary` writes it."""
+        ...
+
+    async def update_approval_summary(
+        self, tenant: str, approval_id: str, summary: str
+    ) -> bool:
+        """Set an approval's summary, leaving its version as it is, so a
+        decision or federation in flight is not made stale; whether it did."""
         ...
 
     def transaction(self) -> AbstractAsyncContextManager["Store"]: ...
@@ -176,9 +184,23 @@ class MemoryStore:
     async def transition_approval(
         self, tenant: str, current: Approval, changed: Approval
     ) -> bool:
+        stored = self.approvals.get((tenant, current.id))
+        if stored is not None:
+            changed = changed.model_copy(update={"summary": stored.summary})
         return compare_and_set(
             self.approvals, (tenant, current.id), current, changed
         )
+
+    async def update_approval_summary(
+        self, tenant: str, approval_id: str, summary: str
+    ) -> bool:
+        stored = self.approvals.get((tenant, approval_id))
+        if stored is None:
+            return False
+        self.approvals[(tenant, approval_id)] = stored.model_copy(
+            update={"summary": summary}
+        )
+        return True
 
     def transaction(self) -> AbstractAsyncContextManager[Store]:
         return self._transaction()

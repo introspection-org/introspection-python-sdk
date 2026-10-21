@@ -2,6 +2,7 @@
 themselves, verify the agents and servers that call them, read a resource's
 R3 proposal, and answer a request that has to wait."""
 
+import logging
 import time
 import uuid
 from collections.abc import Sequence
@@ -51,6 +52,8 @@ __all__ = [
     "verify_resource_token",
     "verify_server",
 ]
+
+logger = logging.getLogger(__name__)
 
 Model = TypeVar("Model", bound=BaseModel)
 ClaimsModel = TypeVar("ClaimsModel", bound=Claims)
@@ -211,6 +214,33 @@ class Identity:
         if s256(response.content) != r3_s256:
             raise ValueError("the proposal does not match its hash")
         return R3Proposal.model_validate_json(response.content)
+
+    async def summary(
+        self,
+        http: httpx.AsyncClient,
+        resource: str,
+        r3_uri: str,
+        r3_s256: str,
+        now: int,
+    ) -> str | None:
+        """A proposal's one-line summary, or None when there is none or it
+        cannot be read: a request stands without one."""
+        try:
+            proposal = await self.read_proposal(
+                http, resource, r3_uri, r3_s256, now
+            )
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning(
+                "r3 proposal not read",
+                extra={"resource": resource, "error": type(exc).__name__},
+            )
+            return None
+        summary = proposal.display.summary if proposal.display else None
+        return summary[:MAX_SUMMARY_CHARS] if summary else None
+
+
+#: The longest summary of a proposal shown to whoever decides.
+MAX_SUMMARY_CHARS = 2_000
 
 
 def new_hex_id() -> str:

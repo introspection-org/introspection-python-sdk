@@ -308,3 +308,97 @@ async def test_a_calls_r3_proposal_is_read_into_its_approval():
     )
     described = await world.ps.describe(TENANT, approval_id(over))
     assert described is not None and described.summary == "Book QF1 for $600"
+
+
+async def over_budget_with_proposal(
+    world: World, proposal: bytes, r3_s256: str | None = None, aud: str = PS
+) -> str:
+    r3_uri = f"{RESOURCE}/r3/1"
+    world.net.documents[r3_uri] = proposal
+    mission = await world.approved_mission(budget=1_000)
+    _, person_token = world.resource_token(mission, 60_000, aud)
+    claims = world.resource_claims(mission, 60_000, aud).model_copy(
+        update={"r3_uri": r3_uri, "r3_s256": r3_s256 or s256(proposal)}
+    )
+    over = await world.call(
+        "POST",
+        f"{PS}/aauth/token",
+        AuthTokenRequest(
+            resource_token=encode(claims, world.resource_key, RESOURCE_TOKEN),
+            presented_token=person_token,
+        ),
+    )
+    return approval_id(over)
+
+
+SUMMARY = R3Proposal(display=R3Display(summary="Book QF1 for $600")).to_json()
+
+
+async def test_a_summary_written_meanwhile_does_not_make_a_decision_stale():
+    world = World()
+    pending = await over_budget_with_proposal(world, SUMMARY)
+    read = await world.ps_store.select_approval(TENANT, pending)
+    assert read is not None
+    await world.ps.describe(TENANT, pending)
+    decided = read.model_copy(
+        update={"status": ApprovalStatus.APPROVED, "version": read.version + 1}
+    )
+    assert await world.ps_store.transition_approval(TENANT, read, decided)
+    stored = await world.ps_store.select_approval(TENANT, pending)
+    assert stored is not None and stored.summary == "Book QF1 for $600"
+    assert stored.status is ApprovalStatus.APPROVED
+
+
+async def test_a_summary_written_meanwhile_does_not_drop_a_federated_token():
+    world = World(policy=lambda request: Verdict.approval())
+    kicked: list[str] = []
+
+    async def kick(tenant: str, approval: Approval) -> None:
+        kicked.append(approval.id)
+
+    world.ps._on_federate = kick
+    mission = await world.approved_mission(budget=100_000)
+    r3_uri = f"{RESOURCE}/r3/1"
+    world.net.documents[r3_uri] = SUMMARY
+    _, person_token = world.resource_token(mission, 10, AS)
+    claims = world.resource_claims(mission, 10, AS).model_copy(
+        update={"r3_uri": r3_uri, "r3_s256": s256(SUMMARY)}
+    )
+    await world.call(
+        "POST",
+        f"{PS}/aauth/token",
+        AuthTokenRequest(
+            resource_token=encode(claims, world.resource_key, RESOURCE_TOKEN),
+            presented_token=person_token,
+        ),
+    )
+    due = await federation.due(world.ps, TENANT, kicked[0])
+    assert due is not None
+    client = federation.AccessServerClient(world.ps)
+    metadata = await client.discover(due[0].access_server)
+    assert isinstance(metadata, federation.Metadata)
+    first = await client.request(due[0], due[1], metadata)
+    assert await federation.record(world.ps, TENANT, kicked[0], first)
+    [pending] = list(world.access_store.requests.values())
+    await world.access.decide(pending.id, True)
+    assert first.location is not None
+    issued = await client.poll(first.location, due[0], due[1], metadata)
+    await world.ps.describe(TENANT, kicked[0])
+    assert not await federation.record(world.ps, TENANT, kicked[0], issued)
+    stored = await world.ps_store.select_approval(TENANT, kicked[0])
+    assert stored is not None and stored.federation is not None
+    assert stored.federation.auth_token is not None
+    assert stored.summary == "Book QF1 for $600"
+
+
+@pytest.mark.parametrize(
+    ("proposal", "r3_s256"),
+    [(b"not json", None), (SUMMARY, "the wrong hash")],
+)
+async def test_an_unreadable_proposal_leaves_the_approval_without_a_summary(
+    proposal: bytes, r3_s256: str | None
+):
+    world = World()
+    pending = await over_budget_with_proposal(world, proposal, r3_s256)
+    described = await world.ps.describe(TENANT, pending)
+    assert described is not None and described.summary is None

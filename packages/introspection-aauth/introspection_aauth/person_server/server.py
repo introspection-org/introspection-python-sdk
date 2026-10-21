@@ -903,22 +903,13 @@ class PersonServer(Server):
             or grant.r3_s256 is None
         ):
             return approval
-        proposal = await self.identity.read_proposal(
+        summary = await self.identity.summary(
             self.http, grant.aud, grant.r3_uri, grant.r3_s256, self.clock()
         )
-        summary = proposal.display.summary if proposal.display else None
-        if not summary:
+        if summary is None or not await self.store.update_approval_summary(
+            tenant, approval.id, summary
+        ):
             return approval
-        changed = approval.model_copy(
-            update={
-                "summary": summary[:2_000],
-                "version": approval.version + 1,
-            }
-        )
-        return (
-            changed
-            if await self.store.transition_approval(tenant, approval, changed)
-            else approval
-        )
+        return approval.model_copy(update={"summary": summary})
 
     # endregion

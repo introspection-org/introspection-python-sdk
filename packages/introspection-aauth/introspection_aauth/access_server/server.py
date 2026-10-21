@@ -211,13 +211,9 @@ class AccessServer(Server):
     async def _summary(self, rt: ResourceTokenClaims) -> str | None:
         if rt.r3_uri is None or rt.r3_s256 is None:
             return None
-        try:
-            proposal = await self.identity.read_proposal(
-                self.http, rt.iss, rt.r3_uri, rt.r3_s256, self.clock()
-            )
-        except (httpx.HTTPError, ValueError):
-            return None
-        return proposal.display.summary if proposal.display else None
+        return await self.identity.summary(
+            self.http, rt.iss, rt.r3_uri, rt.r3_s256, self.clock()
+        )
 
     # endregion
 
