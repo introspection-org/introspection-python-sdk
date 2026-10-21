@@ -2,15 +2,15 @@
 documents."""
 
 from http import HTTPStatus
-from typing import Protocol
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 
 from introspection_aauth.fastapi.routes import (
     PENDING_RESPONSE,
     PROBLEM_RESPONSES,
     SIGNED,
+    Resolver,
     endpoint_base_path,
     finder,
     fixed,
@@ -40,11 +40,8 @@ from introspection_aauth.protocol.wire import (
     PersonTokenAnswer,
 )
 
-
-class PersonServerResolver(Protocol):
-    """The Person Server that serves `request`, or None when there is none."""
-
-    def __call__(self, request: Request) -> PersonServer | None: ...
+#: Finds the PersonServer that serves a request, or None when there is none.
+PersonServerResolver = Resolver[PersonServer]
 
 
 def person_server_well_known_router(

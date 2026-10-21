@@ -1,14 +1,13 @@
 """FastAPI routers for an Access Server's protocol routes and its well-known
 documents."""
 
-from typing import Protocol
-
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 
 from introspection_aauth.access_server.server import AccessServer
 from introspection_aauth.fastapi.routes import (
     PENDING_RESPONSE,
     SIGNED,
+    Resolver,
     endpoint_base_path,
     finder,
     fixed,
@@ -22,11 +21,8 @@ from introspection_aauth.protocol.wire import (
     TokenRequest,
 )
 
-
-class AccessServerResolver(Protocol):
-    """The Access Server that serves `request`, or None when there is none."""
-
-    def __call__(self, request: Request) -> AccessServer | None: ...
+#: Finds the AccessServer that serves a request, or None when there is none.
+AccessServerResolver = Resolver[AccessServer]
 
 
 def access_server_well_known_router(
