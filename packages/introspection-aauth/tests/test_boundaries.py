@@ -25,7 +25,10 @@ from introspection_aauth.protocol.claims import (
     Confirmation,
 )
 from introspection_aauth.protocol.jwt import AGENT_TOKEN, encode
-from introspection_aauth.protocol.wire import TokenRequest
+from introspection_aauth.protocol.wire import (
+    AccessServerMetadata,
+    TokenRequest,
+)
 
 from .test_federation import auth_token, inline
 from .world import AP, AS, PS, RESOURCE, TENANT, World, problem, usd
@@ -397,3 +400,28 @@ async def test_a_tenant_that_needs_escaping_polls_through_the_router(
     )
     approved = await world.follow(proposed)
     assert approved.status_code == 200, approved.text
+
+
+@pytest.mark.parametrize(
+    ("auth_token_endpoint", "jwks_uri"),
+    [
+        ("https://elsewhere.example/token", f"{AS}/jwks.json"),
+        (f"{AS}/token", "https://elsewhere.example/jwks.json"),
+        ("https://user@as.booking.example/token", f"{AS}/jwks.json"),
+    ],
+)
+async def test_access_server_metadata_keeps_its_endpoints_on_its_origin(
+    auth_token_endpoint: str, jwks_uri: str
+):
+    world = World()
+    world.net.documents[f"{AS}/.well-known/aauth-access.json"] = (
+        AccessServerMetadata(
+            issuer=AS,
+            jwks_uri=jwks_uri,
+            auth_token_endpoint=auth_token_endpoint,
+        )
+    )
+    found = await federation.AccessServerClient(world.ps).discover(AS)
+    assert isinstance(found, federation.Outcome)
+    assert found.refusal is not None
+    assert found.refusal.error == "as_unreachable"

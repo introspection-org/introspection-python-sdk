@@ -32,6 +32,7 @@ from ..protocol.claims import (
 from ..protocol.errors import Problem, VerificationError
 from ..protocol.keys import Jwks
 from ..protocol.models import Budget
+from ..protocol.server import same_origin
 from ..protocol.wire import AccessServerMetadata, AuthTokenAnswer, TokenRequest
 from .models import Approval, ApprovalStatus, Federation, Refusal
 from .store import Store
@@ -150,11 +151,14 @@ class AccessServerClient:
             return unreachable(f"its metadata could not be read: {exc.detail}")
         if document.issuer != access_server:
             return unreachable("its metadata names another issuer")
-        if not _https(document.auth_token_endpoint, True) or not _https(
-            document.jwks_uri, False
+        if not (
+            _https(document.auth_token_endpoint, True)
+            and same_origin(document.auth_token_endpoint, access_server)
+            and same_origin(document.jwks_uri, access_server)
         ):
             return unreachable(
-                "its metadata lacks an https auth_token_endpoint and jwks_uri"
+                "its metadata keeps its auth_token_endpoint and jwks_uri "
+                "off its own https origin"
             )
         return document
 
