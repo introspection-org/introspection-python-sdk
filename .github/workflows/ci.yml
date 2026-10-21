@@ -111,7 +111,10 @@ jobs:
         run: uv sync --all-extras
 
       - name: Run tests with coverage
-        run: uv run pytest tests/ -v --cov=introspection_sdk --cov-report=term-missing --cov-report=xml
+        run: |
+          echo "## introspection-sdk coverage" >> "$GITHUB_STEP_SUMMARY"
+          uv run pytest tests/ -v --cov=introspection_sdk --cov-report=term-missing --cov-report=xml \
+            --cov-report="markdown-append:$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
         if: always()
@@ -245,7 +248,10 @@ jobs:
         run: uv run ty check introspection_aauth tests
 
       - name: Run tests with coverage
-        run: uv run pytest tests/ -v --cov=introspection_aauth --cov-report=term-missing
+        run: |
+          echo "## introspection-aauth coverage" >> "$GITHUB_STEP_SUMMARY"
+          uv run pytest tests/ -v --cov=introspection_aauth --cov-report=term-missing \
+            --cov-report="markdown-append:$GITHUB_STEP_SUMMARY"
 
       - name: Check dependencies
         run: uv run deptry .
