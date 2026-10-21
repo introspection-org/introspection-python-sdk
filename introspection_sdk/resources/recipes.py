@@ -1,0 +1,21 @@
+"""``client.recipes`` — CP read namespace for ``/v1/recipes``.
+
+Read-only, no handle subtype. A runner resolves the recipe it is running
+under; authoring one is a project-authoring act and lives in the CLI.
+Recipes are immutable snapshots of a git repository at a specific commit;
+runtimes / experiment arms refer to recipes by id.
+"""
+
+from __future__ import annotations
+
+from introspection_sdk._async.resources.recipes import (
+    AsyncRecipes,
+)
+from introspection_sdk._sync.resources.recipes import (
+    Recipes,
+)
+
+__all__ = [
+    "AsyncRecipes",
+    "Recipes",
+]
