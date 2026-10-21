@@ -157,9 +157,10 @@ latest `v*` release tag (resolved with `git describe --tags --abbrev=0
 --match 'v*' HEAD`, never hard-coded). Run the same check locally:
 
 ```shell
-uv run python scripts/check_api.py              # against the latest v* tag
-uv run python scripts/check_api.py --against v0.29.0
+uv run griffe check introspection_sdk --search . --against v0.29.0
 ```
+
+Pass the tag CI uses, `git describe --tags --abbrev=0 --match 'v*' HEAD`.
 
 It needs the release tags locally (`git fetch --tags`).
 
@@ -172,12 +173,11 @@ give it a leading underscore or leave it out of `__all__`.
 
 Reported: a public object removed or renamed, a parameter removed, moved,
 made required or changed kind, a parameter default changed, a return or
-attribute type changed, a base class removed. Not reported: a changed
-attribute *value* (`scripts/check_api.py` drops griffe's
-`ATTRIBUTE_CHANGED_VALUE`), because here that is almost always a pydantic
-`Field(description=...)` edit or a type alias gaining a member. Narrowing
-such an alias or changing a field's default is breaking but not caught;
-call it out in review.
+attribute type changed, a base class removed, and a changed attribute
+*value*. That last one includes a pydantic `Field(description=...)` edit
+or a type alias gaining a member, which are not breaking but still fail
+the check. The only way through is the override below, which also bumps
+the minor version; say in the PR that the break is only a value change.
 
 ### Breaking the API on purpose
 

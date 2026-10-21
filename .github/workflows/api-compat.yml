@@ -1,7 +1,7 @@
 # Fails a PR that breaks the public API against the latest v* release
-# (scripts/check_api.py, griffe). To break it on purpose, see "Public API
-# compatibility" in AGENTS.md: a `!` in the PR title plus the `api-break`
-# label.
+# reachable from HEAD (griffe's own CLI). To break it on purpose, see "Public
+# API compatibility" in AGENTS.md: a `!` in the PR title plus the
+# `api-break` label.
 #
 # Its own workflow, not a job in ci.yml, because the override lives in PR
 # metadata: it has to run again when the title is edited or a label is added
@@ -61,7 +61,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if uv run python scripts/check_api.py; then
+          against=$(git describe --tags --abbrev=0 --match 'v*' HEAD)
+          if uv run griffe check introspection_sdk --search . \
+            --against "$against" --format github; then
             exit 0
           fi
           pr=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
