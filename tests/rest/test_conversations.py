@@ -528,6 +528,83 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     assert req.params.get("agent_id") is None
 
 
+def test_items_list_repeats_operation_names_and_content_classes(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page([make_item()], False),
+    )
+
+    _conversations(fake_api).items.list(
+        "conv-1",
+        operation_name=["chat", "execute_tool"],
+        content=["user_text", "tool:message_user", "tool_result:react"],
+    ).page()
+
+    params = fake_api.last_request.params
+    # Both filters repeat the key, any value of which matches server-side.
+    assert params.get_list("operation_name") == ["chat", "execute_tool"]
+    assert params.get_list("content") == [
+        "user_text",
+        "tool:message_user",
+        "tool_result:react",
+    ]
+
+
+def test_items_list_sends_one_operation_name_unchanged(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page([make_item()], False),
+    )
+
+    _conversations(fake_api).items.list("conv-1", operation_name="chat").page()
+
+    params = fake_api.last_request.params
+    assert params.get_list("operation_name") == ["chat"]
+    assert "content" not in params
+
+
+def test_items_carry_the_content_summary_as_typed_attributes(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page(
+            [
+                make_item(
+                    attributes={
+                        "introspection": {
+                            "content": {
+                                "version": 1,
+                                "user_text": 1,
+                                "assistant_text": 0,
+                                "tool_calls": ["message_user"],
+                                "tool_results": ["react"],
+                            }
+                        }
+                    }
+                )
+            ],
+            False,
+        ),
+    )
+
+    page = _conversations(fake_api).items.list("conv-1")
+
+    content = present(present(page.data[0].attributes.introspection).content)
+    assert (content.version, content.user_text, content.assistant_text) == (
+        1,
+        1,
+        0,
+    )
+    assert content.tool_calls == ["message_user"]
+    assert content.tool_results == ["react"]
+
+
 def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):
     fake_api.add_handler(
         "GET",
@@ -995,6 +1072,22 @@ def test_export_stream_preserves_wire_bytes_and_filters(
         "start_date": "2026-07-01T00:00:00Z",
         "end_date": "2026-07-02T00:00:00Z",
     }
+
+
+def test_export_repeats_operation_names_and_content_classes(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+
+    _conversations(fake_api).export_trajectory(
+        "conv-1",
+        operation_name=["chat", "execute_tool"],
+        content=["user_text", "delegation"],
+    )
+
+    params = fake_api.requests[-1].params
+    assert params.get_list("operation_name") == ["chat", "execute_tool"]
+    assert params.get_list("content") == ["user_text", "delegation"]
 
 
 def test_export_encodes_conversation_id(fake_api: FakeAPI):

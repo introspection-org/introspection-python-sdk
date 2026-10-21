@@ -56,6 +56,7 @@ __all__ = [
     "GenAiCost",
     "GenAiUsage",
     "IntrospectionAttributes",
+    "IntrospectionContent",
     "IntrospectionConversation",
     "IntrospectionRecipe",
     "IntrospectionRuntime",
@@ -297,6 +298,21 @@ class IntrospectionConversation(_SpanModel):
     has_errors: bool | None = None
 
 
+class IntrospectionContent(_SpanModel):
+    """``introspection.content.*``: what a chat span's sealed messages hold.
+
+    Stamped at ingest so a read can select rows without opening them. Counts
+    and tool names only, never content. Absent on a span recorded before the
+    summary existed and on an ``execute_tool`` span.
+    """
+
+    version: int | None = None
+    user_text: int | None = None
+    assistant_text: int | None = None
+    tool_calls: list[str] | None = None
+    tool_results: list[str] | None = None
+
+
 class IntrospectionAttributes(_SpanModel):
     """The ``introspection.*`` attribute family.
 
@@ -313,6 +329,7 @@ class IntrospectionAttributes(_SpanModel):
     environment: str | None = None
     conversation: IntrospectionConversation | None = None
     recipe: IntrospectionRecipe | None = None
+    content: IntrospectionContent | None = None
 
 
 # --- the span -------------------------------------------------------------

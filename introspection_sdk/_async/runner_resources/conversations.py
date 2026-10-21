@@ -66,7 +66,8 @@ def build_export_params(
     *,
     agent: str | None = None,
     service_name: str | None = None,
-    operation_name: str | None = None,
+    operation_name: str | builtins.list[str] | None = None,
+    content: builtins.list[str] | None = None,
     lookback_days: int | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
@@ -89,6 +90,8 @@ def build_export_params(
         params["service_name"] = service_name
     if operation_name is not None:
         params["operation_name"] = operation_name
+    if content is not None:
+        params["content"] = content
     if lookback_days is not None:
         params["lookback_days"] = lookback_days
     if start_date is not None:
@@ -268,7 +271,8 @@ class AsyncConversationItems:
         include: builtins.list[ConversationItemInclude] | None = None,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | None = None,
+        operation_name: str | builtins.list[str] | None = None,
+        content: builtins.list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
@@ -285,6 +289,14 @@ class AsyncConversationItems:
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
+
+        ``operation_name`` keeps the rows with any of the given
+        ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
+        ``invoke_agent``, ...). ``content`` keeps the rows that carry any of
+        the given content classes: ``user_text``, ``assistant_text``,
+        ``delegation``, ``tool:<name>``, ``tool_call:<name>`` or
+        ``tool_result:<name>``; a chat span matched on one side returns only
+        that side's messages. The two filters combine.
         """
         # unasync: end
         """List conversation items using an opaque ``next`` cursor. Iterate
@@ -298,6 +310,14 @@ class AsyncConversationItems:
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
+
+        ``operation_name`` keeps the rows with any of the given
+        ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
+        ``invoke_agent``, ...). ``content`` keeps the rows that carry any of
+        the given content classes: ``user_text``, ``assistant_text``,
+        ``delegation``, ``tool:<name>``, ``tool_call:<name>`` or
+        ``tool_result:<name>``; a chat span matched on one side returns only
+        that side's messages. The two filters combine.
         """
 
         async def fetch(cursor: str | None) -> GenAiSpanList:
@@ -308,6 +328,7 @@ class AsyncConversationItems:
                 "agent": agent,
                 "service_name": service_name,
                 "operation_name": operation_name,
+                "content": content,
                 "start_date": start_date,
                 "end_date": end_date,
                 "lookback_days": lookback_days,
@@ -617,7 +638,8 @@ class AsyncConversations:
         *,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | None = None,
+        operation_name: str | builtins.list[str] | None = None,
+        content: builtins.list[str] | None = None,
         lookback_days: int | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
@@ -641,6 +663,7 @@ class AsyncConversations:
                 agent=agent,
                 service_name=service_name,
                 operation_name=operation_name,
+                content=content,
                 lookback_days=lookback_days,
                 start_date=start_date,
                 end_date=end_date,
@@ -655,7 +678,8 @@ class AsyncConversations:
         *,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | None = None,
+        operation_name: str | builtins.list[str] | None = None,
+        content: builtins.list[str] | None = None,
         lookback_days: int | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
@@ -676,6 +700,7 @@ class AsyncConversations:
                 agent=agent,
                 service_name=service_name,
                 operation_name=operation_name,
+                content=content,
                 lookback_days=lookback_days,
                 start_date=start_date,
                 end_date=end_date,
