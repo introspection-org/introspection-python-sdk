@@ -59,6 +59,12 @@ line-length = 79
 target-version = "py311"
 
 [tool.ruff.lint]
+# Preview is on only for rules selected by exact code (PLR0917 below):
+# `explicit-preview-rules` keeps prefixes like "E" or "F" from pulling in
+# preview rules. It does still turn on preview behaviour of stable rules
+# (F822, for one, then checks submodules listed in `__all__`).
+preview = true
+explicit-preview-rules = true
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -67,13 +73,12 @@ select = [
     "B",  # flake8-bugbear
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
-    # Complexity ratchet: see "Complexity ratchet" in AGENTS.md. PLR0917
-    # (max positional args) is preview-only, so it runs in its own
-    # `--preview` invocation instead of switching preview on here.
+    # Complexity ratchet: see "Complexity ratchet" in AGENTS.md.
     "C901",    # mccabe complexity
     "PLR0911", # too many return statements
     "PLR0912", # too many branches
     "PLR0915", # too many statements
+    "PLR0917", # too many positional arguments (preview)
 ]
 ignore = [
     "E501", # line too long (handled by formatter)

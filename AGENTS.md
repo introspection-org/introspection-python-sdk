@@ -169,14 +169,16 @@ refactor an offender, lower the threshold to the new worst value in the
 same PR. `PLR0913` (total arguments) is deliberately not enabled, because
 the public API takes many keyword-only arguments.
 
-Run the check locally (CI runs the same command in the `Complexity
-Ratchet` job):
+All five rules run in plain `ruff check`, so the pre-commit `ruff` hook
+and the `Run linting` step in CI enforce them:
 
 ```shell
-uv run ruff check --preview --select C901,PLR0911,PLR0912,PLR0915,PLR0917 .
+uv run ruff check .
 ```
 
-`PLR0917` is a preview rule, so `--preview` is scoped to this command
-rather than enabled in `pyproject.toml`, where it would change the
-behaviour of stable rules too. The other four also run in plain
-`uv run ruff check .` and the pre-commit `ruff` hook.
+`PLR0917` is a preview rule, so `[tool.ruff.lint]` sets `preview = true`
+together with `explicit-preview-rules = true`: preview rules run only when
+selected by their exact code, so selecting `E` or `F` pulls in no preview
+rules. Preview still changes some stable rules (`F822`, for one, also
+checks submodules named in `__all__`); fix what they find rather than
+switching preview off. `[tool.ruff.format]` keeps preview off.
