@@ -25,6 +25,24 @@ from introspection_aauth.protocol.errors import VerificationError
 from introspection_aauth.protocol.keys import Jwk, SigningKey, thumbprint
 from introspection_aauth.protocol.keys import verify as verify_with
 
+__all__ = [
+    "KNOWN_DWKS",
+    "LABEL",
+    "MAX_CLOCK_SKEW_SECONDS",
+    "REQUIRED",
+    "KeyResolver",
+    "SignedRequest",
+    "Verified",
+    "authority",
+    "content_digest",
+    "jwks_uri_key",
+    "jwt_key",
+    "named_server",
+    "sign",
+    "signature_scheme",
+    "verify",
+]
+
 LABEL = "sig"
 REQUIRED = ("@method", "@authority", "@path", "signature-key")
 MAX_CLOCK_SKEW_SECONDS = 60
@@ -48,7 +66,7 @@ class KeyResolver(Protocol):
 
 
 @dataclass(frozen=True)
-class _Named:
+class KeyNaming:
     """How a key was named: the token presented, or the server and document."""
 
     token: str | None = None
@@ -231,7 +249,7 @@ def _covered(signature_input: http_sfv.InnerList) -> list[str]:
 
 async def _key(
     scheme: str, params: Parameters, resolve: KeyResolver | None
-) -> tuple[Jwk, _Named]:
+) -> tuple[Jwk, KeyNaming]:
     if scheme == "jwt":
         token = params.get("jwt")
         if not isinstance(token, str):
@@ -245,7 +263,7 @@ async def _key(
             raise VerificationError(
                 "invalid_jwt", "the token has no cnf.jwk"
             ) from None
-        return jwk, _Named(token=token)
+        return jwk, KeyNaming(token=token)
     if scheme == "jwks_uri":
         server, dwk, kid = (params.get(n) for n in ("id", "dwk", "kid"))
         if not (
@@ -260,7 +278,9 @@ async def _key(
             raise VerificationError(
                 "invalid_key", "not a server this verifier reads"
             )
-        return await resolve(server, dwk, kid), _Named(server=server, dwk=dwk)
+        return await resolve(server, dwk, kid), KeyNaming(
+            server=server, dwk=dwk
+        )
     raise VerificationError("unsupported_scheme", f"the {scheme} scheme")
 
 

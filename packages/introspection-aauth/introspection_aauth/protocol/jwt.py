@@ -46,7 +46,7 @@ __all__ = [
 ]
 
 ClaimsModel = TypeVar("ClaimsModel", bound=Claims)
-_object = TypeAdapter(JsonObject)
+JSON_OBJECT = TypeAdapter(JsonObject)
 
 
 class Header(BaseModel):
@@ -104,7 +104,7 @@ def decode(token: str) -> Decoded:
         raise VerificationError("invalid_jwt", "not a compact JWT")
     try:
         header = Header.model_validate_json(b64url_decode(parts[0]))
-        claims = _object.validate_json(b64url_decode(parts[1]))
+        claims = JSON_OBJECT.validate_json(b64url_decode(parts[1]))
         signature = b64url_decode(parts[2])
     except (ValueError, ValidationError):
         raise VerificationError("invalid_jwt", "not a JWT") from None

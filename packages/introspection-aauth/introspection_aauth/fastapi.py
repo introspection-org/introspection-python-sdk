@@ -56,12 +56,21 @@ from introspection_aauth.protocol.wire import (
     TokenRequest,
 )
 
-_Found = TypeVar("_Found", bound=Server, covariant=True)
-_Server = TypeVar("_Server", bound=Server)
-_Acting = TypeVar("_Acting", bound=Server, contravariant=True)
+__all__ = [
+    "AccessServerResolver",
+    "PersonServerResolver",
+    "access_server_router",
+    "access_server_well_known_router",
+    "person_server_router",
+    "person_server_well_known_router",
+]
+
+FoundServer = TypeVar("FoundServer", bound=Server, covariant=True)
+AnyServer = TypeVar("AnyServer", bound=Server)
+ActingServer = TypeVar("ActingServer", bound=Server, contravariant=True)
 
 
-class _Response(TypedDict, total=False):
+class DocumentedResponse(TypedDict, total=False):
     """One of a route's documented responses."""
 
     model: type[BaseModel]
@@ -69,10 +78,10 @@ class _Response(TypedDict, total=False):
     content: JsonObject
 
 
-Responses = dict[int | str, _Response]
+Responses = dict[int | str, DocumentedResponse]
 
 
-class _Docs(TypedDict, total=False):
+class RouteDocs(TypedDict, total=False):
     summary: str
     description: str
     operation_id: str
@@ -185,20 +194,20 @@ def _under(router: APIRouter, path: str) -> str:
     return path.removeprefix(router.prefix)
 
 
-class _Resolver(Protocol[_Found]):
-    def __call__(self, request: Request) -> _Found | None: ...
+class Resolver(Protocol[FoundServer]):
+    def __call__(self, request: Request) -> FoundServer | None: ...
 
 
-class _Find(Protocol[_Found]):
-    def __call__(self, request: Request) -> _Found: ...
+class Finder(Protocol[FoundServer]):
+    def __call__(self, request: Request) -> FoundServer: ...
 
 
-def _fixed(server: _Server) -> _Resolver[_Server]:
+def _fixed(server: AnyServer) -> Resolver[AnyServer]:
     return lambda request: server
 
 
-def _finder(resolve: _Resolver[_Server]) -> _Find[_Server]:
-    def find(request: Request) -> _Server:
+def _finder(resolve: Resolver[AnyServer]) -> Finder[AnyServer]:
+    def find(request: Request) -> AnyServer:
         server = resolve(request)
         if server is None:
             raise HTTPException(status_code=HTTPStatus.NOT_FOUND)
@@ -209,7 +218,7 @@ def _finder(resolve: _Resolver[_Server]) -> _Find[_Server]:
 
 def _well_known(
     router: APIRouter,
-    find: _Find[Server],
+    find: Finder[Server],
     *,
     role: str,
     title: str,
@@ -271,11 +280,15 @@ def person_server_well_known_router(
     )
 
 
-class _Act(Protocol[_Acting]):
+class Action(Protocol[ActingServer]):
     """A server's answer to one signed request, given its path parameters."""
 
     def __call__(
-        self, server: _Acting, signed: SignedRequest, path: dict[str, str], /
+        self,
+        server: ActingServer,
+        signed: SignedRequest,
+        path: dict[str, str],
+        /,
     ) -> Awaitable[Answer]: ...
 
 
@@ -300,12 +313,12 @@ def _signed_route(
     router: APIRouter,
     method: str,
     path: str,
-    find: _Find[_Server],
-    act: _Act[_Server],
+    find: Finder[AnyServer],
+    act: Action[AnyServer],
     *,
     body: type[BaseModel] | None = None,
     responses: Responses | None = None,
-    **docs: Unpack[_Docs],
+    **docs: Unpack[RouteDocs],
 ) -> None:
     """A signed protocol route: the server `find` resolves answers it by `act`."""
     extra: JsonObject = _body(body) if body is not None else {}

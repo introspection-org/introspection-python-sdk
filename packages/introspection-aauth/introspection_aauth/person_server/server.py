@@ -86,6 +86,13 @@ from introspection_aauth.protocol.wire import (
     PersonTokenAnswer,
 )
 
+__all__ = [
+    "Exchange",
+    "Hook",
+    "PersonServer",
+    "Sleep",
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,7 +129,7 @@ def _fits(mission: Mission, budget: Budget | None) -> bool:
     return budget.at_most(left)
 
 
-class _Stale(Exception):
+class StaleRecord(Exception):
     """Rolls a `record` back: the approval changed or lapsed meanwhile."""
 
 
@@ -512,7 +519,7 @@ class PersonServer(Server):
         spend lands only when it issues, in the same transaction as its token."""
         try:
             return await self._record_federation(tenant, approval_id, outcome)
-        except _Stale:
+        except StaleRecord:
             return False
 
     async def federate(
@@ -1029,7 +1036,7 @@ class PersonServer(Server):
             if approval.expires_at <= now or not await tx.transition_approval(
                 tenant, approval, changed
             ):
-                raise _Stale
+                raise StaleRecord
         return outcome.step is Step.PENDING
 
     async def _spend_granted(

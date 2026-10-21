@@ -6,6 +6,24 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict
 
+__all__ = [
+    "AAuthError",
+    "AccessDenied",
+    "Answer",
+    "Denied",
+    "Expired",
+    "InvalidCode",
+    "InvalidRequest",
+    "InvalidToken",
+    "MissionNotFound",
+    "MissionTerminated",
+    "NotFound",
+    "Problem",
+    "ServerError",
+    "Unauthorized",
+    "VerificationError",
+]
+
 
 class Problem(BaseModel):
     """`application/problem+json` (`#error-responses`)."""
@@ -67,7 +85,7 @@ class VerificationError(Exception):
         self.detail = detail
 
 
-class _Coded(AAuthError):
+class CodedError(AAuthError):
     """An `AAuthError` whose code is fixed by its class."""
 
     code: str
@@ -85,41 +103,41 @@ class _Coded(AAuthError):
         )
 
 
-class InvalidRequest(_Coded):
+class InvalidRequest(CodedError):
     code, default_status = "invalid_request", 400
 
 
-class InvalidCode(_Coded):
+class InvalidCode(CodedError):
     """A pending URL that has already answered, or never existed (`#pending-url-security`)."""
 
     code, default_status = "invalid_code", 410
 
 
-class Expired(_Coded):
+class Expired(CodedError):
     code, default_status = "expired", 408
 
 
-class NotFound(_Coded):
+class NotFound(CodedError):
     code, default_status = "not_found", 404
 
 
-class MissionNotFound(_Coded):
+class MissionNotFound(CodedError):
     code, default_status = "mission_not_found", 404
 
 
-class MissionTerminated(_Coded):
+class MissionTerminated(CodedError):
     code, default_status = "mission_terminated", 403
 
 
-class AccessDenied(_Coded):
+class AccessDenied(CodedError):
     code, default_status = "access_denied", 403
 
 
-class Denied(_Coded):
+class Denied(CodedError):
     code, default_status = "denied", 403
 
 
-class ServerError(_Coded):
+class ServerError(CodedError):
     code, default_status = "server_error", 500
 
 
