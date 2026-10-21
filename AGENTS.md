@@ -115,6 +115,10 @@ uv run ty check
 These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 `--no-verify` — fix the underlying issue.
 
+The prek `ty` hook runs unpinned `uvx ty check`, which can resolve to a
+newer ty than `uv.lock` and report diagnostics that CI's locked ty doesn't.
+Trust `uv run ty check`; it matches CI.
+
 ## Dependency check
 
 ```shell
@@ -140,6 +144,10 @@ package and say why next to it.
   (`feat(otel):`, `test(claude):`, `docs:`, `ci:`).
 - Never commit `.env`, real API keys, or unscrubbed cassettes. The
   `gitleaks` pre-commit hook catches most of this; don't bypass it.
+- `main` has no required status checks: the `main` ruleset only blocks
+  deletion and force-pushes and requires a PR. A failing CI job doesn't
+  block merge, so check CI yourself before merging, and add every new CI
+  job to the ruleset's required checks.
 
 ## Duplicate code
 
