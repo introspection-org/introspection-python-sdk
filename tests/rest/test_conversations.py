@@ -1074,20 +1074,19 @@ def test_export_stream_preserves_wire_bytes_and_filters(
     }
 
 
-def test_export_repeats_operation_names_and_content_classes(fake_api: FakeAPI):
+def test_export_repeats_operation_names(fake_api: FakeAPI):
+    """The export takes the repeated `operation_name` and no `content`."""
     fake_api.add(
         "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
     )
 
     _conversations(fake_api).export_trajectory(
-        "conv-1",
-        operation_name=["chat", "execute_tool"],
-        content=["user_text", "delegation"],
+        "conv-1", operation_name=["chat", "execute_tool"]
     )
 
     params = fake_api.requests[-1].params
     assert params.get_list("operation_name") == ["chat", "execute_tool"]
-    assert params.get_list("content") == ["user_text", "delegation"]
+    assert "content" not in params
 
 
 def test_export_encodes_conversation_id(fake_api: FakeAPI):
