@@ -72,7 +72,9 @@ class Net(httpx.AsyncBaseTransport):
 
 
 class World:
-    def __init__(self, policy: Any = None) -> None:
+    def __init__(
+        self, policy: Any = None, ps_store: MemoryStore | None = None
+    ) -> None:
         self.now = T0
         self.net = Net()
         self.http = httpx.AsyncClient(transport=self.net)
@@ -91,7 +93,7 @@ class World:
             },
             f"{RESOURCE}/jwks.json": jwks([self.resource_key]),
         }
-        self.ps_store = MemoryStore()
+        self.ps_store = ps_store or MemoryStore()
         self.ps = PersonServer(
             PS,
             SigningKey.generate(),

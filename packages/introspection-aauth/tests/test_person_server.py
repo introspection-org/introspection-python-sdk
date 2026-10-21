@@ -5,7 +5,11 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from introspection_aauth.person_server import ApprovalStatus
+from introspection_aauth.person_server import (
+    ApprovalStatus,
+    MemoryStore,
+    Mission,
+)
 from introspection_aauth.protocol import AAuthError, SigningKey
 from introspection_aauth.protocol.jwt import AGENT_TOKEN, decode, encode
 
@@ -210,9 +214,15 @@ async def test_identical_missions_for_two_people_in_one_second_stay_apart():
     assert stored is not None and stored.person == "kim"
 
 
+class TakenStore(MemoryStore):
+    """A store where every mission hash is already taken."""
+
+    async def insert_mission(self, tenant: str, mission: Mission) -> bool:
+        return False
+
+
 async def test_a_mission_whose_hash_is_taken_is_refused_not_reused():
-    world = World()
-    await world.approved_mission(budget=100_000)
+    world = World(ps_store=TakenStore())
     proposed = await world.call(
         "POST",
         f"{PS}/aauth/mission",
@@ -222,12 +232,6 @@ async def test_a_mission_whose_hash_is_taken_is_refused_not_reused():
             "login_hint": "sam",
         },
     )
-    taken = world.ps_store.insert_mission
-
-    async def refuse(tenant, mission):
-        return False
-
-    world.ps_store.insert_mission = refuse
     with pytest.raises(AAuthError) as refused:
         await world.ps.decide(
             TENANT,
@@ -236,7 +240,6 @@ async def test_a_mission_whose_hash_is_taken_is_refused_not_reused():
             decided_by="dana",
             budget=usd(100_000),
         )
-    world.ps_store.insert_mission = taken
     assert refused.value.status == 409
     approval = await world.ps_store.approval(TENANT, approval_id(proposed))
     assert approval is not None and approval.status is ApprovalStatus.PENDING
