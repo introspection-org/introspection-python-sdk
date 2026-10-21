@@ -35,14 +35,14 @@ from introspection_sdk import (
 from introspection_sdk.schemas.agui import AGUIEvent, RunFinishedEvent
 
 
-def render(event: AGUIEvent) -> None:
-    print(event.model_dump_json(by_alias=True, exclude_none=True))
-
-
 # The regions keep the docs' line lengths, not the formatter's.
 # fmt: off
 async def reattach(runner: AsyncRunner, task_id: str) -> None:
 # #region docs:reference/python/reattach
+    # Your app's code: show the event in your UI.
+    def render(event: AGUIEvent) -> None:
+        print(event.model_dump_json(by_alias=True, exclude_none=True))
+
     task = await runner.tasks.get(task_id)
     metadata = task.metadata or {}
     run_id = metadata.get("active_run_id") or metadata["latest_run_id"]
