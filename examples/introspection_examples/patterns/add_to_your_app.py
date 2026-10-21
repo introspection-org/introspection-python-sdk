@@ -44,26 +44,6 @@ class AgentBinding:
     user_id: str
 
 
-class Orders:
-    """Stands in for your database: which task works on which order."""
-
-    def __init__(self) -> None:
-        self.bindings: dict[str, AgentBinding] = {}
-
-    def save_agent_binding(
-        self, order_id: str, *, task_id: str, user_id: str
-    ) -> None:
-        self.bindings[order_id] = AgentBinding(task_id, user_id)
-
-
-orders = Orders()
-
-
-def send_event_to_browser(event: AGUIEvent) -> None:
-    """Stands in for your server-sent events or WebSocket push."""
-    print(f"  -> browser: {event.type}")
-
-
 def open_runner(
     runtime: str, user_id: str
 ) -> tuple[IntrospectionClient, IntrospectionLogs, Runner]:
@@ -85,23 +65,38 @@ def open_runner(
     return client, outcomes, runner
 
 
-def start_task(runner: Runner, order_id: str, user_id: str) -> None:
+def start_task(runner: Runner, order_id: str, user_id: str) -> AgentBinding:
     # #region docs:patterns/add-to-your-app/start-task
+    # Your app's code: store which task works on which order.
+    def save_agent_binding(
+        order_id: str, *, task_id: str, user_id: str
+    ) -> None:
+        print(f"  saved task {task_id} for order {order_id} ({user_id})")
+
+    # Your app's code: push the event over server-sent events or a WebSocket.
+    def send_event_to_browser(event: AGUIEvent) -> None:
+        print(f"  -> browser: {event.type}")
+
     handle = runner.tasks.start(
         prompt="Review order 1842 against the refund policy and draft the next response.",
         metadata={"order_id": "1842"},
     )
-    orders.save_agent_binding(
+    save_agent_binding(
         order_id, task_id=str(handle.run.task_id), user_id=user_id
     )
 
     for event in handle.stream():
         send_event_to_browser(event)
     # #endregion docs:patterns/add-to-your-app/start-task
+    return AgentBinding(str(handle.run.task_id), user_id)
 
 
 def reconnect(runner: Runner, binding: AgentBinding) -> None:
     # #region docs:patterns/add-to-your-app/reconnect
+    # Your app's code: push the event over server-sent events or a WebSocket.
+    def send_event_to_browser(event: AGUIEvent) -> None:
+        print(f"  -> browser: {event.type}")
+
     task = runner.tasks.get(binding.task_id)
     metadata = task.metadata or {}
     run_id = metadata.get("active_run_id") or metadata["latest_run_id"]
@@ -144,8 +139,7 @@ def main() -> None:
 
     client, outcomes, runner = open_runner(runtime, user_id)
     try:
-        start_task(runner, "1842", user_id)
-        binding = orders.bindings["1842"]
+        binding = start_task(runner, "1842", user_id)
         print(f"task {binding.task_id} saved for order 1842")
 
         # After a reload: check the record belongs to the signed-in user.

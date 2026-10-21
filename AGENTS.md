@@ -104,6 +104,13 @@ Examples are documentation, not scratch space. Each example must:
 - Be invoked by `.github/workflows/examples.yml` so the examples workflow
   exercises it.
 
+A `# #region docs:<id>` block must show every helper it calls that the
+example file defines, methods and closures included. Move SDK work (stream
+parsing, snapshot recovery, text accumulation) inside the region, before the
+code that uses it; stand in for the reader's own app code (`render`,
+`save_agent_binding`, ...) with a minimal stub inside the region under a
+one-line `# Your app's code: ...` comment.
+
 ## Linting and formatting
 
 ```shell
