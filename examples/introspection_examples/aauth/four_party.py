@@ -160,8 +160,9 @@ def serve_access_server() -> FastAPI:
     return access_server_app(access_server(httpx.AsyncClient()))
 
 
-class Internet(httpx.AsyncBaseTransport):
-    """Routes each origin to its party, in this process."""
+class InProcessTransport(httpx.AsyncBaseTransport):
+    """Routes each origin to its party's app in this process, and serves the
+    fixed documents of the parties that run no app."""
 
     def __init__(self) -> None:
         self.parties: dict[str, httpx.AsyncBaseTransport] = {}
@@ -183,21 +184,21 @@ class Internet(httpx.AsyncBaseTransport):
 
 
 async def main() -> None:
-    internet = Internet()
-    async with httpx.AsyncClient(transport=internet) as http:
-        await run(internet, http)
+    transport = InProcessTransport()
+    async with httpx.AsyncClient(transport=transport) as http:
+        await run(transport, http)
 
 
-async def run(internet: Internet, http: httpx.AsyncClient) -> None:
+async def run(transport: InProcessTransport, http: httpx.AsyncClient) -> None:
     ps = person_server(http)
-    internet.parties[PS] = httpx.ASGITransport(app=person_server_app(ps))
-    internet.parties[AS] = httpx.ASGITransport(
+    transport.parties[PS] = httpx.ASGITransport(app=person_server_app(ps))
+    transport.parties[AS] = httpx.ASGITransport(
         app=access_server_app(access_server(http))
     )
 
     # The agent provider and the airline's booking API, as fixed documents.
     provider, airline, agent = (SigningKey.generate() for _ in range(3))
-    internet.documents |= {
+    transport.documents |= {
         f"{AP}/.well-known/aauth-agent.json": ServerMetadata(
             issuer=AP, jwks_uri=f"{AP}/jwks.json"
         ),

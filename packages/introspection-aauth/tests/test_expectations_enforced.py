@@ -146,7 +146,9 @@ async def test_the_person_server_refuses_an_auth_token_it_did_not_ask_for(
 ):
     world = World()
     inline(world)
-    world.net.apps[AS] = Tampering(world, world.net.apps[AS], update)
+    world.transport.apps[AS] = Tampering(
+        world, world.transport.apps[AS], update
+    )
     mission = await world.approved_mission(budget=100_000)
     answered = await world.follow(await world.ask(mission, 60_000, aud=AS))
     assert answered.status_code == 502, answered.text

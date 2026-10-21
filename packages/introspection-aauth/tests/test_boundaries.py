@@ -206,7 +206,7 @@ async def test_a_proposal_is_read_only_from_its_resources_https_origin(
         await world.ps.identity.read_proposal(
             world.http, RESOURCE, r3_uri, "x", world.now
         )
-    assert world.net.calls == []
+    assert world.transport.calls == []
 
 
 async def test_a_signature_that_is_a_list_is_refused():
@@ -263,7 +263,7 @@ async def test_a_signature_key_naming_a_host_fetches_nothing():
             f'sig=jwks_uri;id="{PS}";dwk="aauth-agent.json";kid="k"',
         ),
     ):
-        world.net.calls.clear()
+        world.transport.calls.clear()
         headers = httpsig.sign(
             SigningKey.generate(),
             signature_key,
@@ -274,7 +274,7 @@ async def test_a_signature_key_naming_a_host_fetches_nothing():
         )
         refused = await world.http.post(url, content=b"{}", headers=headers)
         assert refused.status_code == 401
-        assert world.net.calls == [f"POST {url}"], world.net.calls
+        assert world.transport.calls == [f"POST {url}"], world.transport.calls
 
 
 class Scripted(httpx.AsyncBaseTransport):
@@ -297,7 +297,7 @@ class Scripted(httpx.AsyncBaseTransport):
 
 async def federate(world: World, *answers: httpx.Response) -> httpx.Response:
     inline(world)
-    world.net.apps[AS] = Scripted(world.net.apps[AS], *answers)
+    world.transport.apps[AS] = Scripted(world.transport.apps[AS], *answers)
     mission = await world.approved_mission(budget=100_000)
     return await world.follow(await world.ask(mission, 60_000, aud=AS))
 
@@ -310,7 +310,7 @@ async def test_a_throttled_first_request_is_sent_again(status: int):
     )
     assert issued.status_code == 200, issued.text
     assert auth_token(issued).iss == AS
-    posts = [c for c in world.net.calls if c == f"POST {AS}/token"]
+    posts = [c for c in world.transport.calls if c == f"POST {AS}/token"]
     assert len(posts) == 2
 
 
@@ -347,8 +347,8 @@ async def test_an_unknown_requirement_is_relayed_as_approval():
     client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, AccessServerMetadata)
-    world.net.apps[AS] = Scripted(
-        world.net.apps[AS],
+    world.transport.apps[AS] = Scripted(
+        world.transport.apps[AS],
         httpx.Response(
             202,
             headers={
@@ -427,7 +427,7 @@ async def test_access_server_metadata_keeps_its_endpoints_on_its_origin(
     auth_token_endpoint: str, jwks_uri: str
 ):
     world = World()
-    world.net.documents[f"{AS}/.well-known/aauth-access.json"] = (
+    world.transport.documents[f"{AS}/.well-known/aauth-access.json"] = (
         AccessServerMetadata(
             issuer=AS,
             jwks_uri=jwks_uri,

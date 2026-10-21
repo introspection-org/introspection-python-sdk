@@ -1,6 +1,6 @@
 """Every party of AAuth -11, in process: an agent provider, a resource, a
 Person Server and an Access Server behind their FastAPI routers, and an agent.
-One transport stands in for the internet, routing each origin to its party."""
+One in-process transport routes each origin to its party."""
 
 import json
 from typing import TypeVar
@@ -92,7 +92,7 @@ def forge(claims: JsonObject, key: SigningKey, typ: str) -> str:
     return f"{signing_input}.{b64url(key.sign(signing_input.encode()))}"
 
 
-class Net(httpx.AsyncBaseTransport):
+class InProcessTransport(httpx.AsyncBaseTransport):
     """Routes a request by its origin: to an app, or to a fixed document."""
 
     def __init__(self) -> None:
@@ -130,12 +130,12 @@ class World:
         self, policy: Policy | None = None, ps_store: MemoryStore | None = None
     ) -> None:
         self.now = T0
-        self.net = Net()
-        self.http = httpx.AsyncClient(transport=self.net)
+        self.transport = InProcessTransport()
+        self.http = httpx.AsyncClient(transport=self.transport)
         self.ap_key, self.resource_key, self.agent_key = (
             SigningKey.generate() for _ in range(3)
         )
-        self.net.documents |= {
+        self.transport.documents |= {
             f"{AP}/.well-known/aauth-agent.json": ServerMetadata(
                 issuer=AP, jwks_uri=f"{AP}/jwks.json"
             ),
@@ -176,7 +176,7 @@ class World:
         ):
             app = FastAPI()
             app.include_router(router)
-            self.net.apps[origin] = httpx.ASGITransport(app=app)
+            self.transport.apps[origin] = httpx.ASGITransport(app=app)
         self.agent_token = encode(
             AgentTokenClaims(
                 iss=AP,

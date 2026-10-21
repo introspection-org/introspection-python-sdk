@@ -102,7 +102,7 @@ async def test_a_resource_the_mission_does_not_cover_is_refused_before_its_keys_
         AuthTokenRequest(resource_token=forged, presented_token=person_token),
     )
     assert refused.status_code == 403
-    assert not any("elsewhere" in c for c in world.net.calls)
+    assert not any("elsewhere" in c for c in world.transport.calls)
 
 
 async def test_a_resource_token_not_matching_the_presented_token_is_refused():
@@ -143,7 +143,7 @@ async def test_an_expired_presented_token_is_never_federated():
 async def test_an_access_server_that_cannot_be_reached_is_as_unreachable():
     world = World()
     inline(world)
-    del world.net.apps[AS]
+    del world.transport.apps[AS]
     mission = await world.approved_mission(budget=100_000)
     refused = await world.follow(await world.ask(mission, 10, aud=AS))
     assert refused.status_code == 502
@@ -154,7 +154,7 @@ async def test_an_access_server_that_cannot_be_reached_is_as_unreachable():
 async def test_an_access_server_asking_for_claims_is_refused():
     world = World()
     inline(world)
-    app = world.net.apps[AS]
+    app = world.transport.apps[AS]
 
     class AsksForClaims(httpx.AsyncBaseTransport):
         async def handle_async_request(
@@ -170,7 +170,7 @@ async def test_an_access_server_asking_for_claims_is_refused():
                 )
             return await app.handle_async_request(request)
 
-    world.net.apps[AS] = AsksForClaims()
+    world.transport.apps[AS] = AsksForClaims()
     mission = await world.approved_mission(budget=100_000)
     refused = await world.follow(await world.ask(mission, 10, aud=AS))
     assert refused.status_code == 403
@@ -192,7 +192,7 @@ async def test_a_busy_access_server_is_polled_again_later():
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, AccessServerMetadata)
     first = await client.request(due[0], due[1], metadata)
-    app = world.net.apps[AS]
+    app = world.transport.apps[AS]
 
     class Busy(httpx.AsyncBaseTransport):
         async def handle_async_request(
@@ -202,7 +202,7 @@ async def test_a_busy_access_server_is_polled_again_later():
                 return httpx.Response(429, headers={"Retry-After": "2"})
             return await app.handle_async_request(request)
 
-    world.net.apps[AS] = Busy()
+    world.transport.apps[AS] = Busy()
     assert first.location is not None
     busy = await client.poll(first.location, due[0], due[1], metadata)
     assert busy.step is Step.PENDING and busy.poll_delay() == 7
@@ -290,7 +290,7 @@ async def test_a_calls_r3_proposal_is_read_into_its_approval():
     ).to_json()
     r3_uri = f"{RESOURCE}/r3/1"
 
-    world.net.documents[r3_uri] = proposal
+    world.transport.documents[r3_uri] = proposal
     mission = await world.approved_mission(budget=1_000)
     _, person_token = world.resource_token(mission, 60_000)
     claims = world.resource_claims(mission, 60_000).model_copy(
@@ -312,7 +312,7 @@ async def over_budget_with_proposal(
     world: World, proposal: bytes, r3_s256: str | None = None, aud: str = PS
 ) -> str:
     r3_uri = f"{RESOURCE}/r3/1"
-    world.net.documents[r3_uri] = proposal
+    world.transport.documents[r3_uri] = proposal
     mission = await world.approved_mission(budget=1_000)
     _, person_token = world.resource_token(mission, 60_000, aud)
     claims = world.resource_claims(mission, 60_000, aud).model_copy(
@@ -357,7 +357,7 @@ async def test_a_summary_written_meanwhile_does_not_drop_a_federated_token():
     world.ps._on_federate = kick
     mission = await world.approved_mission(budget=100_000)
     r3_uri = f"{RESOURCE}/r3/1"
-    world.net.documents[r3_uri] = SUMMARY
+    world.transport.documents[r3_uri] = SUMMARY
     _, person_token = world.resource_token(mission, 10, AS)
     claims = world.resource_claims(mission, 10, AS).model_copy(
         update={"r3_uri": r3_uri, "r3_s256": s256(SUMMARY)}

@@ -185,7 +185,7 @@ async def test_an_access_server_that_cannot_be_reached_ends_as_unreachable():
     world = World()
     inline(world)
     mission = await world.approved_mission(budget=100_000)
-    world.net.failures[await token_endpoint(world)] = 1
+    world.transport.failures[await token_endpoint(world)] = 1
     asked = await world.ask(mission, 60_000, aud=AS)
     answered = await world.follow(asked)
     assert answered.status_code == 502, answered.text
