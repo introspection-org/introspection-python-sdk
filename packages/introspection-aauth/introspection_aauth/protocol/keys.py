@@ -75,17 +75,25 @@ def thumbprint(jwk: Jwk) -> str:
 
 
 def algorithm(jwk: Jwk) -> str:
-    """The key's algorithm, from its `alg`, which must match its type."""
-    alg = jwk.alg
-    if alg is None or alg not in ALGORITHMS:
+    """The key's algorithm: its `alg`, which must match its type, or, with
+    no `alg` (RFC 7800 does not require one), the one its type names."""
+    named = jwk.alg or next(
+        (
+            alg
+            for alg, kind in ALGORITHMS.items()
+            if kind == (jwk.kty, jwk.crv)
+        ),
+        None,
+    )
+    if named is None or named not in ALGORITHMS:
         raise VerificationError(
-            "unsupported_algorithm", "the key's alg is not Ed25519 or ES256"
+            "unsupported_algorithm", "the key is not Ed25519 or ES256"
         )
-    if (jwk.kty, jwk.crv) != ALGORITHMS[alg]:
+    if (jwk.kty, jwk.crv) != ALGORITHMS[named]:
         raise VerificationError(
             "invalid_key", "the key's type is not its alg's"
         )
-    return alg
+    return named
 
 
 def verify(jwk: Jwk, data: bytes, signature: bytes) -> bool:

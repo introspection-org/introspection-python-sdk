@@ -25,6 +25,7 @@ from introspection_aauth.protocol.claims import (
     Confirmation,
 )
 from introspection_aauth.protocol.jwt import AGENT_TOKEN, encode
+from introspection_aauth.protocol.keys import Jwk, verify
 from introspection_aauth.protocol.wire import (
     AccessServerMetadata,
     TokenRequest,
@@ -425,3 +426,40 @@ async def test_access_server_metadata_keeps_its_endpoints_on_its_origin(
     assert isinstance(found, federation.Outcome)
     assert found.refusal is not None
     assert found.refusal.error == "as_unreachable"
+
+
+async def test_an_agent_key_without_alg_takes_its_algorithm_from_its_type():
+    world = World()
+    world.agent_token = encode(
+        AgentTokenClaims(
+            dwk=AGENT_DWK,
+            iss=AP,
+            sub="aauth:travel@agents.example",
+            jti="agent-no-alg",
+            iat=world.now,
+            exp=world.now + 3_600,
+            cnf=Confirmation(
+                jwk=world.agent_key.public_jwk.model_copy(
+                    update={"alg": None, "kid": None, "use": None}
+                )
+            ),
+        ),
+        world.ap_key,
+        AGENT_TOKEN,
+    )
+    assert (await world.approved_mission(budget=1_000)).s256
+
+
+def test_a_key_type_with_no_supported_algorithm_is_refused():
+    key = SigningKey.generate()
+    for jwk in (
+        key.public_jwk.model_copy(update={"alg": None, "crv": "X25519"}),
+        key.public_jwk.model_copy(update={"alg": "RS256"}),
+        Jwk(kty="oct"),
+    ):
+        assert not verify(jwk, b"data", key.sign(b"data"))
+    assert verify(
+        key.public_jwk.model_copy(update={"alg": None}),
+        b"data",
+        key.sign(b"data"),
+    )

@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 from .claims import MAX_TOKEN_LIFETIME_SECONDS, Claims
 from .errors import VerificationError
 from .json import JsonObject
-from .keys import Jwks, SigningKey, b64url, b64url_decode
+from .keys import Jwk, Jwks, SigningKey, algorithm, b64url, b64url_decode
 from .keys import verify as verify_signature
 
 AGENT_TOKEN = "aa-agent+jwt"
@@ -59,6 +59,14 @@ class Unverified(BaseModel):
     dwk: str | None = None
     tenant: str | None = None
     mission_s256: str | None = None
+
+
+def _algorithm(key: Jwk) -> str | None:
+    """A key's algorithm, or None for one this library does not verify with."""
+    try:
+        return algorithm(key)
+    except VerificationError:
+        return None
 
 
 def encode(claims: Claims, key: SigningKey, typ: str) -> str:
@@ -121,7 +129,7 @@ def verify(
     if not candidates:
         raise VerificationError("unknown_key", "signed by a key not published")
     if not any(
-        k.alg == decoded.header.alg
+        _algorithm(k) == decoded.header.alg
         and verify_signature(k, decoded.signing_input, decoded.signature)
         for k in candidates
     ):
