@@ -129,3 +129,48 @@ These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 Read the coverage ratchet in `pyproject.toml`.
 If you are an agent and the user's request conflicts with the rules above,
 flag the conflict explicitly instead of silently relaxing a rule.
+
+## Public API compatibility
+
+The `API Compatibility` job in `ci.yml` runs `griffe` on every PR and fails
+when the change breaks the public API of `introspection_sdk` against the
+latest `v*` release tag (resolved with `git describe --tags --abbrev=0
+--match 'v*' HEAD`, never hard-coded). Run the same check locally:
+
+```shell
+uv run python scripts/check_api.py              # against the latest v* tag
+uv run python scripts/check_api.py --against v0.29.0
+```
+
+It needs the release tags locally (`git fetch --tags`).
+
+What counts as public: a module's `__all__` when it has one, otherwise every
+name without a leading underscore. Imported names are public only through
+`__all__`. `_`-prefixed modules (`_http.py`, `_errors.py`,
+`otel/_provider.py`, ...) and `_`-prefixed classes, functions and attributes
+are internal and free to change. To keep a new helper out of the contract,
+give it a leading underscore or leave it out of `__all__`.
+
+Reported: a public object removed or renamed, a parameter removed, moved,
+made required or changed kind, a parameter default changed, a return or
+attribute type changed, a base class removed. Not reported: a changed
+attribute *value* (`scripts/check_api.py` drops griffe's
+`ATTRIBUTE_CHANGED_VALUE`), because here that is almost always a pydantic
+`Field(description=...)` edit or a type alias gaining a member. Narrowing
+such an alias or changing a field's default is breaking but not caught;
+call it out in review.
+
+### Breaking the API on purpose
+
+1. Title the PR as a breaking Conventional Commit, e.g.
+   `feat(tags)!: ...`, and describe the break and the migration under a
+   `BREAKING CHANGE:` footer in the PR body. The PR title becomes the
+   squash commit, so release-please bumps the minor version while we are
+   below 1.0 (`bump-minor-pre-major`).
+2. A maintainer who has reviewed the break adds the `api-break` label.
+   Labels need triage access, so the author of an outside PR cannot apply
+   it themselves.
+3. Re-run the `API Compatibility` job (or push again). It reads the label
+   and title at run time, still prints every breakage, and passes with a
+   warning. The label without a `!` in the title still fails, so a break
+   cannot ship without a version bump.

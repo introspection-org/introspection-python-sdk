@@ -142,5 +142,65 @@ jobs:
       - name: Check examples compile, resolve imports, and pair docs regions
         run: uv run --project examples python scripts/check_examples.py
 
+  api-compat:
+    # Fails a PR that breaks the public API against the latest v* release
+    # (scripts/check_api.py, griffe). To break it on purpose, see "Public API
+    # compatibility" in AGENTS.md: a `!` in the PR title plus the `api-break`
+    # label. The label is read at run time, not from the event payload, so
+    # re-running this job after a maintainer adds it is enough.
+    name: API Compatibility
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The release tags and the history that reaches them.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Check for breaking changes against the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if uv run python scripts/check_api.py; then
+            exit 0
+          fi
+          pr=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --json title,labels)
+          title=$(jq -r .title <<<"$pr")
+          if ! jq -e '.labels | any(.name == "api-break")' <<<"$pr" >/dev/null; then
+            exit 1
+          fi
+          if [[ ! "$title" =~ ^[a-z]+(\([^\)]*\))?!: ]]; then
+            echo "::error::The api-break label needs a breaking PR title" \
+              "such as 'feat!: ...', so release-please bumps the version."
+            exit 1
+          fi
+          echo "::warning::Breaking API change accepted by the api-break label."
+
   # Examples live in their own workflow (./examples.yml) so they don't burn
   # LLM tokens on every push. They run on `workflow_dispatch` + tag pushes.
