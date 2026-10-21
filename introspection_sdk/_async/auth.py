@@ -1,0 +1,255 @@
+"""Async twins re-exported by :mod:`introspection_sdk.auth`."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
+import httpx2 as httpx
+
+from introspection_sdk._errors import (
+    NetworkError,
+    error_from_response,
+)
+
+if TYPE_CHECKING:
+    pass
+from introspection_sdk._auth_common import (
+    _EMAIL_CODE_PATH,
+    _REVOKE_PATH,
+    _TOKEN_PATH,
+    OAuthToken,
+    _authorization_code_form,
+    _email_code_form,
+    _refresh_form,
+    _resolve_base_api_url,
+    _service_account_form,
+    _token_exchange_form,
+)
+
+
+async def _acp_post(
+    base_api_url: str,
+    path: str,
+    *,
+    data: dict[str, str] | None = None,
+    json: dict[str, str] | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> httpx.Response:
+    try:
+        async with httpx.AsyncClient(
+            base_url=base_api_url, timeout=30.0, transport=transport
+        ) as client:
+            res = await client.post(path, data=data, json=json)
+    except httpx.HTTPError as exc:
+        raise NetworkError(str(exc)) from exc
+    if res.status_code >= 400:
+        raise error_from_response(res)
+    return res
+
+
+async def _apost_token_form(
+    base_api_url: str,
+    form: dict[str, str],
+    *,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> OAuthToken:
+    res = await _acp_post(
+        base_api_url, _TOKEN_PATH, data=form, transport=transport
+    )
+    return OAuthToken.model_validate(res.json())
+
+
+async def async_service_account_token(
+    client_id: str,
+    client_secret: str,
+    project: str,
+    *,
+    scope: str | None = None,
+    base_api_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> OAuthToken:
+    """Mint a project-scoped CP access token from service-account creds.
+
+    ``client_id`` (``intro_app_…``) and ``client_secret`` (``intro_sk_…``)
+    come from a ``service_account`` Application; ``project`` scopes the
+    token (the project must belong to the Application's organization).
+    ``scope`` is capped server-side to the Application's allowed scopes.
+
+    See :func:`async_service_account_token` for the ``asyncio`` twin and
+    :meth:`IntrospectionClient.from_service_account` to mint and construct
+    a client in one call.
+    """
+    form = _service_account_form(
+        client_id=client_id,
+        client_secret=client_secret,
+        project=project,
+        scope=scope,
+    )
+    return await _apost_token_form(
+        _resolve_base_api_url(base_api_url), form, transport=transport
+    )
+
+
+async def async_token_exchange(
+    subject_token: str,
+    client_id: str,
+    project: str,
+    *,
+    subject_token_type: str | None = None,
+    scope: str | None = None,
+    base_api_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> OAuthToken:
+    """RFC 8693 token-exchange against CP ``POST /v1/oauth/token``.
+
+    Trade an end user's identity-provider JWT (``subject_token``) for a
+    project-scoped access token for a federated ``customer`` member.
+    ``client_id`` is a ``jwks`` Application's id (or a brokered ``spa``'s,
+    with the brokered login's ``id_token``). The server accepts only the
+    ``id_token`` subject type, whatever kind of JWT the provider issued,
+    so leave ``subject_token_type`` at its default. The granted scope is
+    capped to the Application's ``allowed_scopes``; no refresh token is
+    issued, so exchange again before ``expires_in`` lapses.
+    """
+    form = _token_exchange_form(
+        subject_token=subject_token,
+        client_id=client_id,
+        project=project,
+        subject_token_type=subject_token_type,
+        scope=scope,
+    )
+    return await _apost_token_form(
+        _resolve_base_api_url(base_api_url), form, transport=transport
+    )
+
+
+async def async_authorization_code_token(
+    code: str,
+    client_id: str,
+    redirect_uri: str,
+    code_verifier: str,
+    *,
+    base_api_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> OAuthToken:
+    """RFC 6749 / PKCE ``authorization_code`` exchange.
+
+    Run this in your backend so the hosted-login callback does not
+    hand-roll the token POST. ``client_id`` is the ``spa``
+    Application; ``code_verifier`` pairs with the authorize-step
+    challenge; ``redirect_uri`` must match the authorize call.
+    """
+    form = _authorization_code_form(
+        code=code,
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        code_verifier=code_verifier,
+    )
+    return await _apost_token_form(
+        _resolve_base_api_url(base_api_url), form, transport=transport
+    )
+
+
+async def async_send_email_code(
+    email: str,
+    client_id: str,
+    project: str,
+    *,
+    base_api_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> None:
+    """Email a sign-in code to ``email`` (CP ``POST /v1/oauth/email/code``).
+
+    ``client_id`` is a ``native`` Application's id and ``project`` the
+    project slug or id the session will be scoped to. The answer is the same
+    whether or not the email has an account. A rate-limited send raises
+    :class:`~introspection_sdk.RateLimitError` carrying ``retry_after``.
+    """
+    await _acp_post(
+        _resolve_base_api_url(base_api_url),
+        _EMAIL_CODE_PATH,
+        json={"client_id": client_id, "email": email, "project": project},
+        transport=transport,
+    )
+
+
+async def async_email_code_token(
+    email: str,
+    code: str,
+    client_id: str,
+    project: str,
+    *,
+    base_api_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> OAuthToken:
+    """Exchange an emailed code for a refreshable ``customer`` session.
+
+    Accepts letters as well as digits. A wrong, expired or reused code raises
+    :class:`~introspection_sdk.ValidationError` with ``code="invalid_grant"``.
+    The returned token carries ``refresh_token``, ``session_id`` and
+    ``org_id`` for :func:`refresh_access_token`, and ``dp_url``.
+    """
+    return await _apost_token_form(
+        _resolve_base_api_url(base_api_url),
+        _email_code_form(email, code, client_id, project),
+        transport=transport,
+    )
+
+
+async def async_refresh_access_token(
+    refresh_token: str,
+    client_id: str,
+    session_id: str,
+    org_id: str,
+    *,
+    base_api_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> OAuthToken:
+    """Renew a session-backed token with the ``refresh_token`` grant.
+
+    The refresh token rotates: persist the returned one. The response
+    carries no ``dp_url``; keep the one from sign-in.
+    """
+    return await _apost_token_form(
+        _resolve_base_api_url(base_api_url),
+        _refresh_form(refresh_token, client_id, session_id, org_id),
+        transport=transport,
+    )
+
+
+async def async_revoke_session(
+    session_id: str,
+    org_id: str,
+    client_id: str,
+    *,
+    base_api_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> None:
+    """Revoke a session (CP ``POST /v1/oauth/revoke``); its next refresh fails."""
+    await _acp_post(
+        _resolve_base_api_url(base_api_url),
+        _REVOKE_PATH,
+        data={
+            "client_id": client_id,
+            "session_id": session_id,
+            "org_id": org_id,
+        },
+        transport=transport,
+    )
+
+
+class AsyncCredentialProvider(Protocol):
+    """Supplies ``Authorization`` to a client and renews it after a ``401``.
+
+    :class:`EmailCodeAuth` implements it; pass one as
+    ``IntrospectionClient(credentials=...)``.
+    """
+
+    async def authorization(self) -> str | None:
+        """The header value to send, or ``None`` to send none."""
+        ...
+
+    async def refresh_after_unauthorized(self, rejected: str | None) -> bool:
+        """Called after a ``401`` for a request sent with ``rejected``;
+        return ``True`` to retry it once with :meth:`authorization`."""
+        ...

@@ -40,6 +40,13 @@ repos:
         pass_filenames: false
         require_serial: true
 
+      - id: unasync
+        name: generated sync code is up to date
+        entry: uv run python scripts/unasync.py --check
+        language: system
+        files: ^(introspection_sdk/_(a)?sync/|scripts/unasync\.py$)
+        pass_filenames: false
+
       # Enforces the coverage ratchet defined in [tool.coverage.report].
       # Runs on the manual stage by default (`prek run --hook-stage manual coverage`)
       # so it doesn't block fast iteration; CI runs the same check on every PR.

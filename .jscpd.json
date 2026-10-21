@@ -2,13 +2,18 @@
   "path": ["introspection_sdk"],
   "pattern": "**/*.py",
   "format": ["python"],
-  "ignore": ["**/.venv/**", "**/__pycache__/**", "**/*_pb2.py"],
+  "ignore": [
+    "**/.venv/**",
+    "**/__pycache__/**",
+    "**/*_pb2.py",
+    "introspection_sdk/_sync/**"
+  ],
   "gitignore": true,
   "minTokens": 50,
   "minLines": 5,
   "mode": "weak",
   "kind": ["exact", "renamed"],
   "ignoreIdentifiers": true,
-  "threshold": 29.3,
+  "threshold": 16.7,
   "reporters": ["console"]
 }

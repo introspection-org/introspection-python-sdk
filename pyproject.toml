@@ -32,7 +32,16 @@ otel = [
     "opentelemetry-sdk >= 1.39.0, < 1.43.0",
     "opentelemetry-exporter-otlp-proto-http>=1.39.0,<1.43.0",
 ]
-dev = ["griffe>=2.3.2", "mypy>=2.4.0", "pre-commit>=3.5.0", "ruff==0.14.14", "ty>=0.0.7"]
+# unasync is pinned: scripts/unasync.py generates introspection_sdk/_sync/
+# and CI fails on any diff, so a new release must not change its output.
+dev = [
+    "griffe>=2.3.2",
+    "mypy>=2.4.0",
+    "pre-commit>=3.5.0",
+    "ruff==0.14.14",
+    "ty>=0.0.7",
+    "unasync==0.6.0",
+]
 test = [
     "pytest>=9.0.0",
     "pytest-asyncio>=1.3.0",
@@ -159,3 +168,8 @@ extend_exclude = ["examples"]
 known_first_party = ["introspection_sdk"]
 # The `dev` and `test` extras are tooling, not runtime dependencies.
 optional_dependencies_dev_groups = ["dev", "test"]
+
+[tool.deptry.per_rule_ignores]
+# scripts/unasync.py is a code generator run by developers and CI, never
+# shipped, so the dev dependency it imports is in the right place.
+DEP004 = ["unasync"]

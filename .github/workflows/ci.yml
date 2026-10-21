@@ -63,6 +63,11 @@ jobs:
       - name: Run linting
         run: uv run ruff check .
 
+      # introspection_sdk/_sync/ is generated from introspection_sdk/_async/
+      # by scripts/unasync.py; see "Sync code generation" in AGENTS.md.
+      - name: Check the generated sync code is up to date
+        run: uv run python scripts/unasync.py --check
+
       - name: Run type checking
         run: uv run ty check
 

@@ -1,0 +1,277 @@
+"""Async twins re-exported by :mod:`introspection_sdk.runner_resources.events`."""
+
+from __future__ import annotations
+
+import builtins
+from collections.abc import AsyncIterator
+from datetime import datetime
+from typing import Any, Literal
+from uuid import UUID
+
+from introspection_sdk._http import RawResponse, _AsyncHttpClient
+from introspection_sdk.pagination import (
+    AsyncPager,
+    async_cursor_paginate,
+)
+from introspection_sdk.runner_resources._events_common import (
+    build_event_params,
+    validate_event_page,
+    validate_event_row,
+    validate_single_event,
+)
+from introspection_sdk.runner_resources._reads import (
+    ARROW_ACCEPT_HEADERS,
+    AsyncArrowPageIterator,
+    ReadFormat,
+    decode_arrow_page,
+    resolve_window,
+)
+from introspection_sdk.schemas.events import (
+    Event,
+    EventSortField,
+    IntrospectionEventName,
+    UnknownEvent,
+)
+from introspection_sdk.schemas.pagination import Paginated
+
+
+class AsyncEvents:
+    """Read-only Events API (``GET /v1/events``).
+
+    :meth:`list` returns an auto-paging
+    :class:`~introspection_sdk.pagination.Pager` over the standard cursor
+    envelope's opaque ``next`` token. :meth:`iterate` is a bounded
+    convenience generator over the same stream. :meth:`list_arrow` is the
+    columnar accessor — raw ``pyarrow.Table`` pages instead of models.
+    """
+
+    def __init__(self, http: _AsyncHttpClient) -> None:
+        self._http = http
+
+    def list(
+        self,
+        event_name: str | IntrospectionEventName,
+        *,
+        limit: int = 100,
+        next: str | None = None,
+        sort: EventSortField | None = None,
+        direction: Literal["asc", "desc"] | None = None,
+        order: Literal["asc", "desc"] | None = None,
+        start: str | datetime | None = None,
+        end: str | datetime | None = None,
+        lookback: str | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+        conversation_id: str | None = None,
+        service_name: str | None = None,
+        environment: str | None = None,
+        runtime_group_id: UUID | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
+        owner_key: str | None = None,
+        event_id: builtins.list[str] | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        lens: str | None = None,
+        pattern_id: str | UUID | None = None,
+        include_superseded: bool | None = None,
+        severities: builtins.list[str] | None = None,
+        runtime_group_unattributed: bool | None = None,
+        status: str | None = None,
+        automation_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
+        format: ReadFormat = "json",
+    ) -> AsyncPager[Event, Paginated[Event]]:
+        # unasync: async-only (the sync twin's docstring follows)
+        """List events of one family (cursor envelope). ``await`` the
+        returned :class:`AsyncPager` for the first page, or ``async for``
+        it to stream every event across pages. See :meth:`Events.list` for
+        the param semantics."""
+        # unasync: end
+        """List events of one family (cursor envelope). Iterate the returned
+        :class:`Pager` to stream every event across pages, or call
+        ``.page()`` for the first page only.
+
+        ``event_name`` is **required** and names exactly one family — every
+        row is that family's typed union member. Family-scoped filters
+        beyond the envelope set are server-validated against the requested
+        family. ``order`` is an alias for ``direction``; ``start`` /
+        ``end`` for ``start_date`` / ``end_date``; ``lookback`` (e.g.
+        ``"24h"``) sets ``start_date = now - lookback`` and is mutually
+        exclusive with ``start`` / ``end``. ``format="arrow"`` negotiates
+        the columnar Arrow stream, decoded back into the same envelope.
+        """
+        resolved_start, resolved_end = resolve_window(
+            start=start,
+            end=end,
+            lookback=lookback,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        build_event_params(event_name)  # fail fast before any request
+
+        async def fetch(cursor: str | None) -> Paginated[Event]:
+            params = build_event_params(
+                event_name,
+                limit=limit,
+                cursor=cursor,
+                sort=sort,
+                direction=direction or order,
+                start_date=resolved_start,
+                end_date=resolved_end,
+                conversation_id=conversation_id,
+                service_name=service_name,
+                environment=environment,
+                runtime_group_id=runtime_group_id,
+                trace_id=trace_id,
+                span_id=span_id,
+                owner_key=owner_key,
+                event_id=event_id,
+                conversation_ids=conversation_ids,
+                lens=lens,
+                pattern_id=pattern_id,
+                include_superseded=include_superseded,
+                severities=severities,
+                runtime_group_unattributed=runtime_group_unattributed,
+                status=status,
+                automation_id=automation_id,
+                task_id=task_id,
+            )
+            if format == "arrow":
+                raw = await self._http.request(
+                    "GET",
+                    "/v1/events",
+                    params=params,
+                    headers=ARROW_ACCEPT_HEADERS,
+                    expect="raw",
+                )
+                assert isinstance(raw, RawResponse)
+                return decode_arrow_page(raw, validate_event_row)
+            payload = await self._http.request(
+                "GET", "/v1/events", params=params
+            )
+            return validate_event_page(payload)
+
+        return async_cursor_paginate(fetch, start=next)
+
+    async def get(self, event_id: str) -> Event | UnknownEvent:
+        """Read one event by id, across every family.
+
+        No ``event_name`` is supplied, so the family is not known in
+        advance and the result widens to :class:`UnknownEvent` for a
+        family added server-side after this SDK version. Raises
+        ``NotFoundError`` when the id does not resolve in tenant scope.
+        """
+        payload = await self._http.request("GET", f"/v1/events/{event_id}")
+        return validate_single_event(payload)
+
+    async def iterate(
+        self,
+        event_name: str | IntrospectionEventName,
+        *,
+        max_items: int | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[Event]:
+        """Cursor generator: page through :meth:`list` to exhaustion, yielding
+        every event. ``max_items`` bounds the total yielded (``None`` = no
+        bound). All other keyword args are forwarded to :meth:`list`.
+        """
+        if max_items is not None and max_items <= 0:
+            return
+        yielded = 0
+        async for record in self.list(event_name, **kwargs):
+            yield record
+            yielded += 1
+            if max_items is not None and yielded >= max_items:
+                return
+
+    def list_arrow(
+        self,
+        event_name: str | IntrospectionEventName,
+        *,
+        limit: int = 100,
+        next: str | None = None,
+        sort: EventSortField | None = None,
+        direction: Literal["asc", "desc"] | None = None,
+        order: Literal["asc", "desc"] | None = None,
+        start: str | datetime | None = None,
+        end: str | datetime | None = None,
+        lookback: str | None = None,
+        start_date: str | datetime | None = None,
+        end_date: str | datetime | None = None,
+        conversation_id: str | None = None,
+        service_name: str | None = None,
+        environment: str | None = None,
+        runtime_group_id: UUID | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
+        owner_key: str | None = None,
+        event_id: builtins.list[str] | None = None,
+        conversation_ids: builtins.list[str] | None = None,
+        lens: str | None = None,
+        pattern_id: str | UUID | None = None,
+        include_superseded: bool | None = None,
+        severities: builtins.list[str] | None = None,
+        runtime_group_unattributed: bool | None = None,
+        status: str | None = None,
+        automation_id: UUID | str | None = None,
+        task_id: UUID | str | None = None,
+    ) -> AsyncArrowPageIterator:
+        # unasync: async-only (the sync twin's docstring follows)
+        """Columnar accessor: ``async for`` one ``pyarrow.Table`` per server
+        page, or ``await .read_all()`` to concatenate every page into one
+        Table. Same filters as :meth:`list`; requires the ``[arrow]``
+        extra."""
+        # unasync: end
+        """Columnar accessor: iterate one ``pyarrow.Table`` per server page
+        (constant memory — envelope columns + the family's typed ``payload``
+        struct column), or call ``.read_all()`` to concatenate every page
+        into one Table. Same filters as :meth:`list`; requires the
+        ``[arrow]`` extra.
+        """
+        resolved_start, resolved_end = resolve_window(
+            start=start,
+            end=end,
+            lookback=lookback,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        build_event_params(event_name)  # fail fast before any request
+
+        async def fetch(cursor: str | None) -> RawResponse:
+            params = build_event_params(
+                event_name,
+                limit=limit,
+                cursor=cursor,
+                sort=sort,
+                direction=direction or order,
+                start_date=resolved_start,
+                end_date=resolved_end,
+                conversation_id=conversation_id,
+                service_name=service_name,
+                environment=environment,
+                runtime_group_id=runtime_group_id,
+                trace_id=trace_id,
+                span_id=span_id,
+                owner_key=owner_key,
+                event_id=event_id,
+                conversation_ids=conversation_ids,
+                lens=lens,
+                pattern_id=pattern_id,
+                include_superseded=include_superseded,
+                severities=severities,
+                runtime_group_unattributed=runtime_group_unattributed,
+                status=status,
+                automation_id=automation_id,
+                task_id=task_id,
+            )
+            raw = await self._http.request(
+                "GET",
+                "/v1/events",
+                params=params,
+                headers=ARROW_ACCEPT_HEADERS,
+                expect="raw",
+            )
+            assert isinstance(raw, RawResponse)
+            return raw
+
+        return AsyncArrowPageIterator(fetch, start=next)
