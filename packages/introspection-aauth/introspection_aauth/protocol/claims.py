@@ -215,6 +215,7 @@ class DeliveryExpectation(BaseModel):
             "sub": claims.sub != rt.sub,
             "ps": claims.ps != self.ps,
             "mission_s256": claims.mission_s256 != rt.mission_s256,
+            "tenant": claims.tenant != rt.tenant,
             "scope": not claims.scopes() <= rt.scopes(),
             "exp": claims.exp > self.not_after,
             "budget": (sent is None) != (granted is None)

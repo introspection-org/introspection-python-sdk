@@ -4,6 +4,7 @@
 import time
 from collections.abc import Callable
 from typing import Protocol, TypeVar
+from urllib.parse import urlsplit
 
 import httpx2 as httpx
 from pydantic import BaseModel, ValidationError
@@ -18,6 +19,32 @@ Document = TypeVar("Document", bound=BaseModel)
 KEYS_TTL_SECONDS = 300
 #: The least time between refetches forced by a token that failed to verify.
 REFRESH_MIN_SECONDS = 30
+
+
+def is_identifier(value: str) -> bool:
+    """Whether `value` is an AAuth server identifier (`#server-identifiers`):
+    `https://` and a lowercase host, with no port, path, userinfo, query,
+    fragment or trailing slash."""
+    try:
+        parts = urlsplit(value)
+        port = parts.port
+    except ValueError:
+        return False
+    host = parts.hostname or ""
+    return (
+        parts.scheme == "https"
+        and bool(host)
+        and parts.netloc == host == host.lower()
+        and port is None
+        and not (parts.path or parts.query or parts.fragment)
+        and "#" not in value
+        and "?" not in value
+    )
+
+
+def is_https(value: str) -> bool:
+    parts = urlsplit(value)
+    return parts.scheme == "https" and bool(parts.hostname)
 
 
 class Monotonic(Protocol):
@@ -44,13 +71,22 @@ class Discovery:
         self._cache: dict[tuple[str, str], tuple[float, Jwks]] = {}
 
     async def metadata(self, issuer: str, dwk: str) -> ServerMetadata:
-        """The issuer's metadata document, which must name it as `issuer`."""
+        """The issuer's metadata document, which must name it as `issuer`
+        and publish its keys over https."""
+        if not is_identifier(issuer):
+            raise VerificationError(
+                "invalid_issuer", f"{issuer} is not an AAuth server identifier"
+            )
         document = await self.get(
             f"{issuer}/.well-known/{dwk}", ServerMetadata
         )
-        if document.issuer.rstrip("/") != issuer:
+        if document.issuer != issuer:
             raise VerificationError(
                 "issuer_mismatch", "metadata names another issuer"
+            )
+        if document.jwks_uri is not None and not is_https(document.jwks_uri):
+            raise VerificationError(
+                "invalid_metadata", "its jwks_uri is not https"
             )
         return document
 
@@ -96,9 +132,10 @@ class Discovery:
         raise VerificationError("unknown_key", f"no key {kid} for {issuer}")
 
     async def get(self, url: str, model: type[Document]) -> Document:
-        """The JSON document at `url`, read into `model`."""
+        """The JSON document at `url`, read into `model`; a redirect is not
+        followed."""
         try:
-            response = await self.http.get(url)
+            response = await self.http.get(url, follow_redirects=False)
             response.raise_for_status()
             return model.model_validate_json(response.content)
         except (httpx.HTTPError, ValidationError, ValueError) as exc:

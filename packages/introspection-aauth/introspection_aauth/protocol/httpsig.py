@@ -115,9 +115,11 @@ def sign(
     *,
     body: bytes | None = None,
     content_type: str = "application/json",
+    authorization: str | None = None,
     created: int,
 ) -> dict[str, str]:
-    """The headers that sign a request to `url` with `key`."""
+    """The headers that sign a request to `url` with `key`, covering its
+    `Authorization` when it carries one."""
     parts = urlsplit(url)
     covered = [
         ("@method", method.upper()),
@@ -132,6 +134,9 @@ def sign(
         digest = content_digest(body)
         covered += [("content-digest", digest), ("content-type", content_type)]
         headers |= {"content-digest": digest, "content-type": content_type}
+    if authorization is not None:
+        covered.append(("authorization", authorization))
+        headers["authorization"] = authorization
     params = (
         "("
         + " ".join(f'"{name}"' for name, _ in covered)
@@ -300,6 +305,12 @@ async def verify(
     if body and require_content_digest and "content-digest" not in names:
         raise VerificationError(
             "invalid_input", "content-digest must be covered"
+        )
+    # Required when present, per the AAuth-Access rule; this library does
+    # not issue AAuth-Access yet.
+    if "authorization" in headers and "authorization" not in names:
+        raise VerificationError(
+            "invalid_input", "authorization must be covered"
         )
     if "content-digest" in names and headers.get(
         "content-digest"

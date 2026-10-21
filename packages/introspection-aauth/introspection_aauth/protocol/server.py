@@ -138,7 +138,9 @@ class Identity:
     ) -> R3Proposal:
         """A resource's R3 proposal, fetched signed and checked against its hash."""
         response = await http.get(
-            r3_uri, headers=self.signed("GET", r3_uri, None, now)
+            r3_uri,
+            headers=self.signed("GET", r3_uri, None, now),
+            follow_redirects=False,
         )
         response.raise_for_status()
         if s256(response.content) != r3_s256:

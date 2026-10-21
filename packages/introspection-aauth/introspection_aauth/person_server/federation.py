@@ -156,7 +156,9 @@ class AccessServerClient:
         ).to_json()
         url = metadata.auth_token_endpoint
         headers = self._ps.identity.signed("POST", url, body, self._ps.clock())
-        response = await self._ps.http.post(url, content=body, headers=headers)
+        response = await self._ps.http.post(
+            url, content=body, headers=headers, follow_redirects=False
+        )
         return await self._outcome(
             response, url, federation, agent_jkt, metadata
         )
@@ -171,7 +173,9 @@ class AccessServerClient:
         headers = self._ps.identity.signed(
             "GET", location, None, self._ps.clock()
         )
-        response = await self._ps.http.get(location, headers=headers)
+        response = await self._ps.http.get(
+            location, headers=headers, follow_redirects=False
+        )
         return await self._outcome(
             response, location, federation, agent_jkt, metadata
         )

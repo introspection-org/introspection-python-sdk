@@ -22,6 +22,16 @@ pip install 'introspection-aauth[fastapi]' # and FastAPI routers for them
 
 Neither server imports the other, and `protocol` imports neither.
 
+Every body either server sends or reads is a pydantic model in
+`protocol.wire`, and every token's claims a model in `protocol.claims`
+that checks what the token must be on its own: `exp` after `iat`, a
+lifetime of at most an hour where the protocol caps it, a `cnf` that is a
+public key, a budget of non-negative integers. Whether a token that
+verified is the one a caller expected is an expectation's `failures`,
+which names every check it fails (`["sub", "tenant"]`). Discovery reads
+only AAuth server identifiers (`https://` and a lowercase host, nothing
+more), requires an https `jwks_uri`, and follows no redirect.
+
 ## Dependencies
 
 ```
@@ -94,7 +104,9 @@ mission only if it fits (atomically), log and end missions, read and save
 approvals, and replace an approval only if its status and version have not
 changed. `transaction()` groups the writes that commit together: a decision
 with the mission it creates or spends, and a federated auth token with the
-spend it pays for. Whether a store encrypts what it keeps is its own
+spend it pays for. `transaction()` yields a store scoped to it; pass it as
+`decide(..., store=tx)` to make a decision part of a unit of work of your
+own, and call `decided` once that commits. Whether a store encrypts what it keeps is its own
 choice. `access_server.Store` is three methods over pending requests.
 
 ## Durable federation
