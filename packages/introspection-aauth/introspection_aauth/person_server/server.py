@@ -694,71 +694,106 @@ class PersonServer(Server):
         *,
         decided_by: str,
         budget: Budget | None = None,
+        store: Store | None = None,
     ) -> Approval | None:
         """Record a person's answer, and do what was asked: create the mission,
-        spend the call, or complete the mission. None if there is no such approval."""
+        spend the call, or complete the mission. None if there is no such approval.
+
+        With `store`, the decision is made in that unit of work, which the
+        caller commits and then calls `decided`; otherwise in a transaction of
+        its own, which `decided` follows."""
         if status is ApprovalStatus.PENDING:
             raise AAuthError(
                 422, "invalid_request", "status is approved or denied"
             )
-        async with self.store.transaction():
-            approval = await self.store.approval(tenant, approval_id)
-            if approval is None:
-                return None
-            if (
-                approval.kind is not ApprovalKind.MISSION
-                and budget is not None
-            ):
-                raise AAuthError(
-                    422, "invalid_request", "only a mission takes a budget"
-                )
-            if (
-                approval.kind is ApprovalKind.COMPLETION
-                and decided_by != approval.person
-            ):
-                raise AAuthError(
-                    403,
-                    "access_denied",
-                    "a completion is accepted by the person the mission is for",
-                )
-            now = self.clock()
-            if (
-                approval.status is not ApprovalStatus.PENDING
-                or approval.expires_at <= now
-            ):
-                raise AAuthError(
-                    409,
-                    "invalid_request",
-                    "this approval is already decided or has expired",
-                )
-            mission_s256 = approval.mission_s256
-            if status is ApprovalStatus.APPROVED:
-                mission_s256 = await self._carry_out(
-                    tenant, approval, budget, now
-                )
-            decided = approval.model_copy(
-                update={
-                    "status": status,
-                    "version": approval.version + 1,
-                    "mission_s256": mission_s256,
-                    "decided_budget": budget,
-                    "decided_by": decided_by,
-                    "decided_at": now,
-                }
+        if store is not None:
+            return await self._decide(
+                store,
+                tenant,
+                approval_id,
+                status,
+                decided_by=decided_by,
+                budget=budget,
             )
-            if not await self.store.transition_approval(
-                tenant, approval, decided
-            ):
-                raise AAuthError(
-                    409,
-                    "invalid_request",
-                    "this approval is already decided or has expired",
-                )
-        await self.decided(tenant, decided)
+        async with self.store.transaction() as tx:
+            decided = await self._decide(
+                tx,
+                tenant,
+                approval_id,
+                status,
+                decided_by=decided_by,
+                budget=budget,
+            )
+        if decided is not None:
+            await self.decided(tenant, decided)
+        return decided
+
+    async def _decide(
+        self,
+        tx: Store,
+        tenant: str,
+        approval_id: str,
+        status: ApprovalStatus,
+        *,
+        decided_by: str,
+        budget: Budget | None,
+    ) -> Approval | None:
+        approval = await tx.approval(tenant, approval_id)
+        if approval is None:
+            return None
+        if approval.kind is not ApprovalKind.MISSION and budget is not None:
+            raise AAuthError(
+                422, "invalid_request", "only a mission takes a budget"
+            )
+        if (
+            approval.kind is ApprovalKind.COMPLETION
+            and decided_by != approval.person
+        ):
+            raise AAuthError(
+                403,
+                "access_denied",
+                "a completion is accepted by the person the mission is for",
+            )
+        now = self.clock()
+        if (
+            approval.status is not ApprovalStatus.PENDING
+            or approval.expires_at <= now
+        ):
+            raise AAuthError(
+                409,
+                "invalid_request",
+                "this approval is already decided or has expired",
+            )
+        mission_s256 = approval.mission_s256
+        if status is ApprovalStatus.APPROVED:
+            mission_s256 = await self._carry_out(
+                tx, tenant, approval, budget, now
+            )
+        decided = approval.model_copy(
+            update={
+                "status": status,
+                "version": approval.version + 1,
+                "mission_s256": mission_s256,
+                "decided_budget": budget,
+                "decided_by": decided_by,
+                "decided_at": now,
+            }
+        )
+        if not await tx.transition_approval(tenant, approval, decided):
+            raise AAuthError(
+                409,
+                "invalid_request",
+                "this approval is already decided or has expired",
+            )
         return decided
 
     async def _carry_out(
-        self, tenant: str, approval: Approval, budget: Budget | None, now: int
+        self,
+        tx: Store,
+        tenant: str,
+        approval: Approval,
+        budget: Budget | None,
+        now: int,
     ) -> str | None:
         if approval.kind is ApprovalKind.MISSION:
             expires_at = now + self._mission_ttl
@@ -791,7 +826,7 @@ class PersonServer(Server):
                 budget=budget,
                 expires_at=expires_at,
             )
-            if not await self.store.insert_mission(tenant, mission):
+            if not await tx.insert_mission(tenant, mission):
                 raise AAuthError(
                     409,
                     "invalid_request",
@@ -800,11 +835,9 @@ class PersonServer(Server):
             return mission.s256
         if approval.mission_s256 is None:
             return None
-        current = await self.store.mission(tenant, approval.mission_s256)
+        current = await tx.mission(tenant, approval.mission_s256)
         if approval.kind is ApprovalKind.COMPLETION:
-            ended = await self.store.end_mission(
-                tenant, approval.mission_s256, now
-            )
+            ended = await tx.end_mission(tenant, approval.mission_s256, now)
         else:
             # A call in another unit than the mission's budget is approved without
             # spending; a federated one is spent once its Access Server issues.
@@ -817,7 +850,7 @@ class PersonServer(Server):
                 and current.budget.same_scale(approval.budget)
                 else None
             )
-            ended = await self.store.spend(
+            ended = await tx.spend(
                 tenant, approval.mission_s256, spend, False, now
             )
         if ended is None:

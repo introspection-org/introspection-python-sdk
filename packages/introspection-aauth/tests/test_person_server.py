@@ -243,3 +243,55 @@ async def test_a_mission_whose_hash_is_taken_is_refused_not_reused():
     assert refused.value.status == 409
     approval = await world.ps_store.approval(TENANT, approval_id(proposed))
     assert approval is not None and approval.status is ApprovalStatus.PENDING
+
+
+async def propose(world: World) -> str:
+    proposed = await world.call(
+        "POST",
+        f"{PS}/aauth/mission",
+        {
+            "description": "Book Sydney",
+            "resources": [RESOURCE],
+            "login_hint": "sam",
+        },
+    )
+    return approval_id(proposed)
+
+
+async def test_a_decision_in_the_callers_unit_of_work_commits_with_it():
+    world = World()
+    pending = await propose(world)
+    async with world.ps_store.transaction() as tx:
+        decided = await world.ps.decide(
+            TENANT,
+            pending,
+            ApprovalStatus.APPROVED,
+            decided_by="dana",
+            budget=usd(100_000),
+            store=tx,
+        )
+    assert decided is not None and decided.mission_s256 is not None
+    await world.ps.decided(TENANT, decided)
+    assert (
+        await world.ps_store.mission(TENANT, decided.mission_s256) is not None
+    )
+
+
+async def test_a_decision_in_the_callers_unit_of_work_rolls_back_with_it():
+    world = World()
+    pending = await propose(world)
+    with pytest.raises(RuntimeError):
+        async with world.ps_store.transaction() as tx:
+            decided = await world.ps.decide(
+                TENANT,
+                pending,
+                ApprovalStatus.APPROVED,
+                decided_by="dana",
+                budget=usd(100_000),
+                store=tx,
+            )
+            raise RuntimeError("the host's own write failed")
+    assert decided is not None and decided.mission_s256 is not None
+    assert await world.ps_store.mission(TENANT, decided.mission_s256) is None
+    approval = await world.ps_store.approval(TENANT, pending)
+    assert approval is not None and approval.status is ApprovalStatus.PENDING

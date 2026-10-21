@@ -28,6 +28,7 @@ from ..protocol.keys import thumbprint
 from ..protocol.models import Budget
 from ..protocol.server import ACCESS_DWK
 from .models import Approval, ApprovalStatus, Federation, Refusal
+from .store import Store
 
 if TYPE_CHECKING:
     from .server import PersonServer
@@ -365,8 +366,8 @@ async def record(
 async def _record(
     ps: "PersonServer", tenant: str, approval_id: str, outcome: Outcome
 ) -> bool:
-    async with ps.store.transaction():
-        approval = await ps.store.approval(tenant, approval_id)
+    async with ps.store.transaction() as tx:
+        approval = await tx.approval(tenant, approval_id)
         federation = approval.federation if approval else None
         if (
             approval is None
@@ -384,7 +385,7 @@ async def _record(
                 update={"requirement": outcome.requirement}
             )
         elif outcome.step is Step.ISSUED:
-            refusal = await _spend(ps, tenant, approval, outcome, now)
+            refusal = await _spend(tx, tenant, approval, outcome, now)
             if refusal is None:
                 federation = federation.model_copy(
                     update={
@@ -409,11 +410,8 @@ async def _record(
                 "version": approval.version + 1,
             }
         )
-        if (
-            approval.expires_at <= now
-            or not await ps.store.transition_approval(
-                tenant, approval, changed
-            )
+        if approval.expires_at <= now or not await tx.transition_approval(
+            tenant, approval, changed
         ):
             raise _Stale
     return outcome.step is Step.PENDING
@@ -424,7 +422,7 @@ class _Stale(Exception):
 
 
 async def _spend(
-    ps: "PersonServer",
+    tx: Store,
     tenant: str,
     approval: Approval,
     outcome: Outcome,
@@ -439,7 +437,7 @@ async def _spend(
         return Refusal(
             status=404, error="mission_not_found", detail="no such mission"
         )
-    mission = await ps.store.mission(tenant, mission_s256)
+    mission = await tx.mission(tenant, mission_s256)
     granted = outcome.granted
     spend = (
         granted.amount
@@ -449,7 +447,7 @@ async def _spend(
         and mission.budget.same_scale(granted)
         else None
     )
-    if await ps.store.spend(
+    if await tx.spend(
         tenant,
         mission_s256,
         spend,

@@ -14,10 +14,11 @@ from .models import Approval, LogEntry, Mission
 class Store(Protocol):
     """A Person Server's state, in logical operations, per tenant.
 
-    `transaction()` groups writes that commit together: a decision that
-    creates or spends a mission with the approval it decides, and a federated
-    auth token with the spend it pays for. Anything raised inside it rolls
-    every write in it back.
+    `transaction()` yields a `Store` for one unit of work: every read and
+    write through it commits together when the block ends, and anything raised
+    inside it rolls them all back. It groups a decision that creates or spends
+    a mission with the approval it decides, and a federated auth token with the
+    spend it pays for.
     """
 
     async def binding(self, tenant: str, jkt: str) -> str | None:
@@ -74,7 +75,7 @@ class Store(Protocol):
         `current`'s status and version; whether it did."""
         ...
 
-    def transaction(self) -> AbstractAsyncContextManager[None]: ...
+    def transaction(self) -> AbstractAsyncContextManager["Store"]: ...
 
 
 class Directory(Protocol):
@@ -175,17 +176,17 @@ class MemoryStore:
             self.approvals, (tenant, current.id), current, changed
         )
 
-    def transaction(self) -> AbstractAsyncContextManager[None]:
+    def transaction(self) -> AbstractAsyncContextManager[Store]:
         return self._transaction()
 
     @asynccontextmanager
-    async def _transaction(self) -> AsyncGenerator[None, None]:
+    async def _transaction(self) -> AsyncGenerator[Store, None]:
         async with self._lock:
             saved = copy.deepcopy(
                 (self.bindings, self.missions, self.approvals)
             )
             try:
-                yield
+                yield self
             except BaseException:
                 self.bindings, self.missions, self.approvals = saved
                 raise
