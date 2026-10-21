@@ -122,5 +122,17 @@ precision = 1
 
 [dependency-groups]
 dev = [
+    "deptry>=0.25.1",
     "inline-snapshot[black]>=0.32.5",
 ]
+
+# deptry: unused (DEP002), missing (DEP001), transitive (DEP003) and
+# misplaced dev (DEP004) dependencies. Run with `uv run deptry .`.
+[tool.deptry]
+# examples/ is its own uv project with its own pyproject.toml and lock.
+# tests/ stays excluded (deptry's default): it imports the dev/test tools,
+# which would read as dev dependencies leaking into shipped code (DEP004).
+extend_exclude = ["examples"]
+known_first_party = ["introspection_sdk"]
+# The `dev` and `test` extras are tooling, not runtime dependencies.
+optional_dependencies_dev_groups = ["dev", "test"]
