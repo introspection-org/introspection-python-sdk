@@ -115,6 +115,23 @@ uv run ty check
 These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 `--no-verify` — fix the underlying issue.
 
+## Dependency check
+
+```shell
+uv sync --all-extras
+uv run deptry .
+```
+
+[deptry](https://deptry.com/) fails on unused (DEP002), missing (DEP001),
+transitive (DEP003) and misplaced dev (DEP004) dependencies in
+`introspection_sdk/` and `scripts/`. The `Dependency Check` job in `ci.yml`
+runs it on every PR. Configuration lives in `[tool.deptry]` in
+`pyproject.toml`: `examples/` is its own uv project, `tests/` is not scanned,
+and the `dev` / `test` extras count as dev dependencies. Import a new package
+in shipped code? Declare it in `dependencies` or the extra that gates it. Do
+not silence a finding with a blanket rule ignore; scope any ignore to one
+package and say why next to it.
+
 ## Commits and PRs
 
 - Keep PRs focused — one area per PR
@@ -182,3 +199,50 @@ selected by their exact code, so selecting `E` or `F` pulls in no preview
 rules. Preview still changes some stable rules (`F822`, for one, also
 checks submodules named in `__all__`); fix what they find rather than
 switching preview off. `[tool.ruff.format]` keeps preview off.
+
+## Public API compatibility
+
+The `API Compatibility` workflow (`api-compat.yml`) runs `griffe` on every
+PR and fails when the change breaks the public API of `introspection_sdk` against the
+latest `v*` release tag (resolved with `git describe --tags --abbrev=0
+--match 'v*' HEAD`, never hard-coded). Run the same check locally:
+
+```shell
+uv run griffe check introspection_sdk --search . --against v0.29.0
+```
+
+Pass the tag CI uses, `git describe --tags --abbrev=0 --match 'v*' HEAD`.
+
+It needs the release tags locally (`git fetch --tags`).
+
+What counts as public: a module's `__all__` when it has one, otherwise every
+name without a leading underscore. Imported names are public only through
+`__all__`. `_`-prefixed modules (`_http.py`, `_errors.py`,
+`otel/_provider.py`, ...) and `_`-prefixed classes, functions and attributes
+are internal and free to change. To keep a new helper out of the contract,
+give it a leading underscore or leave it out of `__all__`.
+
+Reported: a public object removed or renamed, a parameter removed, moved,
+made required or changed kind, a parameter default changed, a return or
+attribute type changed, a base class removed, and a changed attribute
+*value*. That last one includes a pydantic `Field(description=...)` edit
+or a type alias gaining a member, which are not breaking but still fail
+the check. The only way through is the override below, which also bumps
+the minor version; say in the PR that the break is only a value change.
+
+### Breaking the API on purpose
+
+1. Title the PR as a breaking Conventional Commit, e.g.
+   `feat(tags)!: ...`, and describe the break and the migration under a
+   `BREAKING CHANGE:` footer in the PR body. The PR title becomes the
+   squash commit, so release-please bumps the minor version while we are
+   below 1.0 (`bump-minor-pre-major`).
+2. A maintainer who has reviewed the break adds the `api-break` label.
+   Labels need triage access, so the author of an outside PR cannot apply
+   it themselves.
+3. Nothing to re-run: the check runs again by itself whenever the title is
+   edited or a label is added or removed. It reads the label and title at
+   run time, still prints every breakage, and passes with a warning. The
+   label without a `!` in the title still fails, so a break cannot ship
+   without a version bump, and removing either one afterwards turns the
+   check red again.
