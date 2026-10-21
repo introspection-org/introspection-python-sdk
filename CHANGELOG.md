@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.29.0...v0.29.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **examples:** show the helpers each docs region calls ([#187](https://github.com/introspection-org/introspection-python-sdk/issues/187)) ([be3ed3d](https://github.com/introspection-org/introspection-python-sdk/commit/be3ed3d0396d245bb5883bf4ab28025192138ab3))
+
 ## [0.29.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.28.0...v0.29.0) (2026-10-20)
 
 
