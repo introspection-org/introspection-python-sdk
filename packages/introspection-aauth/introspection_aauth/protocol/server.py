@@ -4,8 +4,8 @@ R3 proposal, and answer a request that has to wait."""
 
 import time
 import uuid
-from collections.abc import Callable, Sequence
-from typing import Any, NotRequired, TypedDict, TypeVar, Unpack
+from collections.abc import Sequence
+from typing import Any, NotRequired, Protocol, TypedDict, TypeVar, Unpack
 from urllib.parse import urlsplit
 
 import httpx2 as httpx
@@ -119,6 +119,22 @@ class Identity:
         return document if isinstance(document, dict) else {}
 
 
+def new_hex_id() -> str:
+    return uuid.uuid4().hex
+
+
+class Clock(Protocol):
+    """Now, in whole seconds since the epoch."""
+
+    def __call__(self) -> int: ...
+
+
+class IdFactory(Protocol):
+    """A new id, unique to this server."""
+
+    def __call__(self) -> str: ...
+
+
 class ServerOptions(TypedDict):
     """What every server takes besides its own: its keys' predecessors, where
     its protocol routes live, its clock and ids, and how long to wait."""
@@ -127,8 +143,8 @@ class ServerOptions(TypedDict):
     #: The URL its protocol routes are under, e.g. `{issuer}/aauth`.
     endpoint_base: NotRequired[str]
     retry_after: NotRequired[int]
-    clock: NotRequired[Callable[[], int]]
-    new_id: NotRequired[Callable[[], str]]
+    clock: NotRequired[Clock]
+    new_id: NotRequired[IdFactory]
     name: NotRequired[str]
 
 
@@ -153,8 +169,8 @@ class Server:
             "/"
         )
         self.retry_after = options.get("retry_after", 5)
-        self.clock = options.get("clock", now_seconds)
-        self.new_id = options.get("new_id", lambda: uuid.uuid4().hex)
+        self.clock: Clock = options.get("clock", now_seconds)
+        self.new_id: IdFactory = options.get("new_id", new_hex_id)
         self.name = options.get("name")
 
     def jwks(self) -> dict[str, Any]:

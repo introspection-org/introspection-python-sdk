@@ -11,7 +11,7 @@ import logging
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any, Unpack
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import httpx2 as httpx
 
@@ -126,6 +126,15 @@ class PersonServer(Server):
 
     def pending_url(self, tenant: str, approval_id: str) -> str:
         return f"{self.endpoint_base}/pending/{quote(tenant, safe='')}/{approval_id}"
+
+    def pending_parts(self, path: str) -> tuple[str, str] | None:
+        """The tenant and approval a pending URL's path after `/pending/`
+        names, or None: the inverse of `pending_url`, so a host overriding
+        one overrides both."""
+        tenant, _, approval_id = path.rpartition("/")
+        if not tenant or not approval_id or "/" in tenant:
+            return None
+        return unquote(tenant), approval_id
 
     # endregion
 
