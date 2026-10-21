@@ -205,3 +205,25 @@ jobs:
           node-version: "24"
       - name: Duplicate code stays under the threshold
         run: npx --yes jscpd@5.4.1
+
+  all-green:
+    # The one check the branch ruleset requires from this workflow, next to
+    # the separate "API Compatibility" workflow. Add every new job here to
+    # `needs`. A job skipped because a job it needs failed (Unit Tests after
+    # Lint & Type Check) fails the gate. No job skips by design today, so
+    # there is no `allowed-skips`.
+    name: All green
+    if: always()
+    needs:
+      - secrets-scan
+      - lint-actions
+      - lint
+      - test
+      - examples-check
+      - deptry
+      - duplication
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
