@@ -197,3 +197,46 @@ class MissionLogged(Wire):
     """A logged update: the hash of the entry."""
 
     s256: str
+
+
+#: Seconds between polls when the Access Server sends no usable `Retry-After`, and the bounds on it.
+DEFAULT_DELAY, MIN_DELAY, MAX_DELAY = 5, 1, 300
+
+
+class Step(StrEnum):
+    ISSUED = "issued"
+    PENDING = "pending"
+    REFUSED = "refused"
+
+
+class Outcome(BaseModel):
+    """What one exchange with an Access Server came to."""
+
+    step: Step
+    auth_token: str | None = None
+    auth_token_expires_at: int | None = None
+    #: The budget the Access Server granted, from its auth token.
+    granted: Budget | None = None
+    #: Where to poll next; on a pending outcome, None sends the request again.
+    location: str | None = None
+    requirement: str | None = None
+    retry_after: int | None = None
+    refusal: Refusal | None = None
+
+    @classmethod
+    def refused(cls, status: int, error: str, detail: str) -> "Outcome":
+        return cls(
+            step=Step.REFUSED,
+            refusal=Refusal(status=status, error=error, detail=detail),
+        )
+
+    @classmethod
+    def unreachable(cls, detail: str) -> "Outcome":
+        """`as_unreachable`: no verifiable answer from the Access Server."""
+        return cls.refused(502, "as_unreachable", detail)
+
+    def poll_delay(self) -> int:
+        """`Retry-After`, 5 seconds when absent; never a hot loop, never a stall."""
+        if self.retry_after is None:
+            return DEFAULT_DELAY
+        return min(max(self.retry_after, MIN_DELAY), MAX_DELAY)

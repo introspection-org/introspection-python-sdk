@@ -38,7 +38,7 @@ def inline(world: World) -> list[str]:
         async def no_wait(_: float) -> None:
             return None
 
-        await federation.run(world.ps, tenant, approval.id, sleep=no_wait)
+        await world.ps.federate(tenant, approval.id, sleep=no_wait)
 
     world.ps._on_federate = run
     return ran
@@ -107,7 +107,7 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     asked = await world.ask(mission, 60_000, aud=AS)
     approval_id = kicked[0]
 
-    due = await federation.due(world.ps, TENANT, approval_id)
+    due = await world.ps.federation_due(TENANT, approval_id)
     assert due is not None
     fed, jkt = due
     client = federation.AccessServerClient(world.ps)
@@ -115,7 +115,7 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     assert isinstance(metadata, federation.Metadata)
     outcome = await client.request(fed, jkt, metadata)
     assert outcome.step is federation.Step.PENDING
-    assert await federation.record(world.ps, TENANT, approval_id, outcome)
+    assert await world.ps.record_federation(TENANT, approval_id, outcome)
     waiting = await world.follow(asked)
     assert waiting.status_code == 202
     assert waiting.headers["aauth-requirement"] == "requirement=approval"
@@ -126,7 +126,7 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     assert outcome.location is not None
     outcome = await client.poll(outcome.location, fed, jkt, metadata)
     assert outcome.step is federation.Step.ISSUED
-    assert not await federation.record(world.ps, TENANT, approval_id, outcome)
+    assert not await world.ps.record_federation(TENANT, approval_id, outcome)
     assert (await world.follow(asked)).status_code == 200
     assert await world.spent(mission.s256) == 60_000
 
@@ -177,20 +177,9 @@ async def test_an_access_server_that_cannot_be_reached_ends_as_unreachable():
     world = World()
     inline(world)
     mission = await world.approved_mission(budget=100_000)
-    world.net.failures[await token_endpoint(world)] = 100
+    world.net.failures[await token_endpoint(world)] = 1
     asked = await world.ask(mission, 60_000, aud=AS)
     answered = await world.follow(asked)
     assert answered.status_code == 502, answered.text
     assert problem(answered).error == "as_unreachable"
     assert await world.spent(mission.s256) == 0
-
-
-async def test_a_dropped_connection_is_retried():
-    world = World()
-    inline(world)
-    mission = await world.approved_mission(budget=100_000)
-    world.net.failures[await token_endpoint(world)] = 1
-    asked = await world.ask(mission, 60_000, aud=AS)
-    issued = await world.follow(asked)
-    assert issued.status_code == 200, issued.text
-    assert await world.spent(mission.s256) == 60_000

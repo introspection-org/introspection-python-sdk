@@ -3,7 +3,7 @@ issue a token and to read one that verified. Each model checks what a token
 must be on its own; whether it is the token a caller expected is the job of
 an expectation's `failures`, which names every check that failed."""
 
-from typing import ClassVar, Literal, Self
+from typing import ClassVar, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -12,8 +12,10 @@ from .keys import Jwk, thumbprint
 from .models import Budget
 
 AGENT_DWK = "aauth-agent.json"
-PERSON_DWK = "aauth-person.json"
-ACCESS_DWK = "aauth-access.json"
+#: The well-known document a Person Server or Access Server signs under.
+ServerDwk = Literal["aauth-person.json", "aauth-access.json"]
+PERSON_DWK: Final = "aauth-person.json"
+ACCESS_DWK: Final = "aauth-access.json"
 RESOURCE_DWK = "aauth-resource.json"
 #: The longest a person or auth token may live (`#person-token`, `#auth-token`).
 MAX_TOKEN_LIFETIME_SECONDS = 3_600
@@ -152,7 +154,7 @@ class AuthTokenClaims(Claims, Carried):
 
     max_lifetime: ClassVar[int | None] = MAX_TOKEN_LIFETIME_SECONDS
 
-    dwk: Literal["aauth-person.json", "aauth-access.json"]
+    dwk: ServerDwk
     aud: str
     sub: str = Field(min_length=1)
     #: The Person Server the person is at.
@@ -165,7 +167,7 @@ class AuthTokenClaims(Claims, Carried):
         grant: AuthGrant,
         *,
         iss: str,
-        dwk: Literal["aauth-person.json", "aauth-access.json"],
+        dwk: ServerDwk,
         ps: str,
         jwk: Jwk,
         jti: str,

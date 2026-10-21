@@ -36,7 +36,12 @@ from .person_server.models import (
     PersonTokenRequest,
 )
 from .person_server.server import PersonServer
-from .protocol.errors import AAuthError, Answer, Problem
+from .protocol.errors import (
+    AAuthError,
+    Answer,
+    NotFound,
+    Problem,
+)
 from .protocol.httpsig import SignedRequest
 from .protocol.json import JsonObject
 from .protocol.keys import Jwks
@@ -332,7 +337,7 @@ async def _poll_person_server(
     under = f"{urlsplit(server.endpoint_base).path}/pending/"
     parts = server.pending_parts(urlsplit(signed.url).path.removeprefix(under))
     if parts is None:
-        raise AAuthError(404, "not_found", "no such pending request")
+        raise NotFound("no such pending request")
     return await server.poll(signed, *parts)
 
 

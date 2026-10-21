@@ -5,7 +5,7 @@ R3 proposal, and answer a request that has to wait."""
 import logging
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import NotRequired, Protocol, TypedDict, TypeVar, Unpack
 from urllib.parse import urlsplit
 
@@ -23,9 +23,16 @@ from .claims import (
     Claims,
     ResourceTokenClaims,
     ResourceTokenExpectation,
+    ServerDwk,
 )
 from .discovery import Discovery
-from .errors import AAuthError, Answer, VerificationError
+from .errors import (
+    Answer,
+    InvalidRequest,
+    InvalidToken,
+    Unauthorized,
+    VerificationError,
+)
 from .keys import Jwk, Jwks, SigningKey, jwks, s256
 from .models import Agent
 from .wire import Pending, R3Proposal
@@ -44,7 +51,6 @@ __all__ = [
     "now_seconds",
     "parse",
     "pending",
-    "presented_token_error",
     "requirement",
     "same_origin",
     "verify_agent",
@@ -79,14 +85,23 @@ def https_origin(value: str) -> bool:
     )
 
 
+def https_endpoint(value: str) -> bool:
+    """An endpoint URL: https, with a host and no query or fragment."""
+    parts = urlsplit(value)
+    return (
+        parts.scheme == "https"
+        and bool(parts.hostname)
+        and not parts.query
+        and not parts.fragment
+    )
+
+
 def parse(model: type[Model], body: bytes | None) -> Model:
     """A request body, or `400 invalid_request`."""
     try:
         return model.model_validate_json(body or b"{}")
     except ValidationError as exc:
-        raise AAuthError(
-            400, "invalid_request", exc.errors()[0]["msg"]
-        ) from None
+        raise InvalidRequest(exc.errors()[0]["msg"]) from None
 
 
 def _origin(url: str) -> str | None:
@@ -124,14 +139,24 @@ def requirement(
     return str(header)
 
 
-def presented_token_error(exc: VerificationError) -> AAuthError:
-    """The refusal of a presented person token that does not verify."""
-    code = (
-        "expired_presented_token"
-        if exc.code == "expired_jwt"
-        else "invalid_presented_token"
-    )
-    return AAuthError(400, code, exc.detail)
+def requirement_name(header: str) -> str | None:
+    """The `requirement` an `AAuth-Requirement` header names, or None when
+    it is not an RFC 9651 Dictionary that names one."""
+    parsed = http_sfv.Dictionary()
+    try:
+        parsed.parse(header.encode("ascii"))
+    except (ValueError, UnicodeEncodeError):
+        return None
+    item = parsed.get("requirement")
+    return str(item.value) if item is not None else None
+
+
+def retry_after(headers: Mapping[str, str]) -> int | None:
+    """`Retry-After` in seconds, when it is a number."""
+    try:
+        return max(int(headers.get("retry-after", "")), 0)
+    except ValueError:
+        return None
 
 
 def pending(
@@ -160,7 +185,7 @@ class Identity:
     def __init__(
         self,
         issuer: str,
-        dwk: str,
+        dwk: ServerDwk,
         signing_key: SigningKey,
         previous_keys: Sequence[SigningKey] = (),
     ):
@@ -280,7 +305,7 @@ class Server:
     def __init__(
         self,
         issuer: str,
-        dwk: str,
+        dwk: ServerDwk,
         signing_key: SigningKey,
         http: httpx.AsyncClient,
         **options: Unpack[ServerOptions],
@@ -326,15 +351,13 @@ async def verify_resource_token(
             ),
         )
     except VerificationError as exc:
-        raise AAuthError(
-            400, "invalid_resource_token", f"does not verify: {exc.detail}"
+        raise InvalidToken(
+            "resource", f"does not verify: {exc.detail}"
         ) from None
     wrong = expectation.failures(rt)
     if wrong:
-        raise AAuthError(
-            400,
-            "invalid_resource_token",
-            f"its {', '.join(wrong)} not this request's",
+        raise InvalidToken(
+            "resource", f"its {', '.join(wrong)} not this request's"
         )
     return rt
 
@@ -384,7 +407,7 @@ async def verify_agent(
             )
     except VerificationError as exc:
         hint = ACCEPT_JWT_SCHEME if exc.code == "unsupported_scheme" else None
-        raise AAuthError(401, exc.code, exc.detail, hint) from None
+        raise Unauthorized.rejected(exc, hint) from None
     return Agent(
         id=claims.sub,
         provider=claims.iss.rstrip("/"),
@@ -407,8 +430,7 @@ async def verify_server(
     `servers`; only their keys are ever fetched. Its issuer, or a `401`."""
     named = httpsig.named_server(request.headers.get("signature-key", ""))
     if named not in servers:
-        raise AAuthError(
-            401,
+        raise Unauthorized(
             "invalid_signature",
             "sign as a server this one takes requests from",
         )
@@ -424,9 +446,9 @@ async def verify_server(
     try:
         verified = await httpsig.verify(request, now, resolve)
     except VerificationError as exc:
-        raise AAuthError(401, exc.code, exc.detail) from None
+        raise Unauthorized.rejected(exc) from None
     if verified.scheme != "jwks_uri" or verified.dwk != dwk:
-        raise AAuthError(
-            401, "unsupported_scheme", f"sign with sig=jwks_uri and {dwk}"
+        raise Unauthorized(
+            "unsupported_scheme", f"sign with sig=jwks_uri and {dwk}"
         )
     return str(verified.server)

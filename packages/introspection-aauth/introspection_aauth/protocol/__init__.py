@@ -16,7 +16,23 @@ from .claims import (
     ResourceTokenExpectation,
 )
 from .discovery import Discovery
-from .errors import AAuthError, Answer, Problem, VerificationError
+from .errors import (
+    AAuthError,
+    AccessDenied,
+    Answer,
+    Denied,
+    Expired,
+    InvalidCode,
+    InvalidRequest,
+    InvalidToken,
+    MissionNotFound,
+    MissionTerminated,
+    NotFound,
+    Problem,
+    ServerError,
+    Unauthorized,
+    VerificationError,
+)
 from .httpsig import SignedRequest, Verified
 from .json import JsonObject, JsonValue
 from .keys import Jwk, Jwks, SigningKey, jwks, s256, thumbprint
@@ -32,6 +48,7 @@ from .server import (
 
 __all__ = [
     "AAuthError",
+    "AccessDenied",
     "Agent",
     "AgentExpectation",
     "AgentTokenClaims",
@@ -43,20 +60,30 @@ __all__ = [
     "Clock",
     "Confirmation",
     "DeliveryExpectation",
+    "Denied",
     "Discovery",
+    "Expired",
     "IdFactory",
     "Identity",
+    "InvalidCode",
+    "InvalidRequest",
+    "InvalidToken",
     "JsonObject",
     "JsonValue",
     "Jwk",
     "Jwks",
+    "MissionNotFound",
+    "MissionTerminated",
+    "NotFound",
     "PersonTokenClaims",
     "PresentedExpectation",
     "Problem",
     "ResourceTokenClaims",
     "ResourceTokenExpectation",
+    "ServerError",
     "SignedRequest",
     "SigningKey",
+    "Unauthorized",
     "VerificationError",
     "Verified",
     "jwks",

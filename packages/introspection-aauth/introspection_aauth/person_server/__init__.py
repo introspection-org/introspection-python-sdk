@@ -10,6 +10,8 @@ from .models import (
     LogEntry,
     Mission,
     MissionGrant,
+    Outcome,
+    Step,
 )
 from .server import PersonServer
 from .store import AnyoneDirectory, Directory, MemoryStore, Store
@@ -25,7 +27,9 @@ __all__ = [
     "MemoryStore",
     "Mission",
     "MissionGrant",
+    "Outcome",
     "PersonServer",
+    "Step",
     "Store",
     "federation",
 ]

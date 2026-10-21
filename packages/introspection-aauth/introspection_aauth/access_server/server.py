@@ -22,7 +22,17 @@ from ..protocol.claims import (
     ResourceTokenClaims,
     ResourceTokenExpectation,
 )
-from ..protocol.errors import AAuthError, Answer, VerificationError
+from ..protocol.errors import (
+    Answer,
+    Denied,
+    Expired,
+    InvalidCode,
+    InvalidRequest,
+    InvalidToken,
+    NotFound,
+    ServerError,
+    VerificationError,
+)
 from ..protocol.httpsig import SignedRequest
 from ..protocol.keys import SigningKey
 from ..protocol.models import Budget
@@ -31,7 +41,6 @@ from ..protocol.server import (
     ServerOptions,
     parse,
     pending,
-    presented_token_error,
     requirement,
     verify_agent_token,
     verify_resource_token,
@@ -62,20 +71,12 @@ class PendingHook(Protocol):
     def __call__(self, pending: PendingAccess, /) -> Awaitable[None]: ...
 
 
-def _bad(token: str, detail: str) -> AAuthError:
-    return AAuthError(400, f"invalid_{token}_token", detail)
-
-
 def _narrowed(asked: str | None, scope: str | None) -> str | None:
     """`scope`, which may be no broader than what was asked."""
     if scope is None:
         return asked
     if not set(scope.split()) <= set((asked or "").split()):
-        raise AAuthError(
-            500,
-            "server_error",
-            "the policy granted a scope that was not asked for",
-        )
+        raise ServerError("the policy granted a scope that was not asked for")
     return scope
 
 
@@ -84,9 +85,7 @@ def _lowered(asked: Budget | None, granted: Budget | None) -> Budget | None:
     if granted is None:
         return asked
     if asked is None or not granted.at_most(asked):
-        raise AAuthError(
-            500, "server_error", "the policy granted more than was asked"
-        )
+        raise ServerError("the policy granted more than was asked")
     return granted
 
 
@@ -131,92 +130,6 @@ class AccessServer(Server):
     def pending_url(self, pending_id: str) -> str:
         return f"{self.endpoint_base}/pending/{pending_id}"
 
-    # region verification
-    async def _resource_token(
-        self, token: str, ps: str
-    ) -> ResourceTokenClaims:
-        try:
-            _, unverified = jwt.peek(token)
-        except VerificationError:
-            raise _bad("resource", "not a JWT") from None
-        resource = (unverified.iss or "").rstrip("/")
-        # Checked before verifying, since verifying fetches its keys.
-        if resource not in self._resources:
-            raise _bad(
-                "resource",
-                f"this Access Server does not decide for {resource}",
-            )
-        return await verify_resource_token(
-            token,
-            self.discovery,
-            resource,
-            self.clock(),
-            ResourceTokenExpectation(
-                ps=ps, aud=self.issuer, requires_presented=True
-            ),
-        )
-
-    async def _agent_token(
-        self, token: str, rt: ResourceTokenClaims, ps: str
-    ) -> AgentTokenClaims:
-        try:
-            claims = await verify_agent_token(
-                token, self.discovery, self._providers, self.clock()
-            )
-        except VerificationError as exc:
-            raise AAuthError(
-                400, "invalid_request", f"agent_token: {exc.detail}"
-            ) from None
-        wrong = AgentExpectation(agent_jkt=rt.agent_jkt or "", ps=ps).failures(
-            claims
-        )
-        if "cnf" in wrong:
-            raise _bad("resource", "agent_jkt is not the agent token's key")
-        if wrong:
-            raise AAuthError(
-                400,
-                "invalid_request",
-                "agent_token names another Person Server",
-            )
-        return claims
-
-    async def _presented_token(
-        self, token: str, rt: ResourceTokenClaims, ps: str
-    ) -> PersonTokenClaims:
-        """The person token the resource saw, from the Person Server that sent
-        it, matching the resource token exactly. Step-up with an auth token this
-        server issued is not served."""
-        try:
-            presented = await self.discovery.verified(
-                ps,
-                PERSON_DWK,
-                lambda keys: jwt.verify(
-                    token,
-                    keys,
-                    jwt.PERSON_TOKEN,
-                    self.clock(),
-                    PersonTokenClaims,
-                ),
-            )
-        except VerificationError as exc:
-            raise presented_token_error(exc) from None
-        wrong = PresentedExpectation(ps=ps, rt=rt).failures(presented)
-        if wrong:
-            raise _bad(
-                "resource",
-                f"it does not match the presented token: {', '.join(wrong)}",
-            )
-        return presented
-
-    async def _summary(self, rt: ResourceTokenClaims) -> str | None:
-        if rt.r3_uri is None or rt.r3_s256 is None:
-            return None
-        return await self.identity.summary(
-            self.http, rt.iss, rt.r3_uri, rt.r3_s256, self.clock()
-        )
-
-    # endregion
-
     async def token(self, request: SignedRequest) -> Answer:
         """`POST /token`: a Person Server's signed request for an auth token."""
         ps = await verify_server(
@@ -228,10 +141,8 @@ class AccessServer(Server):
         )
         body = parse(TokenRequest, request.body)
         if body.upstream_token is not None or body.subagent_token is not None:
-            raise AAuthError(
-                400,
-                "invalid_request",
-                "call chaining and sub-agents are not served here",
+            raise InvalidRequest(
+                "call chaining and sub-agents are not served here"
             )
         rt = await self._resource_token(body.resource_token, ps)
         agent = await self._agent_token(body.agent_token, rt, ps)
@@ -242,9 +153,7 @@ class AccessServer(Server):
             and asked_budget is not None
             and not sent.at_most(asked_budget)
         ):
-            raise AAuthError(
-                400, "invalid_request", "budget is above the resource token's"
-            )
+            raise InvalidRequest("budget is above the resource token's")
         # Enforced by the resource token's expectation.
         sub, agent_jkt = rt.sub or "", rt.agent_jkt or ""
         asked = AccessRequest(
@@ -286,15 +195,157 @@ class AccessServer(Server):
                 _lowered(asked.budget, verdict.budget),
             )
         if verdict.decision == "deny":
-            raise AAuthError(
-                403,
-                "denied",
-                verdict.detail or "this resource's policy refuses it",
-            )
+            raise Denied(verdict.detail or "this resource's policy refuses it")
         await self.store.insert_pending(record)
         if self._on_pending is not None:
             await self._on_pending(record)
         return self._waiting(record)
+
+    async def poll(self, request: SignedRequest, pending_id: str) -> Answer:
+        """`GET /pending/{id}`: only the Person Server that asked may poll."""
+        ps = await verify_server(
+            request,
+            self.discovery,
+            self._person_servers,
+            PERSON_DWK,
+            self.clock(),
+        )
+        record = await self.store.select_pending(pending_id)
+        if record is None or record.request.ps != ps:
+            raise NotFound("no such pending request")
+        if record.collected:
+            raise InvalidCode("this request was already answered")
+        expired = self.clock() >= record.expires_at
+        if record.status is PendingStatus.PENDING and not expired:
+            return self._waiting(record)
+        # A terminal answer is given once; the pending URL then answers 410.
+        answered = record.model_copy(
+            update={
+                "collected": True,
+                "version": record.version + 1,
+            }
+        )
+        if not await self.store.transition_pending(record, answered):
+            raise InvalidCode("this request was already answered")
+        if record.status is PendingStatus.DENIED:
+            raise Denied("this resource's policy refuses it")
+        if expired:
+            raise Expired("nobody decided in time")
+        return self._issue(record, record.scope, record.budget)
+
+    async def decide(
+        self,
+        pending_id: str,
+        approved: bool,
+        *,
+        scope: str | None = None,
+        budget: Budget | None = None,
+        decided_by: str | None = None,
+    ) -> PendingAccess:
+        """Settle a request the policy waited on, once; approving may narrow
+        the scope or lower the budget."""
+        record = await self.store.select_pending(pending_id)
+        if record is None:
+            raise NotFound("no such request")
+        if record.status is not PendingStatus.PENDING:
+            raise InvalidRequest("already decided", status=409)
+        if self.clock() >= record.expires_at:
+            raise Expired("this request has expired", status=410)
+        decided = record.model_copy(
+            update={
+                "status": PendingStatus.APPROVED
+                if approved
+                else PendingStatus.DENIED,
+                "version": record.version + 1,
+                "scope": _narrowed(record.request.scope, scope),
+                "budget": _lowered(record.request.budget, budget),
+                "decided_by": decided_by,
+            }
+        )
+        if not await self.store.transition_pending(record, decided):
+            raise InvalidRequest("already decided", status=409)
+        return decided
+
+    # region private
+
+    async def _resource_token(
+        self, token: str, ps: str
+    ) -> ResourceTokenClaims:
+        try:
+            _, unverified = jwt.peek(token)
+        except VerificationError:
+            raise InvalidToken("resource", "not a JWT") from None
+        resource = (unverified.iss or "").rstrip("/")
+        # Checked before verifying, since verifying fetches its keys.
+        if resource not in self._resources:
+            raise InvalidToken(
+                "resource",
+                f"this Access Server does not decide for {resource}",
+            )
+        return await verify_resource_token(
+            token,
+            self.discovery,
+            resource,
+            self.clock(),
+            ResourceTokenExpectation(
+                ps=ps, aud=self.issuer, requires_presented=True
+            ),
+        )
+
+    async def _agent_token(
+        self, token: str, rt: ResourceTokenClaims, ps: str
+    ) -> AgentTokenClaims:
+        try:
+            claims = await verify_agent_token(
+                token, self.discovery, self._providers, self.clock()
+            )
+        except VerificationError as exc:
+            raise InvalidRequest(f"agent_token: {exc.detail}") from None
+        wrong = AgentExpectation(agent_jkt=rt.agent_jkt or "", ps=ps).failures(
+            claims
+        )
+        if "cnf" in wrong:
+            raise InvalidToken(
+                "resource", "agent_jkt is not the agent token's key"
+            )
+        if wrong:
+            raise InvalidRequest("agent_token names another Person Server")
+        return claims
+
+    async def _presented_token(
+        self, token: str, rt: ResourceTokenClaims, ps: str
+    ) -> PersonTokenClaims:
+        """The person token the resource saw, from the Person Server that sent
+        it, matching the resource token exactly. Step-up with an auth token this
+        server issued is not served."""
+        try:
+            presented = await self.discovery.verified(
+                ps,
+                PERSON_DWK,
+                lambda keys: jwt.verify(
+                    token,
+                    keys,
+                    jwt.PERSON_TOKEN,
+                    self.clock(),
+                    PersonTokenClaims,
+                ),
+            )
+        except VerificationError as exc:
+            raise InvalidToken.rejected("presented", exc) from None
+        wrong = PresentedExpectation(ps=ps, rt=rt).failures(presented)
+        if wrong:
+            raise InvalidToken(
+                "resource",
+                f"it does not match the presented token: {', '.join(wrong)}",
+            )
+        return presented
+
+    async def _summary(self, rt: ResourceTokenClaims) -> str | None:
+        if rt.r3_uri is None or rt.r3_s256 is None:
+            return None
+        return await self.identity.summary(
+            self.http, rt.iss, rt.r3_uri, rt.r3_s256, self.clock()
+        )
 
     def _waiting(self, record: PendingAccess) -> Answer:
         verdict = record.verdict
@@ -330,73 +381,4 @@ class AccessServer(Server):
             200, AuthTokenAnswer(auth_token=token, expires_in=exp - iat)
         )
 
-    async def poll(self, request: SignedRequest, pending_id: str) -> Answer:
-        """`GET /pending/{id}`: only the Person Server that asked may poll."""
-        ps = await verify_server(
-            request,
-            self.discovery,
-            self._person_servers,
-            PERSON_DWK,
-            self.clock(),
-        )
-        record = await self.store.select_pending(pending_id)
-        if record is None or record.request.ps != ps:
-            raise AAuthError(404, "not_found", "no such pending request")
-        if record.collected:
-            raise AAuthError(
-                410, "invalid_code", "this request was already answered"
-            )
-        expired = self.clock() >= record.expires_at
-        if record.status is PendingStatus.PENDING and not expired:
-            return self._waiting(record)
-        # A terminal answer is given once; the pending URL then answers 410.
-        answered = record.model_copy(
-            update={
-                "collected": True,
-                "version": record.version + 1,
-            }
-        )
-        if not await self.store.transition_pending(record, answered):
-            raise AAuthError(
-                410, "invalid_code", "this request was already answered"
-            )
-        if record.status is PendingStatus.DENIED:
-            raise AAuthError(
-                403, "denied", "this resource's policy refuses it"
-            )
-        if expired:
-            raise AAuthError(408, "expired", "nobody decided in time")
-        return self._issue(record, record.scope, record.budget)
-
-    async def decide(
-        self,
-        pending_id: str,
-        approved: bool,
-        *,
-        scope: str | None = None,
-        budget: Budget | None = None,
-        decided_by: str | None = None,
-    ) -> PendingAccess:
-        """Settle a request the policy waited on, once; approving may narrow
-        the scope or lower the budget."""
-        record = await self.store.select_pending(pending_id)
-        if record is None:
-            raise AAuthError(404, "not_found", "no such request")
-        if record.status is not PendingStatus.PENDING:
-            raise AAuthError(409, "invalid_request", "already decided")
-        if self.clock() >= record.expires_at:
-            raise AAuthError(410, "expired", "this request has expired")
-        decided = record.model_copy(
-            update={
-                "status": PendingStatus.APPROVED
-                if approved
-                else PendingStatus.DENIED,
-                "version": record.version + 1,
-                "scope": _narrowed(record.request.scope, scope),
-                "budget": _lowered(record.request.budget, budget),
-                "decided_by": decided_by,
-            }
-        )
-        if not await self.store.transition_pending(record, decided):
-            raise AAuthError(409, "invalid_request", "already decided")
-        return decided
+    # endregion

@@ -185,7 +185,7 @@ async def test_a_busy_access_server_is_polled_again_later():
     world.ps._on_federate = kick
     mission = await world.approved_mission(budget=100_000)
     await world.ask(mission, 10, aud=AS)
-    due = await federation.due(world.ps, TENANT, kicked[0])
+    due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
     client = federation.AccessServerClient(world.ps)
     metadata = await client.discover(due[0].access_server)
@@ -204,10 +204,7 @@ async def test_a_busy_access_server_is_polled_again_later():
     world.net.apps[AS] = Busy()
     assert first.location is not None
     busy = await client.poll(first.location, due[0], due[1], metadata)
-    assert (
-        busy.step is federation.Step.PENDING
-        and federation.poll_delay(busy) == 7
-    )
+    assert busy.step is federation.Step.PENDING and busy.poll_delay() == 7
 
 
 async def test_the_access_server_refuses_what_it_does_not_decide():
@@ -257,13 +254,13 @@ async def test_an_interaction_is_relayed_and_a_decision_settles_once():
     world.ps._on_federate = kick
     mission = await world.approved_mission(budget=100_000)
     asked = await world.ask(mission, 10, aud=AS)
-    due = await federation.due(world.ps, TENANT, kicked[0])
+    due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
     client = federation.AccessServerClient(world.ps)
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, federation.Metadata)
     outcome = await client.request(due[0], due[1], metadata)
-    await federation.record(world.ps, TENANT, kicked[0], outcome)
+    await world.ps.record_federation(TENANT, kicked[0], outcome)
     relayed = await world.follow(asked)
     assert "requirement=interaction" in relayed.headers["aauth-requirement"]
     [pending] = list(world.access_store.requests.values())
@@ -273,7 +270,7 @@ async def test_an_interaction_is_relayed_and_a_decision_settles_once():
     assert outcome.location is not None
     denied = await client.poll(outcome.location, due[0], due[1], metadata)
     assert denied.step is federation.Step.REFUSED
-    await federation.record(world.ps, TENANT, kicked[0], denied)
+    await world.ps.record_federation(TENANT, kicked[0], denied)
     assert (await world.follow(asked)).status_code == 403
 
 
@@ -372,19 +369,19 @@ async def test_a_summary_written_meanwhile_does_not_drop_a_federated_token():
             presented_token=person_token,
         ),
     )
-    due = await federation.due(world.ps, TENANT, kicked[0])
+    due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
     client = federation.AccessServerClient(world.ps)
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, federation.Metadata)
     first = await client.request(due[0], due[1], metadata)
-    assert await federation.record(world.ps, TENANT, kicked[0], first)
+    assert await world.ps.record_federation(TENANT, kicked[0], first)
     [pending] = list(world.access_store.requests.values())
     await world.access.decide(pending.id, True)
     assert first.location is not None
     issued = await client.poll(first.location, due[0], due[1], metadata)
     await world.ps.describe(TENANT, kicked[0])
-    assert not await federation.record(world.ps, TENANT, kicked[0], issued)
+    assert not await world.ps.record_federation(TENANT, kicked[0], issued)
     stored = await world.ps_store.select_approval(TENANT, kicked[0])
     assert stored is not None and stored.federation is not None
     assert stored.federation.auth_token is not None

@@ -143,7 +143,7 @@ async def test_an_access_servers_refusal_is_answered_once():
     world.ps._on_federate = kick
     mission = await world.approved_mission(budget=100_000)
     await world.ask(mission, 10, aud=AS)
-    due = await federation.due(world.ps, TENANT, kicked[0])
+    due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
     client = federation.AccessServerClient(world.ps)
     metadata = await client.discover(due[0].access_server)
@@ -341,7 +341,7 @@ async def test_an_unknown_requirement_is_relayed_as_approval():
     mission = await world.approved_mission(budget=100_000)
     asked = await world.ask(mission, 60_000, aud=AS)
     approval = urlsplit(asked.headers["location"]).path.rsplit("/", 1)[1]
-    due = await federation.due(world.ps, TENANT, approval)
+    due = await world.ps.federation_due(TENANT, approval)
     assert due is not None
     client = federation.AccessServerClient(world.ps)
     metadata = await client.discover(due[0].access_server)
