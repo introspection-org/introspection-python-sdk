@@ -8,11 +8,12 @@ from introspection_aauth.fastapi import (
     person_server_well_known_router,
 )
 from introspection_aauth.person_server import PersonServer
+from introspection_aauth.protocol.json import JsonObject
 
 from .world import World
 
 
-def paths(app: FastAPI) -> dict[str, dict]:
+def paths(app: FastAPI) -> dict[str, dict[str, JsonObject]]:
     return app.openapi()["paths"]
 
 

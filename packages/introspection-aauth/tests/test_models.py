@@ -52,7 +52,12 @@ AGENT = SigningKey.generate()
 OTHER = SigningKey.generate()
 
 
+TYPING = {"typing", "typing_extensions"}
+BARE = {"dict", "list", "Dict", "List"}
+
+
 def _annotations(tree: ast.AST) -> list[ast.expr]:
+    """Every annotation, with string annotations parsed."""
     found: list[ast.expr] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.arg) and node.annotation is not None:
@@ -62,33 +67,81 @@ def _annotations(tree: ast.AST) -> list[ast.expr]:
                 found.append(node.returns)
         elif isinstance(node, ast.AnnAssign):
             found.append(node.annotation)
+    parsed: list[ast.expr] = []
+    for annotation in found:
+        parsed.append(annotation)
+        for n in ast.walk(annotation):
+            if isinstance(n, ast.Constant) and isinstance(n.value, str):
+                try:
+                    parsed.append(ast.parse(n.value, mode="eval").body)
+                except SyntaxError:
+                    pass
+    return parsed
+
+
+def _untyped(tree: ast.AST) -> list[int]:
+    """Lines that type something as `Any` or `object`, or as a bare
+    `dict` or `list`."""
+    found: list[int] = []
+    typing_names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            typing_names |= {
+                a.asname or a.name for a in node.names if a.name in TYPING
+            }
+        elif isinstance(node, ast.ImportFrom) and node.module in TYPING:
+            found += [node.lineno for a in node.names if a.name == "Any"]
+        elif (
+            isinstance(node, ast.Attribute)
+            and node.attr == "Any"
+            and isinstance(node.value, ast.Name)
+            and node.value.id in typing_names
+        ):
+            found.append(node.lineno)
+        elif isinstance(node, ast.Subscript) and any(
+            isinstance(n, ast.Name) and n.id in {"object", "Any"}
+            for n in ast.walk(node.slice)
+        ):
+            found.append(node.lineno)
+    for annotation in _annotations(tree):
+        subscripted = {
+            id(n.value)
+            for n in ast.walk(annotation)
+            if isinstance(n, ast.Subscript)
+        }
+        for n in ast.walk(annotation):
+            if isinstance(n, ast.Name) and (
+                n.id in {"object", "Any"}
+                or (n.id in BARE and id(n) not in subscripted)
+            ):
+                found.append(getattr(annotation, "lineno", 0))
     return found
 
 
 def test_no_module_types_anything_as_any_or_object():
     """Bodies and claims are models; `JsonValue` is for arbitrary JSON."""
-    found = []
-    for path in [*PACKAGE.rglob("*.py"), *TESTS.rglob("*.py")]:
-        tree = ast.parse(path.read_text())
-        for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.ImportFrom)
-                and node.module == "typing"
-                and any(alias.name == "Any" for alias in node.names)
-            ) or (
-                isinstance(node, ast.Attribute)
-                and node.attr == "Any"
-                and isinstance(node.value, ast.Name)
-                and node.value.id == "typing"
-            ):
-                found.append(f"{path.name}:{node.lineno}")
-        for annotation in _annotations(tree):
-            if any(
-                isinstance(n, ast.Name) and n.id == "object"
-                for n in ast.walk(annotation)
-            ):
-                found.append(f"{path.name}:{annotation.lineno}")
+    found = [
+        f"{path.name}:{line}"
+        for path in [*PACKAGE.rglob("*.py"), *TESTS.rglob("*.py")]
+        for line in _untyped(ast.parse(path.read_text()))
+    ]
     assert found == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import typing as t\nx: t.Any",
+        "from typing_extensions import Any",
+        "def f(x: 'object') -> None: ...",
+        "def f() -> 'Any': ...",
+        "Alias = dict[str, object]",
+        "def f(x: dict) -> None: ...",
+        "def f() -> dict[str, list]: ...",
+    ],
+)
+def test_the_guard_finds_each_way_of_writing_an_untyped_type(source: str):
+    assert _untyped(ast.parse(source))
 
 
 def resource_claims(**update: str | None) -> ResourceTokenClaims:
