@@ -312,3 +312,28 @@ async def test_a_token_request_body_is_its_model():
     ).to_json() == (
         b'{"resource_token":"r","agent_token":"a","presented_token":"p"}'
     )
+
+
+@pytest.mark.parametrize("tenant", ["org:proj", "a b%c", "a%41"])
+async def test_a_tenant_that_needs_escaping_polls_through_the_router(tenant: str):
+    world = World()
+    world.ps._default_tenant = tenant
+    proposed = await world.call(
+        "POST",
+        f"{PS}/aauth/mission",
+        MissionProposal(
+            description="Book Sydney", resources=[RESOURCE], login_hint="sam"
+        ),
+    )
+    assert proposed.status_code == 202, proposed.text
+    waiting = await world.follow(proposed)
+    assert waiting.status_code == 202, waiting.text
+    await world.ps.decide(
+        tenant,
+        approval_id(proposed),
+        ApprovalStatus.APPROVED,
+        decided_by="dana",
+        budget=usd(1_000),
+    )
+    approved = await world.follow(proposed)
+    assert approved.status_code == 200, approved.text

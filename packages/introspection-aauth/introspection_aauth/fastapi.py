@@ -141,9 +141,23 @@ def _respond(answer: Answer) -> Response:
     return Response(answer.content(), answer.status, headers, media_type)
 
 
+def _raw_target(request: Request) -> tuple[str, str]:
+    """The path and query as the signer sent them, still percent-encoded:
+    what `@path` and `@query` cover, which the decoded path is not."""
+    raw_path = request.scope.get("raw_path")
+    path = (
+        raw_path.decode("latin-1")
+        if isinstance(raw_path, bytes)
+        else request.url.path
+    )
+    query = request.scope.get("query_string", b"")
+    return path, query.decode("latin-1") if isinstance(query, bytes) else ""
+
+
 async def _serve(request: Request, base: str, handle: Handler) -> Response:
-    path = request.url.path.removeprefix(urlsplit(base).path)
-    query = f"?{request.url.query}" if request.url.query else ""
+    raw_path, raw_query = _raw_target(request)
+    path = raw_path.removeprefix(urlsplit(base).path)
+    query = f"?{raw_query}" if raw_query else ""
     signed = SignedRequest(
         request.method,
         f"{base}{path}{query}",
@@ -314,7 +328,9 @@ def _signed_route(
 async def _poll_person_server(
     server: PersonServer, signed: SignedRequest, path: dict[str, str]
 ) -> Answer:
-    parts = server.pending_parts(path["pending_path"])
+    # Read from the signed URL, still encoded, so it is decoded once.
+    under = f"{urlsplit(server.endpoint_base).path}/pending/"
+    parts = server.pending_parts(urlsplit(signed.url).path.removeprefix(under))
     if parts is None:
         raise AAuthError(404, "not_found", "no such pending request")
     return await server.poll(signed, *parts)
