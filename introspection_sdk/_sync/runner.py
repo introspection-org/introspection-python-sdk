@@ -14,6 +14,7 @@ from introspection_sdk.runner_resources import (
     Conversations,
     Events,
     Files,
+    Images,
     Metrics,
     RunnerAppConnections,
     Shares,
@@ -58,6 +59,7 @@ class Runner:
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
         self._automations = Automations(self._http)
+        self._images = Images(self._http)
         self._connections = RunnerAppConnections(
             self._http, spec.runtime_context.runtime_group_id
         )
@@ -121,6 +123,12 @@ class Runner:
         return self._automations
 
     @property
+    def images(self) -> Images:
+        """DP ``/v1/images`` namespace bound to this Runner."""
+        self._check_open()
+        return self._images
+
+    @property
     def connections(self) -> RunnerAppConnections:
         """DP ``/v1/connections`` namespace bound to this Runner. ``create``
         defaults ``runtime`` to the runner's runtime group."""
@@ -176,6 +184,7 @@ class Runner:
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
         self._automations = Automations(self._http)
+        self._images = Images(self._http)
         self._connections = RunnerAppConnections(
             self._http, new_spec.runtime_context.runtime_group_id
         )

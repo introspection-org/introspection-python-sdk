@@ -12,6 +12,7 @@ from introspection_sdk.runner_resources import (
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
+    AsyncImages,
     AsyncMetrics,
     AsyncRunnerAppConnections,
     AsyncShares,
@@ -68,6 +69,7 @@ class AsyncRunner:
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
         self._automations = AsyncAutomations(self._http)
+        self._images = AsyncImages(self._http)
         self._connections = AsyncRunnerAppConnections(
             self._http, spec.runtime_context.runtime_group_id
         )
@@ -135,6 +137,12 @@ class AsyncRunner:
         return self._automations
 
     @property
+    def images(self) -> AsyncImages:
+        """DP ``/v1/images`` namespace bound to this Runner."""
+        self._check_open()
+        return self._images
+
+    @property
     def connections(self) -> AsyncRunnerAppConnections:
         """DP ``/v1/connections`` namespace bound to this Runner. ``create``
         defaults ``runtime`` to the runner's runtime group."""
@@ -190,6 +198,7 @@ class AsyncRunner:
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
         self._automations = AsyncAutomations(self._http)
+        self._images = AsyncImages(self._http)
         self._connections = AsyncRunnerAppConnections(
             self._http, new_spec.runtime_context.runtime_group_id
         )

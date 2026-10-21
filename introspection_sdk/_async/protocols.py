@@ -44,6 +44,14 @@ from introspection_sdk.schemas.events import (
 )
 from introspection_sdk.schemas.files import File, FileType
 from introspection_sdk.schemas.genai_span import GenAiSpan, GenAiSpanList
+from introspection_sdk.schemas.images import (
+    ContextImageSource,
+    Image,
+    ImageKind,
+    ImageProvenance,
+    ImageStatus,
+    MirrorImageSource,
+)
 from introspection_sdk.schemas.metrics import (
     MetricQueryRequest,
     MetricQueryResponse,
@@ -53,12 +61,20 @@ from introspection_sdk.schemas.shares import (
     ResourceShare,
     ShareResourceType,
 )
+from introspection_sdk.schemas.task_commands import (
+    DownloadCommand,
+    ExecCommand,
+    TaskCommand,
+    TaskCommandStatus,
+    UploadCommand,
+)
 from introspection_sdk.schemas.tasks import (
     Task,
     TaskCancelRequest,
     TaskCancelResponse,
     TaskCreateResponse,
     TaskFileRef,
+    TaskKind,
     TaskPrompt,
     TaskRepoRequest,
     TaskRun,
@@ -106,11 +122,45 @@ class AsyncTaskRunsResource(Protocol):
 
 
 @runtime_checkable
+class AsyncTaskCommandsResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.tasks.AsyncTaskCommands`."""
+
+    async def create(
+        self,
+        task_id: str,
+        command: ExecCommand
+        | UploadCommand
+        | DownloadCommand
+        | dict[str, Any],
+    ) -> TaskCommand: ...
+
+    def list(
+        self,
+        task_id: str,
+        *,
+        status: TaskCommandStatus | str | None = None,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> AsyncPager[TaskCommand, Paginated[TaskCommand]]: ...
+
+    async def get(
+        self,
+        task_id: str,
+        command_id: str | UUID,
+        *,
+        wait_seconds: int | None = None,
+    ) -> TaskCommand: ...
+
+
+@runtime_checkable
 class AsyncTasksResource(Protocol):
     """Protocol of :class:`~introspection_sdk.runner_resources.tasks.AsyncTasks`."""
 
     @property
     def runs(self) -> AsyncTaskRunsResource: ...
+
+    @property
+    def commands(self) -> AsyncTaskCommandsResource: ...
 
     def list(
         self,
@@ -137,6 +187,8 @@ class AsyncTasksResource(Protocol):
         fork_share_id: str | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
         tags: builtins.list[str] | None = None,
+        kind: TaskKind | str | None = None,
+        commands: bool | None = None,
     ) -> TaskCreateResponse: ...
 
     async def get(self, task_id: str) -> Task: ...
@@ -597,6 +649,35 @@ class AsyncConnectionsResource(Protocol):
 
 
 @runtime_checkable
+class AsyncImagesResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.images.AsyncImages`."""
+
+    def list(
+        self,
+        *,
+        kind: ImageKind | str | None = None,
+        status: ImageStatus | str | None = None,
+        name: str | None = None,
+        runtime_id: UUID | None = None,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> AsyncPager[Image, Paginated[Image]]: ...
+
+    async def get(self, image_id: UUID | str) -> Image: ...
+
+    async def create(
+        self,
+        *,
+        name: str,
+        source: ContextImageSource | MirrorImageSource | dict[str, Any],
+        provenance: ImageProvenance | dict[str, Any] | None = None,
+        scan: bool | None = None,
+    ) -> Image: ...
+
+    async def delete(self, image_id: UUID | str) -> None: ...
+
+
+@runtime_checkable
 class AsyncDataPlaneResources(Protocol):
     """The data-plane namespaces :class:`~introspection_sdk.AsyncIntrospectionClient`
     and :class:`~introspection_sdk.runner.AsyncRunner` both expose."""
@@ -624,3 +705,6 @@ class AsyncDataPlaneResources(Protocol):
 
     @property
     def connections(self) -> AsyncConnectionsResource: ...
+
+    @property
+    def images(self) -> AsyncImagesResource: ...
