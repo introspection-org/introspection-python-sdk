@@ -4,6 +4,10 @@ approvals, and federation with a resource's own Access Server."""
 from introspection_aauth.person_server.access_server_client import (
     AccessServerClient,
 )
+from introspection_aauth.person_server.directory import (
+    AnyoneDirectory,
+    Directory,
+)
 from introspection_aauth.person_server.models import (
     Approval,
     ApprovalKind,
@@ -17,8 +21,6 @@ from introspection_aauth.person_server.models import (
 )
 from introspection_aauth.person_server.server import PersonServer
 from introspection_aauth.person_server.store import (
-    AnyoneDirectory,
-    Directory,
     MemoryStore,
     Store,
 )

@@ -36,9 +36,11 @@ from introspection_aauth.person_server.models import (
     PersonTokenRequest,
 )
 from introspection_aauth.person_server.server import PersonServer
+from introspection_aauth.protocol.answer import (
+    Answer,
+)
 from introspection_aauth.protocol.errors import (
     AAuthError,
-    Answer,
     NotFound,
     Problem,
 )

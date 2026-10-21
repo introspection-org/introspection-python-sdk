@@ -2,24 +2,22 @@
 signatures, tokens and their claims, discovery, budgets, the bodies they
 exchange, and the plumbing of a server."""
 
+from introspection_aauth.protocol.answer import (
+    Answer,
+)
 from introspection_aauth.protocol.claims import (
-    AgentExpectation,
     AgentTokenClaims,
     AuthGrant,
     AuthTokenClaims,
     Claims,
     Confirmation,
-    DeliveryExpectation,
     PersonTokenClaims,
-    PresentedExpectation,
     ResourceTokenClaims,
-    ResourceTokenExpectation,
 )
 from introspection_aauth.protocol.discovery import Discovery
 from introspection_aauth.protocol.errors import (
     AAuthError,
     AccessDenied,
-    Answer,
     Denied,
     Expired,
     InvalidCode,
@@ -33,7 +31,16 @@ from introspection_aauth.protocol.errors import (
     Unauthorized,
     VerificationError,
 )
+from introspection_aauth.protocol.expectations import (
+    AgentExpectation,
+    DeliveryExpectation,
+    PresentedExpectation,
+    ResourceTokenExpectation,
+)
 from introspection_aauth.protocol.httpsig import SignedRequest, Verified
+from introspection_aauth.protocol.identity import (
+    Identity,
+)
 from introspection_aauth.protocol.json import JsonObject, JsonValue
 from introspection_aauth.protocol.keys import (
     Jwk,
@@ -44,11 +51,14 @@ from introspection_aauth.protocol.keys import (
     thumbprint,
 )
 from introspection_aauth.protocol.models import Agent, Budget
+from introspection_aauth.protocol.pending import (
+    pending,
+)
 from introspection_aauth.protocol.server import (
     Clock,
-    Identity,
     IdFactory,
-    pending,
+)
+from introspection_aauth.protocol.verification import (
     verify_agent,
     verify_server,
 )

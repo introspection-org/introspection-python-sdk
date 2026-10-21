@@ -7,16 +7,25 @@ import asyncio
 import hashlib
 import hmac
 import logging
-from collections.abc import Awaitable, Sequence
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import partial
-from typing import Protocol, Unpack
+from typing import Unpack
 from urllib.parse import quote, unquote
 
 import httpx2 as httpx
 
 from introspection_aauth.person_server.access_server_client import (
     AccessServerClient,
+)
+from introspection_aauth.person_server.directory import (
+    AnyoneDirectory,
+    Directory,
+)
+from introspection_aauth.person_server.hooks import (
+    Exchange,
+    Hook,
+    Sleep,
 )
 from introspection_aauth.person_server.models import (
     Approval,
@@ -38,11 +47,13 @@ from introspection_aauth.person_server.models import (
     Step,
 )
 from introspection_aauth.person_server.store import (
-    AnyoneDirectory,
-    Directory,
+    StaleRecord,
     Store,
 )
 from introspection_aauth.protocol import jwt
+from introspection_aauth.protocol.answer import (
+    Answer,
+)
 from introspection_aauth.protocol.claims import (
     PERSON_DWK,
     RESOURCE_DWK,
@@ -50,14 +61,11 @@ from introspection_aauth.protocol.claims import (
     AuthTokenClaims,
     Confirmation,
     PersonTokenClaims,
-    PresentedExpectation,
     ResourceTokenClaims,
-    ResourceTokenExpectation,
 )
 from introspection_aauth.protocol.errors import (
     AAuthError,
     AccessDenied,
-    Answer,
     Denied,
     Expired,
     InvalidCode,
@@ -69,15 +77,25 @@ from introspection_aauth.protocol.errors import (
     ServerError,
     VerificationError,
 )
+from introspection_aauth.protocol.expectations import (
+    PresentedExpectation,
+    ResourceTokenExpectation,
+)
 from introspection_aauth.protocol.httpsig import SignedRequest
 from introspection_aauth.protocol.keys import SigningKey, b64url, s256
 from introspection_aauth.protocol.models import Agent, Budget
+from introspection_aauth.protocol.pending import (
+    pending,
+)
 from introspection_aauth.protocol.server import (
     Server,
     ServerOptions,
-    https_origin,
     parse,
-    pending,
+)
+from introspection_aauth.protocol.urls import (
+    https_origin,
+)
+from introspection_aauth.protocol.verification import (
     verify_agent,
     verify_resource_token,
 )
@@ -89,50 +107,10 @@ from introspection_aauth.protocol.wire import (
 )
 
 __all__ = [
-    "Exchange",
-    "Hook",
     "PersonServer",
-    "Sleep",
 ]
 
 logger = logging.getLogger(__name__)
-
-
-class Hook(Protocol):
-    """Told of an approval in `tenant`: one a person must decide, or one
-    its resource's Access Server must."""
-
-    def __call__(
-        self, tenant: str, approval: Approval, /
-    ) -> Awaitable[None]: ...
-
-
-class Sleep(Protocol):
-    """Waits `seconds`; a durable host passes its own."""
-
-    def __call__(self, seconds: float, /) -> Awaitable[None]: ...
-
-
-class Exchange(Protocol):
-    """One exchange with the Access Server."""
-
-    def __call__(self) -> Awaitable[Outcome]: ...
-
-
-def _fits(mission: Mission, budget: Budget | None) -> bool:
-    """Whether a request is within what is left of its mission's budget."""
-    if budget is None:
-        return True
-    if mission.budget is None:
-        return False
-    left = mission.budget.model_copy(
-        update={"amount": mission.budget.amount - mission.spent}
-    )
-    return budget.at_most(left)
-
-
-class StaleRecord(Exception):
-    """Rolls a `record` back: the approval changed or lapsed meanwhile."""
 
 
 class PersonServer(Server):
@@ -327,7 +305,7 @@ class PersonServer(Server):
                 agent_token=agent.token,
                 presented_token=body.presented_token,
                 budget=budget,
-                within_budget=_fits(mission, budget),
+                within_budget=mission.fits(budget),
             )
             return await self._federated(
                 tenant, agent, mission, grant, federation

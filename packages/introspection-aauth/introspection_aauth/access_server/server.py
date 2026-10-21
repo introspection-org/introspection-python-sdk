@@ -4,11 +4,15 @@ this server as the `aud` of its resource tokens; the person's Person Server,
 having weighed the call against the person's mission, asks it for the auth
 token here, and this server issues it or makes the Person Server wait."""
 
-from collections.abc import Awaitable, Sequence
-from typing import Protocol, Unpack
+from collections.abc import Sequence
+from typing import Unpack
 
 import httpx2 as httpx
 
+from introspection_aauth.access_server.hooks import (
+    PendingHook,
+    Policy,
+)
 from introspection_aauth.access_server.models import (
     AccessRequest,
     PendingAccess,
@@ -18,38 +22,45 @@ from introspection_aauth.access_server.models import (
 )
 from introspection_aauth.access_server.store import MemoryStore, Store
 from introspection_aauth.protocol import jwt
+from introspection_aauth.protocol.answer import (
+    Answer,
+)
 from introspection_aauth.protocol.claims import (
     ACCESS_DWK,
     PERSON_DWK,
-    AgentExpectation,
     AgentTokenClaims,
     AuthGrant,
     AuthTokenClaims,
     PersonTokenClaims,
-    PresentedExpectation,
     ResourceTokenClaims,
-    ResourceTokenExpectation,
 )
 from introspection_aauth.protocol.errors import (
-    Answer,
     Denied,
     Expired,
     InvalidCode,
     InvalidRequest,
     InvalidToken,
     NotFound,
-    ServerError,
     VerificationError,
+)
+from introspection_aauth.protocol.expectations import (
+    AgentExpectation,
+    PresentedExpectation,
+    ResourceTokenExpectation,
 )
 from introspection_aauth.protocol.httpsig import SignedRequest
 from introspection_aauth.protocol.keys import SigningKey
 from introspection_aauth.protocol.models import Budget
+from introspection_aauth.protocol.pending import (
+    pending,
+    requirement,
+)
 from introspection_aauth.protocol.server import (
     Server,
     ServerOptions,
     parse,
-    pending,
-    requirement,
+)
+from introspection_aauth.protocol.verification import (
     verify_agent_token,
     verify_resource_token,
     verify_server,
@@ -59,38 +70,6 @@ from introspection_aauth.protocol.wire import (
     AuthTokenAnswer,
     TokenRequest,
 )
-
-
-class Policy(Protocol):
-    """A resource's policy: its verdict on one request, now or awaited."""
-
-    def __call__(
-        self, request: AccessRequest, /
-    ) -> Verdict | Awaitable[Verdict]: ...
-
-
-class PendingHook(Protocol):
-    """Told of each request the policy waits on."""
-
-    def __call__(self, pending: PendingAccess, /) -> Awaitable[None]: ...
-
-
-def _narrowed(asked: str | None, scope: str | None) -> str | None:
-    """`scope`, which may be no broader than what was asked."""
-    if scope is None:
-        return asked
-    if not set(scope.split()) <= set((asked or "").split()):
-        raise ServerError("the policy granted a scope that was not asked for")
-    return scope
-
-
-def _lowered(asked: Budget | None, granted: Budget | None) -> Budget | None:
-    """`granted`, which may be no more than what was asked."""
-    if granted is None:
-        return asked
-    if asked is None or not granted.at_most(asked):
-        raise ServerError("the policy granted more than was asked")
-    return granted
 
 
 class AccessServer(Server):
@@ -195,8 +174,8 @@ class AccessServer(Server):
         if verdict.decision == "allow":
             return self._issue(
                 record,
-                _narrowed(asked.scope, verdict.scope),
-                _lowered(asked.budget, verdict.budget),
+                asked.narrowed(verdict.scope),
+                asked.lowered(verdict.budget),
             )
         if verdict.decision == "deny":
             raise Denied(verdict.detail or "this resource's policy refuses it")
@@ -261,8 +240,8 @@ class AccessServer(Server):
                 if approved
                 else PendingStatus.DENIED,
                 "version": record.version + 1,
-                "scope": _narrowed(record.request.scope, scope),
-                "budget": _lowered(record.request.budget, budget),
+                "scope": record.request.narrowed(scope),
+                "budget": record.request.lowered(budget),
                 "decided_by": decided_by,
             }
         )

@@ -27,19 +27,21 @@ from introspection_aauth.protocol.claims import (
     AGENT_DWK,
     PERSON_DWK,
     RESOURCE_DWK,
-    AgentExpectation,
     AgentTokenClaims,
     AuthGrant,
     AuthTokenClaims,
     Claims,
     Confirmation,
-    DeliveryExpectation,
     PersonTokenClaims,
-    PresentedExpectation,
     ResourceTokenClaims,
-    ResourceTokenExpectation,
 )
 from introspection_aauth.protocol.discovery import is_identifier
+from introspection_aauth.protocol.expectations import (
+    AgentExpectation,
+    DeliveryExpectation,
+    PresentedExpectation,
+    ResourceTokenExpectation,
+)
 from introspection_aauth.protocol.json import JsonObject
 from introspection_aauth.protocol.keys import Jwk
 from introspection_aauth.protocol.wire import TokenRequest

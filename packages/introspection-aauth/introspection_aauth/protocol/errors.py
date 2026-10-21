@@ -1,15 +1,15 @@
 """AAuth errors, answered as `application/problem+json` (`#error-responses`)."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict
 
+from introspection_aauth.protocol.answer import Answer
+
 __all__ = [
     "AAuthError",
     "AccessDenied",
-    "Answer",
     "Denied",
     "Expired",
     "InvalidCode",
@@ -32,20 +32,6 @@ class Problem(BaseModel):
 
     error: str
     detail: str | None = None
-
-
-@dataclass(frozen=True)
-class Answer:
-    """What a protocol request is answered with, for any web framework: its
-    status, its body, serialised with members that are None left out, and
-    its headers."""
-
-    status: int
-    body: BaseModel
-    headers: dict[str, str] = field(default_factory=dict)
-
-    def content(self) -> bytes:
-        return self.body.model_dump_json(exclude_none=True).encode()
 
 
 class AAuthError(Exception):

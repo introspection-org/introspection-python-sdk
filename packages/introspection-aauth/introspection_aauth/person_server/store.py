@@ -94,20 +94,6 @@ class Store(Protocol):
     def transaction(self) -> AbstractAsyncContextManager[Store]: ...
 
 
-class Directory(Protocol):
-    def person(self, login_hint: str, tenant: str) -> str | None:
-        """The person a `login_hint` names in `tenant`, or None if this Person
-        Server does not speak for them."""
-        ...
-
-
-class AnyoneDirectory:
-    """Speaks for whoever the hint names: for samples and tests."""
-
-    def person(self, login_hint: str, tenant: str) -> str | None:
-        return login_hint or None
-
-
 def _live(mission: Mission | None, now: int) -> Mission | None:
     if (
         mission is None
@@ -222,3 +208,7 @@ class MemoryStore:
             except BaseException:
                 self.bindings, self.missions, self.approvals = saved
                 raise
+
+
+class StaleRecord(Exception):
+    """Rolls a `record` back: the approval changed or lapsed meanwhile."""

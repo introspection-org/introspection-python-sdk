@@ -46,6 +46,17 @@ class Mission(BaseModel):
     expires_at: int
     completed_at: int | None = None
 
+    def fits(self, budget: Budget | None) -> bool:
+        """Whether a request costing `budget` is within what is left."""
+        if budget is None:
+            return True
+        if self.budget is None:
+            return False
+        left = self.budget.model_copy(
+            update={"amount": self.budget.amount - self.spent}
+        )
+        return budget.at_most(left)
+
 
 class Refusal(BaseModel):
     """How a federated request ended without an auth token."""

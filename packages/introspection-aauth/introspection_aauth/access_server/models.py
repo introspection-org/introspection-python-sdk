@@ -11,6 +11,7 @@ from introspection_aauth.protocol.claims import (
     PersonTokenClaims,
     ResourceTokenClaims,
 )
+from introspection_aauth.protocol.errors import ServerError
 from introspection_aauth.protocol.keys import Jwk
 from introspection_aauth.protocol.models import Budget
 
@@ -48,6 +49,24 @@ class AccessRequest(BaseModel):
     agent_jkt: str
     #: The verified claims of each token, for anything else a policy reads.
     claims: VerifiedTokens | None = None
+
+    def narrowed(self, scope: str | None) -> str | None:
+        """`scope` as a policy granted it, which may be no broader than asked."""
+        if scope is None:
+            return self.scope
+        if not set(scope.split()) <= set((self.scope or "").split()):
+            raise ServerError(
+                "the policy granted a scope that was not asked for"
+            )
+        return scope
+
+    def lowered(self, budget: Budget | None) -> Budget | None:
+        """`budget` as a policy granted it, which may be no more than asked."""
+        if budget is None:
+            return self.budget
+        if self.budget is None or not budget.at_most(self.budget):
+            raise ServerError("the policy granted more than was asked")
+        return budget
 
 
 class Verdict(BaseModel):

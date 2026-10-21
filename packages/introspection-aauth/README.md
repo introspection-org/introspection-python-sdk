@@ -16,7 +16,7 @@ pip install 'introspection-aauth[fastapi]' # and FastAPI routers for them
 | Module | Holds |
 | --- | --- |
 | `introspection_aauth.protocol` | What both servers share, written once: `AAuthError`, a subclass per AAuth error code (`InvalidRequest`, `InvalidToken`, `InvalidCode`, …), and their problem+json; Ed25519 signing keys (current and previous) and Ed25519/ES256 verification; RFC 9421 signing and verification with `Signature-Key`; AAuth's tokens; discovery of metadata and keys, cached for a bounded time; budgets; and the server plumbing both use: the `Server` base, verifying an agent's or a server's signed request, the `202` pending answer, reading an R3 proposal. |
-| `introspection_aauth.person_server` | `PersonServer`, its `Store` and `Directory` protocols, a `MemoryStore`, and `federation`: the client for a resource's Access Server and the loop around it. |
+| `introspection_aauth.person_server` | `PersonServer`, its `Store` and `Directory` protocols, a `MemoryStore`, and `AccessServerClient`, its client for a resource's own Access Server. |
 | `introspection_aauth.access_server` | `AccessServer`, its policy `Verdict`s, its `Store` protocol and a `MemoryStore`. |
 | `introspection_aauth.fastapi` | `person_server_router` and `access_server_router`, and `*_well_known_router` for the documents alone (the `fastapi` extra). Each takes an `APIRouter` of yours for its tags, dependencies, responses or `include_in_schema`. |
 
