@@ -1,0 +1,80 @@
+# Fails a PR that breaks the public API against the latest v* release
+# reachable from HEAD (griffe's own CLI). To break it on purpose, see "Public
+# API compatibility" in AGENTS.md: a `!` in the PR title plus the
+# `api-break` label.
+#
+# Its own workflow, not a job in ci.yml, because the override lives in PR
+# metadata: it has to run again when the title is edited or a label is added
+# or removed, or dropping the `!` or the label after a green run would leave it
+# green. Listening for those events in ci.yml would re-run the tests on every
+# label change too.
+name: API Compatibility
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+# A newer event on the same PR supersedes the run in flight.
+concurrency:
+  group: api-compat-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  api-compat:
+    # Never skip this job for an unrelated label or a body-only edit: a
+    # skipped run reports success and would hide an earlier failure.
+    name: API Compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The release tags and the history that reaches them.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Check for breaking changes against the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          against=$(git describe --tags --abbrev=0 --match 'v*' HEAD)
+          if uv run griffe check introspection_sdk --search . \
+            --against "$against" --format github; then
+            exit 0
+          fi
+          pr=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --json title,labels)
+          title=$(jq -r .title <<<"$pr")
+          if ! jq -e '.labels | any(.name == "api-break")' <<<"$pr" >/dev/null; then
+            exit 1
+          fi
+          if [[ ! "$title" =~ ^[a-z]+(\([^\)]*\))?!: ]]; then
+            echo "::error::The api-break label needs a breaking PR title" \
+              "such as 'feat!: ...', so release-please bumps the version."
+            exit 1
+          fi
+          echo "::warning::Breaking API change accepted by the api-break label."

@@ -107,4 +107,3 @@ If your application also depends on libraries that still `import httpx`, call
 `httpx2.alias_httpx()` once at startup — before any other import — to point
 them at the same stack. That is an application-level decision, so this SDK
 never does it for you.
-
