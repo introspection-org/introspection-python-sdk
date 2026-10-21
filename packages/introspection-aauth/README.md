@@ -18,7 +18,7 @@ pip install 'introspection-aauth[fastapi]' # and FastAPI routers for them
 | `introspection_aauth.protocol` | What both servers share, written once: `AAuthError` and its problem+json; Ed25519 signing keys (current and previous) and Ed25519/ES256 verification; RFC 9421 signing and verification with `Signature-Key`; AAuth's tokens; discovery of metadata and keys, cached for a bounded time; budgets; and the server plumbing both use: the `Server` base, verifying an agent's or a server's signed request, the `202` pending answer, reading an R3 proposal. |
 | `introspection_aauth.person_server` | `PersonServer`, its `Store` and `Directory` protocols, a `MemoryStore`, and `federation`: the client for a resource's Access Server and the loop around it. |
 | `introspection_aauth.access_server` | `AccessServer`, its policy `Verdict`s, its `Store` protocol and a `MemoryStore`. |
-| `introspection_aauth.fastapi` | `person_server_router` and `access_server_router` (the `fastapi` extra). |
+| `introspection_aauth.fastapi` | `person_server_router` and `access_server_router`, and `*_well_known_router` for the documents alone (the `fastapi` extra). Each takes an `APIRouter` of yours for its tags, dependencies, responses or `include_in_schema`. |
 
 Neither server imports the other, and `protocol` imports neither.
 
@@ -56,6 +56,10 @@ person_server = PersonServer(
     default_tenant="acme",
 )
 app.include_router(person_server_router(person_server))
+# Or with your own router: its prefix is the start of the endpoint base's
+# path, and the well-known documents are mounted at the root on their own.
+#   app.include_router(person_server_router(person_server, APIRouter(prefix="/aauth", tags=["AAuth"])))
+#   app.include_router(person_server_well_known_router(person_server))
 
 # Your approval app answers what it asks:
 await person_server.decide(tenant, approval_id, ApprovalStatus.APPROVED,
