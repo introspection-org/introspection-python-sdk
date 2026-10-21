@@ -141,6 +141,25 @@ package and say why next to it.
 - Never commit `.env`, real API keys, or unscrubbed cassettes. The
   `gitleaks` pre-commit hook catches most of this; don't bypass it.
 
+## Duplicate code
+
+```shell
+npx --yes jscpd@5.4.1
+```
+
+The `Duplicate Code` CI job runs the same command and fails when the
+duplicated-lines share of `introspection_sdk/` exceeds `threshold` in
+`.jscpd.json`. `tests/` is left out: its lower share would dilute the SDK's
+and hide new copies there. The config sets `mode: "weak"`, so a copy that
+differs only in comments or whitespace still counts, and lists
+`kind: ["exact", "renamed"]` with `ignoreIdentifiers: true`, so a copy that
+differs only in names counts too (`renamed` alone never reports identical
+copies, so `exact` stays listed). The threshold is a ratchet: don't raise it
+to land a change, factor the clone out instead. When a refactor lowers
+duplication, read the `Total` row's duplicated-lines percentage and lower
+`threshold` to just above it in the same PR. A generated file goes in the
+config's `ignore` list.
+
 ## When in doubt
 
 Read the coverage ratchet in `pyproject.toml`.

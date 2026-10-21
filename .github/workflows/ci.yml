@@ -179,3 +179,17 @@ jobs:
 
       - name: Check dependencies
         run: uv run deptry .
+
+  duplication:
+    # Duplicate-code ratchet: fails when the duplicated-lines share of
+    # introspection_sdk/ exceeds `threshold` in .jscpd.json. Lower the
+    # threshold when a refactor removes duplication; never raise it.
+    name: Duplicate Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Duplicate code stays under the threshold
+        run: npx --yes jscpd@5.4.1
