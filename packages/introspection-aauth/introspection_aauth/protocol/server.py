@@ -19,9 +19,7 @@ from introspection_aauth.protocol.claims import (
     ServerDwk,
 )
 from introspection_aauth.protocol.discovery import Discovery
-from introspection_aauth.protocol.errors import (
-    InvalidRequest,
-)
+from introspection_aauth.protocol.errors import InvalidRequest
 from introspection_aauth.protocol.identity import Identity
 from introspection_aauth.protocol.keys import Jwks, SigningKey
 

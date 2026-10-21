@@ -52,9 +52,7 @@ from introspection_aauth.person_server.store import (
     Store,
 )
 from introspection_aauth.protocol import jwt
-from introspection_aauth.protocol.answer import (
-    Answer,
-)
+from introspection_aauth.protocol.answer import Answer
 from introspection_aauth.protocol.claims import (
     PERSON_DWK,
     RESOURCE_DWK,
@@ -85,17 +83,13 @@ from introspection_aauth.protocol.expectations import (
 from introspection_aauth.protocol.httpsig import SignedRequest
 from introspection_aauth.protocol.keys import SigningKey, b64url, s256
 from introspection_aauth.protocol.models import Agent, Budget
-from introspection_aauth.protocol.pending import (
-    pending,
-)
+from introspection_aauth.protocol.pending import pending
 from introspection_aauth.protocol.server import (
     Server,
     ServerOptions,
     parse,
 )
-from introspection_aauth.protocol.urls import (
-    https_origin,
-)
+from introspection_aauth.protocol.urls import https_origin
 from introspection_aauth.protocol.verification import (
     verify_agent,
     verify_resource_token,

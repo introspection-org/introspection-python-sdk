@@ -2,6 +2,7 @@
 identifiers and never a token."""
 
 import logging
+import re
 
 import pytest
 from opentelemetry import trace
@@ -13,6 +14,32 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 from .test_federation import inline
 from .world import AS, World
+
+#: The last words of a field the platform's log formatter drops
+#: (introspection-cloud docs/design/logging-and-tracing.md).
+REDACTED = {
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "token",
+    "api_key",
+    "key",
+    "private_key",
+    "credential",
+    "credentials",
+    "auth",
+    "authorization",
+    "cookie",
+    "session",
+    "email",
+    "phone",
+}
+STANDARD = set(logging.LogRecord("", 0, "", 0, "", None, None).__dict__) | {
+    "message",
+    "asctime",
+    "taskName",
+}
 
 EXPORTER = InMemorySpanExporter()
 PROVIDER = TracerProvider()
@@ -49,6 +76,10 @@ async def test_a_federation_is_traced_and_logged_by_identifier(
         r for r in caplog.records if r.getMessage() == "access request decided"
     ]
     assert [r.__dict__["decision"] for r in decided] == ["allow"]
+
+    for record in caplog.records:
+        for key in set(record.__dict__) - STANDARD:
+            assert re.split(r"[._-]", key)[-1] not in REDACTED, key
 
     tokens = [world.agent_token, *mission.person_tokens.values()]
     for record in caplog.records:

@@ -23,9 +23,7 @@ from introspection_aauth.access_server.models import (
 )
 from introspection_aauth.access_server.store import MemoryStore, Store
 from introspection_aauth.protocol import jwt
-from introspection_aauth.protocol.answer import (
-    Answer,
-)
+from introspection_aauth.protocol.answer import Answer
 from introspection_aauth.protocol.claims import (
     ACCESS_DWK,
     PERSON_DWK,

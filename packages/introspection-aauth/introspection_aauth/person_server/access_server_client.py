@@ -22,20 +22,14 @@ from introspection_aauth.protocol.claims import (
 )
 from introspection_aauth.protocol.discovery import Discovery
 from introspection_aauth.protocol.errors import Problem, VerificationError
-from introspection_aauth.protocol.expectations import (
-    DeliveryExpectation,
-)
-from introspection_aauth.protocol.identity import (
-    Identity,
-)
+from introspection_aauth.protocol.expectations import DeliveryExpectation
+from introspection_aauth.protocol.identity import Identity
 from introspection_aauth.protocol.keys import Jwks
 from introspection_aauth.protocol.pending import (
     requirement_name,
     retry_after,
 )
-from introspection_aauth.protocol.server import (
-    Clock,
-)
+from introspection_aauth.protocol.server import Clock
 from introspection_aauth.protocol.urls import (
     https_endpoint,
     same_origin,

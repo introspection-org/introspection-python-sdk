@@ -17,9 +17,7 @@ from introspection_aauth.protocol.errors import (
     Unauthorized,
     VerificationError,
 )
-from introspection_aauth.protocol.expectations import (
-    ResourceTokenExpectation,
-)
+from introspection_aauth.protocol.expectations import ResourceTokenExpectation
 from introspection_aauth.protocol.keys import Jwk
 from introspection_aauth.protocol.models import Agent
 

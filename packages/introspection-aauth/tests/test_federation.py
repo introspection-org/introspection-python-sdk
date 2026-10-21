@@ -11,9 +11,7 @@ from introspection_aauth.person_server import (
     ApprovalStatus,
     Step,
 )
-from introspection_aauth.person_server.models import (
-    AuthTokenRequest,
-)
+from introspection_aauth.person_server.models import AuthTokenRequest
 from introspection_aauth.protocol.claims import AuthTokenClaims
 from introspection_aauth.protocol.keys import Jwks
 from introspection_aauth.protocol.wire import (

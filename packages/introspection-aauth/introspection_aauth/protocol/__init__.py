@@ -2,9 +2,7 @@
 signatures, tokens and their claims, discovery, budgets, the bodies they
 exchange, and the plumbing of a server."""
 
-from introspection_aauth.protocol.answer import (
-    Answer,
-)
+from introspection_aauth.protocol.answer import Answer
 from introspection_aauth.protocol.claims import (
     AgentTokenClaims,
     AuthGrant,
@@ -38,9 +36,7 @@ from introspection_aauth.protocol.expectations import (
     ResourceTokenExpectation,
 )
 from introspection_aauth.protocol.httpsig import SignedRequest, Verified
-from introspection_aauth.protocol.identity import (
-    Identity,
-)
+from introspection_aauth.protocol.identity import Identity
 from introspection_aauth.protocol.json import JsonObject, JsonValue
 from introspection_aauth.protocol.keys import (
     Jwk,
@@ -51,9 +47,7 @@ from introspection_aauth.protocol.keys import (
     thumbprint,
 )
 from introspection_aauth.protocol.models import Agent, Budget
-from introspection_aauth.protocol.pending import (
-    pending,
-)
+from introspection_aauth.protocol.pending import pending
 from introspection_aauth.protocol.server import (
     Clock,
     IdFactory,

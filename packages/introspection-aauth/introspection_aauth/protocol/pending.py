@@ -5,9 +5,7 @@ from collections.abc import Mapping
 
 import http_sfv
 
-from introspection_aauth.protocol.answer import (
-    Answer,
-)
+from introspection_aauth.protocol.answer import Answer
 from introspection_aauth.protocol.wire import Pending
 
 

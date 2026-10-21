@@ -8,8 +8,7 @@
   ],
   "ignore": [
     "**/.venv/**",
-    "**/__pycache__/**",
-    "**/__init__.py"
+    "**/__pycache__/**"
   ],
   "gitignore": true,
   "minTokens": 50,
@@ -23,5 +22,10 @@
   "threshold": 0,
   "reporters": [
     "console"
+  ],
+  "ignorePattern": [
+    "from [\\w.]+ import \\([^)]*\\)",
+    "from [\\w.]+ import [^\\n(]+",
+    "import [\\w.]+( as \\w+)?"
   ]
 }

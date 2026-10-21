@@ -12,17 +12,13 @@ from introspection_aauth.protocol.claims import (
     Claims,
     ServerDwk,
 )
-from introspection_aauth.protocol.errors import (
-    VerificationError,
-)
+from introspection_aauth.protocol.errors import VerificationError
 from introspection_aauth.protocol.keys import Jwks, SigningKey, jwks, s256
 from introspection_aauth.protocol.urls import (
     https_origin,
     same_origin,
 )
-from introspection_aauth.protocol.verification import (
-    ClaimsModel,
-)
+from introspection_aauth.protocol.verification import ClaimsModel
 from introspection_aauth.protocol.wire import R3Proposal
 
 logger = logging.getLogger(__name__)
