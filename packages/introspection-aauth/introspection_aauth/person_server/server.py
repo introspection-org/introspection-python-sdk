@@ -754,9 +754,13 @@ class PersonServer(Server):
         if approval.kind is ApprovalKind.MISSION:
             expires_at = now + self._mission_ttl
             resources = list(approval.grant.get("resources", []))
+            # The approval and the person make the blob, and so its `s256`, the
+            # mission's own: two alike approvals in one second must not share it.
             blob = json.dumps(
                 {
                     "agent": approval.agent_id,
+                    "approval": approval.id,
+                    "person": approval.person,
                     "approved_at": datetime.fromtimestamp(
                         now, UTC
                     ).isoformat(),
@@ -778,7 +782,12 @@ class PersonServer(Server):
                 budget=budget,
                 expires_at=expires_at,
             )
-            await self.store.insert_mission(tenant, mission)
+            if not await self.store.insert_mission(tenant, mission):
+                raise AAuthError(
+                    409,
+                    "invalid_request",
+                    "a mission with this hash exists already",
+                )
             return mission.s256
         if approval.mission_s256 is None:
             return None

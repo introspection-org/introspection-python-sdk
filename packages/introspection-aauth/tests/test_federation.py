@@ -154,3 +154,31 @@ async def test_sub_agents_are_not_federated():
     )
     assert refused.status_code == 400
     assert refused.json()["error"] == "invalid_request"
+
+
+async def token_endpoint(world: World) -> str:
+    metadata = await world.http.get(f"{AS}/.well-known/aauth-access.json")
+    return metadata.json()["auth_token_endpoint"]
+
+
+async def test_an_access_server_that_cannot_be_reached_ends_as_unreachable():
+    world = World()
+    inline(world)
+    mission = await world.approved_mission(budget=100_000)
+    world.net.failures[await token_endpoint(world)] = 100
+    asked = await world.ask(mission, 60_000, aud=AS)
+    answered = await world.follow(asked)
+    assert answered.status_code == 502, answered.text
+    assert answered.json()["error"] == "as_unreachable"
+    assert await world.spent(mission["s256"]) == 0
+
+
+async def test_a_dropped_connection_is_retried():
+    world = World()
+    inline(world)
+    mission = await world.approved_mission(budget=100_000)
+    world.net.failures[await token_endpoint(world)] = 1
+    asked = await world.ask(mission, 60_000, aud=AS)
+    issued = await world.follow(asked)
+    assert issued.status_code == 200, issued.text
+    assert await world.spent(mission["s256"]) == 60_000

@@ -6,10 +6,10 @@ from urllib.parse import urlsplit
 import pytest
 
 from introspection_aauth.person_server import ApprovalStatus
-from introspection_aauth.protocol import AAuthError
-from introspection_aauth.protocol.jwt import decode
+from introspection_aauth.protocol import AAuthError, SigningKey
+from introspection_aauth.protocol.jwt import AGENT_TOKEN, decode, encode
 
-from .world import PS, RESOURCE, TENANT, World
+from .world import AP, PS, RESOURCE, T0, TENANT, World, usd
 
 
 def approval_id(response) -> str:
@@ -164,3 +164,79 @@ async def test_a_key_acts_for_one_person():
     assert same.status_code == 200
     claims = decode(same.json()["person_token"]).claims
     assert claims["sub"] == world.ps.directed_subject("sam", RESOURCE)
+
+
+async def test_identical_missions_for_two_people_in_one_second_stay_apart():
+    world = World()
+    sam = await world.approved_mission(budget=100_000)
+    # Another key of the same agent, acting for Kim, proposing the same mission
+    # in the same second: the blob must still name a mission of Kim's own.
+    world.agent_key = SigningKey.generate()
+    world.agent_token = encode(
+        {
+            "iss": AP,
+            "dwk": "aauth-agent.json",
+            "sub": "aauth:travel@agents.example",
+            "jti": "agent-2",
+            "iat": T0,
+            "exp": T0 + 3_600,
+            "cnf": {"jwk": world.agent_key.public_jwk},
+        },
+        world.ap_key,
+        AGENT_TOKEN,
+    )
+    proposed = await world.call(
+        "POST",
+        f"{PS}/aauth/mission",
+        {
+            "description": "Book Sydney",
+            "resources": [RESOURCE],
+            "login_hint": "kim",
+        },
+    )
+    await world.ps.decide(
+        TENANT,
+        approval_id(proposed),
+        ApprovalStatus.APPROVED,
+        decided_by="dana",
+        budget=usd(100_000),
+    )
+    kim = (await world.follow(proposed)).json()
+    assert kim["s256"] != sam["s256"]
+    sam_sub = decode(sam["person_tokens"][RESOURCE]).claims["sub"]
+    kim_sub = decode(kim["person_tokens"][RESOURCE]).claims["sub"]
+    assert kim_sub != sam_sub
+    stored = await world.ps_store.mission(TENANT, kim["s256"])
+    assert stored is not None and stored.person == "kim"
+
+
+async def test_a_mission_whose_hash_is_taken_is_refused_not_reused():
+    world = World()
+    await world.approved_mission(budget=100_000)
+    proposed = await world.call(
+        "POST",
+        f"{PS}/aauth/mission",
+        {
+            "description": "Book Sydney",
+            "resources": [RESOURCE],
+            "login_hint": "sam",
+        },
+    )
+    taken = world.ps_store.insert_mission
+
+    async def refuse(tenant, mission):
+        return False
+
+    world.ps_store.insert_mission = refuse
+    with pytest.raises(AAuthError) as refused:
+        await world.ps.decide(
+            TENANT,
+            approval_id(proposed),
+            ApprovalStatus.APPROVED,
+            decided_by="dana",
+            budget=usd(100_000),
+        )
+    world.ps_store.insert_mission = taken
+    assert refused.value.status == 409
+    approval = await world.ps_store.approval(TENANT, approval_id(proposed))
+    assert approval is not None and approval.status is ApprovalStatus.PENDING

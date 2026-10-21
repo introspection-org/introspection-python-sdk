@@ -14,6 +14,7 @@ import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import partial
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin, urlsplit
 
@@ -34,6 +35,8 @@ if TYPE_CHECKING:
 SERVED = frozenset({"approval", "interaction"})
 #: Requirements draft -11 defines that this Person Server does not serve.
 NOT_SERVED = frozenset({"claims", "clarification"})
+#: Seconds to wait before each retry of a request that could not connect.
+TRANSPORT_RETRY_DELAYS = (1.0, 2.0, 4.0)
 DEFAULT_DELAY, MIN_DELAY, MAX_DELAY = 5, 1, 300
 
 
@@ -484,10 +487,25 @@ async def run(
     federation, agent_jkt = found
     client = AccessServerClient(ps)
     metadata = await client.discover(federation.access_server)
+
+    async def attempt(call: Callable[[], Awaitable[Outcome]]) -> Outcome:
+        """`call`, retried while the Access Server cannot be reached, then `as_unreachable`."""
+        for delay in TRANSPORT_RETRY_DELAYS:
+            try:
+                return await call()
+            except httpx.TransportError:
+                await sleep(delay)
+        try:
+            return await call()
+        except httpx.TransportError as exc:
+            return unreachable(f"it could not be reached: {exc}")
+
     outcome = (
         metadata
         if isinstance(metadata, Outcome)
-        else await client.request(federation, agent_jkt, metadata)
+        else await attempt(
+            partial(client.request, federation, agent_jkt, metadata)
+        )
     )
     while True:
         waiting = await record(ps, tenant, approval_id, outcome)
@@ -501,6 +519,8 @@ async def run(
         federation = federation.model_copy(
             update={"requirement": outcome.requirement}
         )
-        outcome = await client.poll(
-            outcome.location, federation, agent_jkt, metadata
+        outcome = await attempt(
+            partial(
+                client.poll, outcome.location, federation, agent_jkt, metadata
+            )
         )

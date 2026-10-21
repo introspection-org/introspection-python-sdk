@@ -49,12 +49,17 @@ class Net(httpx.AsyncBaseTransport):
         self.apps: dict[str, httpx.ASGITransport] = {}
         self.documents: dict[str, Any] = {}
         self.calls: list[str] = []
+        #: How many more times a request to each URL fails to connect.
+        self.failures: dict[str, int] = {}
 
     async def handle_async_request(
         self, request: httpx.Request
     ) -> httpx.Response:
         url = str(request.url)
         self.calls.append(f"{request.method} {url}")
+        if self.failures.get(url, 0) > 0:
+            self.failures[url] -= 1
+            raise httpx.ConnectError("connection refused", request=request)
         if url in self.documents:
             document = self.documents[url]
             if isinstance(document, bytes):

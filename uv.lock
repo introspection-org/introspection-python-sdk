@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -12,16 +12,6 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform == 'win32'",
     "(python_full_version < '3.12' and sys_platform == 'emscripten') or (python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32')",
 ]
-
-[options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
-exclude-newer-span = "P3D"
-
-[options.exclude-newer-package]
-introspection-harbor = false
-introspection-recipe-check = false
-introspection-remote-proto = false
-introspection-sdk = false
 
 [[package]]
 name = "ag-ui-protocol"
@@ -826,7 +816,7 @@ black = [
 
 [[package]]
 name = "introspection-sdk"
-version = "0.29.0"
+version = "0.29.1"
 source = { editable = "." }
 dependencies = [
     { name = "ag-ui-protocol" },
