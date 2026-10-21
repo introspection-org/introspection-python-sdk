@@ -145,35 +145,16 @@ jobs:
   # Examples live in their own workflow (./examples.yml) so they don't burn
   # LLM tokens on every push. They run on `workflow_dispatch` + tag pushes.
 
-  complexity-ratchet:
-    # Complexity ratchet (see AGENTS.md). C901 and PLR0911/0912/0915 also run
-    # in `ruff check .` above; PLR0917 is a preview rule, so all five run here
-    # with `--preview` scoped to this selection only.
-    name: Complexity Ratchet
+  duplication:
+    # Duplicate-code ratchet: fails when the duplicated-lines share of
+    # introspection_sdk/ exceeds `threshold` in .jscpd.json. Lower the
+    # threshold when a refactor removes duplication; never raise it.
+    name: Duplicate Code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v7
         with:
-          version: "latest"
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Check complexity thresholds
-        run: uv run ruff check --preview --select C901,PLR0911,PLR0912,PLR0915,PLR0917 .
+          node-version: "24"
+      - name: Duplicate code stays under the threshold
+        run: npx --yes jscpd@5.4.1
