@@ -80,11 +80,69 @@ async def test_a_mission_approval_polled_after_the_mission_ended_is_refused():
         decided_by="dana",
         budget=usd(1_000),
     )
-    assert (await world.follow(proposed)).status_code == 200
     world.now += 120
     ended = await world.follow(proposed)
     assert ended.status_code == 403
     assert problem(ended).error == "mission_terminated"
+
+
+@pytest.mark.parametrize("decision", ["mission", "completion", "denied"])
+async def test_a_pending_url_answers_once_then_is_gone(decision: str):
+    world = World()
+    mission = await world.approved_mission(budget=1_000)
+    if decision == "mission":
+        proposed = await world.call(
+            "POST",
+            f"{PS}/aauth/mission",
+            MissionProposal(
+                description="Again", resources=[RESOURCE], login_hint="sam"
+            ),
+        )
+    else:
+        proposed = await world.call(
+            "POST",
+            f"{PS}/aauth/mission/{mission.s256}",
+            MissionAction(action="completion", summary="Done"),
+        )
+    await world.ps.decide(
+        TENANT,
+        approval_id(proposed),
+        ApprovalStatus.DENIED
+        if decision == "denied"
+        else ApprovalStatus.APPROVED,
+        decided_by="sam",
+        budget=usd(1_000) if decision == "mission" else None,
+    )
+    first = await world.follow(proposed)
+    assert first.status_code == (403 if decision == "denied" else 200)
+    again = await world.follow(proposed)
+    assert again.status_code == 410
+    assert problem(again).error == "invalid_code"
+
+
+async def test_an_access_servers_refusal_is_answered_once():
+    world = World(policy=lambda request: Verdict.approval())
+    kicked: list[str] = []
+
+    async def kick(tenant: str, approval: Approval) -> None:
+        kicked.append(approval.id)
+
+    world.ps._on_federate = kick
+    mission = await world.approved_mission(budget=100_000)
+    await world.ask(mission, 10, aud=AS)
+    due = await federation.due(world.ps, TENANT, kicked[0])
+    assert due is not None
+    client = federation.AccessServerClient(world.ps)
+    metadata = await client.discover(due[0].access_server)
+    assert isinstance(metadata, federation.Metadata)
+    first = await client.request(due[0], due[1], metadata)
+    [pending] = list(world.access_store.requests.values())
+    await world.access.decide(pending.id, False)
+    assert first.location is not None
+    denied = await client.poll(first.location, due[0], due[1], metadata)
+    assert denied.refusal is not None and denied.refusal.status == 403
+    gone = await client.poll(first.location, due[0], due[1], metadata)
+    assert gone.refusal is not None and gone.refusal.status == 410
 
 
 async def test_spends_against_one_mission_at_once_never_exceed_its_budget():
@@ -315,7 +373,9 @@ async def test_a_token_request_body_is_its_model():
 
 
 @pytest.mark.parametrize("tenant", ["org:proj", "a b%c", "a%41"])
-async def test_a_tenant_that_needs_escaping_polls_through_the_router(tenant: str):
+async def test_a_tenant_that_needs_escaping_polls_through_the_router(
+    tenant: str,
+):
     world = World()
     world.ps._default_tenant = tenant
     proposed = await world.call(

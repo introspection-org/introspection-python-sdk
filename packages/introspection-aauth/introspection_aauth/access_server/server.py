@@ -346,28 +346,30 @@ class AccessServer(Server):
         record = await self.store.select_pending(pending_id)
         if record is None or record.request.ps != ps:
             raise AAuthError(404, "not_found", "no such pending request")
-        if record.status is PendingStatus.DENIED:
-            raise AAuthError(
-                403, "denied", "this resource's policy refuses it"
-            )
         if record.status is PendingStatus.COLLECTED:
             raise AAuthError(
-                410, "invalid_code", "its auth token was issued already"
+                410, "invalid_code", "this request was already answered"
             )
-        if self.clock() >= record.expires_at:
-            raise AAuthError(408, "expired", "nobody decided in time")
-        if record.status is PendingStatus.PENDING:
+        expired = self.clock() >= record.expires_at
+        if record.status is PendingStatus.PENDING and not expired:
             return self._waiting(record)
-        collected = record.model_copy(
+        # A terminal answer is given once; the pending URL then answers 410.
+        answered = record.model_copy(
             update={
                 "status": PendingStatus.COLLECTED,
                 "version": record.version + 1,
             }
         )
-        if not await self.store.transition_pending(record, collected):
+        if not await self.store.transition_pending(record, answered):
             raise AAuthError(
-                410, "invalid_code", "its auth token was issued already"
+                410, "invalid_code", "this request was already answered"
             )
+        if record.status is PendingStatus.DENIED:
+            raise AAuthError(
+                403, "denied", "this resource's policy refuses it"
+            )
+        if expired:
+            raise AAuthError(408, "expired", "nobody decided in time")
         return self._issue(record, record.scope, record.budget)
 
     async def decide(

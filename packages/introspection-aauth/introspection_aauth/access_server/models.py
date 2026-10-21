@@ -86,7 +86,8 @@ class PendingStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     DENIED = "denied"
-    #: Approved, and its auth token handed out: an auth token is collected once.
+    #: Its terminal answer given, which is given once: an auth token, a
+    #: refusal or an expiry.
     COLLECTED = "collected"
 
 

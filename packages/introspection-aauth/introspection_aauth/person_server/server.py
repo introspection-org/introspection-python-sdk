@@ -582,14 +582,20 @@ class PersonServer(Server):
             if approval.mission_s256
             else None
         )
+        if approval.collected:
+            raise AAuthError(
+                410, "invalid_code", "this request was already answered"
+            )
         federation = approval.federation
         if approval.status is ApprovalStatus.DENIED:
+            await self._answered(tenant, approval)
             refusal = federation.refusal if federation else None
             if refusal is not None:
                 raise AAuthError(refusal.status, refusal.error, refusal.detail)
             raise AAuthError(403, "denied", "the approver declined")
         if approval.status is ApprovalStatus.PENDING:
             if approval.expires_at <= self.clock():
+                await self._answered(tenant, approval)
                 raise AAuthError(408, "expired", "nobody answered in time")
             return pending(
                 self.pending_url(tenant, approval.id), self.retry_after
@@ -598,10 +604,15 @@ class PersonServer(Server):
             return await self._collect(
                 tenant, agent, approval, federation, mission
             )
+        if approval.expires_at <= self.clock():
+            await self._answered(tenant, approval)
+            raise AAuthError(408, "expired", "it was not collected in time")
         if approval.kind is ApprovalKind.COMPLETION:
+            await self._answered(tenant, approval)
             return Answer(200, Empty())
         mission = self._live(mission, agent.id)
         if approval.kind is ApprovalKind.MISSION:
+            await self._answered(tenant, approval)
             person_tokens = {
                 r: self._person_token(
                     tenant, agent, mission.person, r, mission
@@ -620,27 +631,22 @@ class PersonServer(Server):
             raise AAuthError(
                 500, "server_error", "the approval grants nothing"
             )
-        await self._collect_once(tenant, approval)
+        await self._answered(tenant, approval)
         return Answer(
             200, self._auth_token(tenant, agent, approval.grant, mission)
         )
 
-    async def _collect_once(self, tenant: str, approval: Approval) -> None:
-        """Mark an approved auth token collected, or refuse a second collect."""
-        if approval.expires_at <= self.clock():
-            raise AAuthError(
-                408, "expired", "the auth token was not collected in time"
-            )
-        collected = approval.model_copy(
+    async def _answered(self, tenant: str, approval: Approval) -> None:
+        """Record that a pending request got its terminal answer, once: its
+        pending URL then answers `410` (`#pending-url-security`)."""
+        answered = approval.model_copy(
             update={"collected": True, "version": approval.version + 1}
         )
-        if approval.collected or not await self.store.transition_approval(
-            tenant, approval, collected
+        if not await self.store.transition_approval(
+            tenant, approval, answered
         ):
             raise AAuthError(
-                410,
-                "invalid_code",
-                "this request's auth token was already collected",
+                410, "invalid_code", "this request was already answered"
             )
 
     async def _collect(
@@ -661,6 +667,7 @@ class PersonServer(Server):
             )
         if federation.auth_token is None:
             if approval.expires_at <= now:
+                await self._answered(tenant, approval)
                 raise AAuthError(
                     408, "expired", "the Access Server did not answer in time"
                 )
@@ -672,6 +679,7 @@ class PersonServer(Server):
         self._live(mission, agent.id)
         expires_in = (federation.auth_token_expires_at or 0) - now
         if expires_in <= 0:
+            await self._answered(tenant, approval)
             raise AAuthError(
                 408,
                 "expired",
