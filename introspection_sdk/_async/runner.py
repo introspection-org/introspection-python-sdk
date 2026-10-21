@@ -1,0 +1,218 @@
+"""Re-exported by :mod:`introspection_sdk.runner`."""
+
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable, Mapping
+from datetime import datetime
+
+from introspection_sdk._errors import RunnerExpiredError
+from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk.runner_resources import (
+    AsyncAutomations,
+    AsyncConversations,
+    AsyncEvents,
+    AsyncFiles,
+    AsyncMetrics,
+    AsyncRunnerAppConnections,
+    AsyncShares,
+    AsyncTasks,
+)
+from introspection_sdk.schemas.runner import (
+    RunnerContext,
+    RunnerDeployment,
+    RunnerSpec,
+)
+
+
+class AsyncRunner:
+    # unasync: async-only (the sync twin's docstring follows)
+    """Async twin of :class:`Runner`.
+
+    Constructed indirectly by ``client.runtimes(...).run()`` /
+    ``client.experiments(...).run()`` on an ``AsyncIntrospectionClient``.
+    Holds a private ``httpx.AsyncClient``-backed HTTP client pointed at
+    ``spec.deployment.endpoint`` with the bearer JWT picked from
+    ``spec.session_token``. Awaitable lifecycle: ``await runner.close()``,
+    ``await runner.refresh()``, and ``async with`` support.
+    """
+
+    # unasync: end
+    """Handle for talking to a running runtime/experiment on the DP.
+
+    Constructed indirectly by ``client.runtimes(...).run()`` /
+    ``client.experiments(...).run()``. Holds a private HTTP client
+    pointed at ``spec.deployment.endpoint`` with the bearer JWT
+    picked from ``spec.session_token``.
+    """
+
+    def __init__(
+        self,
+        spec: RunnerSpec,
+        *,
+        refresher: Callable[[], Awaitable[RunnerSpec]],
+        additional_headers: Mapping[str, str] | None = None,
+        timeout: float = 30.0,
+    ) -> None:
+        self._spec = spec
+        self._refresher = refresher
+        self._additional_headers = (
+            dict(additional_headers) if additional_headers else None
+        )
+        self._timeout = timeout
+        self._closed = False
+        self._http = self._build_http(spec)
+        self._tasks = AsyncTasks(self._http)
+        self._files = AsyncFiles(self._http)
+        self._conversations = AsyncConversations(self._http)
+        self._events = AsyncEvents(self._http)
+        self._metrics = AsyncMetrics(self._http)
+        self._shares = AsyncShares(self._http)
+        self._automations = AsyncAutomations(self._http)
+        self._connections = AsyncRunnerAppConnections(
+            self._http, spec.runtime_context.runtime_group_id
+        )
+
+    def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
+        return _AsyncHttpClient(
+            api_url=spec.deployment.endpoint,
+            token=spec.session_token,
+            additional_headers=self._additional_headers,
+            timeout=self._timeout,
+        )
+
+    def _check_open(self) -> None:
+        if self._closed:
+            raise RunnerExpiredError(
+                "Runner has been closed; create a new one via "
+                "client.runtimes(...).run() or client.experiments(...).run().",
+                status_code=0,
+            )
+
+    @property
+    def tasks(self) -> AsyncTasks:
+        """DP ``/v1/tasks`` namespace bound to this Runner."""
+        self._check_open()
+        return self._tasks
+
+    @property
+    def files(self) -> AsyncFiles:
+        """DP ``/v1/files`` namespace bound to this Runner."""
+        self._check_open()
+        return self._files
+
+    @property
+    def conversations(self) -> AsyncConversations:
+        # unasync: async-only (the sync twin's docstring follows)
+        """Read-only DP ``/v1/conversations`` namespace bound to this
+        Runner."""
+        # unasync: end
+        """Read-only DP ``/v1/conversations`` namespace bound to this Runner."""
+        self._check_open()
+        return self._conversations
+
+    @property
+    def events(self) -> AsyncEvents:
+        """Read-only DP ``/v1/events`` namespace bound to this Runner."""
+        self._check_open()
+        return self._events
+
+    @property
+    def metrics(self) -> AsyncMetrics:
+        """Read-only DP ``/v1/metrics`` namespace bound to this Runner."""
+        self._check_open()
+        return self._metrics
+
+    @property
+    def shares(self) -> AsyncShares:
+        """DP ``/v1/shares`` read-sharing namespace bound to this Runner."""
+        self._check_open()
+        return self._shares
+
+    @property
+    def automations(self) -> AsyncAutomations:
+        """DP ``/v1/automations`` namespace bound to this Runner."""
+        self._check_open()
+        return self._automations
+
+    @property
+    def connections(self) -> AsyncRunnerAppConnections:
+        """DP ``/v1/connections`` namespace bound to this Runner. ``create``
+        defaults ``runtime`` to the runner's runtime group."""
+        self._check_open()
+        return self._connections
+
+    @property
+    def context(self) -> RunnerContext:
+        """Resolved runtime/arm/recipe/identity/caller context."""
+        return self._spec.runtime_context
+
+    @property
+    def deployment(self) -> RunnerDeployment:
+        """DP deployment descriptor (endpoint, slug, region)."""
+        return self._spec.deployment
+
+    @property
+    def dp_endpoint(self) -> str:
+        """Convenience accessor for ``spec.deployment.endpoint``."""
+        return self._spec.deployment.endpoint
+
+    @property
+    def expires_at(self) -> datetime:
+        return self._spec.expires_at
+
+    @property
+    def session_id(self) -> str:
+        return self._spec.session_id
+
+    @property
+    def spec(self) -> RunnerSpec:
+        return self._spec
+
+    async def refresh(self) -> None:
+        """Manually re-mint the RunnerSpec via CP ``/run``.
+
+        The DP-side agent-session materializer rotates the access
+        token transparently, so callers typically don't need this.
+        It stays as an escape hatch when the caller wants to force
+        a fresh spec (new identity, new TTL, etc.). Swaps in the
+        new spec and rebuilds the underlying HTTP client; the
+        previously rented client is closed best-effort.
+        """
+        self._check_open()
+        new_spec = await self._refresher()
+        old_http = self._http
+        self._spec = new_spec
+        self._http = self._build_http(new_spec)
+        self._tasks = AsyncTasks(self._http)
+        self._files = AsyncFiles(self._http)
+        self._conversations = AsyncConversations(self._http)
+        self._events = AsyncEvents(self._http)
+        self._metrics = AsyncMetrics(self._http)
+        self._shares = AsyncShares(self._http)
+        self._automations = AsyncAutomations(self._http)
+        self._connections = AsyncRunnerAppConnections(
+            self._http, new_spec.runtime_context.runtime_group_id
+        )
+        try:
+            await old_http.aclose()
+        except Exception:  # noqa: BLE001 — best-effort cleanup
+            pass
+
+    async def close(self) -> None:
+        """Mark the Runner closed and tear down its HTTP client.
+
+        Server-side revoke is a follow-up; for now ``close()`` just
+        flips a local flag so further ``runner.tasks`` /
+        ``runner.files`` calls fail loudly.
+        """
+        self._closed = True
+        try:
+            await self._http.aclose()
+        except Exception:  # noqa: BLE001 — best-effort cleanup
+            pass
+
+    async def __aenter__(self) -> AsyncRunner:
+        return self
+
+    async def __aexit__(self, *_exc_info: object) -> None:
+        await self.close()

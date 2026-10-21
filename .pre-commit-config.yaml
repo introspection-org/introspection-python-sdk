@@ -40,6 +40,16 @@ repos:
         pass_filenames: false
         require_serial: true
 
+      - id: gen-sync
+        name: generated sync code is up to date
+        entry: >-
+          sh -c 'uv run python scripts/gen_sync.py &&
+          git diff --exit-code -- introspection_sdk/_sync &&
+          test -z "$(git ls-files --others --exclude-standard introspection_sdk/_sync)"'
+        language: system
+        files: ^(introspection_sdk/_(a)?sync/|scripts/gen_sync\.py$)
+        pass_filenames: false
+
       # Enforces the coverage ratchet defined in [tool.coverage.report].
       # Runs on the manual stage by default (`prek run --hook-stage manual coverage`)
       # so it doesn't block fast iteration; CI runs the same check on every PR.
