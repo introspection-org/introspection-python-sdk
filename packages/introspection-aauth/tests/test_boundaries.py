@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 import httpx2 as httpx
 import pytest
 
-from introspection_aauth.access_server import Verdict
+from introspection_aauth.access_server import PendingStatus, Verdict
 from introspection_aauth.person_server import (
     Approval,
     ApprovalStatus,
@@ -122,6 +122,15 @@ async def test_a_pending_url_answers_once_then_is_gone(decision: str):
     again = await world.follow(proposed)
     assert again.status_code == 410
     assert problem(again).error == "invalid_code"
+    stored = await world.ps_store.select_approval(
+        TENANT, approval_id(proposed)
+    )
+    assert stored is not None and stored.collected
+    assert stored.status is (
+        ApprovalStatus.DENIED
+        if decision == "denied"
+        else ApprovalStatus.APPROVED
+    )
 
 
 async def test_an_access_servers_refusal_is_answered_once():
@@ -147,6 +156,8 @@ async def test_an_access_servers_refusal_is_answered_once():
     assert denied.refusal is not None and denied.refusal.status == 403
     gone = await client.poll(first.location, due[0], due[1], metadata)
     assert gone.refusal is not None and gone.refusal.status == 410
+    [answered] = list(world.access_store.requests.values())
+    assert answered.collected and answered.status is PendingStatus.DENIED
 
 
 async def test_spends_against_one_mission_at_once_never_exceed_its_budget():

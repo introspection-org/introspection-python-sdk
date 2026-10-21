@@ -342,7 +342,7 @@ class AccessServer(Server):
         record = await self.store.select_pending(pending_id)
         if record is None or record.request.ps != ps:
             raise AAuthError(404, "not_found", "no such pending request")
-        if record.status is PendingStatus.COLLECTED:
+        if record.collected:
             raise AAuthError(
                 410, "invalid_code", "this request was already answered"
             )
@@ -352,7 +352,7 @@ class AccessServer(Server):
         # A terminal answer is given once; the pending URL then answers 410.
         answered = record.model_copy(
             update={
-                "status": PendingStatus.COLLECTED,
+                "collected": True,
                 "version": record.version + 1,
             }
         )

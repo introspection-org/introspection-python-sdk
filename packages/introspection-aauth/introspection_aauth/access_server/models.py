@@ -86,9 +86,6 @@ class PendingStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     DENIED = "denied"
-    #: Its terminal answer given, which is given once: an auth token, a
-    #: refusal or an expiry.
-    COLLECTED = "collected"
 
 
 class PendingAccess(BaseModel):
@@ -108,5 +105,8 @@ class PendingAccess(BaseModel):
     scope: str | None = None
     budget: Budget | None = None
     decided_by: str | None = None
+    #: Set once its terminal answer is given (an auth token, a refusal or an
+    #: expiry); its status stays the decision.
+    collected: bool = False
     created_at: int
     expires_at: int
