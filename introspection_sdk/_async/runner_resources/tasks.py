@@ -1,25 +1,18 @@
-"""`runner.tasks.*` namespace: tasks + runs + cursor-style sugar.
-
-Bound to a :class:`~introspection_sdk.runner.Runner` — every call
-targets the runner's DP endpoint with its short-lived JWT.
-"""
+"""Re-exported by :mod:`introspection_sdk.runner_resources.tasks`."""
 
 from __future__ import annotations
 
 import builtins
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from typing import Any
 
 from introspection_sdk._errors import RunFailedError, StreamIncompleteError
-from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
-    Pager,
     async_cursor_paginate,
-    cursor_paginate,
 )
 from introspection_sdk.resumable import (
-    stream_resumable,
     stream_resumable_async,
 )
 from introspection_sdk.schemas.agui import (
@@ -94,315 +87,8 @@ def _snapshot_text(event: MessagesSnapshotEvent) -> list[str]:
     ]
 
 
-class RunHandle:
-    """Returned by ``Tasks.start(...)`` and ``TaskRuns.create(...)``.
-
-    Mirrors the Cursor SDK shape: ``handle.stream()`` to iterate validated
-    AG-UI events, ``handle.text()`` to collect text deltas into a string,
-    ``handle.cancel()`` for the default abort behavior, with typed options for
-    explicit abort or drain cancellation.
-    """
-
-    def __init__(
-        self,
-        task: Task | None,
-        run: TaskRun,
-        runs: TaskRuns,
-    ) -> None:
-        self.task = task
-        self.run = run
-        self._runs = runs
-
-    def stream(
-        self,
-        *,
-        max_reconnects: int = 5,
-        backoff: float = 0.5,
-        timeout: float = 300.0,
-    ) -> Iterator[AGUIEvent]:
-        """Stream this run's AG-UI events, reconnecting on a dropped
-        connection under the recovery contract in
-        :mod:`introspection_sdk.resumable`."""
-        return self._runs.stream(
-            str(self.run.task_id),
-            self.run.id,
-            max_reconnects=max_reconnects,
-            backoff=backoff,
-            timeout=timeout,
-        )
-
-    def cancel(
-        self,
-        options: TaskCancelRequest | dict[str, Any] | None = None,
-    ) -> TaskCancelResponse:
-        return self._runs.cancel(
-            str(self.run.task_id), self.run.id, options=options
-        )
-
-    def text(self) -> str:
-        """Collect this run's assistant text from :meth:`stream`.
-
-        Never returns partial output: raises ``RunFailedError`` on
-        ``RUN_ERROR`` and ``StreamIncompleteError`` wherever output may be
-        missing (a ``410``, a ``resume_gap``, or a run that settled without
-        the stream confirming it). A ``MESSAGES_SNAPSHOT`` replaces the text
-        collected so far with the snapshot's. The transcript is not read to
-        fill a gap, so streaming needs no ``conversations:read`` scope; read
-        ``runner.conversations`` yourself when you need the output after
-        such an error.
-        """
-        out: list[str] = []
-        for ev in self.stream():
-            if isinstance(ev, RunErrorEvent):
-                raise RunFailedError(ev.message, code=ev.code)
-            if isinstance(ev, CustomEvent) and ev.name == "resume_gap":
-                raise StreamIncompleteError(
-                    "The replay buffer lost output; read the conversation transcript"
-                )
-            if isinstance(ev, MessagesSnapshotEvent):
-                out = _snapshot_text(ev)
-            elif isinstance(
-                ev, TextMessageContentEvent | TextMessageChunkEvent
-            ):
-                out.append(str(ev.delta or ""))
-        return "".join(out)
-
-
-class TaskRuns:
-    def __init__(self, http: _HttpClient) -> None:
-        self._http = http
-
-    def create(
-        self,
-        task_id: str,
-        *,
-        prompt: TaskPrompt | dict[str, Any] | None = None,
-        kind: TaskRunKind | str | None = None,
-        metadata: dict[str, Any] | None = None,
-        files: list[TaskFileRef | dict[str, Any]] | None = None,
-    ) -> RunHandle:
-        body: dict[str, Any] = {}
-        if prompt is not None:
-            body["prompt"] = (
-                prompt.model_dump(exclude_none=True)
-                if isinstance(prompt, TaskPrompt)
-                else prompt
-            )
-        if kind is not None:
-            body["kind"] = (
-                kind.value if isinstance(kind, TaskRunKind) else kind
-            )
-        if metadata is not None:
-            body["metadata"] = metadata
-        if files:
-            body["files"] = _file_refs(files)
-        payload = self._http.request(
-            "POST", f"/v1/tasks/{task_id}/runs", json=body
-        )
-        res = TaskRunResponse.model_validate(payload)
-        return RunHandle(None, res.run, self)
-
-    def resume(
-        self,
-        task_id: str,
-        *,
-        resume: list[ResumeEntry | dict[str, Any]],
-    ) -> RunHandle:
-        payload = self._http.request(
-            "POST", f"/v1/tasks/{task_id}/runs", json=_resume_body(resume)
-        )
-        res = TaskRunResponse.model_validate(payload)
-        return RunHandle(None, res.run, self)
-
-    def get(self, task_id: str, run_id: str) -> TaskRun:
-        payload = self._http.request(
-            "GET", f"/v1/tasks/{task_id}/runs/{run_id}"
-        )
-        return TaskRun.model_validate(payload)
-
-    def cancel(
-        self,
-        task_id: str,
-        run_id: str,
-        options: TaskCancelRequest | dict[str, Any] | None = None,
-    ) -> TaskCancelResponse:
-        if options is not None:
-            request = (
-                options
-                if isinstance(options, TaskCancelRequest)
-                else TaskCancelRequest.model_validate(options)
-            )
-            return self._cancel_with(task_id, run_id, request)
-        payload = self._http.request(
-            "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
-        )
-        return TaskCancelResponse.model_validate(payload)
-
-    def _cancel_with(
-        self, task_id: str, run_id: str, request: TaskCancelRequest
-    ) -> TaskCancelResponse:
-        payload = self._http.request(
-            "POST",
-            f"/v1/tasks/{task_id}/runs/{run_id}/cancel",
-            json=request.model_dump(exclude_none=True, mode="json"),
-        )
-        return TaskCancelResponse.model_validate(payload)
-
-    def stream(
-        self,
-        task_id: str,
-        run_id: str,
-        *,
-        max_reconnects: int = 5,
-        backoff: float = 0.5,
-        timeout: float = 300.0,
-    ) -> Iterator[AGUIEvent]:
-        """Stream a run's AG-UI events, reconnecting on a dropped connection
-        under the recovery contract in :mod:`introspection_sdk.resumable`.
-        The keyword args bound recovery attempts."""
-        return stream_resumable(
-            self._http,
-            task_id,
-            run_id,
-            max_reconnects=max_reconnects,
-            backoff=backoff,
-            timeout=timeout,
-        )
-
-
-class Tasks:
-    def __init__(self, http: _HttpClient) -> None:
-        self._http = http
-        self.runs = TaskRuns(http)
-
-    def list(
-        self,
-        *,
-        limit: int = 100,
-        next: str | None = None,
-        include_total: bool = False,
-        statuses: builtins.list[str] | None = None,
-        require_automation_id: bool | None = None,
-        tag: str | None = None,
-    ) -> Pager[Task, Paginated[Task]]:
-        """List tasks. Iterate the returned :class:`Pager` to stream every
-        task across pages, or call ``.page()`` for the first page only."""
-
-        def fetch(cursor: str | None) -> Paginated[Task]:
-            params: dict[str, Any] = {
-                "limit": limit,
-                "next": cursor,
-                "include_total": include_total,
-                "tag": tag,
-            }
-            if statuses:
-                params["statuses"] = statuses
-            if require_automation_id is not None:
-                params["require_automation_id"] = require_automation_id
-            payload = self._http.request("GET", "/v1/tasks", params=params)
-            return Paginated[Task].model_validate(payload)
-
-        return cursor_paginate(fetch, start=next)
-
-    def create(
-        self,
-        *,
-        title: str | None = None,
-        prompt: str | None = None,
-        agent_name: str | None = None,
-        repositories: builtins.list[TaskRepoRequest | dict[str, Any]]
-        | None = None,
-        metadata: dict[str, Any] | None = None,
-        conversation_metadata: dict[str, str] | None = None,
-        idle_timeout_seconds: int | None = None,
-        fork_share_id: str | None = None,
-        files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> TaskCreateResponse:
-        body: dict[str, Any] = {
-            "title": title,
-            "prompt": prompt,
-            "agent_name": agent_name,
-            "metadata": metadata,
-            "conversation_metadata": conversation_metadata,
-            "idle_timeout_seconds": idle_timeout_seconds,
-            "fork_share_id": fork_share_id,
-            "files": _file_refs(files) if files else None,
-            "repositories": _repo_refs(repositories) if repositories else None,
-            "tags": tags,
-        }
-        body = {k: v for k, v in body.items() if v is not None}
-        payload = self._http.request("POST", "/v1/tasks", json=body)
-        return TaskCreateResponse.model_validate(payload)
-
-    def get(self, task_id: str) -> Task:
-        payload = self._http.request("GET", f"/v1/tasks/{task_id}")
-        return Task.model_validate(payload)
-
-    def update(
-        self,
-        task_id: str,
-        *,
-        title: str | None = None,
-        is_archived: bool | None = None,
-        metadata: dict[str, Any] | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> Task:
-        body: dict[str, Any] = {}
-        if title is not None:
-            body["title"] = title
-        if is_archived is not None:
-            body["is_archived"] = is_archived
-        if metadata is not None:
-            body["metadata"] = metadata
-        if tags is not None:
-            # Replaces wholesale, so an explicit [] must reach the wire to
-            # clear — `if tags:` would silently drop it.
-            body["tags"] = tags
-        payload = self._http.request(
-            "PATCH", f"/v1/tasks/{task_id}", json=body
-        )
-        return Task.model_validate(payload)
-
-    def delete(self, task_id: str) -> None:
-        """Soft-delete a task. Requires ``tasks:delete`` scope.
-
-        Note: dashboard-minted API keys (Tasks switch) do NOT grant
-        ``tasks:delete`` per the PR #678 scope model. Calls will return
-        ``IntrospectionAPIError(status_code=403)`` unless the caller
-        holds a wildcard or explicitly-elevated key.
-        """
-        self._http.request("DELETE", f"/v1/tasks/{task_id}", expect="empty")
-
-    def archive(self, task_id: str) -> None:
-        self._http.request(
-            "POST", f"/v1/tasks/{task_id}/archive", expect="empty"
-        )
-
-    def unarchive(self, task_id: str) -> None:
-        self._http.request(
-            "POST", f"/v1/tasks/{task_id}/unarchive", expect="empty"
-        )
-
-    def start(self, *, prompt: str, **kwargs: Any) -> RunHandle:
-        """Cursor-style sugar: create a task + return a handle on its initial run.
-
-        Takes everything :meth:`create` takes, with ``prompt`` required —
-        ``start`` exists to stream a turn, and a task with no prompt has no
-        turn to stream. Forwarding ``**kwargs`` rather than restating the
-        parameters is deliberate: a hand-copied subset silently drops every
-        field added to ``create`` afterwards, which is how ``fork_share_id``
-        and ``tags`` became unreachable from here.
-
-        Example:
-            >>> run = runner.tasks.start(prompt="Summarize this repo")
-            >>> print(run.text())
-        """
-        res = self.create(prompt=prompt, **kwargs)
-        return RunHandle(res.task, res.run, self.runs)
-
-
 class AsyncRunHandle:
+    # unasync: async-only (the sync twin's docstring follows)
     """Async twin of :class:`RunHandle`.
 
     Returned by ``AsyncTasks.start(...)`` and ``AsyncTaskRuns.create(...)``.
@@ -410,6 +96,15 @@ class AsyncRunHandle:
     handle.stream()`` to iterate AG-UI events; ``await handle.text()``
     collects text frames; ``await handle.cancel()`` uses the default abort
     behavior and accepts typed options for explicit abort or drain cancellation.
+    """
+
+    # unasync: end
+    """Returned by ``Tasks.start(...)`` and ``TaskRuns.create(...)``.
+
+    Mirrors the Cursor SDK shape: ``handle.stream()`` to iterate validated
+    AG-UI events, ``handle.text()`` to collect text deltas into a string,
+    ``handle.cancel()`` for the default abort behavior, with typed options for
+    explicit abort or drain cancellation.
     """
 
     def __init__(
@@ -566,8 +261,13 @@ class AsyncTaskRuns:
         backoff: float = 0.5,
         timeout: float = 300.0,
     ) -> AsyncIterator[AGUIEvent]:
+        # unasync: async-only (the sync twin's docstring follows)
         """Stream a run's AG-UI events with transparent resume — async twin of
         :meth:`TaskRuns.stream`."""
+        # unasync: end
+        """Stream a run's AG-UI events, reconnecting on a dropped connection
+        under the recovery contract in :mod:`introspection_sdk.resumable`.
+        The keyword args bound recovery attempts."""
         return stream_resumable_async(
             self._http,
             task_id,
@@ -593,8 +293,12 @@ class AsyncTasks:
         require_automation_id: bool | None = None,
         tag: str | None = None,
     ) -> AsyncPager[Task, Paginated[Task]]:
+        # unasync: async-only (the sync twin's docstring follows)
         """List tasks. ``await`` the returned :class:`AsyncPager` for the
         first page, or ``async for`` it to stream every task across pages."""
+        # unasync: end
+        """List tasks. Iterate the returned :class:`Pager` to stream every
+        task across pages, or call ``.page()`` for the first page only."""
 
         async def fetch(cursor: str | None) -> Paginated[Task]:
             params: dict[str, Any] = {
@@ -697,6 +401,7 @@ class AsyncTasks:
         )
 
     async def start(self, *, prompt: str, **kwargs: Any) -> AsyncRunHandle:
+        # unasync: async-only (the sync twin's docstring follows)
         """Cursor-style sugar: create a task + return a handle on its initial
         run.
 
@@ -710,6 +415,20 @@ class AsyncTasks:
         Example:
             >>> run = await runner.tasks.start(prompt="Summarize this repo")
             >>> print(await run.text())
+        """
+        # unasync: end
+        """Cursor-style sugar: create a task + return a handle on its initial run.
+
+        Takes everything :meth:`create` takes, with ``prompt`` required —
+        ``start`` exists to stream a turn, and a task with no prompt has no
+        turn to stream. Forwarding ``**kwargs`` rather than restating the
+        parameters is deliberate: a hand-copied subset silently drops every
+        field added to ``create`` afterwards, which is how ``fork_share_id``
+        and ``tags`` became unreachable from here.
+
+        Example:
+            >>> run = runner.tasks.start(prompt="Summarize this repo")
+            >>> print(run.text())
         """
         res = await self.create(prompt=prompt, **kwargs)
         return AsyncRunHandle(res.task, res.run, self.runs)

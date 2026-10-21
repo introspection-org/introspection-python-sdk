@@ -1,37 +1,18 @@
-"""REST-only Introspection client.
-
-This module exposes the CP REST surface
-(:class:`~introspection_sdk.resources.Runtimes`,
-:class:`~introspection_sdk.resources.Experiments`) plus the DP
-:class:`~introspection_sdk.runner.Runner` flow, **without** importing
-OpenTelemetry.
-
-For OpenTelemetry-based emission of ``track`` / ``feedback`` /
-``identify`` events, install the ``[otel]`` extra and use
-:class:`introspection_sdk.IntrospectionLogs`. For trace export, attach
-:class:`introspection_sdk.IntrospectionSpanProcessor` to your
-``TracerProvider`` — or call :func:`introspection_sdk.otel.init` to get
-both surfaces at once.
-"""
+"""Re-exported by :mod:`introspection_sdk.client`."""
 
 from __future__ import annotations
-
-__all__ = ["AsyncIntrospectionClient", "IntrospectionClient"]
 
 import os
 
 import httpx2 as httpx
 
-from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.auth import (
     AsyncCredentialProvider,
-    CredentialProvider,
     async_service_account_token,
-    service_account_token,
 )
 from introspection_sdk.dev_target import client_headers
 from introspection_sdk.resources import (
-    Annotations,
     AsyncAnnotations,
     AsyncAutomations,
     AsyncConnectors,
@@ -41,17 +22,8 @@ from introspection_sdk.resources import (
     AsyncRepositories,
     AsyncRuntimes,
     AsyncTags,
-    Automations,
-    Connectors,
-    Experiments,
-    Members,
-    Recipes,
-    Repositories,
-    Runtimes,
-    Tags,
 )
 from introspection_sdk.runner_resources import (
-    AppConnections,
     AsyncAppConnections,
     AsyncConversations,
     AsyncEvents,
@@ -59,16 +31,28 @@ from introspection_sdk.runner_resources import (
     AsyncMetrics,
     AsyncShares,
     AsyncTasks,
-    Conversations,
-    Events,
-    Files,
-    Metrics,
-    Shares,
-    Tasks,
 )
 
 
-class IntrospectionClient:
+class AsyncIntrospectionClient:
+    # unasync: async-only (the sync twin's docstring follows)
+    """Async twin of :class:`IntrospectionClient` (no OpenTelemetry).
+
+    Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
+    surface. ``await client.runtimes(slug).run()`` and
+    ``await client.experiments(id).run()`` mint an
+    :class:`~introspection_sdk.runner.AsyncRunner` for DP traffic
+    (``await runner.tasks...`` / ``await runner.files...``).
+
+    Backed by ``httpx.AsyncClient``; everything that touches the network
+    is awaitable. Supports ``async with`` for deterministic teardown.
+
+    For the OpenTelemetry-based ``track`` / ``feedback`` / ``identify``
+    surface, see :class:`introspection_sdk.IntrospectionLogs` (requires
+    the ``[otel]`` extra).
+    """
+
+    # unasync: end
     """REST-only Introspection client (no OpenTelemetry).
 
     Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
@@ -82,156 +66,6 @@ class IntrospectionClient:
     the header on every request and renews it after a ``401`` (see
     :meth:`EmailCodeAuth.client <introspection_sdk.auth.EmailCodeAuth.client>`).
     ``transport`` is an ``httpx2`` transport used by both planes.
-
-    For the OpenTelemetry-based ``track`` / ``feedback`` / ``identify``
-    surface, see :class:`introspection_sdk.IntrospectionLogs` (requires
-    the ``[otel]`` extra).
-    """
-
-    runtimes: Runtimes
-    experiments: Experiments
-    recipes: Recipes
-    repositories: Repositories
-    connectors: Connectors
-    members: Members
-    annotations: Annotations
-    tags: Tags
-    automations: Automations
-    events: Events
-    tasks: Tasks
-    files: Files
-    conversations: Conversations
-    metrics: Metrics
-    shares: Shares
-    connections: AppConnections
-
-    def __init__(
-        self,
-        *,
-        token: str | None = None,
-        cp_session: str | None = None,
-        base_api_url: str | None = None,
-        dp_url: str | None = None,
-        additional_headers: dict[str, str] | None = None,
-        credentials: CredentialProvider | None = None,
-        transport: httpx.BaseTransport | None = None,
-    ) -> None:
-        self._token = token or os.getenv("INTROSPECTION_TOKEN", "")
-        self._base_api_url = base_api_url or os.getenv(
-            "INTROSPECTION_BASE_API_URL",
-            "https://api.introspection.dev",
-        )
-        # INTROSPECTION_DEV_TARGET rides every request as a header so it reaches
-        # the paths a runner cannot: a bare `POST /v1/tasks` with a dev API key
-        # mints its JWT from the key row and has no per-request claim to carry.
-        # Resolved once here so every resource client below inherits it.
-        self._additional_headers = client_headers(additional_headers)
-        self._http = _HttpClient(
-            api_url=self._base_api_url,
-            token=self._token,
-            cp_session=cp_session,
-            additional_headers=self._additional_headers,
-            transport=transport,
-            credentials=credentials,
-        )
-        self._dp_http = _HttpClient(
-            api_url=dp_url or self._base_api_url,
-            token=self._token,
-            additional_headers=self._additional_headers,
-            transport=transport,
-            credentials=credentials,
-        )
-        self.runtimes = Runtimes(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
-        self.experiments = Experiments(
-            self._http,
-            additional_headers=self._additional_headers,
-        )
-        self.recipes = Recipes(self._http)
-        self.repositories = Repositories(self._http, self._dp_http)
-        self.connectors = Connectors(self._http)
-        self.members = Members(self._http)
-        self.annotations = Annotations(self._http, self._dp_http)
-        self.tags = Tags(self._dp_http)
-        self.automations = Automations(self._dp_http)
-        self.events = Events(self._dp_http)
-        self.tasks = Tasks(self._dp_http)
-        self.files = Files(self._dp_http)
-        self.conversations = Conversations(self._dp_http)
-        self.metrics = Metrics(self._dp_http)
-        self.shares = Shares(self._dp_http)
-        self.connections = AppConnections(self._dp_http)
-
-    @classmethod
-    def from_service_account(
-        cls,
-        client_id: str,
-        client_secret: str,
-        project: str,
-        *,
-        scope: str | None = None,
-        base_api_url: str | None = None,
-        additional_headers: dict[str, str] | None = None,
-        transport: httpx.BaseTransport | None = None,
-    ) -> IntrospectionClient:
-        """Authenticate as a confidential service account and return a
-        ready client.
-
-        Mints a short-lived, project-scoped CP access token via the
-        ``client_credentials`` grant (see
-        :func:`~introspection_sdk.auth.service_account_token`) and wires
-        it in as the bearer token, so the runtime flow works exactly as
-        it does with an API key::
-
-            client = IntrospectionClient.from_service_account(
-                client_id=os.environ["INTRO_SA_CLIENT_ID"],
-                client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
-                project=os.environ["INTRO_PROJECT"],
-            )
-            runner = client.runtimes("customer-agent").run()
-
-        The token is not auto-refreshed: it lives for ``expires_in``
-        seconds, so re-mint (call this again) for long-lived processes
-        once it lapses. The resolved Data Plane URL is wired into the
-        annotation and project-label namespaces automatically.
-        """
-        token = service_account_token(
-            client_id=client_id,
-            client_secret=client_secret,
-            project=project,
-            scope=scope,
-            base_api_url=base_api_url,
-            transport=transport,
-        )
-        return cls(
-            token=token.access_token,
-            base_api_url=base_api_url,
-            dp_url=token.dp_url,
-            additional_headers=additional_headers,
-        )
-
-    def shutdown(self) -> None:
-        """Graceful shutdown — closes the underlying HTTP client."""
-        try:
-            self._http.close()
-            self._dp_http.close()
-        except Exception:  # noqa: BLE001 — best-effort cleanup
-            pass
-
-
-class AsyncIntrospectionClient:
-    """Async twin of :class:`IntrospectionClient` (no OpenTelemetry).
-
-    Use :attr:`runtimes` / :attr:`experiments` to drive the CP REST
-    surface. ``await client.runtimes(slug).run()`` and
-    ``await client.experiments(id).run()`` mint an
-    :class:`~introspection_sdk.runner.AsyncRunner` for DP traffic
-    (``await runner.tasks...`` / ``await runner.files...``).
-
-    Backed by ``httpx.AsyncClient``; everything that touches the network
-    is awaitable. Supports ``async with`` for deterministic teardown.
 
     For the OpenTelemetry-based ``track`` / ``feedback`` / ``identify``
     surface, see :class:`introspection_sdk.IntrospectionLogs` (requires
@@ -326,6 +160,7 @@ class AsyncIntrospectionClient:
         additional_headers: dict[str, str] | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> AsyncIntrospectionClient:
+        # unasync: async-only (the sync twin's docstring follows)
         """Async twin of
         :meth:`IntrospectionClient.from_service_account`.
 
@@ -340,6 +175,28 @@ class AsyncIntrospectionClient:
                 project=os.environ["INTRO_PROJECT"],
             )
             runner = await client.runtimes("customer-agent").run()
+        """
+        # unasync: end
+        """Authenticate as a confidential service account and return a
+        ready client.
+
+        Mints a short-lived, project-scoped CP access token via the
+        ``client_credentials`` grant (see
+        :func:`~introspection_sdk.auth.service_account_token`) and wires
+        it in as the bearer token, so the runtime flow works exactly as
+        it does with an API key::
+
+            client = IntrospectionClient.from_service_account(
+                client_id=os.environ["INTRO_SA_CLIENT_ID"],
+                client_secret=os.environ["INTRO_SA_CLIENT_SECRET"],
+                project=os.environ["INTRO_PROJECT"],
+            )
+            runner = client.runtimes("customer-agent").run()
+
+        The token is not auto-refreshed: it lives for ``expires_in``
+        seconds, so re-mint (call this again) for long-lived processes
+        once it lapses. The resolved Data Plane URL is wired into the
+        annotation and project-label namespaces automatically.
         """
         token = await async_service_account_token(
             client_id=client_id,
@@ -364,8 +221,11 @@ class AsyncIntrospectionClient:
         except Exception:  # noqa: BLE001 — best-effort cleanup
             pass
 
+    # unasync: async-only (the sync client is no context manager)
     async def __aenter__(self) -> AsyncIntrospectionClient:
         return self
 
     async def __aexit__(self, *_exc_info: object) -> None:
         await self.shutdown()
+
+    # unasync: end

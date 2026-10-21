@@ -1,4 +1,4 @@
-"""Native :mod:`httpx2` transports for Introspection egress."""
+"""Re-exported by :mod:`introspection_sdk.proxy.httpx2`."""
 
 from __future__ import annotations
 
@@ -10,58 +10,8 @@ from introspection_sdk.proxy._config import ProxyConfig
 from introspection_sdk.proxy._transport import (
     forward_proxy,
     handle_async_request,
-    handle_request,
     unique_transports,
 )
-
-
-class IntrospectionTransport(httpx.BaseTransport):
-    """Synchronous ``httpx2`` endpoint-binding transport."""
-
-    def __init__(
-        self,
-        config: ProxyConfig | None = None,
-        *,
-        verify: ssl.SSLContext | bool | str = True,
-        _direct: httpx.BaseTransport | None = None,
-        _egress: httpx.BaseTransport | None = None,
-        _forward: httpx.BaseTransport | None = None,
-    ) -> None:
-        self.config = config or ProxyConfig.from_env()
-        ssl_context = httpx.create_ssl_context(verify=verify)
-        self._direct = _direct or httpx.HTTPTransport(verify=ssl_context)
-        self._egress = _egress or httpx.HTTPTransport(verify=ssl_context)
-        self._forward = _forward
-        if self._forward is None and self.config.forward_proxy_url:
-            self._forward = httpx.HTTPTransport(
-                verify=ssl_context,
-                proxy=forward_proxy(
-                    httpx, self.config.forward_proxy_url, ssl_context
-                ),
-            )
-
-    @classmethod
-    def from_env(
-        cls, *, verify: ssl.SSLContext | bool | str = True
-    ) -> IntrospectionTransport:
-        return cls(ProxyConfig.from_env(), verify=verify)
-
-    def handle_request(self, request: httpx.Request) -> httpx.Response:
-        return handle_request(
-            httpx,
-            self.config,
-            request,
-            direct=self._direct,
-            egress=self._egress,
-            forward=self._forward,
-            send=lambda transport, value: transport.handle_request(value),
-        )
-
-    def close(self) -> None:
-        for transport in unique_transports(
-            self._direct, self._egress, self._forward
-        ):
-            transport.close()
 
 
 class AsyncIntrospectionTransport(httpx.AsyncBaseTransport):
@@ -115,6 +65,3 @@ class AsyncIntrospectionTransport(httpx.AsyncBaseTransport):
             self._direct, self._egress, self._forward
         ):
             await transport.aclose()
-
-
-__all__ = ["AsyncIntrospectionTransport", "IntrospectionTransport"]

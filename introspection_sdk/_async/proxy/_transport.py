@@ -1,4 +1,4 @@
-"""HTTP-library-neutral transport routing implementation."""
+"""Re-exported by :mod:`introspection_sdk.proxy._transport`."""
 
 from __future__ import annotations
 
@@ -65,31 +65,6 @@ def select_transport(
     ):
         return forward, False
     return direct, False
-
-
-def handle_request(
-    http: Any,
-    config: ProxyConfig,
-    request: Any,
-    *,
-    direct: Any,
-    egress: Any,
-    forward: Any | None,
-    send: Callable[[Any, Any], Any],
-) -> Any:
-    transport, rewrite = select_transport(
-        config,
-        request,
-        direct=direct,
-        egress=egress,
-        forward=forward,
-    )
-    if rewrite:
-        assert config.egress_url is not None
-        request = egress_request(
-            http, request, config.egress_url, config.relay_target
-        )
-    return send(transport, request)
 
 
 async def handle_async_request(

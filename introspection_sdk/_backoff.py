@@ -20,7 +20,9 @@ The stream in :mod:`.resumable` shares only the delay math; its retry
 
 from __future__ import annotations
 
+import asyncio
 import random
+import time
 
 #: Cap on the exponential/jitter component of a retry backoff (seconds).
 #: Deliberately not a cap on a server-supplied ``Retry-After``.
@@ -59,3 +61,13 @@ def _is_retryable_status(status: int, idempotent: bool) -> bool:
     if status == 429:
         return True
     return idempotent and status in _IDEMPOTENT_RETRY_STATUSES
+
+
+# The sleep between retries, one per twin: the generated sync client calls
+# ``_sleep`` where its async source calls ``_sleep_async``.
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+async def _sleep_async(seconds: float) -> None:
+    await asyncio.sleep(seconds)
