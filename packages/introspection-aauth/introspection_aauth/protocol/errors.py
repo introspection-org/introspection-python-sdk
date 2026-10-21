@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Self
 
 from pydantic import BaseModel, ConfigDict
 
@@ -51,6 +52,19 @@ class AAuthError(Exception):
             Problem(error=self.error, detail=self.detail or None),
             {"Content-Type": "application/problem+json", **self.headers},
         )
+
+
+class VerificationError(Exception):
+    """A token or signature that failed a check, with the AAuth code for it.
+
+    Callers decide the status: the same failure is a `401` on an agent's
+    request and a `400` on a token it presents.
+    """
+
+    def __init__(self, code: str, detail: str):
+        super().__init__(detail)
+        self.code = code
+        self.detail = detail
 
 
 class _Coded(AAuthError):
@@ -119,8 +133,8 @@ class Unauthorized(AAuthError):
 
     @classmethod
     def rejected(
-        cls, exc: "VerificationError", headers: Mapping[str, str] | None = None
-    ) -> "Unauthorized":
+        cls, exc: VerificationError, headers: Mapping[str, str] | None = None
+    ) -> Self:
         return cls(exc.code, exc.detail, headers)
 
 
@@ -132,18 +146,5 @@ class InvalidToken(AAuthError):
         super().__init__(400, f"{prefix}_{token}_token", detail)
 
     @classmethod
-    def rejected(cls, token: str, exc: "VerificationError") -> "InvalidToken":
+    def rejected(cls, token: str, exc: VerificationError) -> Self:
         return cls(token, exc.detail, expired=exc.code == "expired_jwt")
-
-
-class VerificationError(Exception):
-    """A token or signature that failed a check, with the AAuth code for it.
-
-    Callers decide the status: the same failure is a `401` on an agent's
-    request and a `400` on a token it presents.
-    """
-
-    def __init__(self, code: str, detail: str):
-        super().__init__(detail)
-        self.code = code
-        self.detail = detail

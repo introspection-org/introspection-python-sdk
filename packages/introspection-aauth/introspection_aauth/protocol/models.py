@@ -1,5 +1,7 @@
 """Values both servers exchange."""
 
+from typing import Self
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from .keys import Jwk
@@ -17,10 +19,10 @@ class Budget(BaseModel):
     unit: str = Field(min_length=1, max_length=32)
     decimals: int = Field(ge=0, le=18)
 
-    def same_scale(self, other: "Budget") -> bool:
+    def same_scale(self, other: Self) -> bool:
         return self.unit == other.unit and self.decimals == other.decimals
 
-    def at_most(self, limit: "Budget") -> bool:
+    def at_most(self, limit: Self) -> bool:
         """Whether this is no more than `limit`, in the same unit."""
         return self.same_scale(limit) and self.amount <= limit.amount
 

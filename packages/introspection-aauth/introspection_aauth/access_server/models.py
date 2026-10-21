@@ -1,7 +1,7 @@
 """What an Access Server decides on, and what it keeps while it waits."""
 
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict
 
@@ -66,19 +66,19 @@ class Verdict(BaseModel):
     @classmethod
     def allow(
         cls, scope: str | None = None, budget: Budget | None = None
-    ) -> "Verdict":
+    ) -> Self:
         return cls(decision="allow", scope=scope, budget=budget)
 
     @classmethod
-    def deny(cls, detail: str | None = None) -> "Verdict":
+    def deny(cls, detail: str | None = None) -> Self:
         return cls(decision="deny", detail=detail)
 
     @classmethod
-    def approval(cls) -> "Verdict":
+    def approval(cls) -> Self:
         return cls(decision="approval")
 
     @classmethod
-    def interaction(cls, url: str, code: str) -> "Verdict":
+    def interaction(cls, url: str, code: str) -> Self:
         return cls(decision="interaction", url=url, code=code)
 
 

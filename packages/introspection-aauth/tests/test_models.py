@@ -244,6 +244,66 @@ def test_an_auth_token_from_elsewhere_bound_elsewhere_or_outliving_is_named():
     assert delivery(rt).failures(claims) == ["dwk", "iss", "cnf", "ps", "exp"]
 
 
+def presented_claims(**update: str) -> PersonTokenClaims:
+    claims = PersonTokenClaims(
+        dwk=PERSON_DWK,
+        iss=PS,
+        aud=RESOURCE,
+        sub="person-1",
+        cnf=Confirmation(jwk=AGENT.public_jwk),
+        jti="pt-1",
+        mission_s256="m-1",
+        tenant="acme",
+        iat=100,
+        exp=400,
+    )
+    return claims.model_copy(update=update)
+
+
+@pytest.mark.parametrize(
+    ("update", "name"),
+    [
+        ({"iss": AS}, "iss"),
+        ({"aud": "https://elsewhere.example"}, "aud"),
+        ({"jti": "pt-2"}, "jti"),
+        ({"sub": "person-2"}, "sub"),
+        ({"mission_s256": "m-2"}, "mission_s256"),
+        ({"tenant": "other"}, "tenant"),
+    ],
+)
+def test_each_failed_presented_check_is_named(
+    update: dict[str, str], name: str
+):
+    expectation = PresentedExpectation(ps=PS, rt=resource_claims())
+    assert expectation.failures(presented_claims()) == []
+    assert expectation.failures(presented_claims(**update)) == [name]
+
+
+def test_a_presented_token_bound_to_another_key_is_named():
+    presented = presented_claims().model_copy(
+        update={"cnf": Confirmation(jwk=OTHER.public_jwk)}
+    )
+    assert PresentedExpectation(ps=PS, rt=resource_claims()).failures(
+        presented
+    ) == ["cnf"]
+
+
+@pytest.mark.parametrize(
+    ("absent", "name"),
+    [
+        ("sub", "sub"),
+        ("presented_jti", "presented_jti"),
+        ("agent_jkt", "agent_jkt_present"),
+    ],
+)
+def test_a_resource_token_missing_what_a_presented_call_needs_is_named(
+    absent: str, name: str
+):
+    expectation = ResourceTokenExpectation(ps=PS, requires_presented=True)
+    assert expectation.failures(resource_claims()) == []
+    assert expectation.failures(resource_claims(**{absent: None})) == [name]
+
+
 def test_resource_presented_and_agent_expectations_name_their_failures():
     rt = resource_claims(ps="https://other-ps.example", sub=None)
     assert ResourceTokenExpectation(

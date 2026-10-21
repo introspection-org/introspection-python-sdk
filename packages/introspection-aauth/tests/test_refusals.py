@@ -187,7 +187,7 @@ async def test_a_busy_access_server_is_polled_again_later():
     await world.ask(mission, 10, aud=AS)
     due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
-    client = federation.AccessServerClient(world.ps)
+    client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, federation.Metadata)
     first = await client.request(due[0], due[1], metadata)
@@ -256,7 +256,7 @@ async def test_an_interaction_is_relayed_and_a_decision_settles_once():
     asked = await world.ask(mission, 10, aud=AS)
     due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
-    client = federation.AccessServerClient(world.ps)
+    client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, federation.Metadata)
     outcome = await client.request(due[0], due[1], metadata)
@@ -371,7 +371,7 @@ async def test_a_summary_written_meanwhile_does_not_drop_a_federated_token():
     )
     due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
-    client = federation.AccessServerClient(world.ps)
+    client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, federation.Metadata)
     first = await client.request(due[0], due[1], metadata)

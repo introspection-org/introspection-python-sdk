@@ -8,6 +8,7 @@ import base64
 import hashlib
 import json
 from collections.abc import Sequence
+from typing import Self
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -143,11 +144,11 @@ class SigningKey:
         )
 
     @classmethod
-    def generate(cls) -> "SigningKey":
+    def generate(cls) -> Self:
         return cls(Ed25519PrivateKey.generate())
 
     @classmethod
-    def from_pem(cls, pem: str | bytes) -> "SigningKey":
+    def from_pem(cls, pem: str | bytes) -> Self:
         key = serialization.load_pem_private_key(
             pem.encode() if isinstance(pem, str) else pem, password=None
         )
@@ -156,7 +157,7 @@ class SigningKey:
         return cls(key)
 
     @classmethod
-    def from_seed(cls, seed: bytes) -> "SigningKey":
+    def from_seed(cls, seed: bytes) -> Self:
         return cls(Ed25519PrivateKey.from_private_bytes(seed))
 
     def sign(self, data: bytes) -> bytes:

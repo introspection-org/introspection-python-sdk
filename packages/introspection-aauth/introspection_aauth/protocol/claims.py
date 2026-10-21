@@ -133,7 +133,7 @@ class AuthGrant(Carried):
     sub: str = Field(min_length=1)
 
     @classmethod
-    def requested(cls, rt: ResourceTokenClaims, sub: str) -> "AuthGrant":
+    def requested(cls, rt: ResourceTokenClaims, sub: str) -> Self:
         """What `rt` asks for, for the person `sub`."""
         return cls(
             aud=rt.iss.rstrip("/"),
@@ -173,7 +173,7 @@ class AuthTokenClaims(Claims, Carried):
         jti: str,
         iat: int,
         exp: int,
-    ) -> "AuthTokenClaims":
+    ) -> Self:
         return cls(
             iss=iss,
             dwk=dwk,

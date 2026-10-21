@@ -110,7 +110,7 @@ async def test_the_access_servers_wait_is_journaled_step_by_step():
     due = await world.ps.federation_due(TENANT, approval_id)
     assert due is not None
     fed, jkt = due
-    client = federation.AccessServerClient(world.ps)
+    client = world.ps.access_server_client()
     metadata = await client.discover(fed.access_server)
     assert isinstance(metadata, federation.Metadata)
     outcome = await client.request(fed, jkt, metadata)

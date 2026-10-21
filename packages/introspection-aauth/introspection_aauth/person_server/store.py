@@ -1,6 +1,8 @@
 """What a Person Server asks of its host: a `Store` for its state and a
 `Directory` for who it speaks for. Neither names a database."""
 
+from __future__ import annotations
+
 import asyncio
 import copy
 from collections.abc import AsyncGenerator
@@ -85,7 +87,7 @@ class Store(Protocol):
         decision or federation in flight is not made stale; whether it did."""
         ...
 
-    def transaction(self) -> AbstractAsyncContextManager["Store"]: ...
+    def transaction(self) -> AbstractAsyncContextManager[Store]: ...
 
 
 class Directory(Protocol):

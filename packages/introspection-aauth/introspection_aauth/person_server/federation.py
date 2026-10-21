@@ -11,7 +11,6 @@ The loop is steps a host can journal: `PersonServer.federation_due`, then
 in-process.
 """
 
-from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 import httpx2 as httpx
@@ -26,9 +25,12 @@ from ..protocol.claims import (
     PersonTokenClaims,
     ResourceTokenClaims,
 )
+from ..protocol.discovery import Discovery
 from ..protocol.errors import Problem, VerificationError
 from ..protocol.keys import Jwks
 from ..protocol.server import (
+    Clock,
+    Identity,
     https_endpoint,
     requirement_name,
     retry_after,
@@ -36,9 +38,6 @@ from ..protocol.server import (
 )
 from ..protocol.wire import AccessServerMetadata, AuthTokenAnswer, TokenRequest
 from .models import Federation, Outcome, Step
-
-if TYPE_CHECKING:
-    from .server import PersonServer
 
 SERVED = frozenset({"approval", "interaction"})
 #: Requirements draft -11 defines that this Person Server does not serve.
@@ -51,13 +50,22 @@ Metadata = AccessServerMetadata
 class AccessServerClient:
     """Talks to the Access Server a verified resource token names, signed as the Person Server."""
 
-    def __init__(self, ps: "PersonServer"):
-        self._ps = ps
+    def __init__(
+        self,
+        identity: Identity,
+        discovery: Discovery,
+        http: httpx.AsyncClient,
+        clock: Clock,
+    ):
+        self._identity = identity
+        self._discovery = discovery
+        self._http = http
+        self._clock = clock
 
     async def discover(self, access_server: str) -> Metadata | Outcome:
         """`{aud}/.well-known/aauth-access.json`, whose `issuer` is the `aud`."""
         try:
-            document = await self._ps.discovery.get(
+            document = await self._discovery.get(
                 f"{access_server}/.well-known/{ACCESS_DWK}",
                 AccessServerMetadata,
             )
@@ -89,8 +97,8 @@ class AccessServerClient:
             budget=federation.budget,
         ).to_json()
         url = metadata.auth_token_endpoint
-        headers = self._ps.identity.signed("POST", url, body, self._ps.clock())
-        response = await self._ps.http.post(
+        headers = self._identity.signed("POST", url, body, self._clock())
+        response = await self._http.post(
             url, content=body, headers=headers, follow_redirects=False
         )
         return await self._outcome(
@@ -104,10 +112,8 @@ class AccessServerClient:
         agent_jkt: str,
         metadata: Metadata,
     ) -> Outcome:
-        headers = self._ps.identity.signed(
-            "GET", location, None, self._ps.clock()
-        )
-        response = await self._ps.http.get(
+        headers = self._identity.signed("GET", location, None, self._clock())
+        response = await self._http.get(
             location, headers=headers, follow_redirects=False
         )
         return await self._outcome(
@@ -215,12 +221,12 @@ class AccessServerClient:
                 "its request's tokens cannot be read back"
             )
         try:
-            keys = await self._ps.discovery.get(metadata.jwks_uri, Jwks)
+            keys = await self._discovery.get(metadata.jwks_uri, Jwks)
             claims = jwt.verify(
                 auth_token,
                 keys,
                 jwt.AUTH_TOKEN,
-                self._ps.clock(),
+                self._clock(),
                 AuthTokenClaims,
             )
         except VerificationError as exc:
@@ -229,7 +235,7 @@ class AccessServerClient:
             )
         wrong = DeliveryExpectation(
             issuer=metadata.issuer,
-            ps=self._ps.issuer,
+            ps=self._identity.issuer,
             rt=rt,
             agent_jkt=agent_jkt,
             not_after=min(presented.exp, agent.exp),

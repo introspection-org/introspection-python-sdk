@@ -1,7 +1,7 @@
 """What a Person Server keeps, and the requests it takes."""
 
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -224,14 +224,14 @@ class Outcome(BaseModel):
     refusal: Refusal | None = None
 
     @classmethod
-    def refused(cls, status: int, error: str, detail: str) -> "Outcome":
+    def refused(cls, status: int, error: str, detail: str) -> Self:
         return cls(
             step=Step.REFUSED,
             refusal=Refusal(status=status, error=error, detail=detail),
         )
 
     @classmethod
-    def unreachable(cls, detail: str) -> "Outcome":
+    def unreachable(cls, detail: str) -> Self:
         """`as_unreachable`: no verifiable answer from the Access Server."""
         return cls.refused(502, "as_unreachable", detail)
 

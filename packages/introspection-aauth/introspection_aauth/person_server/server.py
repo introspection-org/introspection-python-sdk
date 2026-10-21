@@ -177,6 +177,12 @@ class PersonServer(Server):
             claims_supported=["sub", "tenant"],
         )
 
+    def access_server_client(self) -> AccessServerClient:
+        """A client for the Access Servers it federates with, signing as it."""
+        return AccessServerClient(
+            self.identity, self.discovery, self.http, self.clock
+        )
+
     def pending_url(self, tenant: str, approval_id: str) -> str:
         return f"{self.endpoint_base}/pending/{quote(tenant, safe='')}/{approval_id}"
 
@@ -518,7 +524,7 @@ class PersonServer(Server):
         if found is None:
             return None
         federation, agent_jkt = found
-        client = AccessServerClient(self)
+        client = self.access_server_client()
         metadata = await client.discover(federation.access_server)
 
         async def attempt(call: Exchange) -> Outcome:

@@ -145,7 +145,7 @@ async def test_an_access_servers_refusal_is_answered_once():
     await world.ask(mission, 10, aud=AS)
     due = await world.ps.federation_due(TENANT, kicked[0])
     assert due is not None
-    client = federation.AccessServerClient(world.ps)
+    client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, federation.Metadata)
     first = await client.request(due[0], due[1], metadata)
@@ -343,7 +343,7 @@ async def test_an_unknown_requirement_is_relayed_as_approval():
     approval = urlsplit(asked.headers["location"]).path.rsplit("/", 1)[1]
     due = await world.ps.federation_due(TENANT, approval)
     assert due is not None
-    client = federation.AccessServerClient(world.ps)
+    client = world.ps.access_server_client()
     metadata = await client.discover(due[0].access_server)
     assert isinstance(metadata, federation.Metadata)
     world.net.apps[AS] = Scripted(
@@ -433,7 +433,7 @@ async def test_access_server_metadata_keeps_its_endpoints_on_its_origin(
             auth_token_endpoint=auth_token_endpoint,
         )
     )
-    found = await federation.AccessServerClient(world.ps).discover(AS)
+    found = await world.ps.access_server_client().discover(AS)
     assert isinstance(found, federation.Outcome)
     assert found.refusal is not None
     assert found.refusal.error == "as_unreachable"
