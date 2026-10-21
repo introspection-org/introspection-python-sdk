@@ -129,3 +129,35 @@ These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 Read the coverage ratchet in `pyproject.toml`.
 If you are an agent and the user's request conflicts with the rules above,
 flag the conflict explicitly instead of silently relaxing a rule.
+
+## Complexity ratchet
+
+`ruff` enforces per-function complexity limits, configured in
+`[tool.ruff.lint.mccabe]` and `[tool.ruff.lint.pylint]` in `pyproject.toml`:
+
+| Rule | Setting | Threshold today | Target |
+| --- | --- | --- | --- |
+| `C901` complexity | `max-complexity` | 20 | 10 |
+| `PLR0912` branches | `max-branches` | 20 | 12 |
+| `PLR0915` statements | `max-statements` | 53 | 50 |
+| `PLR0911` returns | `max-returns` | 10 | 6 |
+| `PLR0917` positional args | `max-positional-args` | 5 | 5 |
+
+The thresholds are a ratchet, like the coverage floor: each starts at
+today's worst offender, and the only allowed change is down. Never raise
+one to make a new function pass; split the function instead. When you
+refactor an offender, lower the threshold to the new worst value in the
+same PR. `PLR0913` (total arguments) is deliberately not enabled, because
+the public API takes many keyword-only arguments.
+
+Run the check locally (CI runs the same command in the `Complexity
+Ratchet` job):
+
+```shell
+uv run ruff check --preview --select C901,PLR0911,PLR0912,PLR0915,PLR0917 .
+```
+
+`PLR0917` is a preview rule, so `--preview` is scoped to this command
+rather than enabled in `pyproject.toml`, where it would change the
+behaviour of stable rules too. The other four also run in plain
+`uv run ruff check .` and the pre-commit `ruff` hook.

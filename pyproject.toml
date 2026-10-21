@@ -67,11 +67,29 @@ select = [
     "B",  # flake8-bugbear
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
+    # Complexity ratchet: see "Complexity ratchet" in AGENTS.md. PLR0917
+    # (max positional args) is preview-only, so it runs in its own
+    # `--preview` invocation instead of switching preview on here.
+    "C901",    # mccabe complexity
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0915", # too many statements
 ]
 ignore = [
     "E501", # line too long (handled by formatter)
     "B008", # do not perform function calls in argument defaults
 ]
+
+# Ratchet: each threshold is today's worst value. Lower it as offenders
+# are refactored, down to the target in AGENTS.md. Never raise it.
+[tool.ruff.lint.mccabe]
+max-complexity = 20 # target 10
+
+[tool.ruff.lint.pylint]
+max-branches = 20       # target 12
+max-statements = 53     # target 50
+max-returns = 10        # target 6
+max-positional-args = 5 # target 5 (PLR0917, preview)
 
 [tool.ruff.format]
 quote-style = "double"
