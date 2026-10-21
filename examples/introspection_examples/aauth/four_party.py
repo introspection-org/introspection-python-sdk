@@ -26,9 +26,7 @@ Or serve the two servers for your own agents, each on its own https origin
 from __future__ import annotations
 
 import asyncio
-import json
 import os
-from typing import Any
 
 import httpx2 as httpx
 from fastapi import FastAPI
@@ -46,7 +44,19 @@ from introspection_aauth.person_server import (
     MemoryStore,
     PersonServer,
 )
+from introspection_aauth.person_server.models import (
+    AuthTokenRequest,
+    MissionAnswer,
+    MissionProposal,
+)
 from introspection_aauth.protocol import Budget, SigningKey, jwks
+from introspection_aauth.protocol.claims import (
+    AgentTokenClaims,
+    AuthTokenClaims,
+    Confirmation,
+    PersonTokenClaims,
+    ResourceTokenClaims,
+)
 from introspection_aauth.protocol.httpsig import jwt_key, sign
 from introspection_aauth.protocol.jwt import (
     AGENT_TOKEN,
@@ -54,13 +64,21 @@ from introspection_aauth.protocol.jwt import (
     decode,
     encode,
 )
+from introspection_aauth.protocol.wire import (
+    AuthTokenAnswer,
+    ServerMetadata,
+)
+from pydantic import BaseModel
 
 AP = os.environ.get("AGENT_PROVIDER", "https://agents.example")
 PS = os.environ.get("PERSON_SERVER", "https://ps.example")
 AS = os.environ.get("ACCESS_SERVER", "https://as.flightsector.example")
 RESOURCE = os.environ.get("RESOURCE", "https://booking.flightsector.example")
 TENANT = "acme"
-USD = {"unit": "USD", "decimals": 2}
+
+
+def usd(amount: int) -> Budget:
+    return Budget(amount=amount, unit="USD", decimals=2)
 
 
 # #region docs:aauth-servers
@@ -71,8 +89,8 @@ def flight_sector(request: AccessRequest) -> Verdict:
     return Verdict.deny("no Flight Sector account")
 
 
-def servers(http: httpx.AsyncClient) -> tuple[PersonServer, AccessServer]:
-    person_server = PersonServer(
+def person_server(http: httpx.AsyncClient) -> PersonServer:
+    return PersonServer(
         PS,
         SigningKey.generate(),
         MemoryStore(),
@@ -82,7 +100,10 @@ def servers(http: httpx.AsyncClient) -> tuple[PersonServer, AccessServer]:
         endpoint_base=f"{PS}/aauth",
         default_tenant=TENANT,
     )
-    access_server = AccessServer(
+
+
+def access_server(http: httpx.AsyncClient) -> AccessServer:
+    return AccessServer(
         AS,
         SigningKey.generate(),
         flight_sector,
@@ -91,21 +112,15 @@ def servers(http: httpx.AsyncClient) -> tuple[PersonServer, AccessServer]:
         agent_providers=[AP],
         http=http,
     )
-    return person_server, access_server
-
-
-def app(router: Any) -> FastAPI:
-    served = FastAPI()
-    served.include_router(router)
-    return served
 
 
 # #endregion docs:aauth-servers
 
 _http = httpx.AsyncClient()
-_person_server, _access_server = servers(_http)
-person_server_app = app(person_server_router(_person_server))
-access_server_app = app(access_server_router(_access_server))
+person_server_app = FastAPI()
+person_server_app.include_router(person_server_router(person_server(_http)))
+access_server_app = FastAPI()
+access_server_app.include_router(access_server_router(access_server(_http)))
 
 
 class Internet(httpx.AsyncBaseTransport):
@@ -113,13 +128,18 @@ class Internet(httpx.AsyncBaseTransport):
 
     def __init__(self) -> None:
         self.parties: dict[str, httpx.AsyncBaseTransport] = {}
-        self.documents: dict[str, Any] = {}
+        self.documents: dict[str, BaseModel] = {}
 
     async def handle_async_request(
         self, request: httpx.Request
     ) -> httpx.Response:
-        if str(request.url) in self.documents:
-            return httpx.Response(200, json=self.documents[str(request.url)])
+        document = self.documents.get(str(request.url))
+        if document is not None:
+            return httpx.Response(
+                200,
+                content=document.model_dump_json(exclude_none=True),
+                headers={"Content-Type": "application/json"},
+            )
         origin = f"{request.url.scheme}://{request.url.host}"
         print(f"  → {request.method} {request.url}")
         return await self.parties[origin].handle_async_request(request)
@@ -128,54 +148,55 @@ class Internet(httpx.AsyncBaseTransport):
 async def main() -> None:
     internet = Internet()
     http = httpx.AsyncClient(transport=internet)
-    person_server, access_server = servers(http)
-    internet.parties[PS] = httpx.ASGITransport(
-        app=app(person_server_router(person_server))
-    )
-    internet.parties[AS] = httpx.ASGITransport(
-        app=app(access_server_router(access_server))
-    )
+    ps = person_server(http)
+    ps_app = FastAPI()
+    ps_app.include_router(person_server_router(ps))
+    as_app = FastAPI()
+    as_app.include_router(access_server_router(access_server(http)))
+    internet.parties[PS] = httpx.ASGITransport(app=ps_app)
+    internet.parties[AS] = httpx.ASGITransport(app=as_app)
 
     # The agent provider and the airline's booking API, as fixed documents.
     provider, airline, agent = (SigningKey.generate() for _ in range(3))
     internet.documents |= {
-        f"{AP}/.well-known/aauth-agent.json": {
-            "issuer": AP,
-            "jwks_uri": f"{AP}/jwks.json",
-        },
+        f"{AP}/.well-known/aauth-agent.json": ServerMetadata(
+            issuer=AP, jwks_uri=f"{AP}/jwks.json"
+        ),
         f"{AP}/jwks.json": jwks([provider]),
-        f"{RESOURCE}/.well-known/aauth-resource.json": {
-            "issuer": RESOURCE,
-            "jwks_uri": f"{RESOURCE}/jwks.json",
-        },
+        f"{RESOURCE}/.well-known/aauth-resource.json": ServerMetadata(
+            issuer=RESOURCE, jwks_uri=f"{RESOURCE}/jwks.json"
+        ),
         f"{RESOURCE}/jwks.json": jwks([airline]),
     }
-    now = person_server.clock()
+    now = ps.clock()
     agent_token = encode(
-        {
-            "iss": AP,
-            "dwk": "aauth-agent.json",
-            "sub": "aauth:travel@agents.example",
-            "jti": "agent-1",
-            "iat": now,
-            "exp": now + 3_600,
-            "cnf": {"jwk": agent.public_jwk},
-        },
+        AgentTokenClaims(
+            iss=AP,
+            sub="aauth:travel@agents.example",
+            jti="agent-1",
+            iat=now,
+            exp=now + 3_600,
+            cnf=Confirmation(jwk=agent.public_jwk),
+        ),
         provider,
         AGENT_TOKEN,
     )
 
     async def call(
-        method: str, url: str, body: dict[str, Any] | None = None
+        method: str, url: str, body: BaseModel | None = None
     ) -> httpx.Response:
-        content = json.dumps(body).encode() if body is not None else None
+        content = (
+            body.model_dump_json(exclude_none=True).encode()
+            if body is not None
+            else None
+        )
         headers = sign(
             agent,
             jwt_key(agent_token),
             method,
             url,
             body=content,
-            created=person_server.clock(),
+            created=ps.clock(),
         )
         return await http.request(
             method, url, content=content, headers=headers
@@ -185,42 +206,42 @@ async def main() -> None:
     proposed = await call(
         "POST",
         f"{PS}/aauth/mission",
-        {
-            "description": "Sam to Sydney, up to $2,000",
-            "resources": [RESOURCE],
-            "login_hint": "sam@acme.example",
-        },
+        MissionProposal(
+            description="Sam to Sydney, up to $2,000",
+            resources=[RESOURCE],
+            login_hint="sam@acme.example",
+        ),
     )
     print(f"   {proposed.status_code}: it waits on Sam's manager")
     approval_id = proposed.headers["location"].rsplit("/", 1)[1]
-    await person_server.decide(
+    await ps.decide(
         TENANT,
         approval_id,
         ApprovalStatus.APPROVED,
         decided_by="dana@acme.example",
-        budget=Budget(amount=200_000, **USD),
+        budget=usd(200_000),
     )
-    mission = (await call("GET", proposed.headers["location"])).json()
+    collected = await call("GET", proposed.headers["location"])
+    mission = MissionAnswer.model_validate_json(collected.content)
     print("2. Dana approves it with a $2,000 budget; the agent collects it")
 
-    person_token = mission["person_tokens"][RESOURCE]
-    presented = decode(person_token).claims
+    person_token = mission.person_tokens[RESOURCE]
+    presented = PersonTokenClaims.model_validate(decode(person_token).claims)
     resource_token = encode(
-        {
-            "iss": RESOURCE,
-            "dwk": "aauth-resource.json",
-            "aud": AS,
-            "ps": PS,
-            "agent_jkt": agent.kid,
-            "presented_jti": presented["jti"],
-            "sub": presented["sub"],
-            "mission_s256": mission["s256"],
-            "tenant": TENANT,
-            "scope": "book",
-            "budget": {"amount": 145_000, **USD},
-            "iat": now,
-            "exp": now + 300,
-        },
+        ResourceTokenClaims(
+            iss=RESOURCE,
+            aud=AS,
+            ps=PS,
+            agent_jkt=agent.kid,
+            presented_jti=presented.jti,
+            sub=presented.sub,
+            mission_s256=mission.s256,
+            tenant=TENANT,
+            scope="book",
+            budget=usd(145_000),
+            iat=now,
+            exp=now + 300,
+        ),
         airline,
         RESOURCE_TOKEN,
     )
@@ -228,7 +249,9 @@ async def main() -> None:
     asked = await call(
         "POST",
         f"{PS}/aauth/token",
-        {"resource_token": resource_token, "presented_token": person_token},
+        AuthTokenRequest(
+            resource_token=resource_token, presented_token=person_token
+        ),
     )
     print(f"   {asked.status_code}: within budget, so off to the airline's AS")
     for _ in range(50):
@@ -236,12 +259,16 @@ async def main() -> None:
         if answered.status_code != 202:
             break
         await asyncio.sleep(0.05)
-    claims = decode(answered.json()["auth_token"]).claims
-    print(
-        f"4. {answered.status_code}: an auth token from {claims['iss']}"
-        f" for {claims['aud']}, ${claims['budget']['amount'] / 100:,.2f}"
+    auth_token = AuthTokenAnswer.model_validate_json(answered.content)
+    claims = AuthTokenClaims.model_validate(
+        decode(auth_token.auth_token).claims
     )
-    stored = await person_server.store.mission(TENANT, mission["s256"])
+    amount = claims.budget.amount if claims.budget else 0
+    print(
+        f"4. {answered.status_code}: an auth token from {claims.iss}"
+        f" for {claims.aud}, ${amount / 100:,.2f}"
+    )
+    stored = await ps.store.mission(TENANT, mission.s256)
     assert stored is not None
     print(f"5. The trip has spent ${stored.spent / 100:,.2f} of its budget")
 
