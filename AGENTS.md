@@ -258,7 +258,8 @@ latest `v*` release tag (resolved with `git describe --tags --abbrev=0
 --match 'v*' HEAD`, never hard-coded). Run the same check locally:
 
 ```shell
-uv run griffe check introspection_sdk --search . --against v0.29.0
+uv run griffe check introspection_sdk --search . --against v0.29.0 \
+  -e scripts/griffe_reexports.py
 ```
 
 Pass the tag CI uses, `git describe --tags --abbrev=0 --match 'v*' HEAD`.
@@ -272,12 +273,14 @@ name without a leading underscore. Imported names are public only through
 are internal and free to change. To keep a new helper out of the contract,
 give it a leading underscore or leave it out of `__all__`.
 
-griffe compares a public class against a re-export of it only shallowly:
-once it has seen the old object's path it skips the members of the alias's
-target. A PR that moves a public class behind a re-export (into `_async/` or
-`_sync/`, say) therefore passes the check without its members being
-compared. Compare the resolved objects yourself in such a PR; from the next
-release on, both sides are re-exports and the check covers them again.
+`-e scripts/griffe_reexports.py` loads a griffe extension that replaces
+each public alias whose target lives in `introspection_sdk` with the target
+object, on the old release and the new code alike. Without it griffe
+compares a public class against a re-export of it only shallowly: once it
+has seen the old object's path it skips the members of the alias's target,
+so a class moved behind a re-export (into `_async/` or `_sync/`, say) would
+pass with a parameter removed. griffe has no option for this; keep the
+extension in the command until it does.
 
 Reported: a public object removed or renamed, a parameter removed, moved,
 made required or changed kind, a parameter default changed, a return or

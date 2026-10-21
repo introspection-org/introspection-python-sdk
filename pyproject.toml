@@ -170,6 +170,7 @@ known_first_party = ["introspection_sdk"]
 optional_dependencies_dev_groups = ["dev", "test"]
 
 [tool.deptry.per_rule_ignores]
-# scripts/unasync.py is a code generator run by developers and CI, never
-# shipped, so the dev dependency it imports is in the right place.
-DEP004 = ["unasync"]
+# scripts/unasync.py (a code generator) and scripts/griffe_reexports.py (a
+# griffe extension for the API check) run in development and CI only, never
+# shipped, so the dev dependencies they import are in the right place.
+DEP004 = ["griffe", "unasync"]
