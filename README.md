@@ -511,6 +511,14 @@ caller who is not a project administrator only ever gets their own
 connections. The routes need `connections:read`, `connections:write` and
 `connections:delete`.
 
+## Run an AAuth Person Server or Access Server
+
+[`introspection-aauth`](packages/introspection-aauth) is a separate package
+in this repository: an AAuth Person Server and Access Server
+(draft-hardt-oauth-aauth-protocol -11) over a store you provide, with
+FastAPI routers. `examples/introspection_examples/aauth/four_party.py` runs
+the four-party flow in one process.
+
 ## Environment variables
 
 ```shell

@@ -1,3 +1,4 @@
 {
-  ".": "0.29.1"
+  ".": "0.30.0",
+  "packages/introspection-aauth": "1.0.0"
 }
