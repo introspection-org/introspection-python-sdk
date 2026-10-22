@@ -291,9 +291,10 @@ class AsyncConversationItems:
         ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
         ``invoke_agent``, ...). ``content`` keeps the rows that carry any of
         the given content classes: ``user_text``, ``assistant_text``,
-        ``delegation``, ``tool:<name>``, ``tool_call:<name>`` or
-        ``tool_result:<name>``; a chat span matched on one side returns only
-        that side's messages. The two filters combine.
+        ``delegation``, ``tool:<name>``, ``tool_call:<name>``,
+        ``tool_result:<name>``, or the bare ``tool_call`` / ``tool_result``
+        for any name; a chat span matched on one side returns only that
+        side's messages. The two filters combine.
         """
         # unasync: end
         """List conversation items using an opaque ``next`` cursor. Iterate
@@ -312,9 +313,10 @@ class AsyncConversationItems:
         ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
         ``invoke_agent``, ...). ``content`` keeps the rows that carry any of
         the given content classes: ``user_text``, ``assistant_text``,
-        ``delegation``, ``tool:<name>``, ``tool_call:<name>`` or
-        ``tool_result:<name>``; a chat span matched on one side returns only
-        that side's messages. The two filters combine.
+        ``delegation``, ``tool:<name>``, ``tool_call:<name>``,
+        ``tool_result:<name>``, or the bare ``tool_call`` / ``tool_result``
+        for any name; a chat span matched on one side returns only that
+        side's messages. The two filters combine.
         """
 
         async def fetch(cursor: str | None) -> GenAiSpanList:
