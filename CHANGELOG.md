@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.30.0...v0.30.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **aauth:** accept the Person Server's own auth token as the presented token; release 0.1.0 ([#197](https://github.com/introspection-org/introspection-python-sdk/issues/197)) ([8446faa](https://github.com/introspection-org/introspection-python-sdk/commit/8446faa2f62da422c906b62d991878ac0030f60b))
+
 ## [0.30.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.29.1...v0.30.0) (2026-10-22)
 
 
