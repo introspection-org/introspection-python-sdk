@@ -287,19 +287,37 @@ class AsyncConversationItems:
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
 
-        ``operation_name`` keeps the rows with any of the given
-        ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
-        ``invoke_agent``, ...). ``contains`` keeps the rows whose sealed
-        messages contain any of the given ``<path>:<value>`` pairs over the
-        GenAI semconv attributes: ``gen_ai.input.messages.role:user``,
-        ``gen_ai.input.messages.parts.type:tool_call_response``,
-        ``gen_ai.input.messages.parts.name:<tool>``,
-        ``gen_ai.output.messages.parts.type:text``,
-        ``gen_ai.output.messages.parts.type:tool_call``,
-        ``gen_ai.output.messages.parts.name:<tool>``,
-        ``gen_ai.tool.name:<tool>`` or ``gen_ai.operation.name:<operation>``;
-        a chat span matched on one side returns only that side's messages.
-        The two filters combine.
+        ``contains`` keeps the rows that contain any of the given
+        ``<path>:<value>`` pairs over the GenAI semconv attributes (at most
+        20, sent as the repeated ``contains`` key):
+
+        - ``gen_ai.input.messages.role:user``
+        - ``gen_ai.input.messages.parts.type:tool_call_response``
+        - ``gen_ai.input.messages.parts.name:<tool>``
+        - ``gen_ai.output.messages.parts.type:text``
+        - ``gen_ai.output.messages.parts.type:tool_call``
+        - ``gen_ai.output.messages.parts.name:<tool>``
+        - ``gen_ai.tool.name:<tool>``
+        - ``gen_ai.operation.name:<operation>``
+
+        A value on one of the four name paths may end in a single ``*`` to
+        match by prefix: ``gen_ai.output.messages.parts.name:mcp_browserbase_*``
+        or ``gen_ai.tool.name:mcp_*``, and ``gen_ai.input.messages.parts.name:*``
+        matches any name. The server rejects ``*`` anywhere else, or on a role
+        or part-type value, with a 422
+        (:class:`~introspection_sdk.ValidationError`).
+
+        Input paths are evaluated over the input messages new to the item,
+        not the full history ``include=["gen_ai.input.messages"]`` adds. An
+        item matched only by an input value returns only its new input
+        messages, one matched only by an output value only its output, and
+        one matched by an attribute path the whole item.
+
+        ``operation_name`` is deprecated: pass
+        ``contains=["gen_ai.operation.name:<operation>"]`` instead, which
+        returns the same rows. It still keeps the rows with any of the given
+        ``gen_ai.operation.name`` values, and narrows (ANDs with)
+        ``contains`` rather than adding to it.
         """
         # unasync: end
         """List conversation items using an opaque ``next`` cursor. Iterate
@@ -314,19 +332,37 @@ class AsyncConversationItems:
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
 
-        ``operation_name`` keeps the rows with any of the given
-        ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
-        ``invoke_agent``, ...). ``contains`` keeps the rows whose sealed
-        messages contain any of the given ``<path>:<value>`` pairs over the
-        GenAI semconv attributes: ``gen_ai.input.messages.role:user``,
-        ``gen_ai.input.messages.parts.type:tool_call_response``,
-        ``gen_ai.input.messages.parts.name:<tool>``,
-        ``gen_ai.output.messages.parts.type:text``,
-        ``gen_ai.output.messages.parts.type:tool_call``,
-        ``gen_ai.output.messages.parts.name:<tool>``,
-        ``gen_ai.tool.name:<tool>`` or ``gen_ai.operation.name:<operation>``;
-        a chat span matched on one side returns only that side's messages.
-        The two filters combine.
+        ``contains`` keeps the rows that contain any of the given
+        ``<path>:<value>`` pairs over the GenAI semconv attributes (at most
+        20, sent as the repeated ``contains`` key):
+
+        - ``gen_ai.input.messages.role:user``
+        - ``gen_ai.input.messages.parts.type:tool_call_response``
+        - ``gen_ai.input.messages.parts.name:<tool>``
+        - ``gen_ai.output.messages.parts.type:text``
+        - ``gen_ai.output.messages.parts.type:tool_call``
+        - ``gen_ai.output.messages.parts.name:<tool>``
+        - ``gen_ai.tool.name:<tool>``
+        - ``gen_ai.operation.name:<operation>``
+
+        A value on one of the four name paths may end in a single ``*`` to
+        match by prefix: ``gen_ai.output.messages.parts.name:mcp_browserbase_*``
+        or ``gen_ai.tool.name:mcp_*``, and ``gen_ai.input.messages.parts.name:*``
+        matches any name. The server rejects ``*`` anywhere else, or on a role
+        or part-type value, with a 422
+        (:class:`~introspection_sdk.ValidationError`).
+
+        Input paths are evaluated over the input messages new to the item,
+        not the full history ``include=["gen_ai.input.messages"]`` adds. An
+        item matched only by an input value returns only its new input
+        messages, one matched only by an output value only its output, and
+        one matched by an attribute path the whole item.
+
+        ``operation_name`` is deprecated: pass
+        ``contains=["gen_ai.operation.name:<operation>"]`` instead, which
+        returns the same rows. It still keeps the rows with any of the given
+        ``gen_ai.operation.name`` values, and narrows (ANDs with)
+        ``contains`` rather than adding to it.
         """
 
         async def fetch(cursor: str | None) -> GenAiSpanList:

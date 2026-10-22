@@ -19,6 +19,7 @@ import httpx2 as httpx
 import pyarrow as pa
 import pytest
 
+from introspection_sdk import ValidationError
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     Conversations,
@@ -528,7 +529,7 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     assert req.params.get("agent_id") is None
 
 
-def test_items_list_repeats_operation_names_and_content_classes(
+def test_items_list_repeats_operation_names_and_contains_values(
     fake_api: FakeAPI,
 ):
     fake_api.add(
@@ -554,6 +555,104 @@ def test_items_list_repeats_operation_names_and_content_classes(
         "gen_ai.input.messages.role:user",
         "gen_ai.tool.name:message_user",
         "gen_ai.input.messages.parts.name:react",
+    ]
+
+
+def test_items_list_sends_name_prefix_wildcards_verbatim(fake_api: FakeAPI):
+    """A trailing `*` on a name path is a prefix match the server resolves;
+    the SDK sends the value unchanged and the matching rows come back."""
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page(
+            [
+                make_item(
+                    attributes={
+                        "introspection": {
+                            "contains": {
+                                "version": 1,
+                                "values": [
+                                    "gen_ai.output.messages.parts.type:tool_call",
+                                    "gen_ai.output.messages.parts.name:"
+                                    "mcp_browserbase_navigate",
+                                ],
+                            }
+                        }
+                    }
+                )
+            ],
+            False,
+        ),
+    )
+
+    page = (
+        _conversations(fake_api)
+        .items.list(
+            "conv-1",
+            contains=[
+                "gen_ai.output.messages.parts.name:mcp_browserbase_*",
+                "gen_ai.tool.name:mcp_*",
+                "gen_ai.input.messages.parts.name:*",
+            ],
+        )
+        .page()
+    )
+
+    assert fake_api.last_request.params.get_list("contains") == [
+        "gen_ai.output.messages.parts.name:mcp_browserbase_*",
+        "gen_ai.tool.name:mcp_*",
+        "gen_ai.input.messages.parts.name:*",
+    ]
+    contains = present(present(page.data[0].attributes.introspection).contains)
+    assert "gen_ai.output.messages.parts.name:mcp_browserbase_navigate" in (
+        present(contains.values)
+    )
+
+
+def test_items_list_surfaces_a_rejected_wildcard(fake_api: FakeAPI):
+    """`*` is a prefix match on a name path only; the server rejects it on a
+    role or part type with a 422, raised as `ValidationError`."""
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        status=422,
+        json_body={
+            "detail": "contains: '*' is accepted only at the end of a name value"
+        },
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        _conversations(fake_api).items.list(
+            "conv-1", contains=["gen_ai.input.messages.role:*"]
+        ).page()
+
+    assert exc.value.status_code == 422
+    assert fake_api.last_request.params.get_list("contains") == [
+        "gen_ai.input.messages.role:*"
+    ]
+
+
+def test_items_list_sends_deprecated_operation_name_beside_contains(
+    fake_api: FakeAPI,
+):
+    """The deprecated `operation_name` still goes out as its own key, which
+    the server ANDs with `contains`."""
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page([make_item()], False),
+    )
+
+    _conversations(fake_api).items.list(
+        "conv-1",
+        operation_name="chat",
+        contains=["gen_ai.operation.name:execute_tool"],
+    ).page()
+
+    params = fake_api.last_request.params
+    assert params.get_list("operation_name") == ["chat"]
+    assert params.get_list("contains") == [
+        "gen_ai.operation.name:execute_tool"
     ]
 
 
@@ -589,6 +688,7 @@ def test_items_carry_the_contains_summary_as_typed_attributes(
                                     "gen_ai.input.messages.parts.name:react",
                                     "gen_ai.output.messages.parts.type:tool_call",
                                     "gen_ai.output.messages.parts.name:message_user",
+                                    "gen_ai.tool.name:*",
                                 ],
                             }
                         }
@@ -608,6 +708,8 @@ def test_items_carry_the_contains_summary_as_typed_attributes(
         "gen_ai.input.messages.parts.name:react",
         "gen_ai.output.messages.parts.type:tool_call",
         "gen_ai.output.messages.parts.name:message_user",
+        # A name list cut at the processor's bound carries `<path>:*`.
+        "gen_ai.tool.name:*",
     ]
 
 
