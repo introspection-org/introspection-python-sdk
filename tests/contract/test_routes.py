@@ -113,3 +113,122 @@ async def replace(http, logger):
     assert sites_at(package, line_of("_send(http, WIDGETS)", resource)) == {
         ("PUT", "/v1/widgets")
     }
+
+
+def test_a_loop_carries_its_body_into_later_passes_and_else(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def sweep(http, ids):
+    path = WIDGETS
+    for widget_id in ids:
+        await http.request("HEAD", path)
+        if not widget_id:
+            continue
+        path = _path(widget_id)
+        if widget_id == "stop":
+            path = f"{WIDGETS}/{widget_id}/stop"
+            break
+        path = f"{WIDGETS}/{widget_id}/swept"
+    else:
+        await http.request("GET", path)
+    return await http.request("POST", path)
+
+
+async def drain(http, ids):
+    path = WIDGETS
+    while ids:
+        path = _path(ids.pop())
+    else:
+        await http.request("DELETE", path)
+"""
+    )
+
+    package = sample_package(resource)
+
+    def sent(snippet: str) -> set[str]:
+        return {p for _, p in sites_at(package, line_of(snippet, resource))}
+
+    # A pass starts where the loop or an earlier pass or `continue` left.
+    assert sent('"HEAD", path') == {"/v1/widgets", "/v1/widgets/{}/swept"}
+    # `else` follows zero or more completed passes, never a `break`.
+    assert sent('"GET", path') == {"/v1/widgets", "/v1/widgets/{}/swept"}
+    assert sent('"POST", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}/swept",
+        "/v1/widgets/{}/stop",
+    }
+    assert sent('"DELETE", path') == {"/v1/widgets", "/v1/widgets/{}"}
+
+
+def test_a_match_keeps_each_case(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def act(http, action, widget_id):
+    path = WIDGETS
+    match action:
+        case "get":
+            path = _path(widget_id)
+            await http.request("GET", path)
+        case "archive" if widget_id:
+            path = f"{WIDGETS}/{widget_id}/archive"
+    return await http.request("POST", path)
+
+
+async def act_or_list(http, action, widget_id):
+    match action:
+        case "get":
+            path = _path(widget_id)
+        case _:
+            path = WIDGETS
+    return await http.request("PUT", path)
+"""
+    )
+
+    package = sample_package(resource)
+
+    def sent(snippet: str) -> set[str]:
+        return {p for _, p in sites_at(package, line_of(snippet, resource))}
+
+    assert sent('"GET", path') == {"/v1/widgets/{}"}
+    # No case matched keeps the path from before the match.
+    assert sent('"POST", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}",
+        "/v1/widgets/{}/archive",
+    }
+    # A catch-all case leaves no path through.
+    assert sent('"PUT", path') == {"/v1/widgets", "/v1/widgets/{}"}
+
+
+def test_with_blocks_and_except_star_run_in_sequence(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def lock(http, lock, widget_id):
+    path = WIDGETS
+    async with lock:
+        with lock:
+            path = _path(widget_id)
+            await http.request("GET", path)
+    try:
+        path = f"{WIDGETS}/{widget_id}/lock"
+    except* ValueError:
+        await http.request("DELETE", path)
+    return await http.request("POST", path)
+"""
+    )
+
+    package = sample_package(resource)
+
+    def sent(snippet: str) -> set[str]:
+        return {p for _, p in sites_at(package, line_of(snippet, resource))}
+
+    assert sent('"GET", path') == {"/v1/widgets/{}"}
+    assert sent('"DELETE", path') == {"/v1/widgets/{}", "/v1/widgets/{}/lock"}
+    # The handler falls through with what the body had assigned.
+    assert sent('"POST", path') == {"/v1/widgets/{}", "/v1/widgets/{}/lock"}

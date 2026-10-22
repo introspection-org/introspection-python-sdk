@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import sys
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -18,6 +19,9 @@ __all__ = ["Package", "Scope", "SourceModule"]
 FunctionNode = ast.FunctionDef | ast.AsyncFunctionDef
 
 logger = logging.getLogger(__name__)
+
+#: A line past every statement, to read the values that leave a block.
+END = sys.maxsize
 
 
 @dataclass
@@ -153,9 +157,10 @@ class Scope:
     def assignments(self, name: str, before: int) -> list[ast.expr]:
         """Every value `name = ...` can leave in `name` on a line, read in
         the innermost enclosing function that assigns it: a later
-        assignment replaces an earlier one, each branch of an `if` keeps
-        its own, and an `except` handler sees every value its `try` body
-        assigned."""
+        assignment replaces an earlier one, each branch of an `if` or
+        case of a `match` keeps its own, a loop body and its `else` see
+        what earlier passes assigned, and an `except` handler sees every
+        value its `try` body assigned."""
         for function in self.chain:
             values = _reaching(function.body, name, before, [])
             if values:
@@ -171,30 +176,85 @@ def _reaching(
     for stmt in body:
         if stmt.lineno >= before:
             break
-        value = _assigned(stmt, name)
-        if value is not None:
-            values = [value]
-            continue
-        if isinstance(stmt, ast.Try | ast.TryStar):
-            values, inside = _through_try(stmt, name, before, values)
-            if inside:
-                return values
-            continue
-        branches = _branches(stmt)
-        if (stmt.end_lineno or stmt.lineno) >= before:
-            # The line is inside this statement: follow the branch it is in.
-            inside = [b for b in branches if b and b[0].lineno <= before]
-            return (
-                _reaching(inside[-1], name, before, values)
-                if inside
-                else values
-            )
-        if branches:
-            reached = [
-                v for b in branches for v in _reaching(b, name, before, values)
-            ]
-            values = _union(reached)
+        values, inside = _through(stmt, name, before, values)
+        if inside:
+            return values
     return values
+
+
+def _through(
+    stmt: ast.stmt, name: str, before: int, values: list[ast.expr]
+) -> tuple[list[ast.expr], bool]:
+    """The values of `name` at line `before` and True when the line is in
+    `stmt`, else the values that leave it and False."""
+    if isinstance(stmt, ast.Try | ast.TryStar):
+        return _through_try(stmt, name, before, values)
+    if isinstance(stmt, ast.For | ast.AsyncFor | ast.While):
+        return _through_loop(stmt, name, before, values)
+    branches = _branches(stmt)
+    held = [b for b in branches if _holds(b, before)]
+    if held:
+        return _reaching(held[0], name, before, values), True
+    if (stmt.end_lineno or stmt.lineno) >= before:
+        # The line is in the statement's own expressions, a test or a
+        # pattern, which run before any of its blocks.
+        return values, True
+    value = _assigned(stmt, name)
+    if value is not None:
+        return [value], False
+    if not branches:
+        return values, False
+    reached = [v for b in branches for v in _reaching(b, name, END, values)]
+    return _union(reached), False
+
+
+def _through_loop(
+    stmt: ast.For | ast.AsyncFor | ast.While,
+    name: str,
+    before: int,
+    values: list[ast.expr],
+) -> tuple[list[ast.expr], bool]:
+    """Like `_through`, for a loop. Each pass of the body starts with the
+    values from before the loop or from the end of an earlier pass or its
+    `continue`; `else` runs after the last pass, or none, and `break`
+    leaves past it."""
+
+    def at(lines: list[int], entry: list[ast.expr]) -> list[ast.expr]:
+        return [
+            v for ln in lines for v in _reaching(stmt.body, name, ln, entry)
+        ]
+
+    again = [
+        *_reaching(stmt.body, name, END, values),
+        *at(_jumps(stmt.body, ast.Continue), values),
+    ]
+    top = _union([*values, *again])
+    if _holds(stmt.body, before):
+        return _reaching(stmt.body, name, before, top), True
+    completed = _reaching(stmt.orelse, name, before, top)
+    if _holds(stmt.orelse, before):
+        return completed, True
+    if before < stmt.body[0].lineno:
+        return top, True
+    broken = at(_jumps(stmt.body, ast.Break), top)
+    return _union([*completed, *broken]), False
+
+
+def _jumps(body: list[ast.stmt], kind: type[ast.stmt]) -> list[int]:
+    """The lines of the `break` or `continue` statements in `body` that act
+    on the loop whose body it is."""
+    out: list[int] = []
+    pending: list[ast.AST] = list(body)
+    while pending:
+        node = pending.pop()
+        if isinstance(node, kind):
+            out.append(node.lineno)
+        elif isinstance(node, ast.For | ast.AsyncFor | ast.While):
+            # A nested loop's own body jumps in that loop.
+            pending.extend(node.orelse)
+        elif not isinstance(node, FunctionNode | ast.ClassDef):
+            pending.extend(ast.iter_child_nodes(node))
+    return out
 
 
 def _through_try(
@@ -260,15 +320,24 @@ def _assigned_anywhere(body: list[ast.stmt], name: str) -> list[ast.expr]:
 
 
 def _branches(stmt: ast.stmt) -> list[list[ast.stmt]]:
-    """The blocks a compound statement may run, in source order; an empty
-    one stands for running none of them."""
+    """The blocks a compound statement other than a loop or `try` may run,
+    in source order; an empty one stands for running none of them."""
     if isinstance(stmt, ast.If):
         return [stmt.body, stmt.orelse]
-    if isinstance(stmt, ast.For | ast.AsyncFor | ast.While):
-        return [[], stmt.body, stmt.orelse]
     if isinstance(stmt, ast.With | ast.AsyncWith):
         return [stmt.body]
+    if isinstance(stmt, ast.Match):
+        cases = [case.body for case in stmt.cases]
+        return cases if any(map(_catches_all, stmt.cases)) else [*cases, []]
     return []
+
+
+def _catches_all(case: ast.match_case) -> bool:
+    return (
+        case.guard is None
+        and isinstance(case.pattern, ast.MatchAs)
+        and case.pattern.pattern is None
+    )
 
 
 def _assigned(node: ast.AST, name: str) -> ast.expr | None:
