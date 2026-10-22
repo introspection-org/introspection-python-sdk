@@ -13,6 +13,10 @@
 # link to the run. GitHub runs repository_dispatch from the default branch's
 # copy of this file only.
 #
+# Only a run on main posts to Slack, and a manual run only when its
+# post_for_real input is set; every other run prints the message instead.
+# The posted state is saved only when a post really went out.
+#
 # Until staging serves both references (a 404) every run passes and posts
 # nothing.
 name: API Contract
@@ -22,6 +26,11 @@ on:
   repository_dispatch:
     types: [api-reference-deployed]
   workflow_dispatch:
+    inputs:
+      post_for_real:
+        type: boolean
+        default: false
+        description: 'Post to Slack on a state change, as a deploy-triggered run does. Off prints the message instead.'
 
 permissions:
   contents: read
@@ -69,7 +78,7 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           CLOUD_SHA: ${{ github.event.client_payload.sha }}
-          SLACK_WEBHOOK_URL: ${{ secrets.MAIN_STATUS_SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.post_for_real) && secrets.MAIN_STATUS_SLACK_WEBHOOK_URL || '' }}
         run: |
           echo "introspection-cloud commit: ${CLOUD_SHA:-none (manual run)}"
           uv run python scripts/check_api_contract.py --notify .api-drift-state \
