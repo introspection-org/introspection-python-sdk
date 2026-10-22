@@ -13,6 +13,9 @@
           "path": "pyproject.toml",
           "jsonpath": "$.project.version"
         }
+      ],
+      "exclude-paths": [
+        "packages/introspection-aauth"
       ]
     },
     "packages/introspection-aauth": {
@@ -28,8 +31,7 @@
           "path": "pyproject.toml",
           "jsonpath": "$.project.version"
         }
-      ],
-      "release-as": "0.1.0"
+      ]
     }
   }
 }
