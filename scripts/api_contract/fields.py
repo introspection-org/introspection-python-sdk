@@ -143,18 +143,26 @@ def _compare(
             False,
         )
         return
-    if not ref_kinds & sdk_kinds:
+    if _unaccepted(ref_kinds, sdk_kinds, at):
         run.add(
             "type",
             at,
             f"reference {' | '.join(sorted(ref_kinds))}, "
             f"SDK {' | '.join(sorted(sdk_kinds))}",
         )
-        return
     if "array" in ref_kinds & sdk_kinds:
         _compare_items(run, refs, sdks, at)
     if "object" in ref_kinds & sdk_kinds:
         _compare_object_branches(run, refs, sdks, at)
+
+
+def _unaccepted(ref_kinds: set[str], sdk_kinds: set[str], at: str) -> set[str]:
+    """Basic types the sending side can produce that the receiving side
+    does not accept: the SDK sends a body or query, the server a response.
+    A receiver that accepts more than is sent is fine."""
+    if at.startswith("response"):
+        return ref_kinds - sdk_kinds
+    return sdk_kinds - ref_kinds
 
 
 def _items(branches: list[Branch]) -> list[Side]:
@@ -176,6 +184,13 @@ def _compare_items(
 def _compare_object_branches(
     run: Comparison, refs: list[Branch], sdks: list[Branch], at: str
 ) -> None:
+    # Keyed by identity, so two inline schemas that print the same still
+    # each get their check, and mutually recursive schemas end.
+    key = f"{_origins(refs)}::{_origins(sdks)}"
+    if key in run.seen:
+        return
+    run.seen.add(key)
+    _compare_values(run, refs, sdks, at)
     ref_objects = [b for b in refs if _named(b)]
     sdk_objects = [b for b in sdks if _named(b)]
     if not ref_objects:
@@ -184,21 +199,42 @@ def _compare_object_branches(
         # The reference names fields the SDK types as `dict[str, ...]`.
         run.add("unresolvable", at, "no named fields")
         return
-    # Keyed by identity, so two inline schemas that print the same still
-    # each get their check, and mutually recursive schemas end.
-    key = (
-        "|".join(str(o) for o in sorted({b.origin for b in ref_objects}))
-        + "::"
-        + "|".join(str(o) for o in sorted({b.origin for b in sdk_objects}))
-    )
-    if key in run.seen:
-        return
-    run.seen.add(key)
     discriminator = ref_objects[0].discriminator
     if len(ref_objects) > 1 and discriminator:
         _compare_variants(run, ref_objects, sdk_objects, discriminator, at)
     else:
         _compare_objects(run, ref_objects, sdk_objects, at)
+
+
+def _origins(branches: list[Branch]) -> str:
+    objects = {
+        b.origin for b in branches if kind_of(b.side.schema) == "object"
+    }
+    return "|".join(str(o) for o in sorted(objects))
+
+
+def _values(branches: list[Branch]) -> list[Side]:
+    """The value schemas of the branches that are typed dictionaries; an
+    untyped `dict` (`additionalProperties: true`) has an untyped value."""
+    values = [
+        (b.side, b.side.schema.get("additionalProperties"))
+        for b in branches
+        if kind_of(b.side.schema) == "object"
+    ]
+    return [
+        side.at({} if v is True else v)
+        for side, v in values
+        if v is True or isinstance(v, dict)
+    ]
+
+
+def _compare_values(
+    run: Comparison, refs: list[Branch], sdks: list[Branch], at: str
+) -> None:
+    """A typed dictionary's values, at `<field>{}`."""
+    ref_values, sdk_values = _values(refs), _values(sdks)
+    if len(ref_values) == 1 and len(sdk_values) == 1:
+        _compare(run, ref_values[0], sdk_values[0], f"{at}{{}}", False)
 
 
 def _tags(b: Branch, name: str) -> list[Any]:

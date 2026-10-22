@@ -131,3 +131,99 @@ def test_array_items_are_compared():
             "required in the reference, optional in the SDK",
         )
     ]
+
+
+def mapping(values):
+    return {"type": "object", "additionalProperties": values}
+
+
+def test_typed_dictionary_values_are_compared():
+    ref = obj({"labels": mapping({"type": "integer"})})
+
+    assert compare(
+        side(ref), side(obj({"labels": mapping(STRING)})), "body"
+    ) == [Finding("type", "body.labels{}", "reference number, SDK string")]
+
+
+def test_models_behind_dictionary_values_are_compared():
+    ref = obj({"by_id": mapping(obj({"x": STRING, "y": STRING}))})
+    sdk = obj({"by_id": mapping(obj({"x": STRING}))})
+
+    assert compare(side(ref), side(sdk), "response") == [
+        Finding("missing", "response.by_id{}.y")
+    ]
+
+
+def test_untyped_dictionary_against_typed_values_is_unresolvable():
+    ref = obj({"labels": mapping(STRING)})
+    sdk = obj({"labels": mapping(True)})
+
+    assert compare(side(ref), side(sdk), "body") == [
+        Finding("unresolvable", "body.labels{}", "untyped")
+    ]
+    assert compare(side(sdk), side(ref), "body") == []
+
+
+def test_recursive_dictionaries_end():
+    defs = {"Tree": mapping({"$ref": "#/$defs/Tree"})}
+
+    assert (
+        compare(
+            side(obj({"t": {"$ref": "#/$defs/Tree"}}), defs),
+            side(obj({"t": {"$ref": "#/$defs/Tree"}}), defs),
+            "body",
+        )
+        == []
+    )
+
+
+SCALARS = {
+    "anyOf": [
+        STRING,
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "null"},
+    ]
+}
+
+
+def test_sdk_sending_a_type_the_reference_does_not_accept_is_a_mismatch():
+    assert compare(
+        side(obj({"v": NULLABLE_STRING})), side(obj({"v": SCALARS})), "body"
+    ) == [
+        Finding(
+            "type", "body.v", "reference string, SDK boolean | number | string"
+        )
+    ]
+
+
+def test_sdk_sending_a_narrower_union_passes():
+    assert (
+        compare(side(obj({"v": SCALARS})), side(obj({"v": STRING})), "body")
+        == []
+    )
+
+
+def test_response_the_sdk_cannot_read_is_a_mismatch():
+    ref, sdk = side(obj({"v": SCALARS})), side(obj({"v": NULLABLE_STRING}))
+
+    assert compare(ref, sdk, "response") == [
+        Finding(
+            "type",
+            "response.v",
+            "reference boolean | number | string, SDK string",
+        )
+    ]
+    assert compare(sdk, ref, "response") == []
+
+
+def test_one_query_value_still_matches_a_union_array_parameter():
+    ref = obj(
+        {
+            "tags": {
+                "anyOf": [{"type": "array", "items": STRING}, {"type": "null"}]
+            }
+        }
+    )
+
+    assert compare(side(ref), side(obj({"tags": STRING})), "query") == []
