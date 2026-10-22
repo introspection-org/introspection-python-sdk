@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 from api_contract.changelog import render_plane
-from api_drift_report import prompt, slack_escape, trim
+from api_drift_report import slack_escape, trim
 
 ROOT = Path(__file__).resolve().parents[2]
 NOTIFY = ROOT / "scripts" / "api_drift_notify.sh"
@@ -24,18 +24,6 @@ def test_trim_keeps_whole_lines_and_says_how_many_are_left():
 
 def test_slack_control_characters_are_escaped():
     assert slack_escape("a < b & c > d") == "a &lt; b &amp; c &gt; d"
-
-
-def test_prompt_fills_every_placeholder_and_drops_the_comment():
-    text = prompt("https://run", "drift here", ["cp changes", "dp changes"])
-
-    assert "{{" not in text
-    assert "<!--" not in text
-    assert text.startswith("Fix the API drift")
-    assert "https://run" in text
-    assert "drift here" in text
-    assert "cp changes\n\ndp changes" in text
-    assert "never" in text.lower()
 
 
 def test_changelog_groups_one_change_across_operations():

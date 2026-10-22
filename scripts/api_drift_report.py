@@ -16,7 +16,7 @@ The report is written to --out as files the notify step reads:
 
   state        drift | clean
   body.txt     the Slack message below its headline: summary, run link, and
-               the agent prompt carrying both reports trimmed to fit
+               the drift itself (SDK drift, changed planes) trimmed to fit
   summary.md   both reports in full, for the job summary
 
 Exits 0 when the report was built (drift or clean) and 2 when it could not
@@ -35,7 +35,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import re
 import sys
 import tempfile
 import urllib.error
@@ -48,7 +47,6 @@ from api_contract.source import Package
 
 ROOT = Path(__file__).resolve().parent.parent
 PLANES = ("controlplane", "dataplane")
-PROMPT = ROOT / ".github" / "api-drift-prompt.md"
 
 #: Characters the SDK drift, and each plane's changelog, may take in the
 #: Slack message. Slack cuts a message at 40,000 characters, but one much
@@ -80,19 +78,6 @@ def slack_escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def prompt(run_url: str, drift: str, changes: list[str]) -> str:
-    text = re.sub(r"<!--.*?-->\s*", "", PROMPT.read_text(), flags=re.S)
-    return (
-        text.replace("{{RUN_URL}}", run_url)
-        .replace("{{SDK_DRIFT}}", trim(drift, DRIFT_BUDGET))
-        .replace(
-            "{{CHANGELOG}}",
-            "\n\n".join(trim(c, PLANE_BUDGET) for c in changes),
-        )
-        .strip()
-    )
-
-
 def build(out: Path, run_url: str, overrides: dict[str, str | None]) -> bool:
     """Writes the report; True when there is drift."""
     specs = {
@@ -110,20 +95,18 @@ def build(out: Path, run_url: str, overrides: dict[str, str | None]) -> bool:
                 render_plane(plane, changelog(str(saved), str(live)))
             )
     result = run(Package.load(ROOT), specs)
-    drift_text = result.render() if result.failed else "none"
     drifted = result.failed or any(p.changed for p in planes)
     summary_lines = [
         f"SDK drift: {result.counts() if result.failed else 'none'}",
         *(f"Reference {p.header}" for p in planes),
     ]
-    body = (
-        "\n".join([*summary_lines, run_url])
-        + "\n\nAgent prompt, ready to paste:\n```\n"
-        + prompt(run_url, drift_text, [p.text for p in planes])
-        + "\n```"
-        if drifted
-        else run_url
+    blocks = [trim(result.render(), DRIFT_BUDGET)] if result.failed else []
+    blocks += [trim(p.text, PLANE_BUDGET) for p in planes if p.changed]
+    body = "\n".join([*summary_lines, run_url]) + "".join(
+        f"\n```\n{block}\n```" for block in blocks
     )
+    if not drifted:
+        body = run_url
     out.mkdir(parents=True, exist_ok=True)
     (out / "state").write_text("drift\n" if drifted else "clean\n")
     (out / "body.txt").write_text(slack_escape(body) + "\n")

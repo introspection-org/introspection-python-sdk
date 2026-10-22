@@ -7,8 +7,8 @@
 #
 # A red run that nobody opens is ignorable too, so the run tells
 # #main-build-alerts when the state changes (clean to drift, drift to clean),
-# with a ready-to-paste agent prompt for the fix. It never opens a fix PR
-# itself: the drift often needs a decision that belongs to a person.
+# listing the drift and linking the run. It never opens a fix PR itself: the
+# drift often needs a decision that belongs to a person.
 name: API Contract
 
 on:

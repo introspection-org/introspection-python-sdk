@@ -147,7 +147,12 @@ def test_first_published_run_posts_its_drift_once(
 
     assert "Posted to Slack." in notify(out, states, webhook)
     assert len(staging.posts) == 1
-    assert staging.posts[0]["text"].startswith("🚨 API drift")
+    text = staging.posts[0]["text"]
+    assert text.startswith("🚨 API drift")
+    # The message is the drift itself and the run link, nothing to paste.
+    assert "controlplane: GET /v1/projects\n" in text
+    assert "(local run)" in text
+    assert "prompt" not in text.lower()
     assert (states / "last-posted").read_text() == "drift\n"
 
     assert "staying quiet" in notify(out, states, webhook)
