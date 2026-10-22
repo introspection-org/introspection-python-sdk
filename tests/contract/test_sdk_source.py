@@ -14,13 +14,12 @@ from pathlib import Path
 
 import pytest
 from api_contract.check import run
-from api_contract.routes import UNKNOWN_METHOD, discover, routes_of
+from api_contract.http_calls import UNKNOWN_METHOD, requests
+from api_contract.routes import discover, route_arguments, routes_of
 from api_contract.source import Package, Scope
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "api_contract"
-#: The SDK HTTP client's methods, by the position of their path argument.
-CLIENT_CALLS = {"request": 1, "stream_bytes": 0, "stream_sse_lines": 0}
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +50,7 @@ def test_generated_sync_twins_are_not_read(package):
             "resources/repositories.py",
         ),
         ("GET", "/v1/repositories/{}/contents", "resources/repositories.py"),
-        # A path constant passed to a helper whose name says POST.
+        # A path constant passed to a helper that posts it with httpx.
         ("POST", "/v1/oauth/token", "_async/auth.py"),
         # A helper's route plus a literal suffix, read as a stream.
         ("GET", "/v1/tasks/{}/runs/{}/stream", "resumable.py"),
@@ -63,27 +62,41 @@ def test_call_sites_are_found_however_the_path_is_built(
     assert where in sites[(method, path)].at
 
 
-def test_every_http_client_call_reads_a_route(package):
+def calls(package):
+    for module in package.modules.values():
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call):
+                yield module, node, Scope.of(package, module, node)
+
+
+def test_every_http_call_reads_a_route(package):
     """A path built in a form route discovery cannot read would drop its
     call site without a word; only a call passing on its own caller's
     path may read none."""
     unread = []
-    for module in package.modules.values():
-        for node in ast.walk(module.tree):
-            if not (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr in CLIENT_CALLS
-            ):
-                continue
-            path = node.args[CLIENT_CALLS[node.func.attr]]
-            scope = Scope.of(package, module, node)
+    for module, node, scope in calls(package):
+        for request in requests(node, scope):
+            path = request.path
             if isinstance(path, ast.Name) and scope.is_parameter(path.id):
                 continue
             if not any(r.startswith("/v1/") for r in routes_of(path, scope)):
-                unread.append(f"{module.line(node)}: {ast.unparse(path)}")
+                shown = "no path" if path is None else ast.unparse(path)
+                unread.append(f"{module.line(node)}: {shown}")
 
     assert unread == []
+
+
+def test_every_route_argument_is_sent(package):
+    """A route passed to a call that discovery does not read as an HTTP
+    call, a helper method or a client of a new kind, is dropped without a
+    word; it fails here instead, to be read or ruled out."""
+    dropped = [
+        f"{module.line(node)}: {ast.unparse(node.func)}"
+        for module, node, scope in calls(package)
+        if route_arguments(node, scope) and not requests(node, scope)
+    ]
+
+    assert dropped == []
 
 
 def test_every_call_site_has_a_method(package):

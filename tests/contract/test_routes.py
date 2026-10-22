@@ -16,6 +16,11 @@ def sites_at(package, line: int) -> set[tuple[str, str]]:
     }
 
 
+def sent(package, resource: str, snippet: str) -> set[str]:
+    """The paths the call on the line of `snippet` sends."""
+    return {p for _, p in sites_at(package, line_of(snippet, resource))}
+
+
 def test_a_path_assigned_in_branches_keeps_every_branch(sample_package):
     resource = (
         RESOURCE
@@ -71,18 +76,18 @@ async def rename(http, widget_id):
 
     package = sample_package(resource)
 
-    def sent(snippet: str) -> set[str]:
-        return {p for _, p in sites_at(package, line_of(snippet, resource))}
-
     every = {"/v1/widgets", "/v1/widgets/{}", "/v1/widgets/{}/move"}
-    assert sent('"HEAD", path') == {"/v1/widgets/{}"}
+    assert sent(package, resource, '"HEAD", path') == {"/v1/widgets/{}"}
     # The body may raise before or after any of its assignments.
-    assert sent('"GET", path') == every
+    assert sent(package, resource, '"GET", path') == every
     # The else block runs only when the whole body did.
-    assert sent('"POST", path') == {"/v1/widgets/{}/move"}
-    assert sent('"PATCH", path') == every
+    assert sent(package, resource, '"POST", path') == {"/v1/widgets/{}/move"}
+    assert sent(package, resource, '"PATCH", path') == every
     # After the statement, only the paths of the blocks that completed.
-    assert sent('"PUT", path') == {"/v1/widgets", "/v1/widgets/{}/rename"}
+    assert sent(package, resource, '"PUT", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}/rename",
+    }
 
 
 def test_only_http_calls_send_a_route(sample_package):
@@ -147,19 +152,25 @@ async def drain(http, ids):
 
     package = sample_package(resource)
 
-    def sent(snippet: str) -> set[str]:
-        return {p for _, p in sites_at(package, line_of(snippet, resource))}
-
     # A pass starts where the loop or an earlier pass or `continue` left.
-    assert sent('"HEAD", path') == {"/v1/widgets", "/v1/widgets/{}/swept"}
+    assert sent(package, resource, '"HEAD", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}/swept",
+    }
     # `else` follows zero or more completed passes, never a `break`.
-    assert sent('"GET", path') == {"/v1/widgets", "/v1/widgets/{}/swept"}
-    assert sent('"POST", path') == {
+    assert sent(package, resource, '"GET", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}/swept",
+    }
+    assert sent(package, resource, '"POST", path') == {
         "/v1/widgets",
         "/v1/widgets/{}/swept",
         "/v1/widgets/{}/stop",
     }
-    assert sent('"DELETE", path') == {"/v1/widgets", "/v1/widgets/{}"}
+    assert sent(package, resource, '"DELETE", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}",
+    }
 
 
 def test_a_match_keeps_each_case(sample_package):
@@ -190,18 +201,18 @@ async def act_or_list(http, action, widget_id):
 
     package = sample_package(resource)
 
-    def sent(snippet: str) -> set[str]:
-        return {p for _, p in sites_at(package, line_of(snippet, resource))}
-
-    assert sent('"GET", path') == {"/v1/widgets/{}"}
+    assert sent(package, resource, '"GET", path') == {"/v1/widgets/{}"}
     # No case matched keeps the path from before the match.
-    assert sent('"POST", path') == {
+    assert sent(package, resource, '"POST", path') == {
         "/v1/widgets",
         "/v1/widgets/{}",
         "/v1/widgets/{}/archive",
     }
     # A catch-all case leaves no path through.
-    assert sent('"PUT", path') == {"/v1/widgets", "/v1/widgets/{}"}
+    assert sent(package, resource, '"PUT", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}",
+    }
 
 
 def test_with_blocks_and_except_star_run_in_sequence(sample_package):
@@ -225,10 +236,136 @@ async def lock(http, lock, widget_id):
 
     package = sample_package(resource)
 
-    def sent(snippet: str) -> set[str]:
-        return {p for _, p in sites_at(package, line_of(snippet, resource))}
-
-    assert sent('"GET", path') == {"/v1/widgets/{}"}
-    assert sent('"DELETE", path') == {"/v1/widgets/{}", "/v1/widgets/{}/lock"}
+    assert sent(package, resource, '"GET", path') == {"/v1/widgets/{}"}
+    assert sent(package, resource, '"DELETE", path') == {
+        "/v1/widgets/{}",
+        "/v1/widgets/{}/lock",
+    }
     # The handler falls through with what the body had assigned.
-    assert sent('"POST", path') == {"/v1/widgets/{}", "/v1/widgets/{}/lock"}
+    assert sent(package, resource, '"POST", path') == {
+        "/v1/widgets/{}",
+        "/v1/widgets/{}/lock",
+    }
+
+
+def test_a_call_sends_by_what_its_receiver_is(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+import httpx
+
+HEALTH = "/v1/health"
+
+
+async def look(cache, headers, client):
+    cache.delete(WIDGETS)
+    headers.get(HEALTH)
+    await client.post(WIDGETS)
+
+
+async def watch(base):
+    async with httpx.AsyncClient(base_url=base) as client:
+        async with client.stream("GET", HEALTH) as res:
+            await client.post(url=WIDGETS)
+            return res
+"""
+    )
+
+    package = sample_package(resource)
+
+    # Only an SDK or httpx client sends: a cache, headers or a client of
+    # unknown kind with a route argument send nothing.
+    assert sites_at(package, line_of("cache.delete", resource)) == set()
+    assert sites_at(package, line_of("headers.get", resource)) == set()
+    assert sites_at(package, line_of("await client.post(W", resource)) == set()
+    assert sites_at(package, line_of("client.stream", resource)) == {
+        ("GET", "/v1/health")
+    }
+    assert sites_at(package, line_of("client.post(url=", resource)) == {
+        ("POST", "/v1/widgets")
+    }
+
+
+def test_a_helper_sends_what_its_caller_passes(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def _send(http, method, path):
+    return await http.request(method, path)
+
+
+async def _cached(http, path, key, cache):
+    if cache.get(key):
+        return None
+    await http.request("POST", path)
+    return await http.stream_bytes(path)
+
+
+class AsyncGadgets:
+    def __init__(self, http):
+        self._http = http
+
+    async def _post(self, path):
+        return await self._http.request("POST", path)
+
+    async def create(self, cache, key):
+        await self._post(WIDGETS)
+        await _cached(self._http, _path(key), key, cache)
+        return await _send(self._http, "PATCH", path=WIDGETS)
+"""
+    )
+
+    package = sample_package(resource)
+
+    assert sites_at(package, line_of("self._post(WIDGETS)", resource)) == {
+        ("POST", "/v1/widgets")
+    }
+    # Each client call the helper passes the path to, and no other call.
+    assert sites_at(package, line_of("await _cached", resource)) == {
+        ("POST", "/v1/widgets/{}"),
+        ("GET", "/v1/widgets/{}"),
+    }
+    # The caller's literal method, where the helper passes its own on.
+    assert sites_at(package, line_of('"PATCH", path=', resource)) == {
+        ("PATCH", "/v1/widgets")
+    }
+
+
+def test_a_block_that_leaves_passes_nothing_on(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def check(http, fast, ids):
+    path = WIDGETS
+    if fast:
+        path = _path("fast")
+        return await http.request("GET", path)
+    await http.request("POST", path)
+    for widget_id in ids:
+        if widget_id:
+            path = _path(widget_id); break
+        if not ids:
+            raise ValueError(path)
+    else:
+        await http.request("PUT", path)
+    await http.request("DELETE", path)
+    if ids:
+        path = f"{WIDGETS}/{fast}/checked"; await http.request("HEAD", path)
+"""
+    )
+
+    package = sample_package(resource)
+
+    assert sent(package, resource, '"POST", path') == {"/v1/widgets"}
+    # A `break` takes its path past the `else`, even on the same line.
+    assert sent(package, resource, '"PUT", path') == {"/v1/widgets"}
+    assert sent(package, resource, '"DELETE", path') == {
+        "/v1/widgets",
+        "/v1/widgets/{}",
+    }
+    assert sent(package, resource, '"HEAD", path') == {
+        "/v1/widgets/{}/checked"
+    }

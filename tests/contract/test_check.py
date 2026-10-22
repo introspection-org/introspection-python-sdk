@@ -57,13 +57,12 @@ def test_route_in_neither_reference_fails(sample_package):
 
 def test_route_without_a_method_fails_as_unknown(sample_package):
     resource = RESOURCE + (
-        "\n\ndef send(client, verb):\n"
-        "    return client.request(verb, WIDGETS)\n"
+        "\n\ndef send(http, verb):\n    return http.request(verb, WIDGETS)\n"
     )
 
     result = run(sample_package(resource), references())
 
     assert result.unknown_route == [
         "? /v1/widgets (sample_sdk/_async/widgets.py:"
-        f"{line_of('client.request(verb', resource)})"
+        f"{line_of('http.request(verb', resource)})"
     ]
