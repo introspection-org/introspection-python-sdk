@@ -185,13 +185,20 @@ def _reader_of(
         (n for n in ast.walk(function) if getattr(n, "lineno", 0) > line),
         key=lambda n: (n.lineno, n.col_offset),
     ):
-        if isinstance(node, ast.Call) and any(
-            _is_result(a, name) for a in node.args
+        if (
+            isinstance(node, ast.Call)
+            and not _is_isinstance(node)
+            and any(_is_result(a, name) for a in node.args)
         ):
             return node
         if isinstance(node, ast.Return) and _is_result(node.value, name):
             return function
     return None
+
+
+def _is_isinstance(call: ast.Call) -> bool:
+    """`assert isinstance(raw, RawResponse)` narrows, it reads nothing."""
+    return isinstance(call.func, ast.Name) and call.func.id == "isinstance"
 
 
 def _is_result(expr: ast.expr | None, name: str) -> bool:
@@ -212,12 +219,18 @@ def _response(site: CallSite) -> Slot | None:
     if callee.startswith("stream"):
         return Slot(not_json="stream")
     expect = _keyword(site.call, "expect")
-    if isinstance(expect, ast.Constant) and expect.value != "json":
+    raw = isinstance(expect, ast.Constant) and expect.value == "raw"
+    if raw:
+        accept = _accept(site)
+        if accept not in (None, NOT_LITERAL) and "json" not in accept:
+            return Slot(not_json=f"raw {accept} body")
+    elif isinstance(expect, ast.Constant) and expect.value != "json":
         return Slot(not_json=f"{expect.value} body")
     consumer = _consumer(site)
     reader = ExpressionReader(site.scope, "validation")
     if consumer is None:
-        return None
+        # A raw response may still be JSON: one nothing parses is untyped.
+        return Slot(unresolved="raw body nothing parses") if raw else None
     if isinstance(consumer, ast.expr):
         return _slot(reader, consumer)
     try:

@@ -24,6 +24,7 @@ env: API_CONTRACT_CONTROLPLANE, API_CONTRACT_DATAPLANE replace the default
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -34,6 +35,8 @@ from api_contract.source import Package
 
 ROOT = Path(__file__).resolve().parent.parent
 
+logger = logging.getLogger(__name__)
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -42,13 +45,18 @@ def main(argv: list[str] | None = None) -> int:
     for plane in ("controlplane", "dataplane"):
         parser.add_argument(f"--{plane}", metavar="URL|PATH")
     args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
+    )
     specs = {}
     for plane in ("controlplane", "dataplane"):
         source = reference_source(plane, getattr(args, plane))
         try:
             specs[plane] = load_reference(source)
-        except Exception as exc:
-            print(f"could not read the API reference {source}: {exc}")
+        except Exception:
+            logger.exception(
+                "could not read the API reference", extra={"source": source}
+            )
             return 2
     result = run(Package.load(ROOT), specs)
     print(render(result))

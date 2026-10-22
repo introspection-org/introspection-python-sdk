@@ -4,6 +4,7 @@ copies in `api-reference/` were taken, from oasdiff."""
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 from collections import defaultdict
@@ -15,11 +16,14 @@ __all__ = ["PlaneChanges", "changelog", "render_plane"]
 #: oasdiff's levels: 3 is breaking, 2 potentially breaking.
 LEVELS = {3: "BREAKING: ", 2: "MAYBE BREAKING: "}
 
+logger = logging.getLogger(__name__)
+
 
 def changelog(saved: str, live: str) -> list[dict[str, Any]]:
     """oasdiff's JSON changelog from the saved copy to the live document.
     `OASDIFF` names the binary (default: `oasdiff` on PATH)."""
     binary = os.environ.get("OASDIFF", "oasdiff")
+    logger.info("running oasdiff", extra={"saved": saved})
     try:
         done = subprocess.run(
             [binary, "changelog", saved, live, "--format", "json"],

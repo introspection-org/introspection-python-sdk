@@ -154,3 +154,59 @@ def test_untyped_call_site_warns_without_failing(sample_package):
     call = line_of('"POST", WIDGETS', resource) - 1
     assert warning.at == f"sample_sdk/_async/widgets.py:{call}"
     assert "Warning: SDK has no concrete types" in render(result)
+
+
+RAW_GET = RESOURCE.replace(
+    """        return Widget.model_validate(
+            await self._http.request("GET", _path(widget_id))
+        )""",
+    """        response = await self._http.request(
+            "GET", _path(widget_id), expect="raw"
+        )
+        assert isinstance(response, bytes)
+        return _widget(response)""",
+).replace(
+    "class AsyncWidgets:",
+    "def _widget(response: Any) -> Widget | None:\n"
+    "    if not response.content:\n"
+    "        return None\n"
+    "    return Widget.model_validate_json(response.content)\n\n\n"
+    "class AsyncWidgets:",
+)
+
+
+def test_raw_response_parsed_as_json_is_compared(sample_package):
+    specs = references()
+    widget = specs["dataplane"]["components"]["schemas"]["Widget"]
+    widget["properties"]["size"] = {"type": "string"}
+
+    result = run(sample_package(RAW_GET), specs)
+
+    assert Finding(
+        "type", "response.size", "reference string, SDK number"
+    ) in findings(result, "dataplane: GET /v1/widgets/{widget_id}")
+
+
+def test_raw_response_nothing_parses_warns(sample_package):
+    resource = RAW_GET.replace(
+        "        response = await", "        await"
+    ).replace("        return _widget(response)", "        return None")
+
+    result = run(sample_package(resource), references())
+
+    assert not result.failed, render(result)
+    [warning] = result.warnings
+    assert warning.operation == "dataplane: GET /v1/widgets/{widget_id}"
+    assert warning.field == "response"
+
+
+def test_raw_response_of_another_media_type_is_not_compared(sample_package):
+    resource = RAW_GET.replace(
+        'expect="raw"',
+        'headers={"Accept": "application/octet-stream"}, expect="raw"',
+    )
+
+    result = run(sample_package(resource), references())
+
+    assert findings(result, "dataplane: GET /v1/widgets/{widget_id}") == set()
+    assert result.warnings == []

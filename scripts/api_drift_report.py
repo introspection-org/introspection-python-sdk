@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import sys
 import tempfile
@@ -52,6 +53,8 @@ PROMPT = ROOT / ".github" / "api-drift-prompt.md"
 #: past 10,000 is unreadable in the channel; the job summary has the rest.
 DRIFT_BUDGET = 3500
 PLANE_BUDGET = 2500
+
+logger = logging.getLogger(__name__)
 
 
 def trim(text: str, budget: int) -> str:
@@ -130,6 +133,10 @@ def build(out: Path, run_url: str, overrides: dict[str, str | None]) -> bool:
         + "\n\n".join(p.text for p in planes)
         + "\n```\n"
     )
+    logger.info(
+        "API drift report built",
+        extra={"state": "drift" if drifted else "clean"},
+    )
     print(f"API drift: {'drift' if drifted else 'clean'}")
     print("\n".join(summary_lines))
     return drifted
@@ -144,6 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     for plane in PLANES:
         parser.add_argument(f"--{plane}", metavar="URL|PATH")
     args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
+    )
     try:
         build(
             args.out,
@@ -151,6 +161,7 @@ def main(argv: list[str] | None = None) -> int:
             {plane: getattr(args, plane) for plane in PLANES},
         )
     except Exception as exc:
+        logger.exception("could not build the API drift report")
         print(f"::error::could not build the API drift report: {exc}")
         return 2
     return 0

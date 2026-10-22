@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import logging
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -18,6 +19,8 @@ from typing import Any
 __all__ = ["Package", "Scope", "SourceModule"]
 
 FunctionNode = ast.FunctionDef | ast.AsyncFunctionDef
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -115,6 +118,10 @@ class Package:
             name = ".".join(parts)
             rel = path.relative_to(root).as_posix()
             modules[name] = SourceModule.parse(name, path, rel)
+        logger.debug(
+            "SDK source parsed",
+            extra={"package": package, "modules": len(modules)},
+        )
         return cls(root=root, modules=modules)
 
     def resolve_import(

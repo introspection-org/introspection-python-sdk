@@ -17,6 +17,7 @@ reads); a route sent without either cannot be classified and is reported.
 from __future__ import annotations
 
 import ast
+import logging
 from dataclasses import dataclass
 
 from api_contract.reference import HTTP_METHODS
@@ -34,6 +35,8 @@ CALLEE_METHODS = (
     ("get", "GET"),
 )
 MAX_DEPTH = 8
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -185,4 +188,8 @@ def discover(package: Package) -> Discovery:
         own = _module_sites(package, module)
         found.sites += own.sites
         found.unknown_method += own.unknown_method
+    logger.debug(
+        "call sites discovered",
+        extra={"sites": len(found.sites), "modules": len(package.modules)},
+    )
     return found

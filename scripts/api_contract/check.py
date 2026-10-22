@@ -19,6 +19,7 @@ API.
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
@@ -31,6 +32,8 @@ from api_contract.site_check import compare_site
 from api_contract.source import Package
 
 __all__ = ["FINDING_MEANS", "FieldProblem", "Result", "TypeWarning", "run"]
+
+logger = logging.getLogger(__name__)
 
 FINDING_MEANS = {
     "missing": "field missing in SDK (in the reference, but this call site "
@@ -138,4 +141,12 @@ def run(package: Package, specs: dict[str, dict[str, Any]]) -> Result:
             _check_site(result, specs[op.plane], op, site)
     result.uncalled.sort()
     result.unknown_route.sort()
+    logger.info(
+        "API contract checked",
+        extra={
+            "operations": result.operations,
+            "checked": result.checked,
+            "failed": result.failed,
+        },
+    )
     return result

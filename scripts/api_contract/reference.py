@@ -12,6 +12,7 @@ classification this check reads: it keeps no list of its own.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import urllib.request
 from dataclasses import dataclass
@@ -50,9 +51,12 @@ ENV_VARS = {
 
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 
+logger = logging.getLogger(__name__)
+
 
 def load_reference(source: str) -> dict[str, Any]:
     """An OpenAPI document from a URL or a local path."""
+    logger.info("loading API reference", extra={"source": source})
     if source.startswith(("http://", "https://")):
         request = urllib.request.Request(
             source, headers={"Accept": "application/json"}
