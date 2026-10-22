@@ -150,20 +150,62 @@ class Scope:
             ]
         )
 
-    def assignment(self, name: str, before: int) -> ast.expr | None:
-        """The last `name = ...` in the enclosing functions before a line."""
+    def assignments(self, name: str, before: int) -> list[ast.expr]:
+        """Every value `name = ...` can leave in `name` on a line, read in
+        the innermost enclosing function that assigns it: a later
+        assignment replaces an earlier one, and each branch of an `if`
+        keeps its own."""
         for function in self.chain:
-            best: tuple[int, ast.expr] | None = None
-            for node in ast.walk(function):
-                line = getattr(node, "lineno", None)
-                if line is None or line >= before:
-                    continue
-                value = _assigned(node, name)
-                if value is not None and (best is None or line > best[0]):
-                    best = (line, value)
-            if best is not None:
-                return best[1]
-        return None
+            values = _reaching(function.body, name, before, [])
+            if values:
+                return values
+        return []
+
+
+def _reaching(
+    body: list[ast.stmt], name: str, before: int, values: list[ast.expr]
+) -> list[ast.expr]:
+    """The values of `name` that reach line `before` through `body`, when
+    `values` reach the start of it."""
+    for stmt in body:
+        if stmt.lineno >= before:
+            break
+        value = _assigned(stmt, name)
+        if value is not None:
+            values = [value]
+            continue
+        branches = _branches(stmt)
+        if (stmt.end_lineno or stmt.lineno) >= before:
+            # The line is inside this statement: follow the branch it is in.
+            inside = [b for b in branches if b and b[0].lineno <= before]
+            return (
+                _reaching(inside[-1], name, before, values)
+                if inside
+                else values
+            )
+        if branches:
+            reached = [
+                v for b in branches for v in _reaching(b, name, before, values)
+            ]
+            values = list({id(v): v for v in reached}.values())
+    return values
+
+
+def _branches(stmt: ast.stmt) -> list[list[ast.stmt]]:
+    """The blocks a compound statement may run, in source order; an empty
+    one stands for running none of them."""
+    if isinstance(stmt, ast.If):
+        return [stmt.body, stmt.orelse]
+    if isinstance(stmt, ast.For | ast.AsyncFor | ast.While):
+        return [[], stmt.body, stmt.orelse]
+    if isinstance(stmt, ast.With | ast.AsyncWith):
+        return [stmt.body]
+    if isinstance(stmt, ast.Try):
+        return [
+            stmt.body + stmt.orelse + stmt.finalbody,
+            *(handler.body + stmt.finalbody for handler in stmt.handlers),
+        ]
+    return []
 
 
 def _assigned(node: ast.AST, name: str) -> ast.expr | None:
