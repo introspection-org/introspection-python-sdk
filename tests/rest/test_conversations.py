@@ -540,16 +540,20 @@ def test_items_list_repeats_operation_names_and_content_classes(
     _conversations(fake_api).items.list(
         "conv-1",
         operation_name=["chat", "execute_tool"],
-        content=["user_text", "tool:message_user", "tool_result:react"],
+        contains=[
+            "gen_ai.input.messages.role:user",
+            "gen_ai.tool.name:message_user",
+            "gen_ai.input.messages.parts.name:react",
+        ],
     ).page()
 
     params = fake_api.last_request.params
     # Both filters repeat the key, any value of which matches server-side.
     assert params.get_list("operation_name") == ["chat", "execute_tool"]
-    assert params.get_list("content") == [
-        "user_text",
-        "tool:message_user",
-        "tool_result:react",
+    assert params.get_list("contains") == [
+        "gen_ai.input.messages.role:user",
+        "gen_ai.tool.name:message_user",
+        "gen_ai.input.messages.parts.name:react",
     ]
 
 
@@ -564,10 +568,10 @@ def test_items_list_sends_one_operation_name_unchanged(fake_api: FakeAPI):
 
     params = fake_api.last_request.params
     assert params.get_list("operation_name") == ["chat"]
-    assert "content" not in params
+    assert "contains" not in params
 
 
-def test_items_carry_the_content_summary_as_typed_attributes(
+def test_items_carry_the_contains_summary_as_typed_attributes(
     fake_api: FakeAPI,
 ):
     fake_api.add(
@@ -578,12 +582,12 @@ def test_items_carry_the_content_summary_as_typed_attributes(
                 make_item(
                     attributes={
                         "introspection": {
-                            "content": {
+                            "contains": {
                                 "version": 1,
-                                "user_text": 1,
-                                "assistant_text": 0,
-                                "tool_calls": ["message_user"],
-                                "tool_results": ["react"],
+                                "input_user_parts": 1,
+                                "output_text_parts": 0,
+                                "output_tool_names": ["message_user"],
+                                "input_tool_response_names": ["react"],
                             }
                         }
                     }
@@ -595,14 +599,14 @@ def test_items_carry_the_content_summary_as_typed_attributes(
 
     page = _conversations(fake_api).items.list("conv-1")
 
-    content = present(present(page.data[0].attributes.introspection).content)
-    assert (content.version, content.user_text, content.assistant_text) == (
-        1,
-        1,
-        0,
-    )
-    assert content.tool_calls == ["message_user"]
-    assert content.tool_results == ["react"]
+    contains = present(present(page.data[0].attributes.introspection).contains)
+    assert (
+        contains.version,
+        contains.input_user_parts,
+        contains.output_text_parts,
+    ) == (1, 1, 0)
+    assert contains.output_tool_names == ["message_user"]
+    assert contains.input_tool_response_names == ["react"]
 
 
 def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):

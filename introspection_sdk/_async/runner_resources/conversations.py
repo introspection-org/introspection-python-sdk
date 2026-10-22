@@ -269,7 +269,7 @@ class AsyncConversationItems:
         agent: str | None = None,
         service_name: str | None = None,
         operation_name: str | builtins.list[str] | None = None,
-        content: builtins.list[str] | None = None,
+        contains: builtins.list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
@@ -289,12 +289,17 @@ class AsyncConversationItems:
 
         ``operation_name`` keeps the rows with any of the given
         ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
-        ``invoke_agent``, ...). ``content`` keeps the rows that carry any of
-        the given content classes: ``user_text``, ``assistant_text``,
-        ``delegation``, ``tool:<name>``, ``tool_call:<name>``,
-        ``tool_result:<name>``, or the bare ``tool_call`` / ``tool_result``
-        for any name; a chat span matched on one side returns only that
-        side's messages. The two filters combine.
+        ``invoke_agent``, ...). ``contains`` keeps the rows whose sealed
+        messages contain any of the given ``<path>:<value>`` pairs over the
+        GenAI semconv attributes: ``gen_ai.input.messages.role:user``,
+        ``gen_ai.input.messages.parts.type:tool_call_response``,
+        ``gen_ai.input.messages.parts.name:<tool>``,
+        ``gen_ai.output.messages.parts.type:text``,
+        ``gen_ai.output.messages.parts.type:tool_call``,
+        ``gen_ai.output.messages.parts.name:<tool>``,
+        ``gen_ai.tool.name:<tool>`` or ``gen_ai.operation.name:<operation>``;
+        a chat span matched on one side returns only that side's messages.
+        The two filters combine.
         """
         # unasync: end
         """List conversation items using an opaque ``next`` cursor. Iterate
@@ -311,12 +316,17 @@ class AsyncConversationItems:
 
         ``operation_name`` keeps the rows with any of the given
         ``gen_ai.operation.name`` values (``chat``, ``execute_tool``,
-        ``invoke_agent``, ...). ``content`` keeps the rows that carry any of
-        the given content classes: ``user_text``, ``assistant_text``,
-        ``delegation``, ``tool:<name>``, ``tool_call:<name>``,
-        ``tool_result:<name>``, or the bare ``tool_call`` / ``tool_result``
-        for any name; a chat span matched on one side returns only that
-        side's messages. The two filters combine.
+        ``invoke_agent``, ...). ``contains`` keeps the rows whose sealed
+        messages contain any of the given ``<path>:<value>`` pairs over the
+        GenAI semconv attributes: ``gen_ai.input.messages.role:user``,
+        ``gen_ai.input.messages.parts.type:tool_call_response``,
+        ``gen_ai.input.messages.parts.name:<tool>``,
+        ``gen_ai.output.messages.parts.type:text``,
+        ``gen_ai.output.messages.parts.type:tool_call``,
+        ``gen_ai.output.messages.parts.name:<tool>``,
+        ``gen_ai.tool.name:<tool>`` or ``gen_ai.operation.name:<operation>``;
+        a chat span matched on one side returns only that side's messages.
+        The two filters combine.
         """
 
         async def fetch(cursor: str | None) -> GenAiSpanList:
@@ -327,7 +337,7 @@ class AsyncConversationItems:
                 "agent": agent,
                 "service_name": service_name,
                 "operation_name": operation_name,
-                "content": content,
+                "contains": contains,
                 "start_date": start_date,
                 "end_date": end_date,
                 "lookback_days": lookback_days,

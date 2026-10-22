@@ -56,7 +56,7 @@ __all__ = [
     "GenAiCost",
     "GenAiUsage",
     "IntrospectionAttributes",
-    "IntrospectionContent",
+    "IntrospectionContains",
     "IntrospectionConversation",
     "IntrospectionRecipe",
     "IntrospectionRuntime",
@@ -298,8 +298,9 @@ class IntrospectionConversation(_SpanModel):
     has_errors: bool | None = None
 
 
-class IntrospectionContent(_SpanModel):
-    """``introspection.content.*``: what a chat span's sealed messages hold.
+class IntrospectionContains(_SpanModel):
+    """``introspection.contains.*``: what a chat span's sealed input delta and
+    output contain.
 
     Stamped at ingest so a read can select rows without opening them. Counts
     and tool names only, never content. Absent on a span recorded before the
@@ -307,10 +308,10 @@ class IntrospectionContent(_SpanModel):
     """
 
     version: int | None = None
-    user_text: int | None = None
-    assistant_text: int | None = None
-    tool_calls: list[str] | None = None
-    tool_results: list[str] | None = None
+    input_user_parts: int | None = None
+    output_text_parts: int | None = None
+    output_tool_names: list[str] | None = None
+    input_tool_response_names: list[str] | None = None
 
 
 class IntrospectionAttributes(_SpanModel):
@@ -329,7 +330,7 @@ class IntrospectionAttributes(_SpanModel):
     environment: str | None = None
     conversation: IntrospectionConversation | None = None
     recipe: IntrospectionRecipe | None = None
-    content: IntrospectionContent | None = None
+    contains: IntrospectionContains | None = None
 
 
 # --- the span -------------------------------------------------------------
