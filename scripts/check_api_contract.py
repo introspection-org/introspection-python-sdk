@@ -4,7 +4,7 @@
 The references are the Control Plane and Data Plane OpenAPI documents, which
 introspection-cloud writes from its API surface file: each public operation
 names the clients expected to call it, and this SDK is the `sdk` client. See
-`scripts/api_contract/check.py` for what fails and what only warns.
+`scripts/api_contract/check.py` for what fails.
 
 There is no list here of the operations this SDK covers, skips or exempts:
 the cloud flags are the only classification, so a route the cloud adds for
@@ -30,7 +30,6 @@ from pathlib import Path
 
 from api_contract.check import run
 from api_contract.reference import load_reference, reference_source
-from api_contract.report import render
 from api_contract.source import Package
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 2
     result = run(Package.load(ROOT), specs)
-    print(render(result))
+    print(result.render())
     return 1 if result.failed else 0
 
 

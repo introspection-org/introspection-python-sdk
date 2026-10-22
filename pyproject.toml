@@ -130,7 +130,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-# tests/api_contract imports the contract check from scripts/api_contract.
+# tests/contract imports the contract check from scripts/api_contract.
 pythonpath = ["scripts"]
 addopts = "-m 'not integration'"
 markers = [

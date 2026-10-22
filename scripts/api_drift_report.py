@@ -4,8 +4,8 @@ posts to #main-build-alerts.
 
 Two reports, because they answer different questions:
 
-- The SDK drift: where this SDK disagrees with the staging references'
-  `x-introspection` flags and schemas, from `scripts/check_api_contract.py`.
+- The SDK drift: where this SDK's routes disagree with the staging
+  references' `x-introspection` flags, from `scripts/check_api_contract.py`.
 - The reference changelog: what changed in the staging API since the saved
   copies in `api-reference/` were taken, from oasdiff.
 
@@ -41,7 +41,6 @@ from pathlib import Path
 from api_contract.changelog import changelog, render_plane
 from api_contract.check import run
 from api_contract.reference import load_reference, reference_source
-from api_contract.report import render
 from api_contract.source import Package
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -107,11 +106,10 @@ def build(out: Path, run_url: str, overrides: dict[str, str | None]) -> bool:
                 render_plane(plane, changelog(str(saved), str(live)))
             )
     result = run(Package.load(ROOT), specs)
-    drift_text = render(result) if result.failed else "none"
+    drift_text = result.render() if result.failed else "none"
     drifted = result.failed or any(p.changed for p in planes)
-    counts = ", ".join(f"{n} {what}" for what, n in result.counts().items())
     summary_lines = [
-        f"SDK drift: {counts if result.failed else 'none'}",
+        f"SDK drift: {result.counts() if result.failed else 'none'}",
         *(f"Reference {p.header}" for p in planes),
     ]
     body = (
@@ -128,7 +126,7 @@ def build(out: Path, run_url: str, overrides: dict[str, str | None]) -> bool:
     (out / "summary.md").write_text(
         f"## API drift: {'drift' if drifted else 'clean'}\n\n"
         + "".join(f"- {line}\n" for line in summary_lines)
-        + f"\n### SDK drift\n\n```\n{render(result)}\n```\n"
+        + f"\n### SDK drift\n\n```\n{result.render()}\n```\n"
         + "\n### Reference changelog\n\n```\n"
         + "\n\n".join(p.text for p in planes)
         + "\n```\n"

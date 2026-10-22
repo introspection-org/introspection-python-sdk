@@ -1,4 +1,4 @@
-# Checks this SDK against the x-introspection flags and schemas of the staging
+# Checks this SDK's routes against the x-introspection flags of the staging
 # API references, and the saved copies in api-reference/ against staging.
 # Scheduled rather than run on pull requests: it reaches the network and it
 # goes red when the *API* changes, which is a fact about the world and not

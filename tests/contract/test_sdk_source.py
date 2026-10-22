@@ -1,7 +1,7 @@
 """The check over this SDK's own source, against the saved snapshots of the
 references from introspection-cloud #3489 in tests/fixtures/api_contract/.
 
-These pin what call-site discovery reads from the real source, not the
+These pin what route discovery reads from the real source, not the
 drift itself: the drift is the nightly workflow's to report, and fixing it
 must not mean editing this file.
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 from api_contract.check import run
-from api_contract.routes import discover
+from api_contract.routes import UNKNOWN_METHOD, discover
 from api_contract.source import Package
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,7 +27,7 @@ def package() -> Package:
 
 @pytest.fixture(scope="module")
 def sites(package):
-    return {(s.method, s.path): s for s in discover(package).sites}
+    return {(s.method, s.path): s for s in discover(package)}
 
 
 def test_generated_sync_twins_are_not_read(package):
@@ -61,7 +61,7 @@ def test_call_sites_are_found_however_the_path_is_built(
 
 
 def test_every_call_site_has_a_method(package):
-    assert discover(package).unknown_method == []
+    assert not any(s.method == UNKNOWN_METHOD for s in discover(package))
 
 
 def test_check_against_the_3489_snapshots_reads_every_route(package):
@@ -74,4 +74,3 @@ def test_check_against_the_3489_snapshots_reads_every_route(package):
 
     assert result.operations == 85 + 79
     assert result.unknown_route == []
-    assert result.checked > 80

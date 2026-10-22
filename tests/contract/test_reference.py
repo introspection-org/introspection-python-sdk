@@ -1,4 +1,4 @@
-"""Reading the references: operations, their flags, and their shapes."""
+"""Reading the references: operations and their flags."""
 
 from __future__ import annotations
 
@@ -7,11 +7,9 @@ import json
 import pytest
 from api_contract.reference import (
     DEFAULT_URLS,
-    Operation,
     load_reference,
     operations,
     reference_source,
-    shapes,
     template_key,
 )
 
@@ -31,28 +29,6 @@ def test_operations_carry_their_clients():
     assert ops["DELETE /v1/widgets/{}"].name == (
         "dataplane: DELETE /v1/widgets/{widget_id}"
     )
-
-
-def test_shapes_leave_out_parameters_no_client_sends():
-    op = Operation("dataplane", "GET", "/v1/widgets", ("sdk",))
-
-    got = shapes(DATAPLANE, op)
-
-    assert set(got.query["properties"]) == {"name", "limit"}
-    assert got.body_media == ()
-    assert "application/json" in got.response
-
-
-def test_shapes_follow_response_and_body_refs():
-    op = Operation("dataplane", "POST", "/v1/widgets", ("sdk",))
-
-    got = shapes(DATAPLANE, op)
-
-    assert got.body_required
-    assert got.body_schema == {"$ref": "#/components/schemas/WidgetCreate"}
-    assert got.response["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/Widget"
-    }
 
 
 def test_reference_source_prefers_flag_then_env_then_staging(

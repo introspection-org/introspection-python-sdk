@@ -11,7 +11,8 @@ is not a call.
 
 The method is the call's literal `"GET"` / `"POST"` / ... argument, else
 the one its callee's name says (`_cp_post_async` posts, `stream_bytes`
-reads); a route sent without either cannot be classified and is reported.
+reads). A route sent without either has method `?`, which no reference
+has, so the check reports it as a route in neither reference.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from dataclasses import dataclass
 from api_contract.reference import HTTP_METHODS
 from api_contract.source import Package, Scope, SourceModule
 
-__all__ = ["CallSite", "Discovery", "discover", "routes_of"]
+__all__ = ["UNKNOWN_METHOD", "CallSite", "discover", "routes_of"]
 
 #: Callee names, as substrings, that say which method a call sends.
 CALLEE_METHODS = (
@@ -35,6 +36,7 @@ CALLEE_METHODS = (
     ("get", "GET"),
 )
 MAX_DEPTH = 8
+UNKNOWN_METHOD = "?"
 
 logger = logging.getLogger(__name__)
 
@@ -43,18 +45,7 @@ logger = logging.getLogger(__name__)
 class CallSite:
     method: str
     path: str
-    call: ast.Call
-    scope: Scope
-
-    @property
-    def at(self) -> str:
-        return self.scope.module.line(self.call)
-
-
-@dataclass
-class Discovery:
-    sites: list[CallSite]
-    unknown_method: list[str]
+    at: str
 
 
 def routes_of(
@@ -110,7 +101,7 @@ def _name(expr: ast.Name, scope: Scope, depth: int) -> list[str]:
     local = scope.assignment(expr.id, getattr(expr, "lineno", 0))
     if local is not None:
         return routes_of(local, scope, depth + 1)
-    if scope.parameter(expr.id) is not None:
+    if scope.is_parameter(expr.id):
         return []
     found = scope.package.resolve_import(scope.module, expr.id)
     if found is None:
@@ -134,7 +125,7 @@ def _helper(name: str, scope: Scope, depth: int) -> list[str]:
     return out
 
 
-def _method(call: ast.Call) -> str | None:
+def _method(call: ast.Call) -> str:
     for arg in call.args:
         if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
             if arg.value.lower() in HTTP_METHODS:
@@ -150,11 +141,13 @@ def _method(call: ast.Call) -> str | None:
         if isinstance(func, ast.Name)
         else ""
     ).lower()
-    return next((m for word, m in CALLEE_METHODS if word in callee), None)
+    return next(
+        (m for word, m in CALLEE_METHODS if word in callee), UNKNOWN_METHOD
+    )
 
 
-def _module_sites(package: Package, module: SourceModule) -> Discovery:
-    found = Discovery(sites=[], unknown_method=[])
+def _module_sites(package: Package, module: SourceModule) -> list[CallSite]:
+    found: list[CallSite] = []
     for node in ast.walk(module.tree):
         if not isinstance(node, ast.Call):
             continue
@@ -171,25 +164,20 @@ def _module_sites(package: Package, module: SourceModule) -> Discovery:
                 if p.startswith("/v1/")
             }
         )
-        if not paths:
-            continue
-        method = _method(node)
-        for path in paths:
-            if method is None:
-                found.unknown_method.append(f"{path} ({module.line(node)})")
-            else:
-                found.sites.append(CallSite(method, path, node, scope))
+        found += [
+            CallSite(_method(node), path, module.line(node)) for path in paths
+        ]
     return found
 
 
-def discover(package: Package) -> Discovery:
-    found = Discovery(sites=[], unknown_method=[])
-    for module in package.modules.values():
-        own = _module_sites(package, module)
-        found.sites += own.sites
-        found.unknown_method += own.unknown_method
+def discover(package: Package) -> list[CallSite]:
+    found = [
+        site
+        for module in package.modules.values()
+        for site in _module_sites(package, module)
+    ]
     logger.debug(
         "call sites discovered",
-        extra={"sites": len(found.sites), "modules": len(package.modules)},
+        extra={"sites": len(found), "modules": len(package.modules)},
     )
     return found

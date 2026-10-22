@@ -8,13 +8,10 @@ AGENTS.md), so `_sync/` is never read: it would count each call site twice.
 from __future__ import annotations
 
 import ast
-import importlib
 import logging
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from types import ModuleType
-from typing import Any
 
 __all__ = ["Package", "Scope", "SourceModule"]
 
@@ -39,13 +36,6 @@ class SourceModule:
             for child in ast.iter_child_nodes(node):
                 module.parents[child] = node
         return module
-
-    @cached_property
-    def runtime(self) -> ModuleType | None:
-        try:
-            return importlib.import_module(self.name)
-        except Exception:
-            return None
 
     @cached_property
     def functions(self) -> dict[str, FunctionNode]:
@@ -88,14 +78,6 @@ class SourceModule:
                 out.append(current)
             current = self.parents.get(current)
         return out
-
-    def global_value(self, name: str) -> Any:
-        if self.runtime is None:
-            raise LookupError(name)
-        try:
-            return getattr(self.runtime, name)
-        except AttributeError as exc:
-            raise LookupError(name) from exc
 
 
 @dataclass
@@ -157,13 +139,16 @@ class Scope:
     def inside(self, module: SourceModule, function: FunctionNode) -> Scope:
         return Scope(self.package, module, (function,))
 
-    def parameter(self, name: str) -> tuple[FunctionNode, ast.arg] | None:
-        for function in self.chain:
-            args = function.args
-            for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
-                if arg.arg == name:
-                    return function, arg
-        return None
+    def is_parameter(self, name: str) -> bool:
+        return any(
+            arg.arg == name
+            for function in self.chain
+            for arg in [
+                *function.args.posonlyargs,
+                *function.args.args,
+                *function.args.kwonlyargs,
+            ]
+        )
 
     def assignment(self, name: str, before: int) -> ast.expr | None:
         """The last `name = ...` in the enclosing functions before a line."""

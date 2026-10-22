@@ -9,9 +9,9 @@ Fix the API drift that the nightly API Contract run found in introspection-pytho
 
 Where: the introspection-python-sdk repository. Fetch origin, create a new branch from origin/main, and work only there.
 
-What: fix the SDK so that it matches the API references, exactly for the drift listed in the SDK drift report below, and nothing else. Each fix covers the SDK's pydantic models, the call site in introspection_sdk/_async/ (then regenerate _sync/ with `uv run python scripts/gen_sync.py`), and a unit test in tests/ that follows AGENTS.md (pin the HTTP exchange with `responses`, no mocks of the HTTP client). An operation flagged for the SDK that it never calls needs a new public method, with its tests, example and README row. The reference changelog is context: it says what changed in the staging API since the saved copies in api-reference/ were taken.
+What: fix the SDK so that its routes match the API references, exactly for the drift listed in the SDK drift report below, and nothing else. An operation flagged for the SDK that it never calls needs a new public method, written in introspection_sdk/_async/ (then regenerate _sync/ with `uv run python scripts/gen_sync.py`), with a unit test in tests/ that follows AGENTS.md (pin the HTTP exchange with `responses`, no mocks of the HTTP client), an example and a README row. A route the SDK calls that neither reference has must be changed to the route the reference has, or deleted. The reference changelog is context: it says what changed in the staging API since the saved copies in api-reference/ were taken.
 
-Allowed: deleting something the check reports as stale (a field, parameter or call the references no longer have). List each one you delete in the PR body.
+Allowed: deleting something the check reports as stale (a call to a route the references no longer have). List each one you delete in the PR body.
 
 Never:
 
@@ -22,7 +22,7 @@ Never:
 Questions, not changes: put these in the PR body as questions and leave the code alone.
 
 - An SDK API break: a fix that would remove or retype something callers of the SDK use today. Ask whether to break it now or deprecate it first.
-- A reference that looks wrong rather than the SDK (an operation that takes no body although the SDK must send one, say). Ask whether to fix the cloud's API surface instead.
+- A reference that looks wrong rather than the SDK (an operation flagged for the SDK that no SDK user needs, say). Ask whether to fix the cloud's API surface instead.
 
 Finish: when the drift is fixed, refresh both saved copies from staging:
 
