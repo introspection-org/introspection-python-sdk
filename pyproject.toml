@@ -130,6 +130,8 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# tests/api_contract imports the contract check from scripts/api_contract.
+pythonpath = ["scripts"]
 addopts = "-m 'not integration'"
 markers = [
     "integration: requires real API keys and makes live API calls",
@@ -177,7 +179,8 @@ dev = [
 # which would read as dev dependencies leaking into shipped code (DEP004).
 # packages/ holds its own distributions, each with its own [tool.deptry].
 extend_exclude = ["examples", "packages"]
-known_first_party = ["introspection_sdk"]
+# scripts/api_contract is the API contract check's own package.
+known_first_party = ["introspection_sdk", "api_contract"]
 # The `dev` and `test` extras are tooling, not runtime dependencies.
 optional_dependencies_dev_groups = ["dev", "test"]
 
