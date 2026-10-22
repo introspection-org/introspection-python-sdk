@@ -268,7 +268,6 @@ class AsyncConversationItems:
         include: builtins.list[ConversationItemInclude] | None = None,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | builtins.list[str] | None = None,
         contains: builtins.list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
@@ -312,12 +311,6 @@ class AsyncConversationItems:
         item matched only by an input value returns only its new input
         messages, one matched only by an output value only its output, and
         one matched by an attribute path the whole item.
-
-        ``operation_name`` is deprecated: pass
-        ``contains=["gen_ai.operation.name:<operation>"]`` instead, which
-        returns the same rows. It still keeps the rows with any of the given
-        ``gen_ai.operation.name`` values, and narrows (ANDs with)
-        ``contains`` rather than adding to it.
         """
         # unasync: end
         """List conversation items using an opaque ``next`` cursor. Iterate
@@ -357,12 +350,6 @@ class AsyncConversationItems:
         item matched only by an input value returns only its new input
         messages, one matched only by an output value only its output, and
         one matched by an attribute path the whole item.
-
-        ``operation_name`` is deprecated: pass
-        ``contains=["gen_ai.operation.name:<operation>"]`` instead, which
-        returns the same rows. It still keeps the rows with any of the given
-        ``gen_ai.operation.name`` values, and narrows (ANDs with)
-        ``contains`` rather than adding to it.
         """
 
         async def fetch(cursor: str | None) -> GenAiSpanList:
@@ -372,7 +359,6 @@ class AsyncConversationItems:
                 "include": include,
                 "agent": agent,
                 "service_name": service_name,
-                "operation_name": operation_name,
                 "contains": contains,
                 "start_date": start_date,
                 "end_date": end_date,

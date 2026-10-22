@@ -11,6 +11,7 @@ Driven through the offline :class:`FakeAPI` transport from
 
 from __future__ import annotations
 
+import inspect
 import io
 from typing import Any
 from uuid import UUID
@@ -27,6 +28,8 @@ from introspection_sdk.runner_resources import (
 from introspection_sdk.runner_resources._reads import ARROW_STREAM_MEDIA_TYPE
 from introspection_sdk.runner_resources.conversations import (
     LATEST_TURN_SCAN_LIMIT,
+    AsyncConversationItems,
+    ConversationItems,
 )
 from introspection_sdk.schemas.conversations import Conversation
 from introspection_sdk.schemas.genai import (
@@ -529,9 +532,7 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     assert req.params.get("agent_id") is None
 
 
-def test_items_list_repeats_operation_names_and_contains_values(
-    fake_api: FakeAPI,
-):
+def test_items_list_repeats_contains_values(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/items",
@@ -540,7 +541,6 @@ def test_items_list_repeats_operation_names_and_contains_values(
 
     _conversations(fake_api).items.list(
         "conv-1",
-        operation_name=["chat", "execute_tool"],
         contains=[
             "gen_ai.input.messages.role:user",
             "gen_ai.tool.name:message_user",
@@ -548,10 +548,8 @@ def test_items_list_repeats_operation_names_and_contains_values(
         ],
     ).page()
 
-    params = fake_api.last_request.params
-    # Both filters repeat the key, any value of which matches server-side.
-    assert params.get_list("operation_name") == ["chat", "execute_tool"]
-    assert params.get_list("contains") == [
+    # The filter repeats the key, any value of which matches server-side.
+    assert fake_api.last_request.params.get_list("contains") == [
         "gen_ai.input.messages.role:user",
         "gen_ai.tool.name:message_user",
         "gen_ai.input.messages.parts.name:react",
@@ -632,11 +630,10 @@ def test_items_list_surfaces_a_rejected_wildcard(fake_api: FakeAPI):
     ]
 
 
-def test_items_list_sends_deprecated_operation_name_beside_contains(
-    fake_api: FakeAPI,
-):
-    """The deprecated `operation_name` still goes out as its own key, which
-    the server ANDs with `contains`."""
+def test_items_list_filters_operations_through_contains(fake_api: FakeAPI):
+    """`items.list` takes no `operation_name`: an operation filter is a
+    `gen_ai.operation.name:<op>` value of `contains`, and only that key goes
+    out."""
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/items",
@@ -645,29 +642,30 @@ def test_items_list_sends_deprecated_operation_name_beside_contains(
 
     _conversations(fake_api).items.list(
         "conv-1",
-        operation_name="chat",
-        contains=["gen_ai.operation.name:execute_tool"],
+        contains=[
+            "gen_ai.operation.name:chat",
+            "gen_ai.operation.name:execute_tool",
+        ],
     ).page()
 
     params = fake_api.last_request.params
-    assert params.get_list("operation_name") == ["chat"]
     assert params.get_list("contains") == [
-        "gen_ai.operation.name:execute_tool"
+        "gen_ai.operation.name:chat",
+        "gen_ai.operation.name:execute_tool",
     ]
+    assert "operation_name" not in params
 
 
-def test_items_list_sends_one_operation_name_unchanged(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/conversations/conv-1/items",
-        json_body=make_page([make_item()], False),
+def test_items_list_rejects_operation_name():
+    """The removed keyword is a TypeError, not a silently ignored filter."""
+    assert (
+        "operation_name"
+        not in inspect.signature(ConversationItems.list).parameters
     )
-
-    _conversations(fake_api).items.list("conv-1", operation_name="chat").page()
-
-    params = fake_api.last_request.params
-    assert params.get_list("operation_name") == ["chat"]
-    assert "contains" not in params
+    assert (
+        "operation_name"
+        not in inspect.signature(AsyncConversationItems.list).parameters
+    )
 
 
 def test_items_carry_the_contains_summary_as_typed_attributes(

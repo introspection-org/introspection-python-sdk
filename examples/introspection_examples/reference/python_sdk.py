@@ -90,7 +90,9 @@ async def conversations_events_metrics(runner: AsyncRunner, task_id: str) -> Non
         print(c.id, c.cost.usd)
 
     # Tool calls only, e.g. a submit_result tool's arguments (a JSON string)
-    async for item in runner.conversations.items.list(task_id, operation_name="execute_tool"):
+    async for item in runner.conversations.items.list(
+        task_id, contains=["gen_ai.operation.name:execute_tool"]
+    ):
         tool = item.attributes.gen_ai.tool if item.attributes.gen_ai else None
         if tool and tool.call:
             print(tool.name, tool.call.arguments)

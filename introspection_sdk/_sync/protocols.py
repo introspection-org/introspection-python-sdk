@@ -260,7 +260,6 @@ class ConversationItemsResource(Protocol):
         include: builtins.list[ConversationItemInclude] | None = None,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | builtins.list[str] | None = None,
         contains: builtins.list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
