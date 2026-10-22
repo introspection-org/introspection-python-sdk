@@ -288,6 +288,10 @@ class PersonServer(Server):
         grant = AuthGrant.requested(rt, rt.sub)
         access_server = self._access_server(rt)
         if access_server is not None:
+            if isinstance(presented, AuthTokenClaims):
+                raise InvalidToken(
+                    "presented", "a federated call presents the person token"
+                )
             if (
                 body.upstream_token is not None
                 or body.subagent_token is not None
@@ -684,14 +688,27 @@ class PersonServer(Server):
             raise MissionTerminated("mission expired")
         return mission
 
-    def _presented(self, token: str) -> PersonTokenClaims:
-        """The presented person token; an expired one is refused before anything is federated."""
+    def _presented(self, token: str) -> PersonTokenClaims | AuthTokenClaims:
+        """The token the agent presented to the resource: a person token, or an
+        auth token this Person Server issued for an earlier call there, which
+        an agent presents until the resource asks for another. An expired one
+        is refused before anything is federated."""
         try:
-            return self.identity.verify_own(
-                token, jwt.PERSON_TOKEN, self.clock(), PersonTokenClaims
+            header, _ = jwt.peek(token)
+            if header.typ != jwt.AUTH_TOKEN:
+                return self.identity.verify_own(
+                    token, jwt.PERSON_TOKEN, self.clock(), PersonTokenClaims
+                )
+            claims = self.identity.verify_own(
+                token, jwt.AUTH_TOKEN, self.clock(), AuthTokenClaims
             )
         except VerificationError as exc:
             raise InvalidToken.rejected("presented", exc) from None
+        if claims.dwk != PERSON_DWK:
+            raise InvalidToken(
+                "presented", "not an auth token this Person Server issued"
+            )
+        return claims
 
     async def _resource_token(
         self, token: str, tenant: str, agent: Agent

@@ -12,12 +12,13 @@ from introspection_aauth.person_server import (
     Mission,
 )
 from introspection_aauth.person_server.models import (
+    AuthTokenRequest,
     MissionAction,
     MissionAnswer,
     MissionProposal,
     PersonTokenRequest,
 )
-from introspection_aauth.protocol import AAuthError, SigningKey
+from introspection_aauth.protocol import AAuthError, SigningKey, jwt
 from introspection_aauth.protocol.claims import (
     AGENT_DWK,
     AgentTokenClaims,
@@ -25,7 +26,12 @@ from introspection_aauth.protocol.claims import (
     Confirmation,
     PersonTokenClaims,
 )
-from introspection_aauth.protocol.jwt import AGENT_TOKEN, encode
+from introspection_aauth.protocol.jwt import (
+    AGENT_TOKEN,
+    AUTH_TOKEN,
+    RESOURCE_TOKEN,
+    encode,
+)
 from introspection_aauth.protocol.keys import Jwks
 from introspection_aauth.protocol.wire import (
     AuthTokenAnswer,
@@ -94,6 +100,69 @@ async def test_a_call_within_budget_is_issued_unasked_and_spent():
     assert claims.iss == PS and claims.aud == RESOURCE
     assert claims.budget == usd(60_000)
     assert await world.spent(mission.s256) == 60_000
+
+
+async def present(
+    world: World,
+    mission: MissionAnswer,
+    amount: int,
+    presented: str,
+    **update: str,
+) -> httpx.Response:
+    """A call whose resource saw `presented`, with its resource token changed by `update`."""
+    seen = str(jwt.decode(presented).claims["jti"])
+    rt = world.resource_claims(mission, amount).model_copy(
+        update={
+            "jti": f"rt-{seen}",
+            "presented_jti": seen,
+            **update,
+        }
+    )
+    return await world.call(
+        "POST",
+        f"{PS}/aauth/token",
+        AuthTokenRequest(
+            resource_token=encode(rt, world.resource_key, RESOURCE_TOKEN),
+            presented_token=presented,
+        ),
+    )
+
+
+async def test_a_second_call_presents_the_first_calls_auth_token():
+    world = World()
+    mission = await world.approved_mission(budget=100_000)
+    first = body(await world.ask(mission, 30_000), AuthTokenAnswer).auth_token
+    second = await present(world, mission, 40_000, first)
+    assert second.status_code == 200, second.text
+    claims = read(body(second, AuthTokenAnswer).auth_token, AuthTokenClaims)
+    assert claims.budget == usd(40_000)
+    assert await world.spent(mission.s256) == 70_000
+
+
+async def test_a_presented_auth_token_must_be_the_one_the_resource_saw():
+    world = World()
+    mission = await world.approved_mission(budget=100_000)
+    first = body(await world.ask(mission, 30_000), AuthTokenAnswer).auth_token
+    refused = await present(
+        world, mission, 40_000, first, presented_jti="other"
+    )
+    assert refused.status_code == 400
+    assert problem(refused).error == "invalid_resource_token"
+
+
+async def test_an_auth_token_this_person_server_did_not_issue_is_refused():
+    world = World()
+    mission = await world.approved_mission(budget=100_000)
+    first = body(await world.ask(mission, 30_000), AuthTokenAnswer).auth_token
+    claims = read(first, AuthTokenClaims)
+    foreign = encode(
+        claims.model_copy(update={"jti": "at-foreign"}),
+        SigningKey.generate(),
+        AUTH_TOKEN,
+    )
+    refused = await present(world, mission, 40_000, foreign)
+    assert refused.status_code == 400
+    assert problem(refused).error == "invalid_presented_token"
 
 
 async def test_a_call_over_budget_waits_on_a_person_then_is_issued():

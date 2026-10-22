@@ -60,20 +60,23 @@ class DeliveryExpectation(BaseModel):
 
 
 class PresentedExpectation(BaseModel):
-    """What the person token a resource saw must be, read from the resource
-    token that names it: issued by `ps` for that resource, bound to the
-    agent's key, and the same person, mission and tenant."""
+    """What the token a resource saw must be, read from the resource token
+    that names it: a person token, or an auth token `ps` issued for an earlier
+    call there, issued by `ps` for that resource, bound to the agent's key,
+    and the same person, mission and tenant."""
 
     model_config = ConfigDict(frozen=True)
 
     ps: str
     rt: ResourceTokenClaims
 
-    def failures(self, presented: PersonTokenClaims) -> list[str]:
+    def failures(
+        self, presented: PersonTokenClaims | AuthTokenClaims
+    ) -> list[str]:
         rt = self.rt
         checks = {
             "iss": presented.iss != self.ps,
-            "aud": presented.aud != rt.iss.rstrip("/"),
+            "aud": presented.aud.rstrip("/") != rt.iss.rstrip("/"),
             "cnf": presented.cnf.thumbprint != rt.agent_jkt,
             "jti": presented.jti != rt.presented_jti,
             "sub": presented.sub != rt.sub,
