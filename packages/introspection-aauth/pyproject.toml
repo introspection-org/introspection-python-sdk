@@ -9,6 +9,14 @@ description = "An AAuth Person Server and Access Server (draft-hardt-oauth-aauth
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
 dependencies = [
     "cryptography>=44.0.0",
     "http-sfv>=0.9.9",
