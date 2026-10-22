@@ -122,6 +122,36 @@ uv run ty check
 These are enforced by `.pre-commit-config.yaml`. Don't disable hooks with
 `--no-verify` — fix the underlying issue.
 
+**No leading underscore on a class, constant or type variable.** Write
+`class RouteDocs`, `JSON_OBJECT`, `AnyServer = TypeVar("AnyServer", ...)`,
+never `class _Docs` or `_object`. A module keeps such a name private by
+leaving it out of its `__all__`, so a module that has private names defines
+`__all__`. Private methods and module functions keep their underscore. This
+is the rule for new code: about 76 underscore classes and constants remain in
+`introspection_sdk/`, `tests/` and `examples/`; rename one when you touch
+its module.
+
+**One file, one concept, named for it.** A module holds one class, or one
+family of closely related ones, and its name says which: `access_server_client.py`
+holds `AccessServerClient`, `directory.py` the `Directory` protocol and its
+default, `store.py` the `Store` protocol and its `MemoryStore`. A `models.py`
+holds a package's models, and `hooks.py` the protocols a host implements.
+Aim for 100 to 300 lines; a module far past that is a sign to split it, the
+exceptions being a `models.py` and a class that is legitimately that long, in
+which case its module holds that class alone.
+
+**Log and trace as the platform does.** A module that does meaningful work
+declares `logger = logging.getLogger(__name__)` and, where it has an
+operation worth a span, `tracer = trace.get_tracer(__name__)`, once, after its
+imports. A record has a fixed message and its values as `extra` fields:
+identifiers and enumerated values, never a token, personal data or a request
+body. A library never configures logging or a tracer provider; its host does.
+
+**Imports are absolute.** `from introspection_aauth.protocol.errors import
+InvalidToken`, never `from ..protocol.errors import InvalidToken`; ruff's
+TID252 enforces it. A test suite imports its own helpers relatively
+(`from .world import World`).
+
 ## Sync code generation
 
 Every class or function with an `Async*` twin is written once, as async
@@ -282,9 +312,9 @@ It needs the release tags locally (`git fetch --tags`).
 What counts as public: a module's `__all__` when it has one, otherwise every
 name without a leading underscore. Imported names are public only through
 `__all__`. `_`-prefixed modules (`_http.py`, `_errors.py`,
-`otel/_provider.py`, ...) and `_`-prefixed classes, functions and attributes
-are internal and free to change. To keep a new helper out of the contract,
-give it a leading underscore or leave it out of `__all__`.
+`otel/_provider.py`, ...) and `_`-prefixed functions and attributes are
+internal and free to change. To keep a new class or constant out of the
+contract, leave it out of `__all__`, never prefix it with an underscore.
 
 `-e scripts/griffe_reexports.py` loads a griffe extension that replaces
 each public alias whose target lives in `introspection_sdk` with the target
