@@ -302,16 +302,17 @@ class IntrospectionContains(_SpanModel):
     """``introspection.contains.*``: what a chat span's sealed input delta and
     output contain.
 
-    Stamped at ingest so a read can select rows without opening them. Counts
-    and tool names only, never content. Absent on a span recorded before the
-    summary existed and on an ``execute_tool`` span.
+    Stamped at ingest so a read can select rows without opening them.
+    ``values`` are the ``contains=`` filter values the span answers, spelled
+    exactly as a client passes them to ``items.list(contains=...)``, such as
+    ``"gen_ai.input.messages.role:user"`` or
+    ``"gen_ai.output.messages.parts.name:<tool>"``. A name list cut at the
+    processor's bound carries ``"<path>:*"``. Paths and names only, never
+    content. ``version`` is 0 or absent on a span that was never summarized.
     """
 
     version: int | None = None
-    input_user_parts: int | None = None
-    output_text_parts: int | None = None
-    output_tool_names: list[str] | None = None
-    input_tool_response_names: list[str] | None = None
+    values: list[str] | None = None
 
 
 class IntrospectionAttributes(_SpanModel):

@@ -584,10 +584,12 @@ def test_items_carry_the_contains_summary_as_typed_attributes(
                         "introspection": {
                             "contains": {
                                 "version": 1,
-                                "input_user_parts": 1,
-                                "output_text_parts": 0,
-                                "output_tool_names": ["message_user"],
-                                "input_tool_response_names": ["react"],
+                                "values": [
+                                    "gen_ai.input.messages.role:user",
+                                    "gen_ai.input.messages.parts.name:react",
+                                    "gen_ai.output.messages.parts.type:tool_call",
+                                    "gen_ai.output.messages.parts.name:message_user",
+                                ],
                             }
                         }
                     }
@@ -600,13 +602,13 @@ def test_items_carry_the_contains_summary_as_typed_attributes(
     page = _conversations(fake_api).items.list("conv-1")
 
     contains = present(present(page.data[0].attributes.introspection).contains)
-    assert (
-        contains.version,
-        contains.input_user_parts,
-        contains.output_text_parts,
-    ) == (1, 1, 0)
-    assert contains.output_tool_names == ["message_user"]
-    assert contains.input_tool_response_names == ["react"]
+    assert contains.version == 1
+    assert contains.values == [
+        "gen_ai.input.messages.role:user",
+        "gen_ai.input.messages.parts.name:react",
+        "gen_ai.output.messages.parts.type:tool_call",
+        "gen_ai.output.messages.parts.name:message_user",
+    ]
 
 
 def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):
