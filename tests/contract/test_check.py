@@ -10,7 +10,7 @@ from .sample import RESOURCE, SDK, line_of, references
 def test_matching_sdk_passes(sample_package):
     result = run(sample_package(), references())
 
-    assert not result.failed, result.render()
+    assert not result.failed(), result.render()
     # The CLI-only gadgets operation is not expected of the SDK.
     assert result.operations == 5
     assert result.render().startswith("✓ SDK routes match")
@@ -37,6 +37,9 @@ def test_sdk_operation_never_called_fails(sample_package):
     assert result.uncalled == ["controlplane: GET /v1/projects"]
     assert "no call site in introspection_sdk/ sends it" in result.render()
     assert "1 sdk operations never called" in result.render()
+    # A pull request only reports it.
+    assert not result.failed(full=False)
+    assert "reported only, never fails a PR" in result.render(full=False)
 
 
 def test_route_in_neither_reference_fails(sample_package):
@@ -45,7 +48,7 @@ def test_route_in_neither_reference_fails(sample_package):
 
     result = run(sample_package(), specs)
 
-    assert result.failed
+    assert result.failed(full=False)
     assert result.unknown_route == [
         "DELETE /v1/widgets/{} (sample_sdk/_async/widgets.py:"
         f"{line_of('_path(widget_id), expect')})"

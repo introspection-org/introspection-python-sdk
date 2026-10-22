@@ -1,39 +1,39 @@
 # Checks this SDK's routes against the x-introspection flags of the staging
-# API references, and the saved copies in api-reference/ against staging.
-# Scheduled rather than run on pull requests: it reaches the network and it
-# goes red when the *API* changes, which is a fact about the world and not
-# about the commit under review. Gating PRs on it would make it noise, and
-# being ignorable is how the last one of these went unnoticed.
+# API references (see scripts/check_api_contract.py).
 #
-# A red run that nobody opens is ignorable too, so the run tells
-# #main-build-alerts when the state changes (clean to drift, drift to clean),
-# listing the drift and linking the run. It never opens a fix PR itself: the
-# drift often needs a decision that belongs to a person.
+# On a pull request only a route the SDK calls that is in neither reference
+# fails, since that is the SDK's own fault. Operations flagged for the SDK
+# that it does not call are listed in the job summary but never fail, so a
+# route the cloud adds does not block unrelated PRs.
+#
+# introspection-cloud sends `api-reference-deployed` after each staging
+# deploy (client_payload.sha is the cloud commit). That run, and a manual
+# one, is the full check: both kinds fail, and #main-build-alerts hears when
+# the state changes (clean to drift, drift to clean), with the drift and a
+# link to the run. GitHub runs repository_dispatch from the default branch's
+# copy of this file only.
+#
+# Until staging serves both references (a 404) every run passes and posts
+# nothing.
 name: API Contract
 
 on:
-  schedule:
-    # 07:00 UTC daily, so a red run is waiting at the start of the day rather
-    # than arriving mid-afternoon.
-    - cron: "0 7 * * *"
+  pull_request:
+  repository_dispatch:
+    types: [api-reference-deployed]
   workflow_dispatch:
-    inputs:
-      post_for_real:
-        description: "Post to Slack on a state change, as the nightly run does. Off prints the message instead."
-        type: boolean
-        default: false
 
 permissions:
   contents: read
 
-env:
-  OASDIFF_VERSION: "1.33.0"
-  OASDIFF_SHA256: "43a4e328e2d13ba1552d760aa68d2485c75c5621f309f6ff64ae895188345247"
-
 jobs:
-  api-drift:
-    name: SDK vs staging API references
+  api-contract:
+    name: SDK routes vs staging API references
     runs-on: ubuntu-latest
+    # The full runs share the posted state; one at a time keeps it straight.
+    concurrency:
+      group: api-contract-${{ github.event_name == 'pull_request' && github.ref || 'full' }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -50,60 +50,35 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Install oasdiff
-        run: |
-          archive="oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz"
-          curl -fsSL -o "${RUNNER_TEMP}/${archive}" \
-            "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/${archive}"
-          echo "${OASDIFF_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum -c -
-          mkdir -p "${RUNNER_TEMP}/oasdiff"
-          tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}/oasdiff" oasdiff
-          echo "${RUNNER_TEMP}/oasdiff" >> "${GITHUB_PATH}"
-
-      # Until staging serves both references (a 404), the report script
-      # exits 0 and writes nothing, and every step below skips: no post and
-      # no recorded state, so the first run that finds them posts its drift.
-      - name: Build the drift report
-        id: report
-        run: |
-          uv run python scripts/api_drift_report.py --out "${RUNNER_TEMP}/api-drift" \
-            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          if [ -f "${RUNNER_TEMP}/api-drift/state" ]; then
-            cat "${RUNNER_TEMP}/api-drift/summary.md" >> "${GITHUB_STEP_SUMMARY}"
-            echo "built=true" >> "${GITHUB_OUTPUT}"
-          fi
+      - name: Check routes
+        if: github.event_name == 'pull_request'
+        run: uv run python scripts/check_api_contract.py --pr
 
       # The state of the last real post. Caches are immutable, so each post
       # saves under a new key and the newest one is restored by prefix.
       - name: Restore the last posted state
-        if: steps.report.outputs.built == 'true'
+        if: github.event_name != 'pull_request'
         uses: actions/cache/restore@v6
         with:
           path: .api-drift-state
           key: api-drift-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: api-drift-state-
 
-      - name: Notify #main-build-alerts
-        id: notify
-        if: steps.report.outputs.built == 'true'
+      - name: Check routes and notify #main-build-alerts
+        id: check
+        if: github.event_name != 'pull_request'
         env:
-          REPORT_DIR: ${{ runner.temp }}/api-drift
-          STATE_DIR: .api-drift-state
-          # A manual run rehearses unless asked to post: it prints the message.
-          SLACK_WEBHOOK_URL: ${{ (github.event_name != 'workflow_dispatch' || inputs.post_for_real) && secrets.MAIN_STATUS_SLACK_WEBHOOK_URL || '' }}
-        run: scripts/api_drift_notify.sh
+          CLOUD_SHA: ${{ github.event.client_payload.sha }}
+          SLACK_WEBHOOK_URL: ${{ secrets.MAIN_STATUS_SLACK_WEBHOOK_URL }}
+        run: |
+          echo "introspection-cloud commit: ${CLOUD_SHA:-none (manual run)}"
+          uv run python scripts/check_api_contract.py --notify .api-drift-state \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
+      # Saved even when the check failed: a drift post is exactly that case.
       - name: Save the posted state
-        if: steps.notify.outputs.posted == 'true'
+        if: always() && steps.check.outputs.posted == 'true'
         uses: actions/cache/save@v6
         with:
           path: .api-drift-state
           key: api-drift-state-${{ github.run_id }}-${{ github.run_attempt }}
-
-      - name: Fail on drift
-        if: steps.report.outputs.built == 'true'
-        run: |
-          if [ "$(cat "${RUNNER_TEMP}/api-drift/state")" = "drift" ]; then
-            echo "::error::API drift found; the job summary has both reports."
-            exit 1
-          fi

@@ -1,14 +1,15 @@
 """The contract check: this SDK's routes against both API references.
 
-It fails when
+It finds
 
-1. an operation whose `x-introspection.clients` includes `sdk` has no call
-   site in the SDK;
-2. the SDK calls a `/v1/...` route (method and path) that is in neither
+1. operations whose `x-introspection.clients` includes `sdk` but that have
+   no call site in the SDK;
+2. `/v1/...` routes (method and path) the SDK calls that are in neither
    reference.
 
-Field-level changes in the API are oasdiff's to report, in the nightly
-workflow; this check compares routes only.
+The full check fails on both. A pull request fails only on the second,
+which is the SDK's own fault: a route the cloud adds for the SDK must not
+block an unrelated PR, so the first is only reported there.
 """
 
 from __future__ import annotations
@@ -32,9 +33,8 @@ class Result:
     uncalled: list[str] = field(default_factory=list)
     unknown_route: list[str] = field(default_factory=list)
 
-    @property
-    def failed(self) -> bool:
-        return bool(self.uncalled or self.unknown_route)
+    def failed(self, *, full: bool = True) -> bool:
+        return bool(self.unknown_route or (full and self.uncalled))
 
     def counts(self) -> str:
         return (
@@ -42,14 +42,15 @@ class Result:
             f"{len(self.unknown_route)} routes in neither reference"
         )
 
-    def render(self) -> str:
+    def render(self, *, full: bool = True) -> str:
         sections = [
             f"{means}:" + "".join(f"\n      {item}" for item in items)
             for items, means in (
                 (
                     self.uncalled,
                     "operations — flagged for the SDK in x-introspection but "
-                    "no call site in introspection_sdk/ sends it",
+                    "no call site in introspection_sdk/ sends it"
+                    + ("" if full else " (reported only, never fails a PR)"),
                 ),
                 (
                     self.unknown_route,
@@ -59,12 +60,13 @@ class Result:
             )
             if items
         ]
-        sections.append(
-            f"✗ SDK routes disagree with the API references ({self.counts()})"
-            if self.failed
-            else f"✓ SDK routes match the API references ({self.operations} "
-            "operations)"
-        )
+        if self.failed(full=full):
+            verdict = "✗ SDK routes disagree with the API references"
+        elif self.uncalled:
+            verdict = "✓ every route this SDK calls is in the API references"
+        else:
+            verdict = "✓ SDK routes match the API references"
+        sections.append(f"{verdict} ({self.counts()})")
         return "\n\n".join(sections)
 
 
@@ -89,6 +91,10 @@ def run(package: Package, specs: dict[str, dict[str, Any]]) -> Result:
     result.unknown_route.sort()
     logger.info(
         "API contract checked",
-        extra={"operations": result.operations, "failed": result.failed},
+        extra={
+            "operations": result.operations,
+            "uncalled": len(result.uncalled),
+            "unknown_routes": len(result.unknown_route),
+        },
     )
     return result
