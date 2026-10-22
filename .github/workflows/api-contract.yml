@@ -1,24 +1,48 @@
-# Watches the published API reference for drift against this SDK's task-create
-# body. Scheduled rather than run on pull requests: it reaches the network and
-# it goes red when the *server* changes, which is a fact about the world and not
-# about the commit under review. Gating PRs on it would make it noise, and noise
-# is how the last one of these went unnoticed.
+# Checks this SDK's routes against the x-introspection flags of the staging
+# API references (see scripts/check_api_contract.py).
+#
+# On a pull request only a route the SDK calls that is in neither reference
+# fails, since that is the SDK's own fault. Operations flagged for the SDK
+# that it does not call are listed in the job summary but never fail, so a
+# route the cloud adds does not block unrelated PRs.
+#
+# introspection-cloud sends `api-reference-deployed` after each staging
+# deploy (client_payload.sha is the cloud commit). That run, and a manual
+# one, is the full check: both kinds fail, and #main-build-alerts hears when
+# the state changes (clean to drift, drift to clean), with the drift and a
+# link to the run. GitHub runs repository_dispatch from the default branch's
+# copy of this file only.
+#
+# Only a run on main posts to Slack, and a manual run only when its
+# post_for_real input is set; every other run prints the message instead.
+# The posted state is saved only when a post really went out.
+#
+# Until staging serves both references (a 404) every run passes and posts
+# nothing.
 name: API Contract
 
 on:
-  schedule:
-    # 07:00 UTC daily, so a red run is waiting at the start of the day rather
-    # than arriving mid-afternoon.
-    - cron: "0 7 * * *"
+  pull_request:
+  repository_dispatch:
+    types: [api-reference-deployed]
   workflow_dispatch:
+    inputs:
+      post_for_real:
+        type: boolean
+        default: false
+        description: 'Post to Slack on a state change, as a deploy-triggered run does. Off prints the message instead.'
 
 permissions:
   contents: read
 
 jobs:
-  task-create:
-    name: TaskCreate vs published reference
+  api-contract:
+    name: SDK routes vs staging API references
     runs-on: ubuntu-latest
+    # The full runs share the posted state; one at a time keeps it straight.
+    concurrency:
+      group: api-contract-${{ github.event_name == 'pull_request' && github.ref || 'full' }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -35,5 +59,35 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Compare TaskCreate against the reference
-        run: uv run python scripts/check_api_contract.py
+      - name: Check routes
+        if: github.event_name == 'pull_request'
+        run: uv run python scripts/check_api_contract.py --pr
+
+      # The state of the last real post. Caches are immutable, so each post
+      # saves under a new key and the newest one is restored by prefix.
+      - name: Restore the last posted state
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: .api-drift-state
+          key: api-drift-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: api-drift-state-
+
+      - name: Check routes and notify #main-build-alerts
+        id: check
+        if: github.event_name != 'pull_request'
+        env:
+          CLOUD_SHA: ${{ github.event.client_payload.sha }}
+          SLACK_WEBHOOK_URL: ${{ github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.post_for_real) && secrets.MAIN_STATUS_SLACK_WEBHOOK_URL || '' }}
+        run: |
+          echo "introspection-cloud commit: ${CLOUD_SHA:-none (manual run)}"
+          uv run python scripts/check_api_contract.py --notify .api-drift-state \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      # Saved even when the check failed: a drift post is exactly that case.
+      - name: Save the posted state
+        if: always() && steps.check.outputs.posted == 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .api-drift-state
+          key: api-drift-state-${{ github.run_id }}-${{ github.run_attempt }}
