@@ -60,15 +60,23 @@ jobs:
           tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}/oasdiff" oasdiff
           echo "${RUNNER_TEMP}/oasdiff" >> "${GITHUB_PATH}"
 
+      # Until staging serves both references (a 404), the report script
+      # exits 0 and writes nothing, and every step below skips: no post and
+      # no recorded state, so the first run that finds them posts its drift.
       - name: Build the drift report
+        id: report
         run: |
           uv run python scripts/api_drift_report.py --out "${RUNNER_TEMP}/api-drift" \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          cat "${RUNNER_TEMP}/api-drift/summary.md" >> "${GITHUB_STEP_SUMMARY}"
+          if [ -f "${RUNNER_TEMP}/api-drift/state" ]; then
+            cat "${RUNNER_TEMP}/api-drift/summary.md" >> "${GITHUB_STEP_SUMMARY}"
+            echo "built=true" >> "${GITHUB_OUTPUT}"
+          fi
 
       # The state of the last real post. Caches are immutable, so each post
       # saves under a new key and the newest one is restored by prefix.
       - name: Restore the last posted state
+        if: steps.report.outputs.built == 'true'
         uses: actions/cache/restore@v6
         with:
           path: .api-drift-state
@@ -77,6 +85,7 @@ jobs:
 
       - name: Notify #main-build-alerts
         id: notify
+        if: steps.report.outputs.built == 'true'
         env:
           REPORT_DIR: ${{ runner.temp }}/api-drift
           STATE_DIR: .api-drift-state
@@ -92,6 +101,7 @@ jobs:
           key: api-drift-state-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Fail on drift
+        if: steps.report.outputs.built == 'true'
         run: |
           if [ "$(cat "${RUNNER_TEMP}/api-drift/state")" = "drift" ]; then
             echo "::error::API drift found; the job summary has both reports."

@@ -21,7 +21,9 @@ The report is written to --out as files the notify step reads:
 
 Exits 0 when the report was built (drift or clean) and 2 when it could not
 be, for example when staging did not answer: an outage is not drift, and
-must not post or change the notify state.
+must not post or change the notify state. A reference that answers 404 has
+not been published on staging yet: that run exits 0 and writes no report,
+so the workflow skips the notify step and records no state.
 
 Run: uv run python scripts/api_drift_report.py --out DIR [--run-url URL]
 env: OASDIFF (default: oasdiff on PATH), and the reference overrides
@@ -36,6 +38,7 @@ import logging
 import re
 import sys
 import tempfile
+import urllib.error
 from pathlib import Path
 
 from api_contract.changelog import changelog, render_plane
@@ -92,12 +95,13 @@ def prompt(run_url: str, drift: str, changes: list[str]) -> str:
 
 def build(out: Path, run_url: str, overrides: dict[str, str | None]) -> bool:
     """Writes the report; True when there is drift."""
-    specs = {}
+    specs = {
+        plane: load_reference(reference_source(plane, overrides.get(plane)))
+        for plane in PLANES
+    }
     planes = []
     with tempfile.TemporaryDirectory() as tmp:
         for plane in PLANES:
-            source = reference_source(plane, overrides.get(plane))
-            specs[plane] = load_reference(source)
             # oasdiff reads the same bytes the check read.
             live = Path(tmp) / f"{plane}.json"
             live.write_text(json.dumps(specs[plane]))
@@ -158,11 +162,21 @@ def main(argv: list[str] | None = None) -> int:
             args.run_url,
             {plane: getattr(args, plane) for plane in PLANES},
         )
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            return _failed(exc)
+        logger.info("API reference not published", extra={"url": exc.url})
+        print("reference not published on staging yet, skipping")
+        return 0
     except Exception as exc:
-        logger.exception("could not build the API drift report")
-        print(f"::error::could not build the API drift report: {exc}")
-        return 2
+        return _failed(exc)
     return 0
+
+
+def _failed(exc: Exception) -> int:
+    logger.exception("could not build the API drift report")
+    print(f"::error::could not build the API drift report: {exc}")
+    return 2
 
 
 if __name__ == "__main__":
