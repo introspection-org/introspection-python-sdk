@@ -153,8 +153,9 @@ class Scope:
     def assignments(self, name: str, before: int) -> list[ast.expr]:
         """Every value `name = ...` can leave in `name` on a line, read in
         the innermost enclosing function that assigns it: a later
-        assignment replaces an earlier one, and each branch of an `if`
-        keeps its own."""
+        assignment replaces an earlier one, each branch of an `if` keeps
+        its own, and an `except` handler sees every value its `try` body
+        assigned."""
         for function in self.chain:
             values = _reaching(function.body, name, before, [])
             if values:
@@ -174,6 +175,11 @@ def _reaching(
         if value is not None:
             values = [value]
             continue
+        if isinstance(stmt, ast.Try | ast.TryStar):
+            values, inside = _through_try(stmt, name, before, values)
+            if inside:
+                return values
+            continue
         branches = _branches(stmt)
         if (stmt.end_lineno or stmt.lineno) >= before:
             # The line is inside this statement: follow the branch it is in.
@@ -187,8 +193,70 @@ def _reaching(
             reached = [
                 v for b in branches for v in _reaching(b, name, before, values)
             ]
-            values = list({id(v): v for v in reached}.values())
+            values = _union(reached)
     return values
+
+
+def _through_try(
+    stmt: ast.Try | ast.TryStar,
+    name: str,
+    before: int,
+    values: list[ast.expr],
+) -> tuple[list[ast.expr], bool]:
+    """The values of `name` at line `before` and True when the line is in
+    `stmt`, else the values that leave it and False. A handler is entered
+    from any point of the body, and `finally` from any point of the rest."""
+    raised = _union([*values, *_assigned_anywhere(stmt.body, name)])
+    body = _reaching(stmt.body, name, before, values)
+    if _holds(stmt.body, before):
+        return body, True
+    completed = [_reaching(stmt.orelse, name, before, body)]
+    if _holds(stmt.orelse, before):
+        return completed[0], True
+    for handler in stmt.handlers:
+        completed.append(_reaching(handler.body, name, before, raised))
+        if _holds(handler.body, before):
+            return completed[-1], True
+    normal = _union([v for c in completed for v in c])
+    if _holds(stmt.finalbody, before):
+        aborted = [
+            *raised,
+            *_assigned_anywhere(stmt.orelse, name),
+            *(
+                v
+                for handler in stmt.handlers
+                for v in _assigned_anywhere(handler.body, name)
+            ),
+        ]
+        entry = _union([*normal, *aborted])
+        return _reaching(stmt.finalbody, name, before, entry), True
+    return _reaching(stmt.finalbody, name, before, normal), False
+
+
+def _holds(body: list[ast.stmt], line: int) -> bool:
+    return bool(body) and body[0].lineno <= line <= (
+        body[-1].end_lineno or body[-1].lineno
+    )
+
+
+def _union(values: list[ast.expr]) -> list[ast.expr]:
+    return list({id(v): v for v in values}.values())
+
+
+def _assigned_anywhere(body: list[ast.stmt], name: str) -> list[ast.expr]:
+    """Every value `body` assigns to `name` at any depth, in source order,
+    outside the functions and classes it defines."""
+    out: list[ast.expr] = []
+    pending: list[ast.AST] = list(body)
+    while pending:
+        node = pending.pop()
+        if isinstance(node, FunctionNode | ast.ClassDef | ast.Lambda):
+            continue
+        value = _assigned(node, name)
+        if value is not None:
+            out.append(value)
+        pending.extend(ast.iter_child_nodes(node))
+    return sorted(out, key=lambda v: (v.lineno, v.col_offset))
 
 
 def _branches(stmt: ast.stmt) -> list[list[ast.stmt]]:
@@ -200,11 +268,6 @@ def _branches(stmt: ast.stmt) -> list[list[ast.stmt]]:
         return [[], stmt.body, stmt.orelse]
     if isinstance(stmt, ast.With | ast.AsyncWith):
         return [stmt.body]
-    if isinstance(stmt, ast.Try):
-        return [
-            stmt.body + stmt.orelse + stmt.finalbody,
-            *(handler.body + stmt.finalbody for handler in stmt.handlers),
-        ]
     return []
 
 

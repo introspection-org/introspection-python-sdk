@@ -40,6 +40,51 @@ async def archive(http, widget_id, hard):
     }
 
 
+def test_a_handler_sees_every_path_its_try_body_assigned(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def move(http, widget_id):
+    path = WIDGETS
+    try:
+        path = _path(widget_id)
+        await http.request("HEAD", path)
+        path = f"{WIDGETS}/{widget_id}/move"
+    except ValueError:
+        return await http.request("GET", path)
+    else:
+        return await http.request("POST", path)
+    finally:
+        await http.request("PATCH", path)
+
+
+async def rename(http, widget_id):
+    try:
+        path = _path(widget_id)
+        path = f"{WIDGETS}/{widget_id}/rename"
+    except KeyError:
+        path = WIDGETS
+    return await http.request("PUT", path)
+"""
+    )
+
+    package = sample_package(resource)
+
+    def sent(snippet: str) -> set[str]:
+        return {p for _, p in sites_at(package, line_of(snippet, resource))}
+
+    every = {"/v1/widgets", "/v1/widgets/{}", "/v1/widgets/{}/move"}
+    assert sent('"HEAD", path') == {"/v1/widgets/{}"}
+    # The body may raise before or after any of its assignments.
+    assert sent('"GET", path') == every
+    # The else block runs only when the whole body did.
+    assert sent('"POST", path') == {"/v1/widgets/{}/move"}
+    assert sent('"PATCH", path') == every
+    # After the statement, only the paths of the blocks that completed.
+    assert sent('"PUT", path') == {"/v1/widgets", "/v1/widgets/{}/rename"}
+
+
 def test_only_http_calls_send_a_route(sample_package):
     resource = (
         RESOURCE
