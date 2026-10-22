@@ -253,6 +253,16 @@ config's `ignore` list: `introspection_sdk/_sync/` is there because it
 repeats `introspection_sdk/_async/` by construction (see "Sync code
 generation"), and counting it would hide every new copy.
 
+## CI
+
+The `All green` job in `ci.yml` passes only when every other `ci.yml` job
+succeeded. The branch rulesets require just two checks: `All green` and
+`API Compatibility`, which stays its own workflow (`api-compat.yml`). So a
+new `ci.yml` job is not required until you add its id to `needs` of
+`all-green`; do that in the same PR. Add it to `allowed-skips` as well only
+when the job skips by design (it has an `if:`), never to let a skipped job
+through after a failure.
+
 ## When in doubt
 
 Read the coverage ratchet in `pyproject.toml`.
