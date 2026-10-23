@@ -63,6 +63,8 @@ def _reaching(
         values, inside = _through(stmt, name, before, values)
         if inside:
             return values
+        if not _completes([stmt]):
+            return []
     return values
 
 
@@ -198,6 +200,10 @@ def _through_try(
         ]
         entry = _union([*normal, *aborted])
         return _reaching(stmt.finalbody, name, before, entry), True
+    # An empty value set can still belong to a completing path whose first
+    # assignment is in finally. Keep completion separate from those values.
+    if not completed or not _completes(stmt.finalbody):
+        return [], False
     return _reaching(stmt.finalbody, name, before, normal), False
 
 
@@ -207,12 +213,23 @@ def _completes(body: list[ast.stmt]) -> bool:
     for stmt in body:
         if isinstance(stmt, JUMPS):
             return False
+        if isinstance(stmt, ast.Try | ast.TryStar):
+            if not _try_completes(stmt):
+                return False
+            continue
         if isinstance(stmt, ast.With | ast.AsyncWith) and _raises(stmt.body):
             continue
         branches = _branches(stmt)
         if branches and not any(map(_completes, branches)):
             return False
     return True
+
+
+def _try_completes(stmt: ast.Try | ast.TryStar) -> bool:
+    """Finally preserves a pending exit unless it exits itself."""
+    normal = _completes(stmt.body) and _completes(stmt.orelse)
+    handled = any(_completes(handler.body) for handler in stmt.handlers)
+    return (normal or handled) and _completes(stmt.finalbody)
 
 
 def _raises(body: list[ast.stmt]) -> list[Position]:
