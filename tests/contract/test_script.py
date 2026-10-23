@@ -68,10 +68,9 @@ def staging(monkeypatch: pytest.MonkeyPatch) -> Iterator[Server]:
     thread = threading.Thread(target=server.http.serve_forever, daemon=True)
     thread.start()
     monkeypatch.setenv("SLACK_WEBHOOK_URL", f"{server.url}/webhook")
-    # The Data Plane is read through STAGING_DP_URL, as the workflow does.
-    monkeypatch.setenv("STAGING_DP_URL", f"{server.url}/dp")
-    monkeypatch.delenv("API_CONTRACT_CONTROLPLANE", raising=False)
-    monkeypatch.delenv("API_CONTRACT_DATAPLANE", raising=False)
+    # Both planes are read through their base URLs, as the workflow does.
+    monkeypatch.setenv("INTROSPECTION_CP_URL", f"{server.url}/cp")
+    monkeypatch.setenv("INTROSPECTION_DP_URL", f"{server.url}/dp/")
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     yield server
@@ -90,8 +89,7 @@ def publish_for_no_client(server: Server) -> None:
 
 
 def check(server: Server, *flags: str) -> int:
-    """The Control Plane by flag, since its default is real staging."""
-    return main(["--controlplane", f"{server.url}/cp/openapi.json", *flags])
+    return main(list(flags))
 
 
 def record(states: Path, state: str) -> None:
@@ -137,7 +135,7 @@ def test_an_unreachable_reference_fails_without_posting(
     record(states, "clean")
     staging.publish_both()
     # Nothing listens on port 9 of localhost: the connection is refused.
-    monkeypatch.setenv("STAGING_DP_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("INTROSPECTION_DP_URL", "http://127.0.0.1:9")
 
     assert check(staging, "--notify", str(states)) == 2
     assert ERROR in capsys.readouterr().out
@@ -146,16 +144,22 @@ def test_an_unreachable_reference_fails_without_posting(
 
 
 @pytest.mark.parametrize(
-    "case", [(pr, value) for pr in (True, False) for value in (None, "")]
+    "case",
+    [
+        (pr, var, value)
+        for pr in (True, False)
+        for var in ("INTROSPECTION_CP_URL", "INTROSPECTION_DP_URL")
+        for value in (None, "")
+    ],
 )
-def test_unset_staging_dp_url_fails_naming_the_variable(
+def test_an_unset_base_url_fails_naming_the_variable(
     staging, tmp_path, monkeypatch, capsys, case
 ):
-    pr, value = case
+    pr, var, value = case
     if value is None:
-        monkeypatch.delenv("STAGING_DP_URL")
+        monkeypatch.delenv(var)
     else:
-        monkeypatch.setenv("STAGING_DP_URL", value)
+        monkeypatch.setenv(var, value)
     states = tmp_path / "state"
     record(states, "drift")
     staging.publish_both()
@@ -164,7 +168,7 @@ def test_unset_staging_dp_url_fails_naming_the_variable(
     assert check(staging, *flags) == 2
     printed = capsys.readouterr().out
     assert ERROR in printed
-    assert "STAGING_DP_URL is unset or empty" in printed
+    assert f"{var} is unset or empty" in printed
     assert staging.posts == []
     assert (states / "last-posted").read_text() == "drift\n"
 
@@ -180,6 +184,26 @@ def test_pr_reports_uncalled_operations_without_failing(
     assert "reported only, never fails a PR" in capsys.readouterr().out
     assert "controlplane: GET /v1/projects\n" in summary.read_text()
     assert staging.posts == []
+
+
+def test_flags_name_the_documents_instead_of_the_base_urls(
+    staging, tmp_path, monkeypatch
+):
+    monkeypatch.delenv("INTROSPECTION_CP_URL")
+    monkeypatch.delenv("INTROSPECTION_DP_URL")
+    staging.publish("controlplane")
+
+    assert (
+        check(
+            staging,
+            "--pr",
+            "--controlplane",
+            f"{staging.url}/cp/openapi.json",
+            "--dataplane",
+            str(FIXTURES / "dataplane.json"),
+        )
+        == 0
+    )
 
 
 def test_pr_fails_on_a_route_in_neither_reference(staging, capsys):

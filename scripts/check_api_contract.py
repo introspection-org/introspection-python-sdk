@@ -20,16 +20,16 @@ the way introspection-cloud's main-status.yml does: a `{text}` JSON posted to
 of the last real post between runs, so a drift that stays drift stays quiet.
 
 Any failure to read a reference (an HTTP error status, a network error,
-a body that is not JSON, or `STAGING_DP_URL` unset) exits 2 before the
-check runs: it posts nothing and leaves the posted state as it was.
+a body that is not JSON, or a base URL unset) exits 2 before the check
+runs: it posts nothing and leaves the posted state as it was.
 
-Run: STAGING_DP_URL=https://api.<dp host> \
+Run: INTROSPECTION_CP_URL=https://api.<cp host> \
+     INTROSPECTION_DP_URL=https://api.<dp host> \
      uv run python scripts/check_api_contract.py [--pr] [--notify DIR]
          [--controlplane URL|PATH] [--dataplane URL|PATH]
-env: STAGING_DP_URL, the staging Data Plane's base URL, required unless
-     the Data Plane is named otherwise; API_CONTRACT_CONTROLPLANE,
-     API_CONTRACT_DATAPLANE replace a staging document with a URL or a
-     file, as the flags do; SLACK_WEBHOOK_URL as above.
+env: INTROSPECTION_CP_URL, INTROSPECTION_DP_URL, each plane's base URL,
+     whose `/openapi.json` is read unless its flag names a URL or a file;
+     SLACK_WEBHOOK_URL as above.
 """
 
 from __future__ import annotations

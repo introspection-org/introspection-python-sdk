@@ -6,8 +6,7 @@ import json
 
 import pytest
 from api_contract.reference import (
-    CONTROLPLANE_URL,
-    MissingDataplaneUrl,
+    MissingBaseUrl,
     load_reference,
     operations,
     reference_source,
@@ -38,35 +37,43 @@ def test_operations_carry_their_clients():
     )
 
 
-def test_reference_source_prefers_flag_then_env_then_staging(
+def test_reference_source_prefers_flag_then_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    monkeypatch.delenv("API_CONTRACT_CONTROLPLANE", raising=False)
-    monkeypatch.delenv("API_CONTRACT_DATAPLANE", raising=False)
-    monkeypatch.setenv("STAGING_DP_URL", "https://api.dp.example/")
-    assert reference_source("controlplane") == CONTROLPLANE_URL
-    assert CONTROLPLANE_URL.endswith("/openapi.json")
+    monkeypatch.setenv("INTROSPECTION_CP_URL", "https://api.cp.example")
+    monkeypatch.setenv("INTROSPECTION_DP_URL", " https://api.dp.example/ ")
+    assert (
+        reference_source("controlplane")
+        == "https://api.cp.example/openapi.json"
+    )
     assert (
         reference_source("dataplane") == "https://api.dp.example/openapi.json"
     )
-
-    monkeypatch.setenv("API_CONTRACT_DATAPLANE", "/tmp/dp.json")
-    assert reference_source("dataplane") == "/tmp/dp.json"
     assert reference_source("dataplane", "dp.json") == "dp.json"
 
 
-@pytest.mark.parametrize("value", [None, "", "  "])
-def test_dataplane_without_staging_dp_url_names_the_variable(
-    monkeypatch: pytest.MonkeyPatch, value
+@pytest.mark.parametrize(
+    "case",
+    [
+        (plane, var, value)
+        for plane, var in (
+            ("controlplane", "INTROSPECTION_CP_URL"),
+            ("dataplane", "INTROSPECTION_DP_URL"),
+        )
+        for value in (None, "", "  ")
+    ],
+)
+def test_an_unset_base_url_names_the_variable_and_the_flag(
+    monkeypatch: pytest.MonkeyPatch, case
 ):
-    monkeypatch.delenv("API_CONTRACT_DATAPLANE", raising=False)
+    plane, var, value = case
     if value is None:
-        monkeypatch.delenv("STAGING_DP_URL", raising=False)
+        monkeypatch.delenv(var, raising=False)
     else:
-        monkeypatch.setenv("STAGING_DP_URL", value)
+        monkeypatch.setenv(var, value)
 
-    with pytest.raises(MissingDataplaneUrl, match="STAGING_DP_URL"):
-        reference_source("dataplane")
+    with pytest.raises(MissingBaseUrl, match=f"{var} is unset.*--{plane}"):
+        reference_source(plane)
 
 
 def test_load_reference_reads_a_local_file(tmp_path):

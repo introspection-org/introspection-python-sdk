@@ -7,8 +7,9 @@ names the clients expected to call it; `[]` names none. Integration and
 excluded routes are left out of the documents altogether. Those flags are
 the only classification this check reads: it keeps no list of its own.
 
-The Data Plane has no fixed staging host: `STAGING_DP_URL` names the base
-URL of the staging deployment whose document is read.
+No host is fixed here: `INTROSPECTION_CP_URL` and `INTROSPECTION_DP_URL`
+name the base URLs of the planes whose documents are read. In CI they come
+from introspection-cloud's deploy dispatch (see `api_contract.urls`).
 """
 
 from __future__ import annotations
@@ -22,12 +23,10 @@ from pathlib import Path
 from typing import Any
 
 __all__ = [
+    "BASE_URL_VARS",
     "CLIENT",
-    "CONTROLPLANE_URL",
-    "DATAPLANE_BASE_VAR",
-    "ENV_VARS",
     "HTTP_METHODS",
-    "MissingDataplaneUrl",
+    "MissingBaseUrl",
     "Operation",
     "load_reference",
     "operations",
@@ -38,17 +37,11 @@ __all__ = [
 #: The client this SDK is, as `x-introspection.clients` names it.
 CLIENT = "sdk"
 
-#: The staging Control Plane's document, which the SDK and CLI checks read.
-CONTROLPLANE_URL = "https://api.staging.introspection.dev/openapi.json"
-
-#: The variable holding the staging Data Plane's base URL; its document is
+#: The variables holding each plane's base URL; its document is
 #: `/openapi.json` under it.
-DATAPLANE_BASE_VAR = "STAGING_DP_URL"
-
-#: Environment variables that replace a default URL with a URL or a file.
-ENV_VARS = {
-    "controlplane": "API_CONTRACT_CONTROLPLANE",
-    "dataplane": "API_CONTRACT_DATAPLANE",
+BASE_URL_VARS = {
+    "controlplane": "INTROSPECTION_CP_URL",
+    "dataplane": "INTROSPECTION_DP_URL",
 }
 
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
@@ -68,27 +61,23 @@ def load_reference(source: str) -> dict[str, Any]:
     return json.loads(Path(source).read_text())
 
 
-class MissingDataplaneUrl(RuntimeError):
-    """No Data Plane document was named and `STAGING_DP_URL` is unset."""
+class MissingBaseUrl(RuntimeError):
+    """A plane's document was not named and its base URL variable is unset."""
 
-    def __init__(self) -> None:
+    def __init__(self, plane: str) -> None:
         super().__init__(
-            f"{DATAPLANE_BASE_VAR} is unset or empty: set it to the staging "
-            "Data Plane's base URL (the workflow reads the org-level Actions "
-            f"variable vars.{DATAPLANE_BASE_VAR}), or pass --dataplane"
+            f"{BASE_URL_VARS[plane]} is unset or empty: set it to the "
+            f"{plane}'s base URL, or pass --{plane}"
         )
 
 
 def reference_source(plane: str, override: str | None = None) -> str:
-    """The flag, else the environment variable, else the staging document."""
-    source = override or os.environ.get(ENV_VARS[plane])
-    if source:
-        return source
-    if plane == "controlplane":
-        return CONTROLPLANE_URL
-    base = os.environ.get(DATAPLANE_BASE_VAR, "").strip()
+    """The flag, else `/openapi.json` under the plane's base URL."""
+    if override:
+        return override
+    base = os.environ.get(BASE_URL_VARS[plane], "").strip()
     if not base:
-        raise MissingDataplaneUrl
+        raise MissingBaseUrl(plane)
     return f"{base.rstrip('/')}/openapi.json"
 
 

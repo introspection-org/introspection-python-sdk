@@ -1,13 +1,24 @@
 # Checks this SDK's routes against the x-introspection flags of the staging
 # API references (see scripts/check_api_contract.py): each plane's own
-# /openapi.json, the Data Plane's under the base URL in the org-level
-# Actions variable STAGING_DP_URL. A run with STAGING_DP_URL unset or empty
-# fails and says so.
+# /openapi.json, under the Control Plane and Data Plane base URLs below.
+#
+# Where the base URLs come from (scripts/api_contract/urls.py), first match:
+# 1. repository_dispatch api-reference-deployed: client_payload.cp_url and
+#    client_payload.dp_url. The pair is saved to the Actions cache after the
+#    run, drift or not, so the runs below can read it.
+# 2. workflow_dispatch: the cp_url and dp_url inputs, when set.
+# 3. Otherwise (pull requests, a manual run without inputs): the pair the
+#    newest dispatch saved. Pull requests read main's caches, and dispatches
+#    run on main.
+# With none of these the run fails: no staging reference URLs are recorded
+# yet. Run introspection-cloud's "API Reference Deployed" workflow by hand
+# (it dispatches here and refills the cache), or pass cp_url and dp_url.
+# No hostname is written down here or in the scripts.
 #
 # On a pull request only a route the SDK calls that is in neither reference
-# fails, since that is the SDK's own fault. Operations flagged for the SDK
-# that it does not call are listed in the job summary but never fail, so a
-# route the cloud adds does not block unrelated PRs.
+# fails, since that is the SDK's own fault. Operations for the SDK that it
+# does not call are listed in the job summary but never fail, so a route the
+# cloud adds does not block unrelated PRs.
 #
 # introspection-cloud sends `api-reference-deployed` after each staging
 # deploy (client_payload.sha is the cloud commit, client_payload.plane the
@@ -22,8 +33,8 @@
 # The posted state is saved only when a post really went out.
 #
 # A reference that cannot be read (any HTTP error, 404 included, a network
-# error or a body that is not JSON) fails the run before the check, so it
-# posts nothing and the posted state stays as it was.
+# error or a body that is not JSON), like missing URLs, fails the run before
+# the check, so it posts nothing and the posted state stays as it was.
 name: API Contract
 
 on:
@@ -36,6 +47,14 @@ on:
         type: boolean
         default: false
         description: 'Post to Slack on a state change, as a deploy-triggered run does. Off prints the message instead.'
+      cp_url:
+        type: string
+        default: ''
+        description: 'Control Plane base URL (its /openapi.json is read). Empty uses the pair the last deploy dispatch recorded.'
+      dp_url:
+        type: string
+        default: ''
+        description: 'Data Plane base URL (its /openapi.json is read). Empty uses the pair the last deploy dispatch recorded.'
 
 permissions:
   contents: read
@@ -64,10 +83,26 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
+      # The base URLs the newest deploy dispatch sent. Like the posted state,
+      # each dispatch saves under a new key and the newest is restored by prefix.
+      - name: Restore the recorded reference URLs
+        uses: actions/cache/restore@v6
+        with:
+          path: .api-reference-urls
+          key: api-reference-urls-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: api-reference-urls-
+
+      - name: Pick the reference URLs
+        id: urls
+        env:
+          PAYLOAD_CP_URL: ${{ github.event.client_payload.cp_url }}
+          PAYLOAD_DP_URL: ${{ github.event.client_payload.dp_url }}
+          INPUT_CP_URL: ${{ inputs.cp_url }}
+          INPUT_DP_URL: ${{ inputs.dp_url }}
+        run: uv run python scripts/resolve_api_reference_urls.py .api-reference-urls
+
       - name: Check routes
         if: github.event_name == 'pull_request'
-        env:
-          STAGING_DP_URL: ${{ vars.STAGING_DP_URL }}
         run: uv run python scripts/check_api_contract.py --pr
 
       # The state of the last real post. Caches are immutable, so each post
@@ -86,7 +121,6 @@ jobs:
         env:
           CLOUD_SHA: ${{ github.event.client_payload.sha }}
           CLOUD_PLANE: ${{ github.event.client_payload.plane }}
-          STAGING_DP_URL: ${{ vars.STAGING_DP_URL }}
           SLACK_WEBHOOK_URL: ${{ github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.post_for_real) && secrets.MAIN_STATUS_SLACK_WEBHOOK_URL || '' }}
         run: |
           echo "introspection-cloud commit: ${CLOUD_SHA:-none (manual run)}, plane: ${CLOUD_PLANE:-none}"
@@ -100,3 +134,11 @@ jobs:
         with:
           path: .api-drift-state
           key: api-drift-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Only a dispatch that named both URLs saves them, drift or not.
+      - name: Save the reference URLs
+        if: always() && steps.urls.outputs.source == 'payload'
+        uses: actions/cache/save@v6
+        with:
+          path: .api-reference-urls
+          key: api-reference-urls-${{ github.run_id }}-${{ github.run_attempt }}
