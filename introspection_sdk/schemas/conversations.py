@@ -18,8 +18,12 @@ __all__ = [
     "Conversation",
     "ConversationAgent",
     "ConversationCost",
+    "ConversationExperiment",
     "ConversationItemInclude",
     "ConversationMetrics",
+    "ConversationOwner",
+    "ConversationRecipe",
+    "ConversationRuntime",
     "ConversationSortField",
     "ConversationUsage",
     "SpanKind",
@@ -36,7 +40,13 @@ class ConversationAgent(OmitNoneModel):
 
 
 class ConversationUsage(OmitNoneModel):
-    input_tokens: int = 0
+    """Token totals across the conversation.
+
+    ``total_input_tokens`` counts uncached input plus cache reads and writes,
+    so it is not the sum of the items' ``gen_ai.usage.input_tokens``.
+    """
+
+    total_input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
 
@@ -48,10 +58,28 @@ class ConversationCost(OmitNoneModel):
 class ConversationMetrics(OmitNoneModel):
     duration_ms: float = 0.0
     trace_count: int = 0
+    max_turn: int | None = None
     span_count: int = 0
     tool_use_count: int = 0
     failed_tool_use_count: int = 0
     has_errors: bool = False
+
+
+class ConversationRuntime(OmitNoneModel):
+    id: UUID | None = None
+    group_id: UUID | None = None
+
+
+class ConversationExperiment(OmitNoneModel):
+    id: UUID | None = None
+
+
+class ConversationRecipe(OmitNoneModel):
+    git_commit_sha: str | None = None
+
+
+class ConversationOwner(OmitNoneModel):
+    key: str | None = None
 
 
 class Conversation(OmitNoneModel):
@@ -66,11 +94,10 @@ class Conversation(OmitNoneModel):
     metrics: ConversationMetrics = Field(default_factory=ConversationMetrics)
     environment: str | None = None
     service_name: str | None = None
-    runtime_id: UUID | None = None
-    runtime_group_id: UUID | None = None
-    experiment_id: UUID | None = None
-    recipe_git_commit_sha: str | None = None
-    owner_key: str | None = None
+    runtime: ConversationRuntime | None = None
+    experiment: ConversationExperiment | None = None
+    recipe: ConversationRecipe | None = None
+    owner: ConversationOwner | None = None
     metadata: dict[str, str] | None = None
 
 

@@ -11,7 +11,7 @@ class ConversationExportParams(TypedDict, total=False):
 
     agent: str
     service_name: str
-    operation_name: str
+    operation_name: str | list[str]
     lookback_days: int
     start_date: str | datetime
     end_date: str | datetime

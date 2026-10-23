@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.31.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.30.1...v0.31.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **conversations:** `IntrospectionContent` is replaced by `IntrospectionContains` and `IntrospectionAttributes.content` by `.contains`; the `content` keyword is now `contains`.
+
+### Features
+
+* **conversations:** filter items with contains and drop operation_name ([#191](https://github.com/introspection-org/introspection-python-sdk/issues/191)) ([16ce9ad](https://github.com/introspection-org/introspection-python-sdk/commit/16ce9ad1e72e778f994f12092b115215c6564cef))
+
 ## [0.30.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.30.0...v0.30.1) (2026-10-22)
 
 

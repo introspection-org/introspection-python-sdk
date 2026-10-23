@@ -11,6 +11,7 @@ Driven through the offline :class:`FakeAPI` transport from
 
 from __future__ import annotations
 
+import inspect
 import io
 from typing import Any
 from uuid import UUID
@@ -19,6 +20,7 @@ import httpx2 as httpx
 import pyarrow as pa
 import pytest
 
+from introspection_sdk import ValidationError
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     Conversations,
@@ -26,6 +28,8 @@ from introspection_sdk.runner_resources import (
 from introspection_sdk.runner_resources._reads import ARROW_STREAM_MEDIA_TYPE
 from introspection_sdk.runner_resources.conversations import (
     LATEST_TURN_SCAN_LIMIT,
+    AsyncConversationItems,
+    ConversationItems,
 )
 from introspection_sdk.schemas.conversations import Conversation
 from introspection_sdk.schemas.genai import (
@@ -54,7 +58,7 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     "created_at": "2025-01-01T00:00:00Z",
     "updated_at": "2025-01-01T00:00:05Z",
     "usage": {
-        "input_tokens": 10,
+        "total_input_tokens": 10,
         "output_tokens": 20,
         "total_tokens": 30,
     },
@@ -62,6 +66,7 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     "metrics": {
         "duration_ms": 5000,
         "trace_count": 1,
+        "max_turn": 2,
         "span_count": 3,
         "tool_use_count": 2,
         "failed_tool_use_count": 1,
@@ -69,9 +74,10 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     },
     "environment": "production",
     "service_name": "agent-runtime",
-    "runtime_id": RUNTIME_ID,
-    "experiment_id": EXPERIMENT_ID,
-    "recipe_git_commit_sha": "abc123",
+    "runtime": {"id": RUNTIME_ID, "group_id": RUNTIME_GROUP_ID},
+    "experiment": {"id": EXPERIMENT_ID},
+    "recipe": {"git_commit_sha": "abc123"},
+    "owner": {"key": "user:u-1"},
     "metadata": {"flow": "checkout", "tenant": "acme"},
 }
 
@@ -242,10 +248,41 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     assert summary.id == "conv-1"
     assert summary.task_title == "Map Australian fintech leaders"
     assert summary.usage.total_tokens == 30
+    assert summary.usage.total_input_tokens == 10
     assert summary.cost.usd == 0.01
+    assert summary.metrics.max_turn == 2
     assert summary.metrics.tool_use_count == 2
     assert summary.metrics.failed_tool_use_count == 1
     assert summary.metadata == {"flow": "checkout", "tenant": "acme"}
+    assert summary.runtime is not None
+    assert summary.runtime.id == UUID(RUNTIME_ID)
+    assert summary.runtime.group_id == UUID(RUNTIME_GROUP_ID)
+    assert summary.experiment is not None
+    assert summary.experiment.id == UUID(EXPERIMENT_ID)
+    assert summary.recipe is not None
+    assert summary.recipe.git_commit_sha == "abc123"
+    assert summary.owner is not None
+    assert summary.owner.key == "user:u-1"
+
+
+def test_conversation_omits_identity_groups_it_lacks():
+    fixture = {
+        key: value
+        for key, value in SUMMARY_FIXTURE.items()
+        if key not in {"runtime", "experiment", "recipe", "owner"}
+    }
+    fixture["metrics"] = {
+        k: v for k, v in fixture["metrics"].items() if k != "max_turn"
+    }
+    summary = Conversation.model_validate(fixture)
+    assert summary.runtime is None
+    assert summary.experiment is None
+    assert summary.recipe is None
+    assert summary.owner is None
+    assert summary.metrics.max_turn is None
+    dumped = summary.model_dump()
+    for group in ("runtime", "experiment", "recipe", "owner"):
+        assert group not in dumped
 
 
 def test_list_omits_empty_metadata_filter(fake_api: FakeAPI):
@@ -526,6 +563,185 @@ def test_items_list_passes_includes(fake_api: FakeAPI):
     assert req.params.get("agent") == "root"
     assert req.params.get("agent_name") is None
     assert req.params.get("agent_id") is None
+
+
+def test_items_list_repeats_contains_values(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page([make_item()], False),
+    )
+
+    _conversations(fake_api).items.list(
+        "conv-1",
+        contains=[
+            "gen_ai.input.messages.role:user",
+            "gen_ai.tool.name:message_user",
+            "gen_ai.input.messages.parts.name:react",
+        ],
+    ).page()
+
+    # The filter repeats the key, any value of which matches server-side.
+    assert fake_api.last_request.params.get_list("contains") == [
+        "gen_ai.input.messages.role:user",
+        "gen_ai.tool.name:message_user",
+        "gen_ai.input.messages.parts.name:react",
+    ]
+
+
+def test_items_list_sends_name_prefix_wildcards_verbatim(fake_api: FakeAPI):
+    """A trailing `*` on a name path is a prefix match the server resolves;
+    the SDK sends the value unchanged and the matching rows come back."""
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page(
+            [
+                make_item(
+                    attributes={
+                        "introspection": {
+                            "contains": {
+                                "version": 1,
+                                "values": [
+                                    "gen_ai.output.messages.parts.type:tool_call",
+                                    "gen_ai.output.messages.parts.name:"
+                                    "mcp_browserbase_navigate",
+                                ],
+                            }
+                        }
+                    }
+                )
+            ],
+            False,
+        ),
+    )
+
+    page = (
+        _conversations(fake_api)
+        .items.list(
+            "conv-1",
+            contains=[
+                "gen_ai.output.messages.parts.name:mcp_browserbase_*",
+                "gen_ai.tool.name:mcp_*",
+                "gen_ai.input.messages.parts.name:*",
+            ],
+        )
+        .page()
+    )
+
+    assert fake_api.last_request.params.get_list("contains") == [
+        "gen_ai.output.messages.parts.name:mcp_browserbase_*",
+        "gen_ai.tool.name:mcp_*",
+        "gen_ai.input.messages.parts.name:*",
+    ]
+    contains = present(present(page.data[0].attributes.introspection).contains)
+    assert "gen_ai.output.messages.parts.name:mcp_browserbase_navigate" in (
+        present(contains.values)
+    )
+
+
+def test_items_list_surfaces_a_rejected_wildcard(fake_api: FakeAPI):
+    """`*` is a prefix match on a name path only; the server rejects it on a
+    role or part type with a 422, raised as `ValidationError`."""
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        status=422,
+        json_body={
+            "detail": "contains: '*' is accepted only at the end of a name value"
+        },
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        _conversations(fake_api).items.list(
+            "conv-1", contains=["gen_ai.input.messages.role:*"]
+        ).page()
+
+    assert exc.value.status_code == 422
+    assert fake_api.last_request.params.get_list("contains") == [
+        "gen_ai.input.messages.role:*"
+    ]
+
+
+def test_items_list_filters_operations_through_contains(fake_api: FakeAPI):
+    """`items.list` takes no `operation_name`: an operation filter is a
+    `gen_ai.operation.name:<op>` value of `contains`, and only that key goes
+    out."""
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page([make_item()], False),
+    )
+
+    _conversations(fake_api).items.list(
+        "conv-1",
+        contains=[
+            "gen_ai.operation.name:chat",
+            "gen_ai.operation.name:execute_tool",
+        ],
+    ).page()
+
+    params = fake_api.last_request.params
+    assert params.get_list("contains") == [
+        "gen_ai.operation.name:chat",
+        "gen_ai.operation.name:execute_tool",
+    ]
+    assert "operation_name" not in params
+
+
+def test_items_list_rejects_operation_name():
+    """The removed keyword is a TypeError, not a silently ignored filter."""
+    assert (
+        "operation_name"
+        not in inspect.signature(ConversationItems.list).parameters
+    )
+    assert (
+        "operation_name"
+        not in inspect.signature(AsyncConversationItems.list).parameters
+    )
+
+
+def test_items_carry_the_contains_summary_as_typed_attributes(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/items",
+        json_body=make_page(
+            [
+                make_item(
+                    attributes={
+                        "introspection": {
+                            "contains": {
+                                "version": 1,
+                                "values": [
+                                    "gen_ai.input.messages.role:user",
+                                    "gen_ai.input.messages.parts.name:react",
+                                    "gen_ai.output.messages.parts.type:tool_call",
+                                    "gen_ai.output.messages.parts.name:message_user",
+                                    "gen_ai.tool.name:*",
+                                ],
+                            }
+                        }
+                    }
+                )
+            ],
+            False,
+        ),
+    )
+
+    page = _conversations(fake_api).items.list("conv-1")
+
+    contains = present(present(page.data[0].attributes.introspection).contains)
+    assert contains.version == 1
+    assert contains.values == [
+        "gen_ai.input.messages.role:user",
+        "gen_ai.input.messages.parts.name:react",
+        "gen_ai.output.messages.parts.type:tool_call",
+        "gen_ai.output.messages.parts.name:message_user",
+        # A name list cut at the processor's bound carries `<path>:*`.
+        "gen_ai.tool.name:*",
+    ]
 
 
 def test_items_iter_drives_next_cursor_while_has_more(fake_api: FakeAPI):
@@ -995,6 +1211,21 @@ def test_export_stream_preserves_wire_bytes_and_filters(
         "start_date": "2026-07-01T00:00:00Z",
         "end_date": "2026-07-02T00:00:00Z",
     }
+
+
+def test_export_repeats_operation_names(fake_api: FakeAPI):
+    """The export takes the repeated `operation_name` and no `content`."""
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", json_body=TRAJECTORY_BODY
+    )
+
+    _conversations(fake_api).export_trajectory(
+        "conv-1", operation_name=["chat", "execute_tool"]
+    )
+
+    params = fake_api.requests[-1].params
+    assert params.get_list("operation_name") == ["chat", "execute_tool"]
+    assert "content" not in params
 
 
 def test_export_encodes_conversation_id(fake_api: FakeAPI):

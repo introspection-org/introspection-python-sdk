@@ -66,7 +66,7 @@ def build_export_params(
     *,
     agent: str | None = None,
     service_name: str | None = None,
-    operation_name: str | None = None,
+    operation_name: str | builtins.list[str] | None = None,
     lookback_days: int | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
@@ -268,7 +268,7 @@ class AsyncConversationItems:
         include: builtins.list[ConversationItemInclude] | None = None,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | None = None,
+        contains: builtins.list[str] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
         lookback_days: int | None = None,
@@ -285,6 +285,32 @@ class AsyncConversationItems:
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
+
+        ``contains`` keeps the rows that contain any of the given
+        ``<path>:<value>`` pairs over the GenAI semconv attributes (at most
+        20, sent as the repeated ``contains`` key):
+
+        - ``gen_ai.input.messages.role:user``
+        - ``gen_ai.input.messages.parts.type:tool_call_response``
+        - ``gen_ai.input.messages.parts.name:<tool>``
+        - ``gen_ai.output.messages.parts.type:text``
+        - ``gen_ai.output.messages.parts.type:tool_call``
+        - ``gen_ai.output.messages.parts.name:<tool>``
+        - ``gen_ai.tool.name:<tool>``
+        - ``gen_ai.operation.name:<operation>``
+
+        A value on one of the four name paths may end in a single ``*`` to
+        match by prefix: ``gen_ai.output.messages.parts.name:mcp_browserbase_*``
+        or ``gen_ai.tool.name:mcp_*``, and ``gen_ai.input.messages.parts.name:*``
+        matches any name. The server rejects ``*`` anywhere else, or on a role
+        or part-type value, with a 422
+        (:class:`~introspection_sdk.ValidationError`).
+
+        Input paths are evaluated over the input messages new to the item,
+        not the full history ``include=["gen_ai.input.messages"]`` adds. An
+        item matched only by an input value returns only its new input
+        messages, one matched only by an output value only its output, and
+        one matched by an attribute path the whole item.
         """
         # unasync: end
         """List conversation items using an opaque ``next`` cursor. Iterate
@@ -298,6 +324,32 @@ class AsyncConversationItems:
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
         history of a span.
+
+        ``contains`` keeps the rows that contain any of the given
+        ``<path>:<value>`` pairs over the GenAI semconv attributes (at most
+        20, sent as the repeated ``contains`` key):
+
+        - ``gen_ai.input.messages.role:user``
+        - ``gen_ai.input.messages.parts.type:tool_call_response``
+        - ``gen_ai.input.messages.parts.name:<tool>``
+        - ``gen_ai.output.messages.parts.type:text``
+        - ``gen_ai.output.messages.parts.type:tool_call``
+        - ``gen_ai.output.messages.parts.name:<tool>``
+        - ``gen_ai.tool.name:<tool>``
+        - ``gen_ai.operation.name:<operation>``
+
+        A value on one of the four name paths may end in a single ``*`` to
+        match by prefix: ``gen_ai.output.messages.parts.name:mcp_browserbase_*``
+        or ``gen_ai.tool.name:mcp_*``, and ``gen_ai.input.messages.parts.name:*``
+        matches any name. The server rejects ``*`` anywhere else, or on a role
+        or part-type value, with a 422
+        (:class:`~introspection_sdk.ValidationError`).
+
+        Input paths are evaluated over the input messages new to the item,
+        not the full history ``include=["gen_ai.input.messages"]`` adds. An
+        item matched only by an input value returns only its new input
+        messages, one matched only by an output value only its output, and
+        one matched by an attribute path the whole item.
         """
 
         async def fetch(cursor: str | None) -> GenAiSpanList:
@@ -307,7 +359,7 @@ class AsyncConversationItems:
                 "include": include,
                 "agent": agent,
                 "service_name": service_name,
-                "operation_name": operation_name,
+                "contains": contains,
                 "start_date": start_date,
                 "end_date": end_date,
                 "lookback_days": lookback_days,
@@ -617,7 +669,7 @@ class AsyncConversations:
         *,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | None = None,
+        operation_name: str | builtins.list[str] | None = None,
         lookback_days: int | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
@@ -655,7 +707,7 @@ class AsyncConversations:
         *,
         agent: str | None = None,
         service_name: str | None = None,
-        operation_name: str | None = None,
+        operation_name: str | builtins.list[str] | None = None,
         lookback_days: int | None = None,
         start_date: str | datetime | None = None,
         end_date: str | datetime | None = None,
