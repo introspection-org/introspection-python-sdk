@@ -96,7 +96,14 @@ FULL_SPAN: dict[str, Any] = {
         "introspection": {
             "member": {"id": "019fbe0c"},
             "environment": "production",
-            "conversation": {"position": 1, "is_new": True},
+            "turn": 2,
+            "history": {
+                "position": 1,
+                "is_new": True,
+                "continuation_method": "history",
+                "hash_hit": True,
+                "new_messages": {"start": 0, "end": 1},
+            },
         },
     },
 }
@@ -134,6 +141,37 @@ class TestSemconvNaming:
 
         assert present(introspection.member).id == "019fbe0c"
         assert introspection.environment == "production"
+
+    def test_history_groups_the_linker_inference_beside_the_turn(
+        self,
+    ) -> None:
+        introspection = present(
+            GenAiSpan.model_validate(FULL_SPAN).attributes.introspection
+        )
+
+        assert introspection.turn == 2
+        history = present(introspection.history)
+        assert history.position == 1
+        assert history.is_new is True
+        assert history.continuation_method == "history"
+        assert history.hash_hit is True
+        new_messages = present(history.new_messages)
+        assert (new_messages.start, new_messages.end) == (0, 1)
+        assert not history.model_extra
+
+    def test_a_span_the_linker_never_placed_has_no_history(self) -> None:
+        span = GenAiSpan.model_validate(
+            {
+                "trace_id": "t",
+                "start_time": "2026-08-04T22:14:34Z",
+                "name": "execute_tool search",
+                "attributes": {"introspection": {"turn": 3}},
+            }
+        )
+
+        introspection = present(span.attributes.introspection)
+        assert introspection.turn == 3
+        assert introspection.history is None
 
 
 class TestNullIsNeverSerialized:
@@ -356,33 +394,6 @@ class TestCostPlacement:
         assert present(present(span.attributes.gen_ai).cost).usd == 0.0098
         introspection = present(span.attributes.introspection)
         assert (introspection.model_extra or {})["llm"] == {"cost_usd": 0.0091}
-
-    def test_conversation_rollups_stay_conversation_scoped(self) -> None:
-        # The counts have no semantic-convention name and genuinely describe the
-        # conversation, so they nest under `introspection.conversation`. Cost
-        # has a name the span already uses, so it does not move here.
-        span = GenAiSpan.model_validate(
-            {
-                "trace_id": "t",
-                "start_time": "2026-08-04T22:14:34Z",
-                "attributes": {
-                    "gen_ai": {"cost": {"usd": 0.0098}},
-                    "introspection": {
-                        "conversation": {
-                            "trace_count": 3,
-                            "tool_use_count": 4,
-                        },
-                    },
-                },
-            }
-        )
-
-        conversation = present(
-            present(span.attributes.introspection).conversation
-        )
-        assert present(present(span.attributes.gen_ai).cost).usd == 0.0098
-        assert conversation.trace_count == 3
-        assert conversation.tool_use_count == 4
 
 
 class TestNestedIdentityNodes:

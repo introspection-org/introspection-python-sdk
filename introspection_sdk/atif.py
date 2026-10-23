@@ -161,10 +161,11 @@ class AtifProjection:
                 )
             )
 
+        introspection = span.attributes.introspection
+        history = introspection.history if introspection else None
         declared = (
-            span.attributes.introspection.conversation.new_messages_start
-            if span.attributes.introspection
-            and span.attributes.introspection.conversation
+            history.new_messages.start
+            if history and history.new_messages
             else None
         )
         for message in self._new_messages(lane, inputs, declared):

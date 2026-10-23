@@ -88,7 +88,7 @@ def chat(
     attributes: dict[str, Any] = {"gen_ai": gen_ai}
     if new_messages_start is not None:
         attributes["introspection"] = {
-            "conversation": {"new_messages_start": new_messages_start}
+            "history": {"new_messages": {"start": new_messages_start}}
         }
     return GenAiSpan.model_validate(
         {
