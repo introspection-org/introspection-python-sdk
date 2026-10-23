@@ -212,7 +212,17 @@ def _parameters(
     expr: ast.expr | None, scope: Scope, depth: int = 0
 ) -> list[str]:
     """Follow local aliases to every parameter that can supply a value."""
-    if not isinstance(expr, ast.Name) or depth >= MAX_DEPTH:
+    if depth >= MAX_DEPTH:
+        return []
+    if isinstance(expr, ast.IfExp):
+        return list(
+            dict.fromkeys(
+                name
+                for alternative in (expr.body, expr.orelse)
+                for name in _parameters(alternative, scope, depth + 1)
+            )
+        )
+    if not isinstance(expr, ast.Name):
         return []
     assigned = scope.assignments(
         expr.id,

@@ -47,3 +47,37 @@ async def create(http, flag):
     if keeps_incoming:
         expected.add(("POST", "/v1/widgets"))
     assert sites_at(package, line_of("await _post", resource)) == expected
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ('path if flag else "/v1/gadgets"', {"/v1/widgets"}),
+        ('"/v1/gadgets" if flag else path', {"/v1/widgets"}),
+        ("path if flag else fallback", {"/v1/widgets", "/v1/gadgets"}),
+        ("path if flag else path", {"/v1/widgets"}),
+        (
+            'path if flag else (fallback if other else "/v1/fixed")',
+            {"/v1/widgets", "/v1/gadgets"},
+        ),
+        ('"/v1/fixed" if path else "/v1/other"', set()),
+    ],
+)
+@pytest.mark.parametrize("alias", [False, True])
+def test_helper_conditional_parameter_alternatives(
+    sample_package, expression, expected, alias
+):
+    assignment = f"target = {expression}" if alias else "pass"
+    argument = "target" if alias else expression
+    resource = f"""
+async def _post(http, path, fallback, flag, other):
+    {assignment}
+    return await http.request("POST", {argument})
+
+async def create(http, flag, other):
+    await _post(http, "/v1/widgets", "/v1/gadgets", flag, other)
+"""
+    package = sample_package(resource)
+    assert sites_at(package, line_of("await _post", resource)) == {
+        ("POST", path) for path in expected
+    }
