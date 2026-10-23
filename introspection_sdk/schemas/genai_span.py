@@ -57,7 +57,8 @@ __all__ = [
     "GenAiUsage",
     "IntrospectionAttributes",
     "IntrospectionContains",
-    "IntrospectionConversation",
+    "IntrospectionHistory",
+    "IntrospectionNewMessages",
     "IntrospectionRecipe",
     "IntrospectionRuntime",
     "SpanAttributes",
@@ -278,24 +279,27 @@ class IntrospectionRecipe(_SpanModel):
     git_commit_sha: str | None = None
 
 
-class IntrospectionConversation(_SpanModel):
-    """``introspection.conversation.*``.
+class IntrospectionNewMessages(_SpanModel):
+    """``introspection.history.new_messages.*``: the half-open range of this
+    call's input messages that were new to the conversation."""
 
-    These describe the turn's place in the conversation.
+    start: int | None = None
+    end: int | None = None
+
+
+class IntrospectionHistory(_SpanModel):
+    """``introspection.history.*``: where this model call sits in the
+    conversation's message history, as the processor's linker inferred it.
+
+    Absent on spans the linker never placed, such as tool and API calls.
+    ``position`` is 1-based.
     """
 
     position: int | None = None
     is_new: bool | None = None
     continuation_method: str | None = None
-    history_hash_hit: bool | None = None
-    new_messages_start: int | None = None
-    new_messages_end: int | None = None
-    client_message_id: str | None = None
-    trace_count: int | None = None
-    span_count: int | None = None
-    tool_use_count: int | None = None
-    failed_tool_use_count: int | None = None
-    has_errors: bool | None = None
+    hash_hit: bool | None = None
+    new_messages: IntrospectionNewMessages | None = None
 
 
 class IntrospectionContains(_SpanModel):
@@ -329,7 +333,8 @@ class IntrospectionAttributes(_SpanModel):
     runtime: IntrospectionRuntime | None = None
     experiment: _Id | None = None
     environment: str | None = None
-    conversation: IntrospectionConversation | None = None
+    turn: int | None = None
+    history: IntrospectionHistory | None = None
     recipe: IntrospectionRecipe | None = None
     contains: IntrospectionContains | None = None
 

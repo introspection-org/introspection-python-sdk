@@ -58,7 +58,7 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     "created_at": "2025-01-01T00:00:00Z",
     "updated_at": "2025-01-01T00:00:05Z",
     "usage": {
-        "input_tokens": 10,
+        "total_input_tokens": 10,
         "output_tokens": 20,
         "total_tokens": 30,
     },
@@ -66,6 +66,7 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     "metrics": {
         "duration_ms": 5000,
         "trace_count": 1,
+        "max_turn": 2,
         "span_count": 3,
         "tool_use_count": 2,
         "failed_tool_use_count": 1,
@@ -73,9 +74,10 @@ SUMMARY_FIXTURE: dict[str, Any] = {
     },
     "environment": "production",
     "service_name": "agent-runtime",
-    "runtime_id": RUNTIME_ID,
-    "experiment_id": EXPERIMENT_ID,
-    "recipe_git_commit_sha": "abc123",
+    "runtime": {"id": RUNTIME_ID, "group_id": RUNTIME_GROUP_ID},
+    "experiment": {"id": EXPERIMENT_ID},
+    "recipe": {"git_commit_sha": "abc123"},
+    "owner": {"key": "user:u-1"},
     "metadata": {"flow": "checkout", "tenant": "acme"},
 }
 
@@ -246,10 +248,41 @@ def test_list_calls_conversations_with_filters(fake_api: FakeAPI):
     assert summary.id == "conv-1"
     assert summary.task_title == "Map Australian fintech leaders"
     assert summary.usage.total_tokens == 30
+    assert summary.usage.total_input_tokens == 10
     assert summary.cost.usd == 0.01
+    assert summary.metrics.max_turn == 2
     assert summary.metrics.tool_use_count == 2
     assert summary.metrics.failed_tool_use_count == 1
     assert summary.metadata == {"flow": "checkout", "tenant": "acme"}
+    assert summary.runtime is not None
+    assert summary.runtime.id == UUID(RUNTIME_ID)
+    assert summary.runtime.group_id == UUID(RUNTIME_GROUP_ID)
+    assert summary.experiment is not None
+    assert summary.experiment.id == UUID(EXPERIMENT_ID)
+    assert summary.recipe is not None
+    assert summary.recipe.git_commit_sha == "abc123"
+    assert summary.owner is not None
+    assert summary.owner.key == "user:u-1"
+
+
+def test_conversation_omits_identity_groups_it_lacks():
+    fixture = {
+        key: value
+        for key, value in SUMMARY_FIXTURE.items()
+        if key not in {"runtime", "experiment", "recipe", "owner"}
+    }
+    fixture["metrics"] = {
+        k: v for k, v in fixture["metrics"].items() if k != "max_turn"
+    }
+    summary = Conversation.model_validate(fixture)
+    assert summary.runtime is None
+    assert summary.experiment is None
+    assert summary.recipe is None
+    assert summary.owner is None
+    assert summary.metrics.max_turn is None
+    dumped = summary.model_dump()
+    for group in ("runtime", "experiment", "recipe", "owner"):
+        assert group not in dumped
 
 
 def test_list_omits_empty_metadata_filter(fake_api: FakeAPI):
