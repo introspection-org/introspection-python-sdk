@@ -14,20 +14,29 @@ from introspection_sdk.auth import (
 from introspection_sdk.dev_target import client_headers
 from introspection_sdk.resources import (
     AsyncAnnotations,
+    AsyncApiKeys,
+    AsyncApplications,
     AsyncAutomations,
     AsyncConnectors,
+    AsyncCredentials,
     AsyncExperiments,
+    AsyncIntegrations,
+    AsyncJudges,
     AsyncMembers,
+    AsyncOidc,
+    AsyncProjects,
     AsyncRecipes,
     AsyncRepositories,
     AsyncRuntimes,
     AsyncTags,
+    AsyncVariables,
 )
 from introspection_sdk.runner_resources import (
     AsyncAppConnections,
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
+    AsyncImages,
     AsyncMetrics,
     AsyncShares,
     AsyncTasks,
@@ -88,6 +97,15 @@ class AsyncIntrospectionClient:
     metrics: AsyncMetrics
     shares: AsyncShares
     connections: AsyncAppConnections
+    images: AsyncImages
+    projects: AsyncProjects
+    api_keys: AsyncApiKeys
+    applications: AsyncApplications
+    credentials: AsyncCredentials
+    variables: AsyncVariables
+    integrations: AsyncIntegrations
+    judges: AsyncJudges
+    oidc: AsyncOidc
 
     def __init__(
         self,
@@ -147,6 +165,18 @@ class AsyncIntrospectionClient:
         self.metrics = AsyncMetrics(self._dp_http)
         self.shares = AsyncShares(self._dp_http)
         self.connections = AsyncAppConnections(self._dp_http)
+        self.images = AsyncImages(self._dp_http)
+        # Project administration: each route needs an org credential (a
+        # member session or access token); a project API key carries none
+        # of their scopes.
+        self.projects = AsyncProjects(self._http)
+        self.api_keys = AsyncApiKeys(self._http)
+        self.applications = AsyncApplications(self._http)
+        self.credentials = AsyncCredentials(self._http)
+        self.variables = AsyncVariables(self._http)
+        self.integrations = AsyncIntegrations(self._http)
+        self.judges = AsyncJudges(self._http)
+        self.oidc = AsyncOidc(self._http)
 
     @classmethod
     async def from_service_account(

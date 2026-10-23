@@ -1,0 +1,129 @@
+"""Re-exported by :mod:`introspection_sdk.resources.api_keys`."""
+
+from __future__ import annotations
+
+import builtins
+from datetime import datetime
+from uuid import UUID
+
+from introspection_sdk._async.resources._crud import (
+    _AsyncResource,
+    _body,
+    _project,
+)
+from introspection_sdk.schemas.api_keys import (
+    ApiKey,
+    ApiKeyAcknowledgement,
+    ApiKeyCapability,
+    ApiKeyCreated,
+    ApiKeyCreateRequest,
+    ApiKeyUpdateRequest,
+)
+from introspection_sdk.schemas.lanes import Environment
+
+
+def _key_path(api_key_id: UUID) -> str:
+    return f"/v1/api-keys/{api_key_id}"
+
+
+class AsyncApiKeys(_AsyncResource):
+    """CP ``/v1/api-keys`` namespace: a project's API keys.
+
+    Needs an org credential (a member session or access token); a project
+    API key cannot manage keys. ``project`` (slug or id) names the project
+    when the credential does not.
+    """
+
+    async def list(
+        self,
+        *,
+        project: str | UUID | None = None,
+        expiring: bool | None = None,
+    ) -> builtins.list[ApiKey]:
+        """Every key of the project (the route is not paginated).
+        ``expiring=True`` keeps only keys close to expiry."""
+        payload = await self._http.request(
+            "GET",
+            "/v1/api-keys",
+            params={**_project(project), "expiring": expiring},
+        )
+        return [ApiKey.model_validate(key) for key in payload["api_keys"]]
+
+    async def create(
+        self,
+        *,
+        project: str | UUID | None = None,
+        name: str | None = None,
+        environment: Environment | str | None = None,
+        allow: builtins.list[ApiKeyCapability | str] | None = None,
+        member_id: UUID | None = None,
+        expires_at: datetime | None = None,
+    ) -> ApiKeyCreated:
+        """Mint a key. Its plaintext is :attr:`ApiKeyCreated.api_key` (a
+        ``SecretStr``) and is never returned again: save it, then call
+        :meth:`acknowledge`. ``environment`` defaults to ``production``."""
+        body = _body(
+            ApiKeyCreateRequest,
+            {
+                "name": name,
+                "environment": environment,
+                "allow": allow,
+                "member_id": member_id,
+                "expires_at": expires_at,
+            },
+        )
+        return await self._call(
+            "POST",
+            "/v1/api-keys",
+            ApiKeyCreated,
+            params=_project(project),
+            json=body,
+        )
+
+    async def update(
+        self,
+        api_key_id: UUID,
+        *,
+        project: str | UUID | None = None,
+        name: str | None = None,
+        allow: builtins.list[ApiKeyCapability | str] | None = None,
+        member_id: UUID | None = None,
+    ) -> ApiKey:
+        """Rename a key or change what it may do. Only given fields change."""
+        body = _body(
+            ApiKeyUpdateRequest,
+            {"name": name, "allow": allow, "member_id": member_id},
+        )
+        return await self._call(
+            "PATCH",
+            _key_path(api_key_id),
+            ApiKey,
+            params=_project(project),
+            json=body,
+        )
+
+    async def delete(
+        self,
+        api_key_id: UUID,
+        *,
+        project: str | UUID | None = None,
+        expires_in: int | None = None,
+    ) -> None:
+        """Revoke a key now, or keep it working ``expires_in`` more seconds
+        (a rotation; it reads as ``rotating`` until then)."""
+        await self._delete(
+            _key_path(api_key_id),
+            {**_project(project), "expires_in": expires_in},
+        )
+
+    async def acknowledge(
+        self, api_key_id: UUID, *, project: str | UUID | None = None
+    ) -> ApiKeyAcknowledgement:
+        """Record that the plaintext from :meth:`create` was saved. A second
+        acknowledge raises :class:`~introspection_sdk.NotFoundError`."""
+        return await self._call(
+            "POST",
+            f"{_key_path(api_key_id)}/acknowledge",
+            ApiKeyAcknowledgement,
+            params=_project(project),
+        )

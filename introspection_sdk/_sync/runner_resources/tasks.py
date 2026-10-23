@@ -7,6 +7,7 @@ from __future__ import annotations
 import builtins
 from collections.abc import Iterator
 from typing import Any
+from uuid import UUID
 
 from introspection_sdk._errors import RunFailedError, StreamIncompleteError
 from introspection_sdk._http import _HttpClient
@@ -28,12 +29,21 @@ from introspection_sdk.schemas.agui import (
     TextMessageContentEvent,
 )
 from introspection_sdk.schemas.pagination import Paginated
+from introspection_sdk.schemas.task_commands import (
+    TASK_COMMAND_SPEC_ADAPTER,
+    DownloadCommand,
+    ExecCommand,
+    TaskCommand,
+    TaskCommandStatus,
+    UploadCommand,
+)
 from introspection_sdk.schemas.tasks import (
     Task,
     TaskCancelRequest,
     TaskCancelResponse,
     TaskCreateResponse,
     TaskFileRef,
+    TaskKind,
     TaskPrompt,
     TaskRepoRequest,
     TaskRun,
@@ -78,6 +88,12 @@ def _repo_refs(
         else repo
         for repo in repositories
     ]
+
+
+#: The longest :meth:`TaskCommands.get` asks the API to hold a read. The API
+#: allows 60 seconds, but it has to answer inside the SDK's own 30-second
+#: request timeout, or the read fails instead of returning the command.
+MAX_COMMAND_WAIT_SECONDS = 25
 
 
 def _snapshot_text(event: MessagesSnapshotEvent) -> list[str]:
@@ -265,10 +281,90 @@ class TaskRuns:
         )
 
 
+class TaskCommands:
+    """DP ``/v1/tasks/{task_id}/commands``: ``exec``, ``upload`` and
+    ``download`` against an eval task's live sandbox.
+
+    A command is a row the task's workflow executes and stamps: the create
+    returns it ``queued``, and :meth:`get` reads its outcome, optionally
+    holding the read until it finishes. Eval tasks only (create the task
+    with ``kind="eval"`` and ``commands=True``), behind ``tasks:exec``, on a
+    plane with evals enabled.
+    """
+
+    def __init__(self, http: _HttpClient) -> None:
+        self._http = http
+
+    def create(
+        self,
+        task_id: str,
+        command: ExecCommand
+        | UploadCommand
+        | DownloadCommand
+        | dict[str, Any],
+    ) -> TaskCommand:
+        """Record a command and send it to the task's workflow. ``command``
+        is an :class:`ExecCommand`, :class:`UploadCommand` or
+        :class:`DownloadCommand` (or the same as a dict tagged by
+        ``kind``)."""
+        spec = TASK_COMMAND_SPEC_ADAPTER.validate_python(command)
+        payload = self._http.request(
+            "POST",
+            f"/v1/tasks/{task_id}/commands",
+            json=spec.model_dump(mode="json", exclude_none=True),
+        )
+        return TaskCommand.model_validate(payload)
+
+    def list(
+        self,
+        task_id: str,
+        *,
+        status: TaskCommandStatus | str | None = None,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> Pager[TaskCommand, Paginated[TaskCommand]]:
+        """List a task's commands, newest first, across pages."""
+
+        def fetch(cursor: str | None) -> Paginated[TaskCommand]:
+            payload = self._http.request(
+                "GET",
+                f"/v1/tasks/{task_id}/commands",
+                params={
+                    "status": str(status) if status is not None else None,
+                    "limit": limit,
+                    "next": cursor,
+                },
+            )
+            return Paginated[TaskCommand].model_validate(payload)
+
+        return cursor_paginate(fetch, start=next)
+
+    def get(
+        self,
+        task_id: str,
+        command_id: str | UUID,
+        *,
+        wait_seconds: int | None = None,
+    ) -> TaskCommand:
+        """Read a command. ``wait_seconds`` holds the read until the command
+        finishes or the wait runs out, and returns it in whatever state it
+        is then; it is capped at :data:`MAX_COMMAND_WAIT_SECONDS`, so call
+        again to wait longer."""
+        if wait_seconds is not None:
+            wait_seconds = max(0, min(wait_seconds, MAX_COMMAND_WAIT_SECONDS))
+        payload = self._http.request(
+            "GET",
+            f"/v1/tasks/{task_id}/commands/{command_id}",
+            params={"wait_seconds": wait_seconds},
+        )
+        return TaskCommand.model_validate(payload)
+
+
 class Tasks:
     def __init__(self, http: _HttpClient) -> None:
         self._http = http
         self.runs = TaskRuns(http)
+        self.commands = TaskCommands(http)
 
     def list(
         self,
@@ -313,7 +409,15 @@ class Tasks:
         fork_share_id: str | None = None,
         files: builtins.list[TaskFileRef | dict[str, Any]] | None = None,
         tags: builtins.list[str] | None = None,
+        kind: TaskKind | str | None = None,
+        commands: bool | None = None,
     ) -> TaskCreateResponse:
+        """Create a task and its initial run.
+
+        ``kind="eval"`` runs the task as an evaluation trial; with
+        ``commands=True`` it also accepts :attr:`commands` against its live
+        sandbox. Both are omitted from the body unless given.
+        """
         body: dict[str, Any] = {
             "title": title,
             "prompt": prompt,
@@ -325,6 +429,8 @@ class Tasks:
             "files": _file_refs(files) if files else None,
             "repositories": _repo_refs(repositories) if repositories else None,
             "tags": tags,
+            "kind": str(kind) if kind is not None else None,
+            "commands": commands,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)

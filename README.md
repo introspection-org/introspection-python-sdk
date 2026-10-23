@@ -519,6 +519,64 @@ in this repository: an AAuth Person Server and Access Server
 FastAPI routers. `examples/introspection_examples/aauth/four_party.py` runs
 the four-party flow in one process.
 
+## Administer a project
+
+These Control Plane namespaces need an org credential: an owner's or admin's
+session (`IntrospectionClient(cp_session=...)`) or an access token minted for
+one. A project API key carries none of their scopes. Pass `project=` (a slug
+or id) on project-scoped calls when the credential does not name one.
+
+| Namespace | What it manages |
+| --- | --- |
+| `client.oidc.me()` | Who the credential is, with the org's resolved feature flags |
+| `client.projects` | The org's projects, read by slug or id (`list`, `get`) |
+| `client.api_keys` | A project's API keys: `create` returns the plaintext once, then `acknowledge`; `delete(expires_in=...)` rotates |
+| `client.applications` | OAuth clients, with `.idps`, `.secrets` and `.keys` under each |
+| `client.credentials` / `client.variables` | Secrets and environment variables a project's runtimes read |
+| `client.integrations` | The org's own provider installs (org-wide, no `project`) |
+| `client.judges` | The judges a Recipe declares: read, and toggle `enabled` / `sample_rate` |
+
+```python
+client = IntrospectionClient(cp_session=os.environ["INTROSPECTION_CP_SESSION"])
+
+created = client.api_keys.create(project="support", name="ci")
+save(created.api_key.get_secret_value())  # a SecretStr: it never prints
+client.api_keys.acknowledge(created.id, project="support")
+
+client.credentials.create(name="OPENAI_API_KEY", secret="sk-...", project="support")
+```
+
+A secret the API returns once (an API key, a client secret) or takes on write
+(a credential, an IdP client secret, an integration's OAuth `code`) is a
+pydantic `SecretStr`, so `repr` and logging show `**********`.
+
+## Images and task commands
+
+`images` and `tasks.commands` are on the Data Plane, on the client and a
+Runner alike, for evaluation trials on a plane with evals enabled. An image is
+what an eval task's compose services run as; a command is `exec`, `upload` or
+`download` against an eval task's live sandbox.
+
+```python
+from introspection_sdk.schemas.images import MirrorImageSource
+from introspection_sdk.schemas.task_commands import ExecCommand
+
+image = client.images.create(
+    name="hello-mcp/mcp-server",
+    source=MirrorImageSource(reference="ghcr.io/acme/mcp@sha256:..."),
+)
+# Poll client.images.get(image.id) until status is "ready".
+
+task = client.tasks.create(prompt="Fix the failing test", kind="eval", commands=True)
+command = client.tasks.commands.create(str(task.task.id), ExecCommand(command=["pytest", "-q"]))
+command = client.tasks.commands.get(str(task.task.id), command.id, wait_seconds=25)
+print(command.status, command.exit_code, command.stdout)
+```
+
+`wait_seconds` holds the read until the command finishes; it is capped at
+`MAX_COMMAND_WAIT_SECONDS` (25, below the client's 30-second request timeout),
+so call `get` again to wait longer.
+
 ## Environment variables
 
 ```shell

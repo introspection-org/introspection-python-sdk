@@ -23,13 +23,15 @@ class TaskKind(StrEnum):
     """The execution shape of a task.
 
     ``AGENT`` boots the runtime-agent image and runs an interactive LLM agent;
-    ``PROCESS`` runs a one-shot baked script and reports through the same
+    ``EVAL`` is the same shape run as an evaluation trial, admitted and
+    governed apart from production conversations; ``PROCESS`` runs a one-shot baked script and reports through the same
     completion path. This replaced the retired ``TaskMode``: there are no task
     modes any more — every agent task is a conversation, and the recipe agent
     is selected by ``agent_name``.
     """
 
     AGENT = "agent"
+    EVAL = "eval"
     PROCESS = "process"
 
 
@@ -168,6 +170,21 @@ class TaskCreateRequest(_ApiModel):
             "Override the interactive idle window (seconds) before the "
             "sandbox is torn down. 0 tears down as soon as it's provisioned; "
             "omit to use the deployment default. Clamped to the task timeout."
+        ),
+    )
+    kind: TaskKind | None = Field(
+        default=None,
+        description=(
+            "Execution shape: omit for an agent conversation, or `eval` to "
+            "run the task as an evaluation trial. `process` is rejected."
+        ),
+    )
+    commands: bool | None = Field(
+        default=None,
+        description=(
+            "Accept commands (exec, upload, download) on "
+            "/v1/tasks/{id}/commands for this evaluation trial. Requires "
+            "`kind: eval`."
         ),
     )
     fork_share_id: str | None = Field(
