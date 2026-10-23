@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.31.0...v0.32.0) (2026-10-23)
+
+
+### Features
+
+* add the project administration and eval resources the CLI calls ([#192](https://github.com/introspection-org/introspection-python-sdk/issues/192)) ([0f58dd9](https://github.com/introspection-org/introspection-python-sdk/commit/0f58dd976a3050e9ea3f37998e0ab44388ba941b))
+
 ## [0.31.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.30.1...v0.31.0) (2026-10-23)
 
 
