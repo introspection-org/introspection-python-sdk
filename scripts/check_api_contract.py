@@ -21,7 +21,9 @@ of the last real post between runs, so a drift that stays drift stays quiet.
 
 Any failure to read a reference (an HTTP error status, a network error,
 a body that is not JSON, or a base URL unset) exits 2 before the check
-runs: it posts nothing and leaves the posted state as it was.
+runs: it posts nothing, leaves the posted state as it was, and writes no
+`references=read` to `$GITHUB_OUTPUT`, so the workflow does not record the
+base URLs. Once both documents are read that line is written, drift or not.
 
 Run: INTROSPECTION_CP_URL=https://api.<cp host> \
      INTROSPECTION_DP_URL=https://api.<dp host> \
@@ -148,6 +150,9 @@ def main(argv: list[str] | None = None) -> int:
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     try:
         specs = _load(args)
+        # Both documents read and parsed: the workflow may now record the
+        # pair of base URLs, whatever the check finds.
+        _write(os.environ.get("GITHUB_OUTPUT"), "references=read\n")
         result = run(Package.load(ROOT), specs)
         full = not args.pr
         text = result.render(full=full)

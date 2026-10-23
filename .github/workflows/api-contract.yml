@@ -5,7 +5,9 @@
 # Where the base URLs come from (scripts/api_contract/urls.py), first match:
 # 1. repository_dispatch api-reference-deployed: client_payload.cp_url and
 #    client_payload.dp_url. The pair is saved to the Actions cache after the
-#    run, drift or not, so the runs below can read it.
+#    run, drift or not, so the runs below can read it, but only when both
+#    /openapi.json documents were read: a pair that failed to fetch is never
+#    recorded, so later runs keep the last good one.
 # 2. workflow_dispatch: the cp_url and dp_url inputs, when set.
 # 3. Otherwise (pull requests, a manual run without inputs): the pair the
 #    newest dispatch saved. Pull requests read main's caches, and dispatches
@@ -34,7 +36,8 @@
 #
 # A reference that cannot be read (any HTTP error, 404 included, a network
 # error or a body that is not JSON), like missing URLs, fails the run before
-# the check, so it posts nothing and the posted state stays as it was.
+# the check, so it posts nothing, the posted state stays as it was, and a
+# dispatch's URLs are not saved.
 name: API Contract
 
 on:
@@ -135,9 +138,10 @@ jobs:
           path: .api-drift-state
           key: api-drift-state-${{ github.run_id }}-${{ github.run_attempt }}
 
-      # Only a dispatch that named both URLs saves them, drift or not.
+      # Only a dispatch that named both URLs saves them, and only when the
+      # check read both documents (references=read), drift or not.
       - name: Save the reference URLs
-        if: always() && steps.urls.outputs.source == 'payload'
+        if: always() && steps.urls.outputs.source == 'payload' && steps.check.outputs.references == 'read'
         uses: actions/cache/save@v6
         with:
           path: .api-reference-urls

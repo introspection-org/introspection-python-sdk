@@ -5,7 +5,8 @@ See `scripts/api_contract/urls.py` for the order of the sources. The chosen
 pair goes to `$GITHUB_ENV` as `INTROSPECTION_CP_URL` and
 `INTROSPECTION_DP_URL`, which `check_api_contract.py` reads, and its source
 to `$GITHUB_OUTPUT` as `source=`. A pair from the dispatch payload is also
-written to CACHE_DIR, which the workflow then saves to the Actions cache.
+written to CACHE_DIR, which the workflow saves to the Actions cache once
+`check_api_contract.py` has read both documents.
 
 Exits 2, writing nothing, when no source names both URLs.
 

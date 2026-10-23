@@ -6,7 +6,8 @@ introspection-cloud's "API Reference Deployed" workflow sends both in the
 the workflow keeps the newest pair in the Actions cache for the runs that
 carry none. A run takes the first of these that names both:
 
-1. the dispatch payload, which is then saved to the cache;
+1. the dispatch payload, which is then saved to the cache once both
+   documents under it were read (drift or not);
 2. a manual run's `cp_url` / `dp_url` inputs;
 3. the pair the newest dispatch saved.
 

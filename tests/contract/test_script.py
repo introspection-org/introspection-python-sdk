@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+import yaml
 from check_api_contract import main, slack_escape, trim
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -131,6 +132,8 @@ def test_a_failed_fetch_fails_without_posting_or_changing_state(
 def test_an_unreachable_reference_fails_without_posting(
     staging, tmp_path, monkeypatch, capsys
 ):
+    output = tmp_path / "output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     states = tmp_path / "state"
     record(states, "clean")
     staging.publish_both()
@@ -141,6 +144,42 @@ def test_an_unreachable_reference_fails_without_posting(
     assert ERROR in capsys.readouterr().out
     assert staging.posts == []
     assert (states / "last-posted").read_text() == "clean\n"
+    assert not output.exists()
+
+
+def test_drift_still_marks_both_references_read(
+    staging, tmp_path, monkeypatch
+):
+    """The workflow records a dispatch's base URLs only on references=read:
+    drift (a red run) read both documents, so its pair is recorded, while
+    a failed fetch above writes no output and its pair is not."""
+    output = tmp_path / "output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    states = tmp_path / "state"
+    record(states, "drift")
+    staging.publish_both()
+
+    assert check(staging, "--notify", str(states)) == 1
+    assert output.read_text().splitlines() == [
+        "references=read",
+        "posted=false",
+    ]
+
+
+def test_the_workflow_saves_the_urls_only_once_both_references_were_read():
+    workflow = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "api-contract.yml").read_text()
+    )
+    steps = {
+        step.get("name"): step
+        for step in workflow["jobs"]["api-contract"]["steps"]
+    }
+    save = steps["Save the reference URLs"]
+    assert save["with"]["path"] == ".api-reference-urls"
+    assert "steps.urls.outputs.source == 'payload'" in save["if"]
+    assert "steps.check.outputs.references == 'read'" in save["if"]
+    ids = [step.get("id") for step in steps.values()]
+    assert "check" in ids
 
 
 @pytest.mark.parametrize(
@@ -235,7 +274,7 @@ def test_full_check_posts_each_change_of_state_once(
     assert "(local run)" in text
     assert "prompt" not in text.lower()
     assert (states / "last-posted").read_text() == "drift\n"
-    assert output.read_text() == "posted=true\n"
+    assert output.read_text() == "references=read\nposted=true\n"
 
     assert check(staging, "--notify", str(states)) == 1
     assert len(staging.posts) == 1
