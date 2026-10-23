@@ -188,12 +188,15 @@ class Scope:
                 )
         return None
 
-    def assignments(self, name: str, before: Position) -> list[ast.expr]:
+    def assignments(
+        self, name: str, before: Position, *, incoming: ast.expr | None = None
+    ) -> list[ast.expr]:
         """Every value `name = ...` can leave in `name` at `before`, read
         in the innermost enclosing function that assigns it (see
-        `api_contract.reaching`)."""
+        `api_contract.reaching`). `incoming` represents the entry value
+        when the caller is tracing a parameter."""
         for function in self.chain:
-            values = reaching(function.body, name, before)
+            values = reaching(function.body, name, before, incoming=incoming)
             if values:
                 return values
         return []

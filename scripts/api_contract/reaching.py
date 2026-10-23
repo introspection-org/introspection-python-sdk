@@ -36,10 +36,16 @@ def position(node: ast.stmt | ast.expr) -> Position:
 
 
 def reaching(
-    body: list[ast.stmt], name: str, before: Position
+    body: list[ast.stmt],
+    name: str,
+    before: Position,
+    *,
+    incoming: ast.expr | None = None,
 ) -> list[ast.expr]:
-    """Every value `name = ...` in `body` can leave in `name` at `before`."""
-    return _reaching(body, name, before, [])
+    """Every value reaching `before`, including an optional entry value."""
+    return _reaching(
+        body, name, before, [incoming] if incoming is not None else []
+    )
 
 
 def _end(node: ast.stmt) -> Position:

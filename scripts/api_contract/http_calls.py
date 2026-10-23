@@ -214,13 +214,21 @@ def _parameters(
     """Follow local aliases to every parameter that can supply a value."""
     if not isinstance(expr, ast.Name) or depth >= MAX_DEPTH:
         return []
-    assigned = scope.assignments(expr.id, position(expr))
-    if assigned:
-        return list(
-            dict.fromkeys(
-                name
-                for value in assigned
-                for name in _parameters(value, scope, depth + 1)
+    assigned = scope.assignments(
+        expr.id,
+        position(expr),
+        incoming=expr if scope.is_parameter(expr.id) else None,
+    )
+    # The same expression stands for the incoming parameter. Do not walk
+    # it again: only branches that preserve it should bind the caller's value.
+    return list(
+        dict.fromkeys(
+            name
+            for value in assigned
+            for name in (
+                [expr.id]
+                if value is expr
+                else _parameters(value, scope, depth + 1)
             )
         )
-    return [expr.id] if scope.is_parameter(expr.id) else []
+    )
