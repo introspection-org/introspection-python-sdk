@@ -1,6 +1,6 @@
-"""The contract check script against a local staging server: before it
-publishes the references, on a pull request, and after a staging deploy,
-when it tells Slack about each change of state."""
+"""The contract check script against a local staging server: on a pull
+request, after a staging deploy, when it tells Slack about each change of
+state, and when a reference cannot be read."""
 
 from __future__ import annotations
 
@@ -11,12 +11,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
-from check_api_contract import SKIP, main, slack_escape, trim
+from check_api_contract import main, slack_escape, trim
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "api_contract"
 #: A route the SDK calls, flagged for it in the dataplane fixture.
 CALLED = "/v1/conversations/{conversation_id}/items"
+#: Where the local staging server serves each plane, as staging does: each
+#: plane's own `/openapi.json`.
+PREFIXES = {"controlplane": "/cp", "dataplane": "/dp"}
+ERROR = "::error::could not run the API contract check"
 
 
 class Server:
@@ -51,7 +55,7 @@ class Server:
     ) -> None:
         if body is None:
             body = (FIXTURES / f"{plane}.json").read_bytes()
-        self.routes[f"/openapi/{plane}.json"] = (status, body)
+        self.routes[f"{PREFIXES[plane]}/openapi.json"] = (status, body)
 
     def publish_both(self) -> None:
         self.publish("controlplane")
@@ -64,63 +68,105 @@ def staging(monkeypatch: pytest.MonkeyPatch) -> Iterator[Server]:
     thread = threading.Thread(target=server.http.serve_forever, daemon=True)
     thread.start()
     monkeypatch.setenv("SLACK_WEBHOOK_URL", f"{server.url}/webhook")
+    # The Data Plane is read through STAGING_DP_URL, as the workflow does.
+    monkeypatch.setenv("STAGING_DP_URL", f"{server.url}/dp")
+    monkeypatch.delenv("API_CONTRACT_CONTROLPLANE", raising=False)
+    monkeypatch.delenv("API_CONTRACT_DATAPLANE", raising=False)
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     yield server
     server.http.shutdown()
 
 
-def publish_unflagged(server: Server) -> None:
-    """Both references with no operation flagged for any client."""
+def publish_for_no_client(server: Server) -> None:
+    """Both references with every operation flagged for no client."""
     for plane in ("controlplane", "dataplane"):
         spec = json.loads((FIXTURES / f"{plane}.json").read_text())
         for item in spec["paths"].values():
             for op in item.values():
                 if isinstance(op, dict):
-                    op.pop("x-introspection", None)
+                    op["x-introspection"] = {"clients": []}
         server.publish(plane, body=json.dumps(spec).encode())
 
 
 def check(server: Server, *flags: str) -> int:
-    return main(
-        [
-            "--controlplane",
-            f"{server.url}/openapi/controlplane.json",
-            "--dataplane",
-            f"{server.url}/openapi/dataplane.json",
-            *flags,
-        ]
-    )
+    """The Control Plane by flag, since its default is real staging."""
+    return main(["--controlplane", f"{server.url}/cp/openapi.json", *flags])
 
 
-@pytest.mark.parametrize("unpublished", ["controlplane", "dataplane"])
-@pytest.mark.parametrize("pr", [True, False])
-def test_unpublished_reference_skips_green(
-    staging, tmp_path, capsys, unpublished, pr
-):
-    states = tmp_path / "state"
-    flags = ["--pr"] if pr else ["--notify", str(states)]
-    for plane in ("controlplane", "dataplane"):
-        if plane != unpublished:
-            staging.publish(plane)
-
-    assert check(staging, *flags) == 0
-    assert SKIP in capsys.readouterr().out
-    assert staging.posts == []
-    assert not states.exists()
+def record(states: Path, state: str) -> None:
+    states.mkdir()
+    (states / "last-posted").write_text(f"{state}\n")
 
 
 @pytest.mark.parametrize(
-    ("status", "body"), [(500, b"{}"), (200, b"<html>not json")]
+    "failure",
+    [
+        (plane, status, body)
+        for plane in ("controlplane", "dataplane")
+        for status, body in (
+            (404, b"{}"),
+            (500, b"{}"),
+            (200, b"<html>not json"),
+        )
+    ],
 )
-def test_other_fetch_errors_fail(staging, capsys, status, body):
-    staging.publish("controlplane")
-    staging.publish("dataplane", status, body)
+def test_a_failed_fetch_fails_without_posting_or_changing_state(
+    staging, tmp_path, monkeypatch, capsys, failure
+):
+    """A 404 is a failure like any other: no skip, no post, and the posted
+    drift stays recorded, so a failed read never reads as cleared."""
+    output = tmp_path / "output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    states = tmp_path / "state"
+    record(states, "drift")
+    staging.publish_both()
+    staging.publish(*failure)
 
-    assert check(staging, "--pr") == 2
+    assert check(staging, "--notify", str(states)) == 2
+    assert ERROR in capsys.readouterr().out
+    assert staging.posts == []
+    assert (states / "last-posted").read_text() == "drift\n"
+    assert not output.exists()
+
+
+def test_an_unreachable_reference_fails_without_posting(
+    staging, tmp_path, monkeypatch, capsys
+):
+    states = tmp_path / "state"
+    record(states, "clean")
+    staging.publish_both()
+    # Nothing listens on port 9 of localhost: the connection is refused.
+    monkeypatch.setenv("STAGING_DP_URL", "http://127.0.0.1:9")
+
+    assert check(staging, "--notify", str(states)) == 2
+    assert ERROR in capsys.readouterr().out
+    assert staging.posts == []
+    assert (states / "last-posted").read_text() == "clean\n"
+
+
+@pytest.mark.parametrize(
+    "case", [(pr, value) for pr in (True, False) for value in (None, "")]
+)
+def test_unset_staging_dp_url_fails_naming_the_variable(
+    staging, tmp_path, monkeypatch, capsys, case
+):
+    pr, value = case
+    if value is None:
+        monkeypatch.delenv("STAGING_DP_URL")
+    else:
+        monkeypatch.setenv("STAGING_DP_URL", value)
+    states = tmp_path / "state"
+    record(states, "drift")
+    staging.publish_both()
+    flags = ["--pr"] if pr else ["--notify", str(states)]
+
+    assert check(staging, *flags) == 2
     printed = capsys.readouterr().out
-    assert "::error::could not run the API contract check" in printed
-    assert SKIP not in printed
+    assert ERROR in printed
+    assert "STAGING_DP_URL is unset or empty" in printed
+    assert staging.posts == []
+    assert (states / "last-posted").read_text() == "drift\n"
 
 
 def test_pr_reports_uncalled_operations_without_failing(
@@ -149,8 +195,8 @@ def test_pr_fails_on_a_route_in_neither_reference(staging, capsys):
 def test_full_check_posts_each_change_of_state_once(
     staging, tmp_path, monkeypatch
 ):
-    """No state is recorded while staging has nothing, so the first run
-    that finds the references posts: unknown to drift is a change."""
+    """With no state recorded yet, the first run posts: unknown to drift is
+    a change."""
     output = tmp_path / "output"
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     states = tmp_path / "state"
@@ -171,8 +217,8 @@ def test_full_check_posts_each_change_of_state_once(
     assert len(staging.posts) == 1
     assert output.read_text().endswith("posted=false\n")
 
-    # The cloud drops every flag for the SDK: the drift clears.
-    publish_unflagged(staging)
+    # The cloud flags every operation for no client: the drift clears.
+    publish_for_no_client(staging)
 
     assert check(staging, "--notify", str(states)) == 0
     assert staging.posts[1]["text"].startswith("✅ API drift cleared")
@@ -180,7 +226,7 @@ def test_full_check_posts_each_change_of_state_once(
 
 
 def test_clean_without_a_posted_drift_stays_quiet(staging, tmp_path, capsys):
-    publish_unflagged(staging)
+    publish_for_no_client(staging)
 
     assert check(staging, "--notify", str(tmp_path / "state")) == 0
     assert "staying quiet" in capsys.readouterr().out

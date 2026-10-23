@@ -1,5 +1,8 @@
 # Checks this SDK's routes against the x-introspection flags of the staging
-# API references (see scripts/check_api_contract.py).
+# API references (see scripts/check_api_contract.py): each plane's own
+# /openapi.json, the Data Plane's under the base URL in the org-level
+# Actions variable STAGING_DP_URL. A run with STAGING_DP_URL unset or empty
+# fails and says so.
 #
 # On a pull request only a route the SDK calls that is in neither reference
 # fails, since that is the SDK's own fault. Operations flagged for the SDK
@@ -7,8 +10,9 @@
 # route the cloud adds does not block unrelated PRs.
 #
 # introspection-cloud sends `api-reference-deployed` after each staging
-# deploy (client_payload.sha is the cloud commit). That run, and a manual
-# one, is the full check: both kinds fail, and #main-build-alerts hears when
+# deploy (client_payload.sha is the cloud commit, client_payload.plane the
+# plane it deployed, cp or dp; both planes are checked either way). That
+# run, and a manual one, is the full check: both kinds fail, and #main-build-alerts hears when
 # the state changes (clean to drift, drift to clean), with the drift and a
 # link to the run. GitHub runs repository_dispatch from the default branch's
 # copy of this file only.
@@ -17,8 +21,9 @@
 # post_for_real input is set; every other run prints the message instead.
 # The posted state is saved only when a post really went out.
 #
-# Until staging serves both references (a 404) every run passes and posts
-# nothing.
+# A reference that cannot be read (any HTTP error, 404 included, a network
+# error or a body that is not JSON) fails the run before the check, so it
+# posts nothing and the posted state stays as it was.
 name: API Contract
 
 on:
@@ -61,6 +66,8 @@ jobs:
 
       - name: Check routes
         if: github.event_name == 'pull_request'
+        env:
+          STAGING_DP_URL: ${{ vars.STAGING_DP_URL }}
         run: uv run python scripts/check_api_contract.py --pr
 
       # The state of the last real post. Caches are immutable, so each post
@@ -78,9 +85,11 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           CLOUD_SHA: ${{ github.event.client_payload.sha }}
+          CLOUD_PLANE: ${{ github.event.client_payload.plane }}
+          STAGING_DP_URL: ${{ vars.STAGING_DP_URL }}
           SLACK_WEBHOOK_URL: ${{ github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.post_for_real) && secrets.MAIN_STATUS_SLACK_WEBHOOK_URL || '' }}
         run: |
-          echo "introspection-cloud commit: ${CLOUD_SHA:-none (manual run)}"
+          echo "introspection-cloud commit: ${CLOUD_SHA:-none (manual run)}, plane: ${CLOUD_PLANE:-none}"
           uv run python scripts/check_api_contract.py --notify .api-drift-state \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 

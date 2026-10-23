@@ -1,9 +1,9 @@
-"""The check over this SDK's own source, against the saved snapshots of the
-references from introspection-cloud #3489 in tests/fixtures/api_contract/.
+"""The check over this SDK's own source, against the staging references
+saved after introspection-cloud #3540 in tests/fixtures/api_contract/.
 
 These pin what route discovery reads from the real source, not the
-drift itself: the drift is the nightly workflow's to report, and fixing it
-must not mean editing this file.
+drift itself: the drift is the API Contract workflow's to report, and
+fixing it must not mean editing this file.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def test_every_call_site_has_a_method(package):
     assert not any(s.method == UNKNOWN_METHOD for s in discover(package))
 
 
-def test_check_against_the_3489_snapshots_reads_every_route(package):
+def test_check_against_the_saved_references_reads_every_route(package):
     specs = {
         plane: json.loads((FIXTURES / f"{plane}.json").read_text())
         for plane in ("controlplane", "dataplane")
@@ -72,5 +72,5 @@ def test_check_against_the_3489_snapshots_reads_every_route(package):
 
     result = run(package, specs)
 
-    assert result.operations == 85 + 79
+    assert result.operations == 98 + 75
     assert result.unknown_route == []

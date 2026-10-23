@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from api_contract.check import run
 
-from .sample import RESOURCE, SDK, line_of, references
+from .sample import CLI, NOBODY, RESOURCE, SDK, line_of, references
 
 
 def test_matching_sdk_passes(sample_package):
     result = run(sample_package(), references())
 
     assert not result.failed(), result.render()
-    # The CLI-only gadgets operation is not expected of the SDK.
-    assert result.operations == 5
+    # The CLI-only and no-client gadgets operations are not expected of the
+    # SDK.
+    assert result.operations == 6
     assert result.render().startswith("✓ SDK routes match")
 
 
@@ -26,10 +27,7 @@ def test_sdk_operation_never_called_fails(sample_package):
     specs = references()
     specs["controlplane"]["paths"]["/v1/projects"] = {
         "get": {"x-introspection": SDK, "responses": {}},
-        "post": {
-            "x-introspection": {"visibility": "public", "clients": ["cli"]},
-            "responses": {},
-        },
+        "post": {"x-introspection": CLI, "responses": {}},
     }
 
     result = run(sample_package(), specs)
@@ -40,6 +38,24 @@ def test_sdk_operation_never_called_fails(sample_package):
     # A pull request only reports it.
     assert not result.failed(full=False)
     assert "reported only, never fails a PR" in result.render(full=False)
+
+
+def test_operation_without_x_introspection_is_for_the_sdk(sample_package):
+    specs = references()
+    specs["controlplane"]["paths"]["/v1/projects"] = {
+        "get": {"responses": {}},
+        "put": {"x-introspection": {}, "responses": {}},
+        "post": {"x-introspection": NOBODY, "responses": {}},
+        "patch": {"x-introspection": {"clients": ["cli", "sdk"]}},
+    }
+
+    result = run(sample_package(), specs)
+
+    assert result.uncalled == [
+        "controlplane: GET /v1/projects",
+        "controlplane: PATCH /v1/projects",
+        "controlplane: PUT /v1/projects",
+    ]
 
 
 def test_route_in_neither_reference_fails(sample_package):

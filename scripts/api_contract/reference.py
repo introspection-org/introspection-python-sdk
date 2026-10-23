@@ -1,11 +1,14 @@
 """The API references: both OpenAPI documents and the operations they hold.
 
-introspection-cloud classifies every route in its API surface file and
-writes the classification into each document as `x-introspection`: an
-operation carries `{visibility: public, clients: [sdk] | [cli] | [sdk,
-cli]}`. Integration and excluded routes are left out of the documents
-altogether. Those flags are the only
-classification this check reads: it keeps no list of its own.
+Each plane serves its own document at `/openapi.json`, the one
+introspection-cloud writes from its API surface file. An operation is for
+every client unless it carries `x-introspection: {clients: [...]}`, which
+names the clients expected to call it; `[]` names none. Integration and
+excluded routes are left out of the documents altogether. Those flags are
+the only classification this check reads: it keeps no list of its own.
+
+The Data Plane has no fixed staging host: `STAGING_DP_URL` names the base
+URL of the staging deployment whose document is read.
 """
 
 from __future__ import annotations
@@ -20,9 +23,11 @@ from typing import Any
 
 __all__ = [
     "CLIENT",
-    "DEFAULT_URLS",
+    "CONTROLPLANE_URL",
+    "DATAPLANE_BASE_VAR",
     "ENV_VARS",
     "HTTP_METHODS",
+    "MissingDataplaneUrl",
     "Operation",
     "load_reference",
     "operations",
@@ -33,11 +38,12 @@ __all__ = [
 #: The client this SDK is, as `x-introspection.clients` names it.
 CLIENT = "sdk"
 
-#: Staging serves what the SDK and CLI checks read; production serves docs.
-DEFAULT_URLS = {
-    "controlplane": "https://api.staging.introspection.dev/openapi/controlplane.json",
-    "dataplane": "https://api.staging.introspection.dev/openapi/dataplane.json",
-}
+#: The staging Control Plane's document, which the SDK and CLI checks read.
+CONTROLPLANE_URL = "https://api.staging.introspection.dev/openapi.json"
+
+#: The variable holding the staging Data Plane's base URL; its document is
+#: `/openapi.json` under it.
+DATAPLANE_BASE_VAR = "STAGING_DP_URL"
 
 #: Environment variables that replace a default URL with a URL or a file.
 ENV_VARS = {
@@ -62,9 +68,28 @@ def load_reference(source: str) -> dict[str, Any]:
     return json.loads(Path(source).read_text())
 
 
+class MissingDataplaneUrl(RuntimeError):
+    """No Data Plane document was named and `STAGING_DP_URL` is unset."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            f"{DATAPLANE_BASE_VAR} is unset or empty: set it to the staging "
+            "Data Plane's base URL (the workflow reads the org-level Actions "
+            f"variable vars.{DATAPLANE_BASE_VAR}), or pass --dataplane"
+        )
+
+
 def reference_source(plane: str, override: str | None = None) -> str:
-    """The flag, else the environment variable, else the staging URL."""
-    return override or os.environ.get(ENV_VARS[plane]) or DEFAULT_URLS[plane]
+    """The flag, else the environment variable, else the staging document."""
+    source = override or os.environ.get(ENV_VARS[plane])
+    if source:
+        return source
+    if plane == "controlplane":
+        return CONTROLPLANE_URL
+    base = os.environ.get(DATAPLANE_BASE_VAR, "").strip()
+    if not base:
+        raise MissingDataplaneUrl
+    return f"{base.rstrip('/')}/openapi.json"
 
 
 def template_key(path: str) -> str:
@@ -88,7 +113,12 @@ class Operation:
     plane: str
     method: str
     path: str
-    clients: tuple[str, ...]
+    #: The clients `x-introspection` names, or None when it names none and
+    #: the operation is for every client.
+    clients: tuple[str, ...] | None
+
+    def wanted_by(self, client: str) -> bool:
+        return self.clients is None or client in self.clients
 
     @property
     def name(self) -> str:
@@ -106,13 +136,14 @@ def operations(plane: str, spec: dict[str, Any]) -> list[Operation]:
             op = item.get(method)
             if op is None:
                 continue
-            flags = op.get("x-introspection") or {}
+            flags = op.get("x-introspection")
+            clients = None if flags is None else flags.get("clients")
             out.append(
                 Operation(
                     plane=plane,
                     method=method.upper(),
                     path=path,
-                    clients=tuple(flags.get("clients") or ()),
+                    clients=None if clients is None else tuple(clients),
                 )
             )
     return out

@@ -2,8 +2,8 @@
 
 It finds
 
-1. operations whose `x-introspection.clients` includes `sdk` but that have
-   no call site in the SDK;
+1. operations for the SDK (no `x-introspection`, or one whose `clients`
+   includes `sdk`) that have no call site in the SDK;
 2. `/v1/...` routes (method and path) the SDK calls that are in neither
    reference.
 
@@ -48,7 +48,7 @@ class Result:
             for items, means in (
                 (
                     self.uncalled,
-                    "operations — flagged for the SDK in x-introspection but "
+                    "operations — for the SDK by x-introspection but "
                     "no call site in introspection_sdk/ sends it"
                     + ("" if full else " (reported only, never fails a PR)"),
                 ),
@@ -86,7 +86,7 @@ def run(package: Package, specs: dict[str, dict[str, Any]]) -> Result:
         else:
             result.unknown_route.append(f"{key} ({site.at})")
     result.uncalled = sorted(
-        op.name for op in ops if CLIENT in op.clients and op.key not in called
+        op.name for op in ops if op.wanted_by(CLIENT) and op.key not in called
     )
     result.unknown_route.sort()
     logger.info(

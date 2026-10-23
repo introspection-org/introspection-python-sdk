@@ -62,14 +62,17 @@ def write_sdk(root: Path, resource: str = RESOURCE) -> None:
     )
 
 
-SDK = {"visibility": "public", "clients": ["sdk"]}
-CLI = {"visibility": "public", "clients": ["cli"]}
+SDK = {"clients": ["sdk"]}
+CLI = {"clients": ["cli"]}
+#: No client at all, as `[]` says.
+NOBODY: dict[str, Any] = {"clients": []}
 
 DATAPLANE: dict[str, Any] = {
     "openapi": "3.1.0",
     "paths": {
         "/v1/widgets": {
-            "get": {"x-introspection": SDK, "responses": {}},
+            # No x-introspection: every client, the SDK included.
+            "get": {"responses": {}},
             "post": {"x-introspection": SDK, "responses": {}},
         },
         "/v1/widgets/{widget_id}": {
@@ -77,7 +80,10 @@ DATAPLANE: dict[str, Any] = {
             "get": {"x-introspection": SDK, "responses": {}},
             "delete": {"x-introspection": SDK, "responses": {}},
         },
-        "/v1/gadgets": {"get": {"x-introspection": CLI, "responses": {}}},
+        "/v1/gadgets": {
+            "get": {"x-introspection": CLI, "responses": {}},
+            "delete": {"x-introspection": NOBODY, "responses": {}},
+        },
     },
 }
 

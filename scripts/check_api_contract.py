@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Check this SDK against the `x-introspection` flags of both API references.
 
-The references are the Control Plane and Data Plane OpenAPI documents, which
-introspection-cloud writes from its API surface file: each public operation
-names the clients expected to call it, and this SDK is the `sdk` client. See
-`scripts/api_contract/check.py` for what fails, with and without `--pr`.
+The references are the Control Plane and Data Plane OpenAPI documents each
+plane serves at `/openapi.json`, which introspection-cloud writes from its
+API surface file: an operation is for every client unless its
+`x-introspection` names the clients expected to call it, and this SDK is
+the `sdk` client. See `scripts/api_contract/check.py` for what fails, with
+and without `--pr`.
 
 There is no list here of the operations this SDK covers, skips or exempts:
 the cloud flags are the only classification, so a route the cloud adds for
@@ -17,13 +19,17 @@ the way introspection-cloud's main-status.yml does: a `{text}` JSON posted to
 `SLACK_WEBHOOK_URL`, printed instead when that is empty. DIR keeps the state
 of the last real post between runs, so a drift that stays drift stays quiet.
 
-A reference that answers 404 is not published on staging yet: the run
-passes and posts nothing. Any other failure to read one exits 2.
+Any failure to read a reference (an HTTP error status, a network error,
+a body that is not JSON, or `STAGING_DP_URL` unset) exits 2 before the
+check runs: it posts nothing and leaves the posted state as it was.
 
-Run: uv run python scripts/check_api_contract.py [--pr] [--notify DIR]
+Run: STAGING_DP_URL=https://api.<dp host> \
+     uv run python scripts/check_api_contract.py [--pr] [--notify DIR]
          [--controlplane URL|PATH] [--dataplane URL|PATH]
-env: API_CONTRACT_CONTROLPLANE, API_CONTRACT_DATAPLANE replace the default
-     staging URLs, as the flags do; SLACK_WEBHOOK_URL as above.
+env: STAGING_DP_URL, the staging Data Plane's base URL, required unless
+     the Data Plane is named otherwise; API_CONTRACT_CONTROLPLANE,
+     API_CONTRACT_DATAPLANE replace a staging document with a URL or a
+     file, as the flags do; SLACK_WEBHOOK_URL as above.
 """
 
 from __future__ import annotations
@@ -33,7 +39,6 @@ import json
 import logging
 import os
 import sys
-import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -44,7 +49,6 @@ from api_contract.source import Package
 
 ROOT = Path(__file__).resolve().parent.parent
 PLANES = ("controlplane", "dataplane")
-SKIP = "API reference not published on staging yet, skipping"
 HEADLINES = {
     "drift": "🚨 API drift: introspection-python-sdk is out of step with the "
     "staging API references",
@@ -110,20 +114,12 @@ def notify(result: Result, state_dir: Path, run_url: str) -> bool:
     return True
 
 
-def _load(args: argparse.Namespace) -> dict[str, dict[str, Any]] | None:
-    """Both references, or None when one is not published yet."""
-    specs = {}
-    for plane in PLANES:
-        try:
-            specs[plane] = load_reference(
-                reference_source(plane, getattr(args, plane))
-            )
-        except urllib.error.HTTPError as exc:
-            if exc.code != 404:
-                raise
-            logger.info("API reference not published", extra={"plane": plane})
-            return None
-    return specs
+def _load(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
+    """Both references; raises when either cannot be read."""
+    return {
+        plane: load_reference(reference_source(plane, getattr(args, plane)))
+        for plane in PLANES
+    }
 
 
 def _write(path: str | None, text: str) -> None:
@@ -152,10 +148,6 @@ def main(argv: list[str] | None = None) -> int:
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     try:
         specs = _load(args)
-        if specs is None:
-            print(SKIP)
-            _write(summary, f"{SKIP}.\n")
-            return 0
         result = run(Package.load(ROOT), specs)
         full = not args.pr
         text = result.render(full=full)
