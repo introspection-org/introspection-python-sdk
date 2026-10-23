@@ -20,6 +20,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 
+from api_contract.reaching import position
 from api_contract.reference import HTTP_METHODS
 from api_contract.source import FunctionNode, Scope
 
@@ -159,15 +160,19 @@ def _forwarded(
         if not isinstance(node, ast.Call):
             continue
         for request in requests(node, inner, depth + 1):
-            path = _parameter(request.path, inner)
-            if path not in bound:
-                continue
+            paths = _parameters(request.path, inner)
             method = request.method
-            if isinstance(method, ast.expr):
-                name = _parameter(method, inner)
-                if name is not None:
-                    method = bound.get(name)
-            out.append(Request(method, bound[path]))
+            methods = (
+                [bound.get(name) for name in _parameters(method, inner)]
+                if isinstance(method, ast.expr)
+                else []
+            )
+            for path in paths:
+                if path in bound:
+                    out.extend(
+                        Request(value, bound[path])
+                        for value in methods or [method]
+                    )
     return out
 
 
@@ -176,8 +181,25 @@ def _bind(
 ) -> dict[str, ast.expr]:
     """The expression `call` passes for each parameter of `function`."""
     spec = function.args
-    names = [p.arg for p in [*spec.posonlyargs, *spec.args]][unpassed:]
-    out: dict[str, ast.expr] = {}
+    positional = [*spec.posonlyargs, *spec.args]
+    names = [p.arg for p in positional][unpassed:]
+    out = {
+        param.arg: default
+        for param, default in zip(
+            positional[len(positional) - len(spec.defaults) :],
+            spec.defaults,
+            strict=True,
+        )
+    }
+    out.update(
+        {
+            param.arg: default
+            for param, default in zip(
+                spec.kwonlyargs, spec.kw_defaults, strict=True
+            )
+            if default is not None
+        }
+    )
     for name, arg in zip(names, call.args, strict=False):
         if isinstance(arg, ast.Starred):
             break
@@ -186,7 +208,19 @@ def _bind(
     return out
 
 
-def _parameter(expr: ast.expr | None, scope: Scope) -> str | None:
-    if isinstance(expr, ast.Name) and scope.is_parameter(expr.id):
-        return expr.id
-    return None
+def _parameters(
+    expr: ast.expr | None, scope: Scope, depth: int = 0
+) -> list[str]:
+    """Follow local aliases to every parameter that can supply a value."""
+    if not isinstance(expr, ast.Name) or depth >= MAX_DEPTH:
+        return []
+    assigned = scope.assignments(expr.id, position(expr))
+    if assigned:
+        return list(
+            dict.fromkeys(
+                name
+                for value in assigned
+                for name in _parameters(value, scope, depth + 1)
+            )
+        )
+    return [expr.id] if scope.is_parameter(expr.id) else []

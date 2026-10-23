@@ -80,6 +80,20 @@ def _through(
     value = _assigned(stmt, name)
     if value is not None:
         return [value], False
+    if isinstance(stmt, ast.With | ast.AsyncWith):
+        # A context manager may suppress a raised exception. Preserve the
+        # values at the raise, not assignments after that exit.
+        suppressed = [
+            v
+            for point in _raises(stmt.body)
+            for v in _reaching(stmt.body, name, point, values)
+        ]
+        normal = (
+            _reaching(stmt.body, name, END, values)
+            if _completes(stmt.body)
+            else []
+        )
+        return _union([*normal, *suppressed]), False
     if not branches:
         return values, False
     reached = [
@@ -187,10 +201,25 @@ def _completes(body: list[ast.stmt]) -> bool:
     for stmt in body:
         if isinstance(stmt, JUMPS):
             return False
+        if isinstance(stmt, ast.With | ast.AsyncWith) and _raises(stmt.body):
+            continue
         branches = _branches(stmt)
         if branches and not any(map(_completes, branches)):
             return False
     return True
+
+
+def _raises(body: list[ast.stmt]) -> list[Position]:
+    """Explicit exception exits a context manager may suppress."""
+    out: list[Position] = []
+    pending: list[ast.AST] = list(body)
+    while pending:
+        node = pending.pop()
+        if isinstance(node, ast.Raise):
+            out.append(position(node))
+        elif not isinstance(node, NESTED_SCOPES):
+            pending.extend(ast.iter_child_nodes(node))
+    return out
 
 
 def _holds(body: list[ast.stmt], point: Position) -> bool:

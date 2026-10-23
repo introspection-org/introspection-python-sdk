@@ -369,3 +369,102 @@ async def check(http, fast, ids):
     assert sent(package, resource, '"HEAD", path') == {
         "/v1/widgets/{}/checked"
     }
+
+
+def test_helper_paths_follow_local_aliases(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def _post(http, path, alternate, flag):
+    if flag:
+        url = path
+    else:
+        url = alternate
+    target = url
+    return await http.request("POST", target)
+
+async def create(http):
+    await _post(http, WIDGETS, "/v1/gadgets", True)
+"""
+    )
+    package = sample_package(resource)
+    assert sites_at(package, line_of("await _post", resource)) == {
+        ("POST", "/v1/widgets"),
+        ("POST", "/v1/gadgets"),
+    }
+
+
+def test_helpers_bind_defaults_and_explicit_overrides(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+async def _post(http, path, method="POST"):
+    return await http.request(method, path)
+
+async def _get(http, path, *, method="GET"):
+    return await http.request(method, path)
+
+class AsyncDefaultWidgets:
+    async def _send(self, path, method="PUT"):
+        return await self._http.request(method, path)
+
+    async def create(self, http):
+        await _post(http, WIDGETS)
+        await _get(http, WIDGETS)
+        await _post(http, WIDGETS, "PATCH")
+        await _get(http, WIDGETS, method="DELETE")
+        await self._send(WIDGETS)
+"""
+    )
+    package = sample_package(resource)
+    for snippet, method in [
+        ("await _post(http, WIDGETS)", "POST"),
+        ("await _get(http, WIDGETS)", "GET"),
+        ('await _post(http, WIDGETS, "PATCH")', "PATCH"),
+        ('await _get(http, WIDGETS, method="DELETE")', "DELETE"),
+        ("await self._send(WIDGETS)", "PUT"),
+    ]:
+        assert sites_at(package, line_of(snippet, resource)) == {
+            (method, "/v1/widgets")
+        }
+
+
+def test_context_managers_can_suppress_exception_exits(sample_package):
+    resource = (
+        RESOURCE
+        + """
+
+import contextlib
+
+async def suppressed(http, flag, manager):
+    with contextlib.suppress(ValueError):
+        path = "/v1/gadgets"
+        raise ValueError()
+        path = "/v1/unreachable"
+    await http.request("GET", path)
+    if flag:
+        async with manager:
+            path = "/v1/async-gadgets"
+            raise ValueError()
+    else:
+        path = WIDGETS
+    await http.request("POST", path)
+
+async def returned(http, flag):
+    path = WIDGETS
+    if flag:
+        with contextlib.suppress(ValueError):
+            path = "/v1/returned"
+            return
+    await http.request("DELETE", path)
+"""
+    )
+    package = sample_package(resource)
+    assert sent(package, resource, '"GET", path') == {"/v1/gadgets"}
+    assert sent(package, resource, '"POST", path') == {
+        "/v1/async-gadgets",
+        "/v1/widgets",
+    }
+    assert sent(package, resource, '"DELETE", path') == {"/v1/widgets"}
