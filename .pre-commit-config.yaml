@@ -10,9 +10,14 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        # The walk's recorded HAR, written by the recorder.
+        exclude: ^tests/recordings/
       - id: end-of-file-fixer
+        exclude: ^tests/recordings/
       - id: check-yaml
       - id: check-added-large-files
+        # The walk's recording (1.7 MB).
+        exclude: ^tests/recordings/
       - id: check-json
       - id: check-toml
       - id: check-merge-conflict
