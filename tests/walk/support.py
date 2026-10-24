@@ -24,6 +24,7 @@ from uuid import UUID
 
 import httpx2 as httpx
 
+from introspection_sdk import NotFoundError
 from introspection_sdk._http import _HttpClient
 
 from .settings import Mode
@@ -136,6 +137,15 @@ class Raw:
         self._call("DELETE", path, params=params, expect="empty")
 
 
+def _not_yet(poll: Callable[[], T]) -> T | None:
+    # A conversation reads 404 until its first spans are ingested: not yet,
+    # rather than gone.
+    try:
+        return poll()
+    except NotFoundError:
+        return None
+
+
 def settled(
     mode: Mode,
     read: Callable[[], T],
@@ -151,7 +161,7 @@ def settled(
     what the recording carries (design doc §5). Replay only reads."""
     if mode != "replay":
         deadline = time.monotonic() + timeout
-        while not done(value := poll()):
+        while (value := _not_yet(poll)) is None or not done(value):
             if time.monotonic() > deadline:
                 raise TimeoutError(
                     f"{label}: not done after {timeout}s: {value!r:.400}"
