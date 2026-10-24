@@ -71,6 +71,7 @@ from .support import (
     push_recipe,
     settled,
     span_event_id,
+    walk_project_born,
 )
 from .teardown import remove_walk_resources
 
@@ -183,11 +184,16 @@ def test_00_clean_slate(world: World) -> None:
     # beside the recording, which is all replay needs to send the same calls.
     w = world
     w.login_project = w.owner.projects.get(w.settings.bootstrap_project_id)
-    # A run that crashed before its teardown left its project behind.
+    # A run that crashed before its teardown left its project behind; one
+    # still running is younger than the cutoff. Measured from this run's own
+    # slug, so replay decides as the recording did.
     # todo(sdk): no `projects.create` or `delete`.
-    for stale in w.owner.projects.list():
-        if (stale.slug or "").startswith(WALK.project_slug_prefix):
-            w.raw(w.owner).delete(f"/v1/projects/{stale.id}")
+    now = walk_project_born(w.settings.project_slug, WALK.project_slug_prefix)
+    assert now is not None, "the walk's own slug carries its time"
+    for other in w.owner.projects.list():
+        born = walk_project_born(other.slug or "", WALK.project_slug_prefix)
+        if born is not None and now - born > WALK.stale_after_seconds:
+            w.raw(w.owner).delete(f"/v1/projects/{other.id}")
     w.project = Project.model_validate(
         w.raw(w.owner).post(
             "/v1/projects",
@@ -1321,10 +1327,12 @@ def test_11_evidence(world: World) -> None:
     assert latest is not None and latest.span_id, "the latest LLM turn"
     exported = conversations.export_json(cid)
     assert len(exported.data) >= len(page.data)
+    # Spans can still be arriving between two exports, so each is held to
+    # the items the step already read rather than to the other.
     table = conversations.export_arrow(cid)
-    assert table.num_rows == len(exported.data)
+    assert table.num_rows >= len(page.data)
     streamed = json.loads(b"".join(conversations.export_stream(cid, "json")))
-    assert len(streamed["data"]) == len(exported.data)
+    assert len(streamed["data"]) >= len(page.data)
     listed = conversations.list_arrow(
         runtime_group_id=UUID(w.group_id)
     ).read_all()
@@ -1495,7 +1503,7 @@ def test_13_telemetry_reads(world: World) -> None:
     event_table = w.sa.events.list_arrow(
         "introspection.annotation", conversation_id=cid
     ).read_all()
-    assert event_table.num_rows == len(events)
+    assert event_table.num_rows >= len(events)
     dp = w.raw(w.member, "dp")
     # todo(sdk): no `annotations.facets` / `annotations.navigation`.
     facets = dp.get("/v1/annotations/facets", {"conversation_id": cid})

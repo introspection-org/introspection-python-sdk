@@ -40,6 +40,7 @@ __all__ = [
     "route",
     "settled",
     "span_event_id",
+    "walk_project_born",
 ]
 
 T = TypeVar("T")
@@ -83,6 +84,17 @@ ID_SEGMENT = re.compile(
     r"|[0-9a-f]{40}|[0-9a-f]{16})(?=/|$)",
     re.I,
 )
+
+
+def walk_project_born(slug: str, prefix: str) -> int | None:
+    """When a walk project was created, from its slug (see
+    ``Walk.project_slug_prefix``); ``None`` for anyone else's project."""
+    if not slug.startswith(prefix):
+        return None
+    try:
+        return int(slug.removeprefix(prefix).split("-", 1)[0], 16)
+    except ValueError:
+        return None
 
 
 def span_event_id(trace_id: str, span_id: str, label: str) -> UUID:
@@ -253,7 +265,22 @@ def prepare_recipe(url: str, ref: str, agent: str) -> Path:
     """The recipe the walk pushes, cloned at ``ref`` and checked to carry
     the walk's agent before anything is created. Live only."""
     target = Path(tempfile.mkdtemp(prefix="sdk-walk-recipe-"))
-    _git("clone", "--quiet", "--depth", "1", "--branch", ref, url, str(target))
+    try:
+        _git(
+            "clone",
+            "--quiet",
+            "--depth",
+            "1",
+            "--branch",
+            ref,
+            url,
+            str(target),
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"cloning {url} failed: {exc.stderr.strip()}; set RECIPE_DIR to a "
+            "recipe-harbor-mcp-agent checkout, or keep one beside this repository"
+        ) from exc
     if not (target / "agents" / f"{agent}.yaml").exists():
         raise RuntimeError(f"{url} has no agents/{agent}.yaml on {ref}")
     return target
