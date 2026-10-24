@@ -58,8 +58,23 @@ server would return, then assert on both the outgoing request (method, path,
 params, headers, body) and the parsed result. No live calls, no API keys, and
 nothing to scrub.
 
-This SDK no longer records VCR cassettes — `pytest-recording` is not a
-dependency. Real-API drift is caught by the `-m integration` job in `ci.yml`.
+The one recorded cassette is the SDK end-to-end walk (`tests/walk/`,
+introspection-cloud `docs/design/sdk-end-to-end-walk.md`): one ordered
+scenario from a clean project to a graded eval, replaying
+`tests/recordings/walk/recording.har` through `pytest-recording` / VCR.py
+with a HAR serializer. That HAR is the JS SDK's recording, the cross-SDK
+contract every SDK's walk replays; refresh it with
+`uv run python scripts/sync-walk-recording.py` rather than editing it.
+Replay is the default (`uv run pytest`) and needs no stack, keys or network;
+a request with no recorded match fails naming the method, URL and body
+diff. `VCR_MODE=record` (or `--record-mode=all`) re-records against a live
+stack with the scrubbing in `introspection_sdk/testing/redaction.py`, the
+Python half of the JS SDK's `SECRET_PATTERNS`. Each run writes
+`generated/walk-report.json` (steps, entries consumed, SDK gaps). A route the
+SDK has no method for is called through the SDK's own HTTP client under a
+`todo(sdk)` comment, never by widening the SDK in a test PR.
+
+Real-API drift elsewhere is caught by the `-m integration` job in `ci.yml`.
 
 ## Coverage expectations per area
 
