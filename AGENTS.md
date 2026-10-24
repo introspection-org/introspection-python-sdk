@@ -62,14 +62,14 @@ The one recorded cassette is the SDK end-to-end walk (`tests/walk/`,
 introspection-cloud `docs/design/sdk-end-to-end-walk.md`): one ordered
 scenario from a clean project to a graded eval, replaying
 `tests/recordings/walk/recording.har` through `pytest-recording` / VCR.py
-with a HAR serializer. That HAR is the JS SDK's recording, the cross-SDK
-contract every SDK's walk replays; refresh it with
-`uv run python scripts/sync-walk-recording.py` rather than editing it.
+with a HAR serializer. The HAR is this SDK's own recording against the
+Compose stack; re-record it (below) rather than editing it, and take nothing
+from another SDK's.
 Replay is the default (`uv run pytest`) and needs no stack, keys or network;
 a request with no recorded match fails naming the method, URL and body
 diff. `VCR_MODE=record` (or `--record-mode=all`) re-records against a live
 stack with the scrubbing in `introspection_sdk/testing/redaction.py`, the
-Python half of the JS SDK's `SECRET_PATTERNS`. Each run writes
+same patterns every SDK's walk scrubs. Each run writes
 `generated/walk-report.json` (steps, entries consumed, SDK gaps). A route the
 SDK has no method for is called through the SDK's own HTTP client under a
 `todo(sdk)` comment, never by widening the SDK in a test PR.
