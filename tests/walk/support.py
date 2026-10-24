@@ -8,6 +8,7 @@ through the recorded client), the OAuth follower and the recipe push.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -19,6 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar
 from urllib.parse import urljoin, urlsplit
+from uuid import UUID
 
 import httpx2 as httpx
 
@@ -36,6 +38,7 @@ __all__ = [
     "push_recipe",
     "route",
     "settled",
+    "span_event_id",
 ]
 
 T = TypeVar("T")
@@ -79,6 +82,18 @@ ID_SEGMENT = re.compile(
     r"|[0-9a-f]{40}|[0-9a-f]{16})(?=/|$)",
     re.I,
 )
+
+
+def span_event_id(trace_id: str, span_id: str, label: str) -> UUID:
+    """A UUIDv7-shaped id derived from the span an event annotates: the same on
+    every replay (the span is recorded), new on every live run, where a fixed
+    id would collide with the receipt a previous run left in the project."""
+    digest = bytearray(
+        hashlib.sha256(f"{trace_id}:{span_id}:{label}".encode()).digest()[:16]
+    )
+    digest[6] = (digest[6] & 0x0F) | 0x70
+    digest[8] = (digest[8] & 0x3F) | 0x80
+    return UUID(bytes=bytes(digest))
 
 
 def route(path: str) -> str:
@@ -271,17 +286,18 @@ def push_recipe(checkout: Path, url: str, bearer: str) -> str:
 
 def has_complete_recording(har: Path) -> bool:
     """Whether the recording reaches the walk's end: the teardown reads the
-    application it removed (404), then the login's project."""
+    walk's project it deleted (404), then the login's project."""
     if not har.exists():
         return False
     entries = json.loads(har.read_text())["log"]["entries"]
     if len(entries) < 2:
         return False
-    app, last = entries[-2:]
+    gone, last = entries[-2:]
+    project = re.compile(r"/v1/projects/[^/?]+$")
     return (
-        app["response"]["status"] == 404
-        and "/v1/applications/" in app["request"]["url"]
-        and last["request"]["method"] == "GET"
-        and re.search(r"/v1/projects/[^/?]+$", last["request"]["url"])
-        is not None
+        gone["request"]["method"] == last["request"]["method"] == "GET"
+        and gone["response"]["status"] == 404
+        and last["response"]["status"] == 200
+        and project.search(gone["request"]["url"]) is not None
+        and project.search(last["request"]["url"]) is not None
     )

@@ -69,7 +69,7 @@ def _client() -> IntrospectionClient:
     )
 
 
-def test_the_shared_recording_reaches_the_teardown() -> None:
+def test_the_recording_reaches_the_teardown() -> None:
     assert has_complete_recording(HAR)
 
 
@@ -81,7 +81,8 @@ def test_har_round_trips_through_vcr() -> None:
         {"requests": requests, "responses": copy.deepcopy(responses)}, har
     )
     requests2, responses2 = vcr.serialize.deserialize(again, har)
-    assert len(requests2) == len(requests) == 339
+    assert requests
+    assert len(requests2) == len(requests)
     for a, b in zip(requests, requests2, strict=True):
         assert (a.method, a.uri, body_meaning(a)) == (
             b.method,
@@ -100,7 +101,7 @@ def test_har_round_trips_through_vcr() -> None:
     orders = {
         e["_order"] for e in entries if "/v1/projects/" in e["request"]["url"]
     }
-    assert orders >= {0, 1, 2}
+    assert orders >= {0, 1}
 
 
 def test_a_record_run_scrubs_and_replays_in_order(

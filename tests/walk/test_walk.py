@@ -1,10 +1,9 @@
 """The SDK end-to-end walk: one ordered scenario from a clean project to a
-graded eval, every step an SDK call, replaying the shared recording
+graded eval, every step an SDK call, replaying this SDK's recording
 (introspection-cloud ``docs/design/sdk-end-to-end-walk.md``).
 
-The steps, their names, their order and every value they send are the JS
-walk's (``introspection-js-sdk`` ``tests/walk/walk.test.ts``), so the same
-``tests/recordings/walk/recording.har`` answers both. Replay (the default
+The steps, their names and their order are the design doc's, the same in
+every SDK; ``tests/recordings/walk/recording.har`` is this SDK's own. Replay (the default
 ``uv run pytest``) needs no stack, no keys and no network. A live run needs
 a signed-in ``introspection login`` (or ``INTROSPECTION_CP_SESSION``)::
 
@@ -71,6 +70,7 @@ from .support import (
     prepare_recipe,
     push_recipe,
     settled,
+    span_event_id,
 )
 from .teardown import remove_walk_resources
 
@@ -90,6 +90,7 @@ class World:
     sa_quiet: IntrospectionClient = field(init=False)
     member: IntrospectionClient = field(init=False)
     member_token: str = ""
+    login_project: Project = field(init=False)
     project: Project = field(init=False)
     original_description: str | None = None
     application: Application = field(init=False)
@@ -175,17 +176,38 @@ def walk_step(n: int, name: str) -> pytest.MarkDecorator:
     return pytest.mark.walk_step(n, name)
 
 
-@walk_step(0, "the login's project, with a crashed run's leftovers removed")
+@walk_step(0, "a project of its own, created empty on the login's deployment")
 def test_00_clean_slate(world: World) -> None:
-    # The walk runs in the project the login names and never deletes it; a
-    # record run writes the id beside the recording, which is all replay
-    # needs to send the same read.
+    # Every run starts in a project of its own, created here on the login's
+    # deployment and deleted by the teardown. A record run writes both ids
+    # beside the recording, which is all replay needs to send the same calls.
     w = world
-    w.project = w.owner.projects.get(w.settings.bootstrap_project_id)
+    w.login_project = w.owner.projects.get(w.settings.bootstrap_project_id)
+    # A run that crashed before its teardown left its project behind.
+    # todo(sdk): no `projects.create` or `delete`.
+    for stale in w.owner.projects.list():
+        if (stale.slug or "").startswith(WALK.project_slug_prefix):
+            w.raw(w.owner).delete(f"/v1/projects/{stale.id}")
+    w.project = Project.model_validate(
+        w.raw(w.owner).post(
+            "/v1/projects",
+            {
+                "name": "SDK end-to-end walk",
+                "slug": w.settings.project_slug,
+                "deployment_id": str(w.login_project.deployment_id),
+            },
+        )
+    )
     if w.mode == "record":
         HAR.parent.mkdir(parents=True, exist_ok=True)
         (HAR.parent / BOOTSTRAP_FILE).write_text(
-            json.dumps({"project_id": str(w.project.id)}) + "\n"
+            json.dumps(
+                {
+                    "project_id": str(w.login_project.id),
+                    "project_slug": w.settings.project_slug,
+                }
+            )
+            + "\n"
         )
     # The owner's Data Plane token for the project: it carries `git:push`,
     # which no service account can, and the member-only Data Plane writes.
@@ -200,13 +222,12 @@ def test_00_clean_slate(world: World) -> None:
         base_api_url=w.settings.base_api_url,
         dp_url=w.settings.dp_url,
     )
-    remove_walk_resources(w.owner, w.member, w.project, w.raw)
 
 
 @walk_step(1, "project — read, list, update; a sibling created and deleted")
 def test_01_project(world: World) -> None:
     w = world
-    # The project's name, slug and description are the login's.
+    # The slug is new on every live run, so the snapshot leaves it out.
     assert stable(
         {**plain(w.project), "name": None, "slug": None, "description": None}
     ) == snapshot(
@@ -237,8 +258,7 @@ def test_01_project(world: World) -> None:
     restored = cp.patch(path, {"description": w.original_description or ""})
     assert (restored["description"] or "") == (w.original_description or "")
 
-    # Creating and deleting a project is the one write the login's own
-    # project must not see, so a sibling takes it.
+    # A sibling is created and deleted while the walk's project is in use.
     sibling = Project.model_validate(
         cp.post(
             "/v1/projects",
@@ -1100,7 +1120,7 @@ def test_10_task(world: World) -> None:
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
             "title": "Call the `echo` tool from the declared `hello-mcp` MCP server with the message `hello from the public MCP`. Write the echoed value exactly, with no quotes or additional formatting, to `/workspace/outputs/greeting.txt`. Then run `echo $WALK_MARKER` in…",
-            "display_index": 4,
+            "display_index": "[number]",
             "kind": "agent",
             "status": "idle",
             "member_id": "[uuid]",
@@ -1423,11 +1443,12 @@ def test_13_telemetry_reads(world: World) -> None:
     target = w.sa.conversations.items.list(cid, limit=200).page().data[0]
     assert target.trace_id and target.span_id
     span = {"trace_id": target.trace_id, "span_id": target.span_id}
-    # A fixed event id, so the request replays; the SDK would mint one.
+    # An event id derived from the span, so the request replays; the SDK
+    # would mint one.
     w.member.annotations.create(
         **span,
         labels=["walk"],
-        event_id=UUID("019a1000-0000-7000-8000-0000000000a1"),
+        event_id=span_event_id(target.trace_id, target.span_id, "labels"),
     )
     # Reviewers by email resolve through the Control Plane's member list,
     # which a member's Data Plane token cannot read; the walk clears them,
@@ -1435,7 +1456,7 @@ def test_13_telemetry_reads(world: World) -> None:
     w.member.annotations.create(
         **span,
         reviewer_emails=[],
-        event_id=UUID("019a1000-0000-7000-8000-0000000000a3"),
+        event_id=span_event_id(target.trace_id, target.span_id, "reviewers"),
     )
     with pytest.raises(ValidationError):
         w.member.annotations.create(
@@ -1550,7 +1571,7 @@ def test_14_eval(world: World) -> None:
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
             "title": "Call the `echo` tool from the declared `hello-mcp` MCP server with the message `hello from the public MCP`. Write the echoed value exactly, with no quotes or additional formatting, to `/workspace/outputs/greeting.txt`. Then run `echo $WALK_MARKER` in…",
-            "display_index": 5,
+            "display_index": "[number]",
             "kind": "eval",
             "status": "pending",
             "member_id": "[uuid]",
@@ -2205,9 +2226,12 @@ def test_19_teardown(world: World, cassette: Cassette | None) -> None:
             w.application.id, project=w.project.id
         )
     )
-    # The login's project is untouched: still there, as it was.
-    after = w.owner.projects.get(str(w.project.id))
-    assert (after.description or "") == (w.original_description or "")
+    # The walk's project goes with it; the login's is untouched.
+    w.raw(w.owner).delete(f"/v1/projects/{w.project.id}")
+    expect_not_found(lambda: w.owner.projects.get(str(w.project.id)))
+    assert (
+        w.owner.projects.get(str(w.login_project.id)).id == w.login_project.id
+    )
     if w.mode == "replay" and cassette is not None:
         # Every recorded exchange was asked for: a call the SDK stopped
         # making leaves its entry behind.

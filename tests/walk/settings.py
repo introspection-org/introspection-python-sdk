@@ -1,15 +1,15 @@
 """The walk's fixed names and the target it runs against.
 
-The same constants as the JS walk's ``WALK`` (``introspection-js-sdk``
-``tests/walk/support.ts``): every value the walk puts in a request comes
-from a prior response or from here, so the shared recording matches
-whichever SDK replays it.
+The names the design doc fixes for every SDK's walk: every value the walk
+puts in a request comes from a prior response or from here, so this SDK's
+recording replays.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -44,6 +44,7 @@ BOOTSTRAP_FILE = "bootstrap.json"
 @dataclass(frozen=True)
 class Walk:
     sibling_suffix: str = "-walk"
+    project_slug_prefix: str = "sdk-walk-"
     application_name: str = "sdk-coverage-walk"
     tag_name: str = "walk"
     api_key_name: str = "walk"
@@ -119,8 +120,12 @@ class WalkSettings:
     base_api_url: str
     #: The signed-in owner's Control Plane session, the bootstrap credential.
     cp_session: str
-    #: The login's project: where the walk runs.
+    #: The login's project: read only for the deployment the walk's own
+    #: project is created on.
     bootstrap_project_id: str
+    #: The project the walk creates, runs in and deletes: new on every live
+    #: run, so each starts empty; replay sends the recorded one.
+    project_slug: str
     dp_url: str
     #: Where the recipe is cloned from: a public URL, or a checkout on disk.
     recipe_repository_url: str
@@ -166,6 +171,7 @@ def walk_settings(mode: Mode) -> WalkSettings:
             base_api_url="http://localhost:8000",
             cp_session="replay-session",
             bootstrap_project_id=_recorded_bootstrap().get("project_id", ""),
+            project_slug=_recorded_bootstrap().get("project_slug", ""),
             dp_url="http://localhost:8002",
             recipe_repository_url=RECIPE_URL,
             recipe_git_ref="main",
@@ -192,6 +198,7 @@ def walk_settings(mode: Mode) -> WalkSettings:
         base_api_url=base_api_url,
         cp_session=cp_session,
         bootstrap_project_id=project,
+        project_slug=f"{WALK.project_slug_prefix}{secrets.token_hex(4)}",
         dp_url=env.get("INTROSPECTION_DP_URL", file.get("dp_url", "")),
         recipe_repository_url=env.get(
             "RECIPE_DIR", env.get("RECIPE_REPOSITORY_URL", RECIPE_URL)
