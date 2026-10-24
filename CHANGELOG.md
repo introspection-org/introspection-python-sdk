@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.32.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.32.0...v0.32.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **walk:** a poll reads a 404 as not yet ([#211](https://github.com/introspection-org/introspection-python-sdk/issues/211)) ([60350f9](https://github.com/introspection-org/introspection-python-sdk/commit/60350f98ccfe43911509ef38b0deb88b9387d42e))
+* **walk:** concurrent walks never sweep each other's project ([#212](https://github.com/introspection-org/introspection-python-sdk/issues/212)) ([2872a16](https://github.com/introspection-org/introspection-python-sdk/commit/2872a165143017aeb185924aef268b9b6e8e19d7))
+
 ## [0.32.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.31.0...v0.32.0) (2026-10-23)
 
 
