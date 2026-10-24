@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -44,7 +45,12 @@ BOOTSTRAP_FILE = "bootstrap.json"
 @dataclass(frozen=True)
 class Walk:
     sibling_suffix: str = "-walk"
-    project_slug_prefix: str = "sdk-walk-"
+    #: `sdk-walk-python-<unix time, hex>-<random>`: the SDK, so walks of
+    #: different SDKs never sweep each other's project, and the time, which the
+    #: projects list does not carry, so a sweep spares a run still going.
+    project_slug_prefix: str = "sdk-walk-python-"
+    #: A walk takes about a minute; one this old crashed before its teardown.
+    stale_after_seconds: int = 3600
     application_name: str = "sdk-coverage-walk"
     tag_name: str = "walk"
     api_key_name: str = "walk"
@@ -150,6 +156,11 @@ def _recorded_bootstrap() -> dict[str, str]:
 
 
 RECIPE_URL = "https://github.com/introspection-org/recipe-harbor-mcp-agent"
+#: A checkout beside this repository: the recipe is private, so cloning it
+#: needs GitHub credentials a local checkout does not.
+SIBLING_RECIPE = (
+    Path(__file__).resolve().parents[3] / "recipe-harbor-mcp-agent"
+)
 
 
 def _credentials_file() -> dict[str, str]:
@@ -198,10 +209,18 @@ def walk_settings(mode: Mode) -> WalkSettings:
         base_api_url=base_api_url,
         cp_session=cp_session,
         bootstrap_project_id=project,
-        project_slug=f"{WALK.project_slug_prefix}{secrets.token_hex(4)}",
+        project_slug=(
+            f"{WALK.project_slug_prefix}{int(time.time()):x}-{secrets.token_hex(2)}"
+        ),
         dp_url=env.get("INTROSPECTION_DP_URL", file.get("dp_url", "")),
         recipe_repository_url=env.get(
-            "RECIPE_DIR", env.get("RECIPE_REPOSITORY_URL", RECIPE_URL)
+            "RECIPE_DIR",
+            env.get(
+                "RECIPE_REPOSITORY_URL",
+                str(SIBLING_RECIPE)
+                if (SIBLING_RECIPE / ".git").exists()
+                else RECIPE_URL,
+            ),
         ),
         recipe_git_ref=env.get("RECIPE_GIT_REF", "main"),
         agent=env.get("WALK_AGENT", "scripted"),
