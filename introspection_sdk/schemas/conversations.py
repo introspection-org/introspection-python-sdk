@@ -62,6 +62,8 @@ class ConversationMetrics(OmitNoneModel):
     span_count: int = 0
     tool_use_count: int = 0
     failed_tool_use_count: int = 0
+    llm_call_count: int = 0
+    failed_llm_call_count: int = 0
     has_errors: bool = False
 
 
