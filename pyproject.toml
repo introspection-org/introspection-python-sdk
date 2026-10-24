@@ -52,6 +52,8 @@ test = [
     "responses>=0.25.8",
     "jsonschema>=4.23.0",
     "trustme>=1.2.0",
+    "pytest-recording>=0.14.0",
+    "vcrpy>=8.3.0",
 ]
 
 [tool.hatch.metadata]

@@ -17,3 +17,6 @@ wheels/
 
 # macOS
 .DS_Store
+
+# The walk's run report (tests/walk)
+generated/
