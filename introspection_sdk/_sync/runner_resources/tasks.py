@@ -411,12 +411,16 @@ class Tasks:
         tags: builtins.list[str] | None = None,
         kind: TaskKind | str | None = None,
         commands: bool | None = None,
+        compose: dict[str, Any] | None = None,
+        recipe_git_commit_sha: str | None = None,
     ) -> TaskCreateResponse:
         """Create a task and its initial run.
 
         ``kind="eval"`` runs the task as an evaluation trial; with
         ``commands=True`` it also accepts :attr:`commands` against its live
-        sandbox. Both are omitted from the body unless given.
+        sandbox, ``compose`` runs services beside it, and
+        ``recipe_git_commit_sha`` pins the Recipe commit it runs. Each is
+        omitted from the body unless given.
         """
         body: dict[str, Any] = {
             "title": title,
@@ -431,6 +435,8 @@ class Tasks:
             "tags": tags,
             "kind": str(kind) if kind is not None else None,
             "commands": commands,
+            "compose": compose,
+            "recipe_git_commit_sha": recipe_git_commit_sha,
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = self._http.request("POST", "/v1/tasks", json=body)
