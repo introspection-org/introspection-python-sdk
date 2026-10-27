@@ -1,5 +1,5 @@
-"""End-to-end Runner walkthrough — resolve a runtime by slug or id, open a
-Runner against it, spawn a task, stream its run.
+"""End-to-end Runner walkthrough — resolve a runtime by slug or id, read
+where it comes from, open a Runner against it, spawn a task, stream its run.
 
 Run with:
     INTROSPECTION_TOKEN=intro_xxx
@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 
 from introspection_sdk import IntrospectionClient
+from introspection_sdk.schemas.runtimes import RuntimeGroupType
 from introspection_sdk.version import VERSION
 
 
@@ -23,6 +24,18 @@ def main() -> None:
     client = IntrospectionClient()
 
     runtime = os.getenv("INTROSPECTION_RUNTIME", "customer-agent")
+
+    # Where the runtime comes from: a managed group is a first-party runtime
+    # created from a template; an image version names the recipe commit its
+    # image carries.
+    resolved = client.runtimes.resolve(runtime)
+    if resolved.runtime_group_type is RuntimeGroupType.MANAGED:
+        print(f"managed runtime from template {resolved.template_ref}")
+    if resolved.image_revision:
+        print(
+            f"image built from {resolved.image_repository}@"
+            f"{resolved.image_revision[:12]}: {resolved.image_commit_subject}"
+        )
 
     runner = client.runtimes(runtime).run(
         identity={"user_id": "u_42"},
