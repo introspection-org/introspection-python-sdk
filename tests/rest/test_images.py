@@ -334,6 +334,31 @@ def test_task_create_sends_eval_kind_and_commands(fake_api: FakeAPI):
     }
 
 
+def test_task_create_sends_compose_recipe_commit_and_runtime(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST", "/v1/tasks", status=201, json_body=task_create_response()
+    )
+    compose = {"services": {"db": {"image": "postgres:17"}}}
+
+    Tasks(fake_api.client()).create(
+        kind=TaskKind.EVAL,
+        commands=True,
+        compose=compose,
+        recipe_git_commit_sha="a" * 40,
+        runtime_id=RUNTIME_ID,
+    )
+
+    assert fake_api.last_request.json() == {
+        "kind": "eval",
+        "commands": True,
+        "compose": compose,
+        "recipe_git_commit_sha": "a" * 40,
+        "runtime_id": RUNTIME_ID,
+    }
+
+
 def test_task_create_omits_kind_and_commands_by_default(fake_api: FakeAPI):
     fake_api.add(
         "POST", "/v1/tasks", status=201, json_body=task_create_response()
