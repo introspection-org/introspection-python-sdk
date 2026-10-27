@@ -334,7 +334,9 @@ def test_task_create_sends_eval_kind_and_commands(fake_api: FakeAPI):
     }
 
 
-def test_task_create_sends_compose_and_recipe_commit(fake_api: FakeAPI):
+def test_task_create_sends_compose_recipe_commit_and_runtime(
+    fake_api: FakeAPI,
+):
     fake_api.add(
         "POST", "/v1/tasks", status=201, json_body=task_create_response()
     )
@@ -345,6 +347,7 @@ def test_task_create_sends_compose_and_recipe_commit(fake_api: FakeAPI):
         commands=True,
         compose=compose,
         recipe_git_commit_sha="a" * 40,
+        runtime_id=RUNTIME_ID,
     )
 
     assert fake_api.last_request.json() == {
@@ -352,6 +355,7 @@ def test_task_create_sends_compose_and_recipe_commit(fake_api: FakeAPI):
         "commands": True,
         "compose": compose,
         "recipe_git_commit_sha": "a" * 40,
+        "runtime_id": RUNTIME_ID,
     }
 
 
