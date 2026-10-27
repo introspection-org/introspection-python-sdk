@@ -1,25 +1,35 @@
 """Tests for ``client.runtimes`` (:mod:`introspection_sdk.resources.runtimes`).
 
-All HTTP is served by the in-process transport in ``conftest.py``.
+HTTP is served by the in-process transport in ``conftest.py``, and the
+runtime source-field tests by its real loopback origin (``LocalDP``).
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+from urllib.parse import parse_qs
 from uuid import UUID
 
 import httpx2 as httpx
 import pytest
+from pydantic import ValidationError
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError
+from introspection_sdk._http import _HttpClient
 from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.runner import RunnerIdentity
+from introspection_sdk.schemas.runtimes import Runtime, RuntimeGroupType
 
 from .conftest import (
+    ORG_ID,
     PROJECT_ID,
+    RECIPE_ID,
     REPOSITORY_ID,
     RUNTIME_ID,
     FakeAPI,
+    LocalDP,
     paginated,
     runner_spec_payload,
     runtime_payload,
@@ -75,6 +85,88 @@ def test_get_includes_project_param(fake_api: FakeAPI):
     rt = _runtimes(fake_api).get(UUID(RUNTIME_ID), project=PROJECT_ID)
     assert str(rt.id) == RUNTIME_ID
     assert fake_api.last_request.params.get("project") == PROJECT_ID
+
+
+# The runtime's group and image source fields are pinned against a real
+# loopback origin: the wire body is a raw JSON object, so the older-server
+# case really omits the fields instead of serialising their defaults.
+WIRE_RUNTIME: dict[str, Any] = {
+    "id": RUNTIME_ID,
+    "org_id": ORG_ID,
+    "project_id": PROJECT_ID,
+    "name": "Checkout Agent",
+    "slug": "checkout-agent",
+    "recipe_id": RECIPE_ID,
+    "is_active": True,
+}
+
+
+def _get_from(dp: LocalDP, body: dict[str, Any]) -> Runtime:
+    dp.add("GET", f"/v1/runtimes/{RUNTIME_ID}", body)
+    client = _HttpClient(api_url=dp.endpoint, token="test-token")
+    try:
+        return Runtimes(client).get(UUID(RUNTIME_ID), project=PROJECT_ID)
+    finally:
+        client.close()
+
+
+def _assert_get_request(dp: LocalDP) -> None:
+    [req] = dp.requests
+    assert req.method == "GET"
+    assert req.path == f"/v1/runtimes/{RUNTIME_ID}"
+    assert parse_qs(req.query) == {"project": [PROJECT_ID]}
+    assert req.authorization == "Bearer test-token"
+    assert req.body == b""
+
+
+def test_get_reads_group_and_image_source_fields(
+    local_dp: Callable[[], LocalDP],
+):
+    dp = local_dp()
+    rt = _get_from(
+        dp,
+        {
+            **WIRE_RUNTIME,
+            "runtime_group_type": "managed",
+            "template_ref": "ark",
+            "image_revision": "0123456789abcdef0123456789abcdef01234567",
+            "image_commit_subject": "feat: ark runtime",
+            "image_repository": "introspection-org/recipes",
+        },
+    )
+    _assert_get_request(dp)
+    assert rt.runtime_group_type is RuntimeGroupType.MANAGED
+    assert rt.template_ref == "ark"
+    assert rt.image_revision == "0123456789abcdef0123456789abcdef01234567"
+    assert rt.image_commit_subject == "feat: ark runtime"
+    assert rt.image_repository == "introspection-org/recipes"
+    assert rt.model_extra == {}
+
+
+def test_get_defaults_group_and_image_source_fields(
+    local_dp: Callable[[], LocalDP],
+):
+    # A server that predates these fields sends none of them; the runtime
+    # still parses as a custom group with no template and no image source.
+    dp = local_dp()
+    rt = _get_from(dp, WIRE_RUNTIME)
+    _assert_get_request(dp)
+    assert str(rt.id) == RUNTIME_ID
+    assert rt.runtime_group_type is RuntimeGroupType.CUSTOM
+    assert rt.template_ref is None
+    assert rt.image_revision is None
+    assert rt.image_commit_subject is None
+    assert rt.image_repository is None
+    assert rt.model_extra == {}
+
+
+def test_get_rejects_unknown_runtime_group_type(
+    local_dp: Callable[[], LocalDP],
+):
+    dp = local_dp()
+    with pytest.raises(ValidationError, match="runtime_group_type"):
+        _get_from(dp, {**WIRE_RUNTIME, "runtime_group_type": "platform"})
+    _assert_get_request(dp)
 
 
 def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):

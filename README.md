@@ -96,6 +96,25 @@ runner. `runner.refresh()` posts the same path. A UUID selector is a runtime
 group id; it is resolved with `GET /v1/runtimes` first, and
 `client.runtimes.handle(runtime_id)` posts a known runtime id directly.
 
+`client.runtimes.list()`, `get(runtime_id)` and `resolve(slug_or_id)` return a
+`Runtime` that says where it comes from. A server that predates a field leaves
+it at its default:
+
+| Field | What it holds |
+| --- | --- |
+| `runtime_group_type` | `RuntimeGroupType.MANAGED` for a first-party runtime Introspection owns, `RuntimeGroupType.CUSTOM` (default) for any other |
+| `template_ref` | The template the runtime group was created from, or `None` |
+| `image_revision` / `image_commit_subject` | For an image version: the recipe commit its image carries and that commit's subject line |
+| `image_repository` | The recipe's GitHub repository (`owner/name`) |
+
+```python
+from introspection_sdk.schemas.runtimes import RuntimeGroupType
+
+runtime = client.runtimes.resolve("customer-agent")
+if runtime.runtime_group_type is RuntimeGroupType.MANAGED:
+    print(f"managed, from template {runtime.template_ref}")
+```
+
 Or wait for the finished answer instead of streaming:
 
 ```python
