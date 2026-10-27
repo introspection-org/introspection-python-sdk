@@ -32,6 +32,17 @@ class RuntimeLlmMode(StrEnum):
     BYOK = "byok"
 
 
+class RuntimeGroupType(StrEnum):
+    """Who a runtime group belongs to.
+
+    - ``managed``: a first-party runtime Introspection owns.
+    - ``custom``:  any other runtime (default).
+    """
+
+    MANAGED = "managed"
+    CUSTOM = "custom"
+
+
 class Runtime(_ApiModel):
     id: UUID
     org_id: UUID
@@ -52,9 +63,19 @@ class Runtime(_ApiModel):
     # Per-environment git ref each lane tracks ({environment: 'main' | 'pr/N' |
     # <sha>}), projected from the runtime group.
     environment_ref: dict[str, str] | None = None
+    # Projected from the runtime group: who owns it and the template it was
+    # created from.
+    runtime_group_type: RuntimeGroupType = RuntimeGroupType.CUSTOM
+    template_ref: str | None = None
+    # For an image version: the recipe commit its image carries, that
+    # commit's subject line, and the recipe's GitHub repository (owner/name).
+    image_revision: str | None = None
+    image_commit_subject: str | None = None
+    image_repository: str | None = None
 
 
 __all__ = [
     "Runtime",
+    "RuntimeGroupType",
     "RuntimeLlmMode",
 ]

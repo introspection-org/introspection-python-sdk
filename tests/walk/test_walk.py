@@ -821,6 +821,11 @@ def test_07_runtime(world: World) -> None:
             "yanked_at": None,
             "yanked_reason": None,
             "environment_ref": None,
+            "runtime_group_type": "custom",
+            "template_ref": None,
+            "image_revision": None,
+            "image_commit_subject": None,
+            "image_repository": None,
             "kind": "byor",
             "config_json": {"connectors": ["hello-mcp"]},
             "runtime_group_id": "[uuid]",
@@ -2125,9 +2130,10 @@ def test_17_access(world: World) -> None:
     to_project = shares.create(
         resource_type="conversation", resource_id=conversation
     )
-    assert matrix()["emery"] == {**NONE, "conversation": True}, (
-        "a project-wide share"
-    )
+    assert matrix()["emery"] == {
+        **NONE,
+        "conversation": True,
+    }, "a project-wide share"
 
     # Revoked, every share stops granting. A runner cannot hold
     # `shares:delete`, so the administrator revokes Avery's shares.

@@ -9,11 +9,13 @@ from uuid import UUID
 
 import httpx2 as httpx
 import pytest
+from pydantic import ValidationError
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError
 from introspection_sdk.resources.runtimes import Runtimes
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.runner import RunnerIdentity
+from introspection_sdk.schemas.runtimes import RuntimeGroupType
 
 from .conftest import (
     PROJECT_ID,
@@ -75,6 +77,54 @@ def test_get_includes_project_param(fake_api: FakeAPI):
     rt = _runtimes(fake_api).get(UUID(RUNTIME_ID), project=PROJECT_ID)
     assert str(rt.id) == RUNTIME_ID
     assert fake_api.last_request.params.get("project") == PROJECT_ID
+
+
+def test_get_reads_group_and_image_source_fields(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        f"/v1/runtimes/{RUNTIME_ID}",
+        json_body=runtime_payload(
+            runtime_group_type="managed",
+            template_ref="ark",
+            image_revision="0123456789abcdef0123456789abcdef01234567",
+            image_commit_subject="feat: ark runtime",
+            image_repository="introspection-org/recipes",
+        ),
+    )
+    rt = _runtimes(fake_api).get(UUID(RUNTIME_ID))
+    assert rt.runtime_group_type is RuntimeGroupType.MANAGED
+    assert rt.template_ref == "ark"
+    assert rt.image_revision == "0123456789abcdef0123456789abcdef01234567"
+    assert rt.image_commit_subject == "feat: ark runtime"
+    assert rt.image_repository == "introspection-org/recipes"
+    assert rt.model_extra == {}
+
+
+def test_get_defaults_group_and_image_source_fields(fake_api: FakeAPI):
+    # A server that predates these fields still parses: a custom group with
+    # no template and no image source.
+    fake_api.add(
+        "GET", f"/v1/runtimes/{RUNTIME_ID}", json_body=runtime_payload()
+    )
+    rt = _runtimes(fake_api).get(UUID(RUNTIME_ID))
+    assert rt.runtime_group_type is RuntimeGroupType.CUSTOM
+    assert rt.template_ref is None
+    assert rt.image_revision is None
+    assert rt.image_commit_subject is None
+    assert rt.image_repository is None
+
+
+def test_get_rejects_unknown_runtime_group_type(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        f"/v1/runtimes/{RUNTIME_ID}",
+        json_body={
+            **to_jsonable(runtime_payload()),
+            "runtime_group_type": "platform",
+        },
+    )
+    with pytest.raises(ValidationError):
+        _runtimes(fake_api).get(UUID(RUNTIME_ID))
 
 
 def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):
