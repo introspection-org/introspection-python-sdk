@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.33.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.32.1...v0.33.0) (2026-10-27)
+
+
+### Features
+
+* **runtimes:** model the runtime's group and image source fields ([#218](https://github.com/introspection-org/introspection-python-sdk/issues/218)) ([f4353e5](https://github.com/introspection-org/introspection-python-sdk/commit/f4353e56f67f63e40f48d167205c63a8bb3194a9))
+* **tasks:** send compose, recipe_git_commit_sha and runtime_id on a task create ([#220](https://github.com/introspection-org/introspection-python-sdk/issues/220)) ([e3c2683](https://github.com/introspection-org/introspection-python-sdk/commit/e3c26830b5afea8fcba9e6502782f0cee6486686))
+
 ## [0.32.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.32.0...v0.32.1) (2026-10-24)
 
 
