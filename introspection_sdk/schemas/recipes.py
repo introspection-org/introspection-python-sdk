@@ -12,11 +12,11 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-class _ApiModel(BaseModel):
+class ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class Recipe(_ApiModel):
+class Recipe(ApiModel):
     id: UUID
     org_id: UUID
     project_id: UUID

@@ -14,11 +14,11 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class _ApiModel(BaseModel):
+class ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class Repository(_ApiModel):
+class Repository(ApiModel):
     """A repository registered to a project — the Git source a recipe pins.
 
     ``provider`` and ``provisioning_status`` stay plain strings so a value
@@ -51,7 +51,7 @@ class HostedRepositoryCreate(BaseModel):
     seed_template: str | None = None
 
 
-class RepositoryBranch(_ApiModel):
+class RepositoryBranch(ApiModel):
     """A branch of a repository and the commit at its head.
 
     ``committed_at`` is set only for ``sort="recent"``.
@@ -62,7 +62,7 @@ class RepositoryBranch(_ApiModel):
     committed_at: datetime | None = None
 
 
-class RepositoryEntry(_ApiModel):
+class RepositoryEntry(ApiModel):
     """One entry of a directory listing."""
 
     name: str
@@ -72,7 +72,7 @@ class RepositoryEntry(_ApiModel):
     sha: str
 
 
-class RepositoryDirectory(_ApiModel):
+class RepositoryDirectory(ApiModel):
     """One page of a directory, read at ``commit_sha``.
 
     ``next`` is an opaque cursor; every page of one listing is read at the
@@ -87,7 +87,7 @@ class RepositoryDirectory(_ApiModel):
     next: str | None = None
 
 
-class RepositoryFile(_ApiModel):
+class RepositoryFile(ApiModel):
     """A file's content at ``commit_sha``.
 
     ``content`` is empty and ``truncated`` is set when the file is larger
@@ -110,7 +110,7 @@ RepositoryContent = Annotated[
 ]
 
 
-class RepositoryCommitPerson(_ApiModel):
+class RepositoryCommitPerson(ApiModel):
     """A commit's author or committer."""
 
     name: str
@@ -118,7 +118,7 @@ class RepositoryCommitPerson(_ApiModel):
     date: str | None = None
 
 
-class RepositoryCommit(_ApiModel):
+class RepositoryCommit(ApiModel):
     """One commit of a history listing."""
 
     sha: str
@@ -128,7 +128,7 @@ class RepositoryCommit(_ApiModel):
     committer: RepositoryCommitPerson
 
 
-class RepositoryCommitFile(_ApiModel):
+class RepositoryCommitFile(ApiModel):
     """One file a commit changed."""
 
     filename: str
@@ -146,7 +146,7 @@ class RepositoryCommitDetail(RepositoryCommit):
     patch: str
 
 
-class RepositoryMerge(_ApiModel):
+class RepositoryMerge(ApiModel):
     """The merge commit ``head`` produced on ``base``.
 
     When ``base`` had no commits, ``sha`` equals ``head_sha`` and
