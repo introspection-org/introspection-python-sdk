@@ -5,14 +5,12 @@
 from __future__ import annotations
 
 import builtins
-from typing import Any
+import logging
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
-from introspection_sdk.pagination import (
-    Pager,
-    cursor_paginate,
-)
+from introspection_sdk._sync.resources._crud import _Resource
+from introspection_sdk.pagination import Pager
 from introspection_sdk.schemas.aauth import (
     Approval,
     ApprovalKind,
@@ -21,13 +19,16 @@ from introspection_sdk.schemas.aauth import (
 )
 from introspection_sdk.schemas.pagination import Paginated
 
+logger = logging.getLogger(__name__)
 
-class Missions:
+
+def _id(value: UUID | str | None) -> str | None:
+    return str(value) if value else None
+
+
+class Missions(_Resource):
     """DP ``/v1/aauth/missions``: the missions the project's people approved
     agents to carry out."""
-
-    def __init__(self, http: _HttpClient) -> None:
-        self._http = http
 
     def list(
         self,
@@ -39,28 +40,19 @@ class Missions:
         """List missions, newest first; ``member_id`` keeps one person's.
         The returned pager streams every mission; ``.page()`` reads the
         first page only."""
-
-        def fetch(cursor: str | None) -> Paginated[Mission]:
-            payload = self._http.request(
-                "GET",
-                "/v1/aauth/missions",
-                params={
-                    "member_id": str(member_id) if member_id else None,
-                    "limit": limit,
-                    "next": cursor,
-                },
-            )
-            return Paginated[Mission].model_validate(payload)
-
-        return cursor_paginate(fetch, start=next)
+        logger.debug(
+            "aauth missions listed", extra={"member_id": _id(member_id)}
+        )
+        return self._paginate(
+            "/v1/aauth/missions",
+            Paginated[Mission],
+            {"member_id": _id(member_id), "limit": limit, "next": next},
+        )
 
 
-class Approvals:
+class Approvals(_Resource):
     """DP ``/v1/aauth/approvals``: the decisions agents ask the project's
     people to make."""
-
-    def __init__(self, http: _HttpClient) -> None:
-        self._http = http
 
     def list(
         self,
@@ -76,26 +68,29 @@ class Approvals:
         """List approvals, filtered by ``status`` (any of), ``kind``, the
         person asked, who decided, and the mission. The returned pager
         streams every approval; ``.page()`` reads the first page only."""
-
-        def _id(value: UUID | str | None) -> str | None:
-            return str(value) if value else None
-
-        def fetch(cursor: str | None) -> Paginated[Approval]:
-            params: dict[str, Any] = {
-                "status": [str(s) for s in status] if status else None,
-                "kind": str(kind) if kind is not None else None,
+        statuses = [str(s) for s in status] if status else None
+        kind_value = str(kind) if kind is not None else None
+        logger.debug(
+            "aauth approvals listed",
+            extra={
+                "status": statuses,
+                "kind": kind_value,
+                "mission_id": _id(mission_id),
+            },
+        )
+        return self._paginate(
+            "/v1/aauth/approvals",
+            Paginated[Approval],
+            {
+                "status": statuses,
+                "kind": kind_value,
                 "member_id": _id(member_id),
                 "decided_by_member_id": _id(decided_by_member_id),
                 "mission_id": _id(mission_id),
                 "limit": limit,
-                "next": cursor,
-            }
-            payload = self._http.request(
-                "GET", "/v1/aauth/approvals", params=params
-            )
-            return Paginated[Approval].model_validate(payload)
-
-        return cursor_paginate(fetch, start=next)
+                "next": next,
+            },
+        )
 
 
 class AAuth:

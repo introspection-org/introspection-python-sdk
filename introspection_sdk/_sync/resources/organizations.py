@@ -4,8 +4,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from introspection_sdk._sync.resources._crud import _Resource
 from introspection_sdk.schemas.organizations import Organization
+
+logger = logging.getLogger(__name__)
 
 
 class Organizations(_Resource):
@@ -15,4 +19,6 @@ class Organizations(_Resource):
     def me(self) -> Organization:
         """``GET /v1/organizations/me``: the organization a member session or
         access token belongs to."""
-        return self._call("GET", "/v1/organizations/me", Organization)
+        org = self._call("GET", "/v1/organizations/me", Organization)
+        logger.debug("organization read", extra={"org_id": str(org.id)})
+        return org

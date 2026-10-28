@@ -4,10 +4,13 @@
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from introspection_sdk._sync.resources._crud import _body, _Resource
 from introspection_sdk.schemas.tokens import ProjectToken, ProjectTokenCreate
+
+logger = logging.getLogger(__name__)
 
 
 class Tokens(_Resource):
@@ -36,4 +39,12 @@ class Tokens(_Resource):
                 "environment": environment,
             },
         )
-        return self._call("POST", "/v1/tokens", ProjectToken, json=body)
+        token = self._call("POST", "/v1/tokens", ProjectToken, json=body)
+        logger.debug(
+            "project token minted",
+            extra={
+                "project_id": str(token.project_id),
+                "environment": environment,
+            },
+        )
+        return token

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -18,6 +19,8 @@ from introspection_sdk.schemas.endpoints import (
     EndpointUpdate,
 )
 from introspection_sdk.schemas.pagination import Paginated
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncEndpoints(_AsyncResource):
@@ -105,15 +108,23 @@ class AsyncEndpoints(_AsyncResource):
                 "authorized_application_id": authorized_application_id,
             },
         )
-        return await self._call(
+        endpoint = await self._call(
             "PATCH",
             f"/v1/endpoints/{endpoint_id}",
             Endpoint,
             params=_project(project),
             json=body,
         )
+        logger.debug(
+            "endpoint updated",
+            extra={"endpoint_id": str(endpoint_id), "fields": sorted(body)},
+        )
+        return endpoint
 
     async def delete(
         self, endpoint_id: UUID | str, *, project: str | UUID | None = None
     ) -> None:
         await self._delete(f"/v1/endpoints/{endpoint_id}", _project(project))
+        logger.debug(
+            "endpoint deleted", extra={"endpoint_id": str(endpoint_id)}
+        )
