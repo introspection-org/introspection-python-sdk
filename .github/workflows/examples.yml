@@ -104,10 +104,17 @@ jobs:
           INTROSPECTION_SERVICE_ACCOUNT_CLIENT_ID: ${{ secrets.INTRO_SA_CLIENT_ID }}
           INTROSPECTION_SERVICE_ACCOUNT_CLIENT_SECRET: ${{ secrets.INTRO_SA_CLIENT_SECRET }}
           INTROSPECTION_PROJECT: ${{ secrets.INTRO_PROJECT }}
+          # api.project_admin needs an owner's Control Plane session; without
+          # the secret it prints a skip message and exits 0. Neither it nor
+          # api.author_runtime writes here (no *_WRITE flag is set).
+          INTROSPECTION_CP_SESSION: ${{ secrets.INTROSPECTION_CP_SESSION }}
         run: |
           uv run -m introspection_examples.api.runtimes
           uv run -m introspection_examples.api.async_runtimes
           uv run -m introspection_examples.api.repositories
+          uv run -m introspection_examples.api.aauth_inbox
+          uv run -m introspection_examples.api.author_runtime
+          uv run -m introspection_examples.api.project_admin
           uv run -m introspection_examples.api.conversation_atif
           uv run -m introspection_examples.otel.log_event
           uv run -m introspection_examples.reference.auth_api_key

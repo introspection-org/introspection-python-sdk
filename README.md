@@ -317,6 +317,48 @@ if merge is not None:
     print(merge.sha, merge.parents)
 ```
 
+`branches(repo.id)` pages the branches with their head commits. A hosted
+repository is created with `create(slug, project=...)` and served at its `url`
+once `provisioning_status` is `ready`; `delete(repo.id)` unlinks one.
+
+## Author recipes and runtimes
+
+`client.recipes.create(...)` pins a recipe to one commit of a repository, and
+`client.runtimes.create(...)` makes a runtime version from it. The `slug` names
+the runtime group: an existing group gains the version as its next one, which
+shares the group's `runtime_group_id`. `update(...)` sends only the fields
+given, and `delete(...)` removes a version (the group's live version takes its
+siblings with it).
+
+```python
+from introspection_sdk.schemas.runtimes import RuntimeInclude
+
+head_sha = client.repositories.commits(repo.id, sha="main").page().records[0].sha
+recipe = client.recipes.create(
+    project="support",
+    repository_id=repo.id,
+    name="support-agent",
+    git_ref="main",
+    git_commit_sha=head_sha,
+)
+runtime = client.runtimes.create(
+    project="support",
+    recipe_id=recipe.id,
+    name="support-agent",
+    slug="support-agent",
+)
+print(runtime.runtime_group_id, runtime.image_build_status)
+requirements = client.runtimes.get(
+    runtime.id, include=[RuntimeInclude.MCP_REQUIREMENTS]
+).mcp_requirements
+```
+
+`client.endpoints` lists, reads, updates and deletes the upstream hosts a
+project's runtimes reach; an MCP server's endpoint is the one a connection
+binds (`list(mcp_server_id=...)`).
+[`author_runtime.py`](examples/introspection_examples/api/author_runtime.py)
+runs this flow end to end.
+
 ## Label members
 
 `client.members` reads and updates the organization's members. Each carries
@@ -538,6 +580,11 @@ in this repository: an AAuth Person Server and Access Server
 FastAPI routers. `examples/introspection_examples/aauth/four_party.py` runs
 the four-party flow in one process.
 
+A project's own Data Plane keeps the missions its people approved agents to
+carry out and the approvals agents asked them for: `client.aauth.missions.list()`
+and `client.aauth.approvals.list(status=["pending"])` read them, as
+[`aauth_inbox.py`](examples/introspection_examples/api/aauth_inbox.py) does.
+
 ## Administer a project
 
 These Control Plane namespaces need an org credential: an owner's or admin's
@@ -548,7 +595,9 @@ or id) on project-scoped calls when the credential does not name one.
 | Namespace | What it manages |
 | --- | --- |
 | `client.oidc.me()` | Who the credential is, with the org's resolved feature flags |
-| `client.projects` | The org's projects, read by slug or id (`list`, `get`) |
+| `client.organizations.me()` | The credential's organization: name, slug, whether it hosts Git |
+| `client.projects` | The org's projects by slug or id: `list`, `get`, `create(deployment_id=...)`, `update`, `delete` |
+| `client.tokens.create(project=...)` | A signed-in member's access token for one project, with that member's scopes there |
 | `client.api_keys` | A project's API keys: `create` returns the plaintext once, then `acknowledge`; `delete(expires_in=...)` rotates |
 | `client.applications` | OAuth clients, with `.idps`, `.secrets` and `.keys` under each |
 | `client.credentials` / `client.variables` | Secrets and environment variables a project's runtimes read |

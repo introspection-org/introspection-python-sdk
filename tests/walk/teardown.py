@@ -10,14 +10,12 @@ connectors); the member's Data Plane token does the rest.
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Callable
 
 from introspection_sdk import IntrospectionClient, NotFoundError
 from introspection_sdk.schemas.projects import Project
 from introspection_sdk.schemas.tags import TagKind
 
 from .settings import WALK
-from .support import Raw
 
 __all__ = ["remove_walk_resources"]
 
@@ -26,14 +24,13 @@ def remove_walk_resources(
     owner: IntrospectionClient,
     member: IntrospectionClient,
     project: Project,
-    raw: Callable[[IntrospectionClient, str], Raw],
     dp: IntrospectionClient | None = None,
 ) -> None:
     """Remove the walk's resources. Tasks and files are listed as the
     project's agent member (``dp``, the service account) where it exists: a
     member's own token lists only the tasks it owns."""
     _remove_data_plane(owner, member, dp or member, project)
-    _remove_control_plane(owner, project, raw(owner, "cp"))
+    _remove_control_plane(owner, project)
 
 
 def _remove_data_plane(
@@ -68,9 +65,8 @@ def _remove_data_plane(
 
 
 def _remove_control_plane(
-    owner: IntrospectionClient, project: Project, cp: Raw
+    owner: IntrospectionClient, project: Project
 ) -> None:
-    q = {"project": str(project.id)}
     for experiment in owner.experiments.list(project=str(project.id)):
         if experiment.name in WALK.experiment_names:
             owner.experiments.delete(experiment.id, project=str(project.id))
@@ -78,23 +74,20 @@ def _remove_control_plane(
         project=str(project.id), runtime=WALK.runtime_slug
     ):
         # Deleting the group's live version takes its siblings with it.
-        # todo(sdk): no `runtimes.delete`; the route is documented.
         with contextlib.suppress(NotFoundError):
-            cp.delete(f"/v1/runtimes/{runtime.id}", q)
-    # todo(sdk): no `endpoints` namespace at all.
-    endpoints = cp.get(
-        "/v1/endpoints", {**q, "mcp_server_id": WALK.mcp_server_id}
+            owner.runtimes.delete(runtime.id, project=project.id)
+    endpoints = owner.endpoints.list(
+        project=project.id, mcp_server_id=WALK.mcp_server_id
     )
-    for endpoint in endpoints["records"]:
+    for endpoint in endpoints.page().records:
         with contextlib.suppress(NotFoundError):
-            cp.delete(f"/v1/endpoints/{endpoint['id']}", q)
-    # todo(sdk): `connectors.list` / `connectors.delete` take no `project`.
-    for connector in cp.get("/v1/connectors", q)["records"]:
-        if connector["slug"] != WALK.connector_name:
+            owner.endpoints.delete(endpoint.id, project=project.id)
+    for connector in owner.connectors.list(project=project.id).page().records:
+        if connector.slug != WALK.connector_name:
             continue
-        for connection in owner.connectors.connections.list(connector["id"]):
-            owner.connectors.connections.revoke(connector["id"], connection.id)
-        cp.delete(f"/v1/connectors/{connector['id']}", q)
+        for connection in owner.connectors.connections.list(connector.id):
+            owner.connectors.connections.revoke(connector.id, connection.id)
+        owner.connectors.delete(connector.id, project=project.id)
     for variable in owner.variables.list(project=project.id):
         if variable.name == WALK.variable_name:
             owner.variables.delete(variable.id, project=project.id)
@@ -107,10 +100,8 @@ def _remove_control_plane(
         for recipe in owner.recipes.list(
             project=project.id, repository_id=repository.id
         ):
-            # todo(sdk): no `recipes.delete`.
-            cp.delete(f"/v1/recipes/{recipe.id}", q)
-        # todo(sdk): no `repositories.delete`.
-        cp.delete(f"/v1/repositories/{repository.id}", q)
+            owner.recipes.delete(recipe.id, project=project.id)
+        owner.repositories.delete(repository.id, project=project.id)
     for application in owner.applications.list(project=project.id):
         if (
             application.name.startswith(WALK.application_name)

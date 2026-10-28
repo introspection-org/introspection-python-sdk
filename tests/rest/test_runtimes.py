@@ -17,10 +17,14 @@ from pydantic import ValidationError
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError
 from introspection_sdk._http import _HttpClient
-from introspection_sdk.resources.runtimes import Runtimes
+from introspection_sdk.resources.runtimes import AsyncRuntimes, Runtimes
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.runner import RunnerIdentity
-from introspection_sdk.schemas.runtimes import Runtime, RuntimeGroupType
+from introspection_sdk.schemas.runtimes import (
+    Runtime,
+    RuntimeGroupType,
+    RuntimeInclude,
+)
 
 from .conftest import (
     ORG_ID,
@@ -382,7 +386,7 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
 def test_runtime_surface_excludes_operator_controls(fake_api: FakeAPI):
     runtimes = _runtimes(fake_api)
     handle = runtimes("checkout-agent")
-    for method in ("create", "update", "yank", "unyank"):
+    for method in ("yank", "unyank"):
         assert not hasattr(runtimes, method)
     for method in ("pin", "activate"):
         assert not hasattr(handle, method)
@@ -449,3 +453,102 @@ def test_run_omits_unset_identity_metadata(fake_api: FakeAPI):
     _runtimes(fake_api)(RUNTIME_ID).run(identity={"user_id": "u_demo"})
 
     assert "metadata" not in fake_api.last_request.json()["identity"]
+
+
+def test_create_versions_a_group(fake_api: FakeAPI):
+    group = "99999999-9999-9999-9999-999999999999"
+    fake_api.add(
+        "POST",
+        "/v1/runtimes",
+        status=201,
+        json_body=runtime_payload(
+            runtime_group_id=group,
+            config_json={"connectors": ["hello-mcp"]},
+            image_build_status="queued",
+        ),
+    )
+    created = _runtimes(fake_api).create(
+        project=UUID(PROJECT_ID),
+        recipe_id=UUID(RECIPE_ID),
+        name="hello-mcp",
+        slug="hello-mcp",
+        config_json={"connectors": ["hello-mcp"]},
+    )
+    assert str(created.runtime_group_id) == group
+    assert created.image_build_status == "queued"
+    assert fake_api.last_request.json() == {
+        "project": PROJECT_ID,
+        "recipe_id": RECIPE_ID,
+        "name": "hello-mcp",
+        "slug": "hello-mcp",
+        "config_json": {"connectors": ["hello-mcp"]},
+    }
+
+
+def test_update_sends_only_the_fields_given(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        f"/v1/runtimes/{RUNTIME_ID}",
+        json_body=runtime_payload(description="v2"),
+    )
+    updated = _runtimes(fake_api).update(
+        RUNTIME_ID, project=PROJECT_ID, description="v2", yanked=False
+    )
+    assert updated.description == "v2"
+    assert fake_api.last_request.json() == {
+        "description": "v2",
+        "yanked": False,
+    }
+    assert fake_api.last_request.params.get("project") == PROJECT_ID
+
+
+def test_delete_and_a_missing_runtime(fake_api: FakeAPI):
+    fake_api.add("DELETE", f"/v1/runtimes/{RUNTIME_ID}", status=204)
+    runtimes = _runtimes(fake_api)
+    runtimes.delete(RUNTIME_ID, project=PROJECT_ID)
+    assert fake_api.last_request.params.get("project") == PROJECT_ID
+    with pytest.raises(NotFoundError):
+        runtimes.delete(RECIPE_ID)
+
+
+def test_get_includes_mcp_requirements(fake_api: FakeAPI):
+    requirement = {
+        "environment": "production",
+        "state": "satisfied",
+        "mcp_server_id": "hello-mcp",
+    }
+    fake_api.add(
+        "GET",
+        f"/v1/runtimes/{RUNTIME_ID}",
+        json_body=runtime_payload(mcp_requirements=[requirement]),
+    )
+    runtime = _runtimes(fake_api).get(
+        UUID(RUNTIME_ID), include=[RuntimeInclude.MCP_REQUIREMENTS]
+    )
+    assert runtime.mcp_requirements == [requirement]
+    assert fake_api.last_request.params.get_list("include") == [
+        "mcp_requirements"
+    ]
+
+
+async def test_async_runtime_writes(fake_api: FakeAPI):
+    path = f"/v1/runtimes/{RUNTIME_ID}"
+    fake_api.add(
+        "POST", "/v1/runtimes", status=201, json_body=runtime_payload()
+    )
+    fake_api.add("PATCH", path, json_body=runtime_payload())
+    fake_api.add("DELETE", path, status=204)
+    fake_api.add("GET", path, json_body=runtime_payload())
+    runtimes = AsyncRuntimes(fake_api.async_client())
+    await runtimes.create(project="support", name="hello-mcp", bootstrap=True)
+    assert fake_api.last_request.json() == {
+        "project": "support",
+        "name": "hello-mcp",
+        "bootstrap": True,
+    }
+    await runtimes.update(RUNTIME_ID, environment="production")
+    assert fake_api.last_request.json() == {"environment": "production"}
+    await runtimes.get(UUID(RUNTIME_ID), include=["mcp_requirements"])
+    assert fake_api.last_request.params.get("include") == "mcp_requirements"
+    await runtimes.delete(RUNTIME_ID)
+    assert fake_api.last_request.method == "DELETE"

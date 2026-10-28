@@ -922,3 +922,27 @@ async def test_async_authorize_sends_an_mcp_binding(fake_api: FakeAPI):
         "mcp_server_id": "linear",
         "url": LINEAR_MCP,
     }
+
+
+def test_list_and_delete_name_the_project(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/connectors", json_body=paginated([connector_payload()])
+    )
+    fake_api.add("DELETE", CONNECTOR_PATH, status=204)
+    connectors = Connectors(fake_api.client())
+    assert len(connectors.list(project="support").page().records) == 1
+    assert fake_api.last_request.params.get("project") == "support"
+    connectors.delete(CONNECTOR_UUID, project="support")
+    assert fake_api.last_request.params.get("project") == "support"
+
+
+async def test_async_list_and_delete_name_the_project(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/connectors", json_body=paginated([connector_payload()])
+    )
+    fake_api.add("DELETE", CONNECTOR_PATH, status=204)
+    connectors = AsyncConnectors(fake_api.async_client())
+    page = await connectors.list(project="support")
+    assert len(page.records) == 1
+    await connectors.delete(CONNECTOR_UUID)
+    assert "project" not in fake_api.last_request.params

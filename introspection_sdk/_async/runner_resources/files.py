@@ -9,6 +9,7 @@ import mimetypes
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import IO, Any
+from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.pagination import (
@@ -179,25 +180,24 @@ class AsyncFiles:
         storage_path: str | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
+        name_contains: str | None = None,
+        task_id: UUID | str | None = None,
+        include_versions: bool | None = None,
     ) -> AsyncPager[File, Paginated[File]]:
-        # unasync: async-only (the sync twin's docstring follows)
-        """List files. ``await`` the returned :class:`AsyncPager` for the
-        first page, or ``async for`` it to stream every file across pages.
+        """List files. The returned pager streams every file across pages;
+        ``.page()`` reads the first page only.
 
         ``metadata`` narrows to files whose metadata holds every pair, each
         matched exactly against the string value; it is sent as one repeated
         ``metadata=key:value`` param per entry (at most 16). Keys are letters,
         digits, ``_`` and ``-``. A server that predates the filter ignores it
-        and returns the unfiltered list."""
-        # unasync: end
-        """List files. Iterate the returned :class:`Pager` to stream every
-        file across pages, or call ``.page()`` for the first page only.
+        and returns the unfiltered list.
 
-        ``metadata`` narrows to files whose metadata holds every pair, each
-        matched exactly against the string value; it is sent as one repeated
-        ``metadata=key:value`` param per entry (at most 16). Keys are letters,
-        digits, ``_`` and ``-``. A server that predates the filter ignores it
-        and returns the unfiltered list."""
+        ``name_contains`` matches a case-insensitive substring of the name
+        (``%``, ``_`` and ``\\`` literally). ``task_id`` narrows to the files
+        a task produced. A file that has versions is listed only with
+        ``include_versions=True``, which also lists its superseded
+        versions."""
 
         async def fetch(cursor: str | None) -> Paginated[File]:
             params: dict[str, Any] = {
@@ -217,6 +217,9 @@ class AsyncFiles:
                     if metadata
                     else None
                 ),
+                "name_contains": name_contains,
+                "task_id": str(task_id) if task_id is not None else None,
+                "include_versions": include_versions,
             }
             payload = await self._http.request(
                 "GET", "/v1/files", params=params

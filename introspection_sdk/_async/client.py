@@ -19,19 +19,23 @@ from introspection_sdk.resources import (
     AsyncAutomations,
     AsyncConnectors,
     AsyncCredentials,
+    AsyncEndpoints,
     AsyncExperiments,
     AsyncIntegrations,
     AsyncJudges,
     AsyncMembers,
     AsyncOidc,
+    AsyncOrganizations,
     AsyncProjects,
     AsyncRecipes,
     AsyncRepositories,
     AsyncRuntimes,
     AsyncTags,
+    AsyncTokens,
     AsyncVariables,
 )
 from introspection_sdk.runner_resources import (
+    AsyncAAuth,
     AsyncAppConnections,
     AsyncConversations,
     AsyncEvents,
@@ -106,6 +110,10 @@ class AsyncIntrospectionClient:
     integrations: AsyncIntegrations
     judges: AsyncJudges
     oidc: AsyncOidc
+    organizations: AsyncOrganizations
+    tokens: AsyncTokens
+    endpoints: AsyncEndpoints
+    aauth: AsyncAAuth
 
     def __init__(
         self,
@@ -166,6 +174,7 @@ class AsyncIntrospectionClient:
         self.shares = AsyncShares(self._dp_http)
         self.connections = AsyncAppConnections(self._dp_http)
         self.images = AsyncImages(self._dp_http)
+        self.aauth = AsyncAAuth(self._dp_http)
         # Project administration: each route needs an org credential (a
         # member session or access token); a project API key carries none
         # of their scopes.
@@ -177,6 +186,9 @@ class AsyncIntrospectionClient:
         self.integrations = AsyncIntegrations(self._http)
         self.judges = AsyncJudges(self._http)
         self.oidc = AsyncOidc(self._http)
+        self.organizations = AsyncOrganizations(self._http)
+        self.tokens = AsyncTokens(self._http)
+        self.endpoints = AsyncEndpoints(self._http)
 
     @classmethod
     async def from_service_account(

@@ -1,9 +1,9 @@
 """The walk's step runner, its run report, and the calls the SDK does not make.
 
-Ported from the JS walk's ``tests/walk/support.ts``: ``raw()`` (a documented
-route the SDK has no method for, sent through the SDK's own HTTP client so
-it is recorded and counted), ``settled()`` (poll quietly, then read once
-through the recorded client), the OAuth follower and the recipe push.
+Ported from the JS walk's ``tests/walk/support.ts``: ``settled()`` (poll
+quietly, then read once through the recorded client), the OAuth follower and
+the recipe push. There is no raw HTTP helper: every call the walk makes is an
+SDK method, and a route the SDK lacks gets one before the walk calls it.
 """
 
 from __future__ import annotations
@@ -25,19 +25,16 @@ from uuid import UUID
 import httpx2 as httpx
 
 from introspection_sdk import NotFoundError
-from introspection_sdk._http import _HttpClient
 
 from .settings import Mode
 
 __all__ = [
     "QuietTransport",
-    "Raw",
     "WalkReport",
     "follow_authorization",
     "has_complete_recording",
     "prepare_recipe",
     "push_recipe",
-    "route",
     "settled",
     "span_event_id",
     "walk_project_born",
@@ -59,7 +56,6 @@ class WalkReport:
     """The machine-readable run report the cross-SDK matrix reads."""
 
     steps: list[dict[str, Any]] = field(default_factory=list)
-    raw_calls: list[dict[str, str]] = field(default_factory=list)
     total: int = 0
     consumed: int = 0
     unconsumed: list[dict[str, str]] = field(default_factory=list)
@@ -71,19 +67,14 @@ class WalkReport:
             "steps": self.steps,
             "entries": {"total": self.total, "consumed": self.consumed},
             "unconsumed": self.unconsumed,
-            "raw_calls": self.raw_calls,
+            # The cross-SDK matrix counts each SDK's raw calls; this walk
+            # has no way to make one.
+            "raw_calls": [],
         }
 
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(self.as_json(), indent=2) + "\n")
-
-
-ID_SEGMENT = re.compile(
-    r"/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-    r"|[0-9a-f]{40}|[0-9a-f]{16})(?=/|$)",
-    re.I,
-)
 
 
 def walk_project_born(slug: str, prefix: str) -> int | None:
@@ -107,46 +98,6 @@ def span_event_id(trace_id: str, span_id: str, label: str) -> UUID:
     digest[6] = (digest[6] & 0x0F) | 0x70
     digest[8] = (digest[8] & 0x3F) | 0x80
     return UUID(bytes=bytes(digest))
-
-
-def route(path: str) -> str:
-    """A request path as its route: each id segment becomes ``{id}``."""
-    return ID_SEGMENT.sub("/{id}", path)
-
-
-class Raw:
-    """A documented route the SDK has no method for, called through the
-    SDK's own HTTP client so it is recorded, counted and reported (design
-    doc §3). Each use is an SDK gap the report lists."""
-
-    def __init__(self, http: _HttpClient, report: WalkReport) -> None:
-        self._http = http
-        self._report = report
-
-    def _call(self, method: str, path: str, **kwargs: Any) -> Any:
-        call = {"method": method, "path": route(path)}
-        if call not in self._report.raw_calls:
-            self._report.raw_calls.append(call)
-        return self._http.request(method, path, **kwargs)
-
-    def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        return self._call("GET", path, params=params)
-
-    def post(
-        self,
-        path: str,
-        json: Any = None,
-        params: dict[str, Any] | None = None,
-    ) -> Any:
-        return self._call("POST", path, json=json, params=params)
-
-    def patch(
-        self, path: str, json: Any, params: dict[str, Any] | None = None
-    ) -> Any:
-        return self._call("PATCH", path, json=json, params=params)
-
-    def delete(self, path: str, params: dict[str, Any] | None = None) -> None:
-        self._call("DELETE", path, params=params, expect="empty")
 
 
 def _not_yet(poll: Callable[[], T]) -> T | None:

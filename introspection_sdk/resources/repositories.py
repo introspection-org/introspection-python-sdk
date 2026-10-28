@@ -1,9 +1,11 @@
-"""``client.repositories`` — repository lookup (CP), contents, commits and
-merges (DP).
+"""``client.repositories`` — repository lookup and hosted creation (CP),
+contents, branches, commits and merges (DP).
 
 A runner resolves the repository behind the recipe it runs, it does not
-register one. Linking a repository to a project is a project-authoring act
-and lives in the CLI.
+register one. :meth:`Repositories.create` makes a hosted repository (one the
+platform serves over its own Git transport); linking a GitHub repository is
+a project-authoring act and lives in the CLI. Branches are read on the data
+plane.
 
 Unlike the other CP lists, ``GET /v1/repositories`` answers a bare JSON
 array rather than the cursor envelope, so :meth:`Repositories.list` returns

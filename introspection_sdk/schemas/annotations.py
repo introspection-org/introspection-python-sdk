@@ -33,7 +33,33 @@ class AnnotationState(AnnotationTarget):
     assignment_event_id: UUID | None = None
 
 
+class AnnotationFacet(BaseModel):
+    """How many current annotations hold one value of one filter dimension
+    (annotator, assignee, label or status)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    dimension: str
+    value: str
+    count: int
+
+
+class AnnotationNavigation(BaseModel):
+    """The review window around one annotated span: the rows before and
+    after it in the filtered list, and its 1-based position there."""
+
+    model_config = ConfigDict(extra="allow")
+
+    previous: AnnotationState | None = None
+    current: AnnotationState | None = None
+    next: AnnotationState | None = None
+    current_position: int | None = None
+    total_count: int = 0
+
+
 __all__ = [
+    "AnnotationFacet",
+    "AnnotationNavigation",
     "AnnotationState",
     "AnnotationTarget",
 ]

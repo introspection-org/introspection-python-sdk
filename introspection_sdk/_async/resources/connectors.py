@@ -6,6 +6,7 @@ import builtins
 from typing import Any
 from uuid import UUID
 
+from introspection_sdk._async.resources._crud import _project
 from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -306,7 +307,8 @@ class AsyncConnectors:
     """CP ``/v1/connectors`` namespace.
 
     Connector CRUD uses the project carried by the authenticated
-    credential. Nested ``connections`` and ``authorize`` are addressed
+    credential; :meth:`list` and :meth:`delete` take ``project`` for a
+    credential that names none (an owner's session). Nested ``connections`` and ``authorize`` are addressed
     by connector id alone.
     """
 
@@ -317,20 +319,17 @@ class AsyncConnectors:
     def list(
         self,
         *,
+        project: str | UUID | None = None,
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Connector, Paginated[Connector]]:
-        # unasync: async-only (the sync twin's docstring follows)
-        """List connectors. ``await`` the returned :class:`AsyncPager`
-        for the first page, or ``async for`` it to stream every
-        connector across pages."""
-        # unasync: end
-        """List connectors. Iterate the returned :class:`Pager` to
-        stream every connector across pages, or call ``.page()`` for the
-        first page only."""
+        """List connectors. The returned pager streams every connector across
+        pages; ``.page()`` reads the first page only. ``project`` (slug or
+        id) is needed only when the credential does not name one."""
 
         async def fetch(cursor: str | None) -> Paginated[Connector]:
             params: dict[str, Any] = {
+                **_project(project),
                 "limit": limit,
                 "next": cursor,
             }
@@ -517,11 +516,14 @@ class AsyncConnectors:
         )
         return Connector.model_validate(payload)
 
-    async def delete(self, connector_id: UUID) -> None:
+    async def delete(
+        self, connector_id: UUID, *, project: str | UUID | None = None
+    ) -> None:
         """Soft-delete a connector; its connections are revoked."""
         await self._http.request(
             "DELETE",
             f"/v1/connectors/{connector_id}",
+            params=_project(project),
             expect="empty",
         )
 

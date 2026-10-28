@@ -262,13 +262,6 @@ def test_project_list_pages_and_narrows_by_project(fake_api: FakeAPI):
     assert second.params.get("next") == "c2"
 
 
-def test_projects_has_no_writes():
-    # projects:write / projects:delete are in no API-key, service-account or
-    # CLI-login ceiling, so the SDK exposes reads only.
-    for verb in ("create", "update", "delete"):
-        assert not hasattr(Projects, verb)
-
-
 # --- oidc ------------------------------------------------------------
 
 

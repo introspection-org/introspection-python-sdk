@@ -34,6 +34,8 @@ def _list_params(
     application_idp_id: UUID | None,
     tag: str | None,
     metadata: dict[str, str] | None,
+    ids: builtins.list[UUID] | None,
+    external_user_ids: builtins.list[str] | None,
     limit: int | None,
     cursor: str | None,
 ) -> dict[str, Any]:
@@ -50,6 +52,8 @@ def _list_params(
             if metadata
             else None
         ),
+        "id": [str(i) for i in ids] if ids else None,
+        "external_user_id": external_user_ids or None,
         "limit": limit,
         "next": cursor,
     }
@@ -101,18 +105,22 @@ class Members:
         application_idp_id: UUID | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
+        id: builtins.list[UUID] | None = None,
+        external_user_id: builtins.list[str] | None = None,
         limit: int | None = None,
         next: str | None = None,
     ) -> Pager[Member, Paginated[Member]]:
-        """List members. Iterate the returned :class:`Pager` to stream every
-        member across pages, or call ``.page()`` for the first page only.
+        """List members. The returned pager streams every member across pages;
+        ``.page()`` reads the first page only.
 
         Filters narrow and AND together. ``tag`` matches one access-bearing
         tag exactly. ``metadata`` matches members whose metadata holds every
         pair, each compared exactly against the string value; it is sent as
         one repeated ``metadata=key:value`` param per entry (distinct keys,
-        at most 16). ``project`` is only needed by a credential that is not
-        already org-scoped (a deployment token)."""
+        at most 16). ``id`` and ``external_user_id`` resolve those members
+        (tier-prefixed keys such as ``user:abc``), each sent as a repeated
+        param; the two union. ``project`` is only needed by a credential
+        that is not already org-scoped (a deployment token)."""
 
         def fetch(cursor: str | None) -> Paginated[Member]:
             params = _list_params(
@@ -122,6 +130,8 @@ class Members:
                 application_idp_id=application_idp_id,
                 tag=tag,
                 metadata=metadata,
+                ids=id,
+                external_user_ids=external_user_id,
                 limit=limit,
                 cursor=cursor,
             )

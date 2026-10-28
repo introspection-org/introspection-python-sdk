@@ -499,7 +499,7 @@ async def test_async_runtime_surface_excludes_operator_controls(
 ):
     runtimes = AsyncRuntimes(fake_api.async_client())
     handle = runtimes("checkout-agent")
-    for method in ("create", "update", "yank", "unyank"):
+    for method in ("yank", "unyank"):
         assert not hasattr(runtimes, method)
     for method in ("pin", "activate"):
         assert not hasattr(handle, method)
