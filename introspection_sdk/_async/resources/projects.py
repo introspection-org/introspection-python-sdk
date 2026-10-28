@@ -11,6 +11,7 @@ from introspection_sdk._async.resources._crud import (
     _body,
     _project,
 )
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.projects import (
@@ -18,15 +19,74 @@ from introspection_sdk.schemas.projects import (
     ProjectCreate,
     ProjectUpdate,
 )
+from introspection_sdk.schemas.runtime_peerings import RuntimePeering
 
 
 def _project_path(project: str | UUID) -> str:
     return f"/v1/projects/{quote(str(project), safe='')}"
 
 
+class AsyncProjectPeerings(_AsyncResource):
+    """CP ``/v1/projects/{project}/peerings``: the runtime groups a project
+    offers other projects, and with ``granted=True`` the ones offered to it.
+
+    Read-only: offering, changing and ending a peering is a person's act in
+    the web app, and no API key or Application holds that scope.
+    """
+
+    def list(
+        self,
+        project: str | UUID,
+        runtime: str | UUID | None = None,
+        *,
+        granted: bool = False,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> AsyncPager[RuntimePeering, Paginated[RuntimePeering]]:
+        # unasync: async-only (the sync twin's docstring follows)
+        """List the peerings ``project`` (slug or id) offers; ``runtime`` (a
+        runtime group slug or id) narrows them to that group's.
+        ``granted=True`` lists the peerings other projects grant this one
+        instead, and takes no ``runtime``. ``await`` the returned
+        :class:`AsyncPager` for the first page, or ``async for`` it to
+        stream every peering."""
+        # unasync: end
+        """List the peerings ``project`` (slug or id) offers; ``runtime`` (a
+        runtime group slug or id) narrows them to that group's.
+        ``granted=True`` lists the peerings other projects grant this one
+        instead, and takes no ``runtime``. Iterate the returned
+        :class:`Pager` to stream every peering, or call ``.page()`` for the
+        first page only."""
+        return self._paginate(
+            f"{_project_path(project)}/peerings",
+            Paginated[RuntimePeering],
+            {
+                "runtime": str(runtime) if runtime is not None else None,
+                "granted": granted or None,
+                "limit": limit,
+                "next": next,
+            },
+        )
+
+    async def get(
+        self, project: str | UUID, peering_id: UUID | str
+    ) -> RuntimePeering:
+        """Read one peering ``project`` offers or one that admits it; any
+        other raises :class:`~introspection_sdk.NotFoundError`."""
+        return await self._call(
+            "GET",
+            f"{_project_path(project)}/peerings/{quote(str(peering_id), safe='')}",
+            RuntimePeering,
+        )
+
+
 class AsyncProjects(_AsyncResource):
     """CP ``/v1/projects`` namespace: the credential's org's projects,
-    addressed by slug or id."""
+    addressed by slug or id, with the runtime ``peerings`` each offers."""
+
+    def __init__(self, http: _AsyncHttpClient) -> None:
+        super().__init__(http)
+        self.peerings = AsyncProjectPeerings(http)
 
     def list(
         self,

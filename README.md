@@ -597,6 +597,7 @@ or id) on project-scoped calls when the credential does not name one.
 | `client.oidc.me()` | Who the credential is, with the org's resolved feature flags |
 | `client.organizations.me()` | The credential's organization: name, slug, whether it hosts Git |
 | `client.projects` | The org's projects by slug or id: `list`, `get`, `create(deployment_id=...)`, `update`, `delete` |
+| `client.projects.peerings` | The runtime groups a project offers other projects: `list(project, runtime=None)`, `list(project, granted=True)` for those offered to it, `get(project, peering_id)`. Read-only: peerings are written in the web app |
 | `client.tokens.create(project=...)` | A signed-in member's access token for one project, with that member's scopes there |
 | `client.api_keys` | A project's API keys: `create` returns the plaintext once, then `acknowledge`; `delete(expires_in=...)` rotates |
 | `client.applications` | OAuth clients, with `.idps`, `.secrets` and `.keys` under each |

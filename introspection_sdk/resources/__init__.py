@@ -43,7 +43,12 @@ from introspection_sdk.resources.organizations import (
     AsyncOrganizations,
     Organizations,
 )
-from introspection_sdk.resources.projects import AsyncProjects, Projects
+from introspection_sdk.resources.projects import (
+    AsyncProjectPeerings,
+    AsyncProjects,
+    ProjectPeerings,
+    Projects,
+)
 from introspection_sdk.resources.recipes import AsyncRecipes, Recipes
 from introspection_sdk.resources.repositories import (
     AsyncRepositories,
@@ -92,7 +97,9 @@ __all__ = [
     "Organizations",
     "AsyncTokens",
     "Tokens",
+    "AsyncProjectPeerings",
     "AsyncProjects",
+    "ProjectPeerings",
     "Projects",
     "AsyncVariables",
     "Variables",

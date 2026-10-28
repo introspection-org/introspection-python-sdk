@@ -1,7 +1,8 @@
 """Administer a project: who you are, its API keys and runtime settings.
 
 Reads the signed-in member and organization, the org's projects, a
-project's API keys, credentials, variables, judges and endpoints, and mints
+project's API keys, credentials, variables, judges, endpoints and runtime
+peerings, and mints
 the member's own short-lived access token for the project; then, when
 INTROSPECTION_ADMIN_WRITE=1, mints an API key, saves its one-time plaintext,
 acknowledges it and revokes it again, renames an endpoint and back, and
@@ -75,6 +76,12 @@ def main() -> None:
             print(
                 f"  endpoint {endpoint.name} {endpoint.kind} {endpoint.host}"
             )
+        # Runtime groups the project offers other projects, then the ones
+        # other projects offer it. Peerings are written in the web app.
+        for peering in client.projects.peerings.list(project):
+            print(f"  offers runtime group {peering.runtime_group_id}")
+        for peering in client.projects.peerings.list(project, granted=True):
+            print(f"  granted runtime group {peering.runtime_group_id}")
         # #endregion docs:project-admin
 
         # #region docs:project-token
