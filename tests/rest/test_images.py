@@ -359,6 +359,32 @@ def test_task_create_sends_compose_recipe_commit_and_runtime(
     }
 
 
+def test_task_create_sends_mcp_servers_beside_compose(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", "/v1/tasks", status=201, json_body=task_create_response()
+    )
+    compose = {
+        "services": {"mcp-server": {"image": "hello", "expose": [8000]}}
+    }
+    mcp_servers = [
+        {
+            "name": "hello-mcp",
+            "transport": "streamable-http",
+            "url": "http://mcp-server:8000/mcp",
+        }
+    ]
+
+    Tasks(fake_api.client()).create(
+        kind=TaskKind.EVAL, compose=compose, mcp_servers=mcp_servers
+    )
+
+    assert fake_api.last_request.json() == {
+        "kind": "eval",
+        "compose": compose,
+        "mcp_servers": mcp_servers,
+    }
+
+
 def test_task_create_omits_kind_and_commands_by_default(fake_api: FakeAPI):
     fake_api.add(
         "POST", "/v1/tasks", status=201, json_body=task_create_response()

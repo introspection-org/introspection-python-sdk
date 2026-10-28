@@ -412,6 +412,7 @@ class Tasks:
         kind: TaskKind | str | None = None,
         commands: bool | None = None,
         compose: dict[str, Any] | None = None,
+        mcp_servers: builtins.list[dict[str, Any]] | None = None,
         recipe_git_commit_sha: str | None = None,
         runtime_id: UUID | str | None = None,
     ) -> TaskCreateResponse:
@@ -419,8 +420,10 @@ class Tasks:
 
         ``kind="eval"`` runs the task as an evaluation trial; with
         ``commands=True`` it also accepts :attr:`commands` against its live
-        sandbox, ``compose`` runs services beside it, and
-        ``recipe_git_commit_sha`` pins the Recipe commit it runs.
+        sandbox, ``compose`` runs services beside it, ``mcp_servers`` binds
+        Recipe MCP ids to those services (Harbor's
+        ``[[environment.mcp_servers]]`` entries: ``name``, ``transport``,
+        ``url``), and ``recipe_git_commit_sha`` pins the Recipe commit it runs.
         ``runtime_id`` names the Runtime for a caller whose credential is not
         bound to one (a member token rather than a runner). Each is omitted
         from the body unless given.
@@ -439,6 +442,7 @@ class Tasks:
             "kind": str(kind) if kind is not None else None,
             "commands": commands,
             "compose": compose,
+            "mcp_servers": mcp_servers,
             "recipe_git_commit_sha": recipe_git_commit_sha,
             "runtime_id": str(runtime_id) if runtime_id is not None else None,
         }
