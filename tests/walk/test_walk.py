@@ -10,9 +10,8 @@ a signed-in ``introspection login`` (or ``INTROSPECTION_CP_SESSION``)::
     VCR_MODE=record uv run pytest tests/walk       # re-record the HAR
     VCR_MODE=passthrough uv run pytest tests/walk  # live, records nothing
 
-A route the SDK has no method for would go through ``Raw`` (the SDK's own
-HTTP client) under a ``todo(sdk)`` comment, and the run report would list
-it; today every call is an SDK method.
+Every call is an SDK method; the walk has no raw HTTP helper, so a route the
+SDK has no method for gets one before the walk calls it.
 """
 
 from __future__ import annotations
@@ -67,7 +66,6 @@ from .settings import (
 from .stable import plain, stable
 from .support import (
     QuietTransport,
-    Raw,
     WalkReport,
     follow_authorization,
     prepare_recipe,
@@ -117,12 +115,6 @@ class World:
     @property
     def group_id(self) -> str:
         return str(self.runtime.runtime_group_id)
-
-    def raw(self, client: IntrospectionClient, plane: str = "cp") -> Raw:
-        """A route the SDK has no method for (none today), under a
-        ``todo(sdk)`` comment at the call."""
-        http = client._http if plane == "cp" else client._dp_http
-        return Raw(http, self.report)
 
     def quiet(self, **kwargs: Any) -> IntrospectionClient:
         """A client on the unrecorded transport, for polls (design doc §5)."""

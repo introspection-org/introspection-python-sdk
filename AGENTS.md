@@ -70,9 +70,9 @@ a request with no recorded match fails naming the method, URL and body
 diff. `VCR_MODE=record` (or `--record-mode=all`) re-records against a live
 stack with the scrubbing in `introspection_sdk/testing/redaction.py`, the
 same patterns every SDK's walk scrubs. Each run writes
-`generated/walk-report.json` (steps, entries consumed, SDK gaps). A route the
-SDK has no method for is called through the SDK's own HTTP client under a
-`todo(sdk)` comment, never by widening the SDK in a test PR.
+`generated/walk-report.json` (steps, entries consumed, SDK gaps). The walk has no
+raw HTTP helper: every call it makes is a typed SDK method, so a route the SDK
+has no method for gets one (with its tests) before the walk calls it.
 
 Real-API drift elsewhere is caught by the `-m integration` job in `ci.yml`.
 

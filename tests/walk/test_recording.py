@@ -31,7 +31,7 @@ from . import har
 from .conftest import HAR, walk_vcr
 from .matching import body_meaning, semantic_body, semantic_query
 from .stable import stable
-from .support import has_complete_recording, route
+from .support import has_complete_recording
 
 
 def _b64(part: bytes) -> str:
@@ -237,6 +237,3 @@ def test_stable_names_what_it_replaces() -> None:
         "has_errors": True,
         "path": "a/[uuid]/b.txt",
     }
-    assert route("/v1/runtimes/01a16a8d-87a4-7058-b4a9-3fe961d82722/run") == (
-        "/v1/runtimes/{id}/run"
-    )
