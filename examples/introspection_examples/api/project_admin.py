@@ -1,15 +1,18 @@
 """Administer a project: who you are, its API keys and runtime settings.
 
 Reads the signed-in member and organization, the org's projects, a
-project's API keys, credentials, variables, judges and endpoints; then, when
+project's API keys, credentials, variables, judges and endpoints, and mints
+the member's own short-lived access token for the project; then, when
 INTROSPECTION_ADMIN_WRITE=1, mints an API key, saves its one-time plaintext,
-acknowledges it and revokes it again, and creates, renames and deletes a
-sibling project on the same deployment.
+acknowledges it and revokes it again, renames an endpoint and back, and
+creates, renames and deletes a sibling project on the same deployment.
 
 These routes need an org credential: an owner's or admin's Control Plane
 session (or an access token minted for one). A project API key carries none
-of their scopes and gets a 403, which is why this example is not in
-``examples.yml``.
+of their scopes and gets a 403, so the example reads
+INTROSPECTION_CP_SESSION rather than INTROSPECTION_TOKEN. Without it, or
+without INTROSPECTION_PROJECT, it prints a skip message and exits 0, so the
+examples workflow can list it whether or not a session is configured.
 
 Run with:
     INTROSPECTION_CP_SESSION=...   # the intro_cp_session cookie value
@@ -37,10 +40,13 @@ def main() -> None:
     session = os.getenv("INTROSPECTION_CP_SESSION")
     project = os.getenv("INTROSPECTION_PROJECT")
     if not session or not project:
-        sys.exit(
-            "Set INTROSPECTION_CP_SESSION to an owner's Control Plane session "
-            "and INTROSPECTION_PROJECT to a project slug or id."
+        print(
+            "skipping: set INTROSPECTION_CP_SESSION to an owner's Control "
+            "Plane session and INTROSPECTION_PROJECT to a project slug or id "
+            "to run this example",
+            file=sys.stderr,
         )
+        return
 
     client = IntrospectionClient(cp_session=session)
     try:
@@ -71,6 +77,21 @@ def main() -> None:
             )
         # #endregion docs:project-admin
 
+        # #region docs:project-token
+        # The member's own Data Plane token for the project, with the
+        # member's scopes there (such as `git:push`, which no service
+        # account holds). A SecretStr: printing it shows **********.
+        minted = client.tokens.create(project=project, expires_minutes=15)
+        print(f"minted a project token until {minted.expires_at}")
+        member = IntrospectionClient(
+            token=minted.access_token.get_secret_value()
+        )
+        try:
+            print(f"  as the member: {len(member.repositories.list())} repos")
+        finally:
+            member.shutdown()
+        # #endregion docs:project-token
+
         if os.getenv("INTROSPECTION_ADMIN_WRITE") == "1":
             # #region docs:api-key-rotate
             created = client.api_keys.create(
@@ -88,6 +109,25 @@ def main() -> None:
             # `expires_in` keeps the key working that long, for a rotation.
             client.api_keys.delete(created.id, project=project, expires_in=0)
             # #endregion docs:api-key-rotate
+
+            # #region docs:endpoint-edit
+            endpoints = client.endpoints.list(project=project).page().records
+            if endpoints:
+                endpoint = client.endpoints.get(
+                    endpoints[0].id, project=project
+                )
+                client.endpoints.update(
+                    endpoint.id,
+                    project=project,
+                    name=f"{endpoint.name}-renamed",
+                )
+                client.endpoints.update(
+                    endpoint.id, project=project, name=endpoint.name
+                )
+                print(f"renamed endpoint {endpoint.name} and back")
+            # `client.endpoints.delete(endpoint.id, project=project)` removes
+            # one; an MCP server's endpoint comes back with its connection.
+            # #endregion docs:endpoint-edit
 
             # #region docs:project-lifecycle
             # A new project lives on a Data Plane deployment; this one takes
