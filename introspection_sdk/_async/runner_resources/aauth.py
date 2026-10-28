@@ -34,14 +34,9 @@ class AsyncMissions:
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Mission, Paginated[Mission]]:
-        # unasync: async-only (the sync twin's docstring follows)
         """List missions, newest first; ``member_id`` keeps one person's.
-        ``await`` the returned :class:`AsyncPager` for the first page, or
-        ``async for`` it to stream every mission."""
-        # unasync: end
-        """List missions, newest first; ``member_id`` keeps one person's.
-        Iterate the returned :class:`Pager` to stream every mission, or
-        call ``.page()`` for the first page."""
+        The returned pager streams every mission; ``.page()`` reads the
+        first page only."""
 
         async def fetch(cursor: str | None) -> Paginated[Mission]:
             payload = await self._http.request(
@@ -76,16 +71,9 @@ class AsyncApprovals:
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Approval, Paginated[Approval]]:
-        # unasync: async-only (the sync twin's docstring follows)
         """List approvals, filtered by ``status`` (any of), ``kind``, the
-        person asked, who decided, and the mission. ``await`` the returned
-        :class:`AsyncPager` for the first page, or ``async for`` it to
-        stream every approval."""
-        # unasync: end
-        """List approvals, filtered by ``status`` (any of), ``kind``, the
-        person asked, who decided, and the mission. Iterate the returned
-        :class:`Pager` to stream every approval, or call ``.page()`` for
-        the first page."""
+        person asked, who decided, and the mission. The returned pager
+        streams every approval; ``.page()`` reads the first page only."""
 
         def _id(value: UUID | str | None) -> str | None:
             return str(value) if value else None

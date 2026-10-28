@@ -110,8 +110,8 @@ class Members:
         limit: int | None = None,
         next: str | None = None,
     ) -> Pager[Member, Paginated[Member]]:
-        """List members. Iterate the returned :class:`Pager` to stream every
-        member across pages, or call ``.page()`` for the first page only.
+        """List members. The returned pager streams every member across pages;
+        ``.page()`` reads the first page only.
 
         Filters narrow and AND together. ``tag`` matches one access-bearing
         tag exactly. ``metadata`` matches members whose metadata holds every

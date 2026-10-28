@@ -323,16 +323,9 @@ class AsyncConnectors:
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Connector, Paginated[Connector]]:
-        # unasync: async-only (the sync twin's docstring follows)
-        """List connectors. ``await`` the returned :class:`AsyncPager`
-        for the first page, or ``async for`` it to stream every
-        connector across pages. ``project`` (slug or id) is needed only
-        when the credential does not name one."""
-        # unasync: end
-        """List connectors. Iterate the returned :class:`Pager` to
-        stream every connector across pages, or call ``.page()`` for the
-        first page only. ``project`` (slug or id) is needed only when the
-        credential does not name one."""
+        """List connectors. The returned pager streams every connector across
+        pages; ``.page()`` reads the first page only. ``project`` (slug or
+        id) is needed only when the credential does not name one."""
 
         async def fetch(cursor: str | None) -> Paginated[Connector]:
             params: dict[str, Any] = {

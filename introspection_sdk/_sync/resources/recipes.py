@@ -7,8 +7,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from introspection_sdk._http import _HttpClient
-from introspection_sdk._sync.resources._crud import _body, _project
+from introspection_sdk._sync.resources._crud import (
+    _body,
+    _project,
+    _Resource,
+)
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -21,11 +24,12 @@ from introspection_sdk.schemas.recipes import (
 )
 
 
-class Recipes:
-    """CP ``/v1/recipes`` namespace."""
+def _recipe_path(recipe_id: UUID | str) -> str:
+    return f"/v1/recipes/{recipe_id}"
 
-    def __init__(self, http: _HttpClient) -> None:
-        self._http = http
+
+class Recipes(_Resource):
+    """CP ``/v1/recipes`` namespace."""
 
     # --- reads --------------------------------------------------------
 
@@ -96,8 +100,7 @@ class Recipes:
                 "description": description,
             },
         )
-        payload = self._http.request("POST", "/v1/recipes", json=body)
-        return Recipe.model_validate(payload)
+        return self._call("POST", "/v1/recipes", Recipe, json=body)
 
     def update(
         self,
@@ -108,22 +111,16 @@ class Recipes:
         description: str | None = None,
     ) -> Recipe:
         """Rename or redescribe a recipe; only the fields given are sent."""
-        payload = self._http.request(
+        body = _body(RecipeUpdate, {"name": name, "description": description})
+        return self._call(
             "PATCH",
-            f"/v1/recipes/{recipe_id}",
+            _recipe_path(recipe_id),
+            Recipe,
             params=_project(project),
-            json=_body(
-                RecipeUpdate, {"name": name, "description": description}
-            ),
+            json=body,
         )
-        return Recipe.model_validate(payload)
 
     def delete(
         self, recipe_id: UUID | str, *, project: str | UUID | None = None
     ) -> None:
-        self._http.request(
-            "DELETE",
-            f"/v1/recipes/{recipe_id}",
-            params=_project(project),
-            expect="empty",
-        )
+        self._delete(_recipe_path(recipe_id), _project(project))

@@ -184,24 +184,8 @@ class AsyncFiles:
         task_id: UUID | str | None = None,
         include_versions: bool | None = None,
     ) -> AsyncPager[File, Paginated[File]]:
-        # unasync: async-only (the sync twin's docstring follows)
-        """List files. ``await`` the returned :class:`AsyncPager` for the
-        first page, or ``async for`` it to stream every file across pages.
-
-        ``metadata`` narrows to files whose metadata holds every pair, each
-        matched exactly against the string value; it is sent as one repeated
-        ``metadata=key:value`` param per entry (at most 16). Keys are letters,
-        digits, ``_`` and ``-``. A server that predates the filter ignores it
-        and returns the unfiltered list.
-
-        ``name_contains`` matches a case-insensitive substring of the name
-        (``%``, ``_`` and ``\\`` literally). ``task_id`` narrows to the files
-        a task produced. A file that has versions is listed only with
-        ``include_versions=True``, which also lists its superseded
-        versions."""
-        # unasync: end
-        """List files. Iterate the returned :class:`Pager` to stream every
-        file across pages, or call ``.page()`` for the first page only.
+        """List files. The returned pager streams every file across pages;
+        ``.page()`` reads the first page only.
 
         ``metadata`` narrows to files whose metadata holds every pair, each
         matched exactly against the string value; it is sent as one repeated

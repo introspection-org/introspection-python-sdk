@@ -40,8 +40,8 @@ class Endpoints(_Resource):
         limit: int | None = None,
         next: str | None = None,
     ) -> Pager[Endpoint, Paginated[Endpoint]]:
-        """List the project's endpoints. Iterate the returned :class:`Pager`
-        to stream every endpoint, or call ``.page()`` for the first page.
+        """List the project's endpoints. The returned pager streams every
+        endpoint; ``.page()`` reads the first page only.
 
         Filters AND together: ``kind``, the runtime they are pinned to (by
         ``runtime_id``, or ``runtime`` as a slug or group id), the

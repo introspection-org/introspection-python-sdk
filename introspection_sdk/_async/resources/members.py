@@ -108,22 +108,8 @@ class AsyncMembers:
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Member, Paginated[Member]]:
-        # unasync: async-only (the sync twin's docstring follows)
-        """List members. ``await`` the returned :class:`AsyncPager` for the
-        first page, or ``async for`` it to stream every member across
-        pages.
-
-        Filters narrow and AND together. ``tag`` matches one access-bearing
-        tag exactly. ``metadata`` matches members whose metadata holds every
-        pair, each compared exactly against the string value; it is sent as
-        one repeated ``metadata=key:value`` param per entry (distinct keys,
-        at most 16). ``id`` and ``external_user_id`` resolve those members
-        (tier-prefixed keys such as ``user:abc``), each sent as a repeated
-        param; the two union. ``project`` is only needed by a credential
-        that is not already org-scoped (a deployment token)."""
-        # unasync: end
-        """List members. Iterate the returned :class:`Pager` to stream every
-        member across pages, or call ``.page()`` for the first page only.
+        """List members. The returned pager streams every member across pages;
+        ``.page()`` reads the first page only.
 
         Filters narrow and AND together. ``tag`` matches one access-bearing
         tag exactly. ``metadata`` matches members whose metadata holds every

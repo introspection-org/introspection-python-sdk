@@ -7,11 +7,13 @@ import json
 from email.parser import BytesParser
 from email.policy import HTTP
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
 from introspection_sdk._errors import ConflictError
 from introspection_sdk.runner_resources.files import (
+    AsyncFiles,
     Files,
     _materialise_upload,
 )
@@ -308,3 +310,29 @@ def test_reads_tags_back_off_a_file(fake_api: FakeAPI):
     )
 
     assert Files(fake_api.client()).get(FILE_ID).tags == ["customer:acme"]
+
+
+def test_list_sends_the_version_name_and_task_filters(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    task_id = UUID("55555555-5555-5555-5555-555555555555")
+    page = (
+        _files(fake_api)
+        .list(
+            name_contains="WALK-INPUT", task_id=task_id, include_versions=True
+        )
+        .page()
+    )
+    assert str(page.records[0].id) == FILE_ID
+    params = fake_api.last_request.params
+    assert params.get("name_contains") == "WALK-INPUT"
+    assert params.get("task_id") == str(task_id)
+    assert params.get("include_versions") == "true"
+
+
+async def test_async_list_by_task(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/files", json_body=paginated([file_payload()]))
+    page = await AsyncFiles(fake_api.async_client()).list(task_id="t-1")
+    assert len(page.records) == 1
+    params = fake_api.last_request.params
+    assert params.get("task_id") == "t-1"
+    assert "include_versions" not in params

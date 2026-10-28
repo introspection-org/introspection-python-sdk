@@ -495,3 +495,91 @@ async def test_async_merge_conflict_raises(fake_api: FakeAPI) -> None:
         await async_repositories(fake_api).merges.create(
             REPOSITORY_ID, "main", "feature"
         )
+
+
+BRANCHES = f"/v1/repositories/{REPOSITORY_ID}/branches"
+
+
+def test_create_a_hosted_repository(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/repositories",
+        status=201,
+        json_body=repository(provisioning_status="pending"),
+    )
+    created = repositories(fake_api).create(
+        "support", project=PROJECT_ID, default_branch="main"
+    )
+    assert created.provisioning_status == "pending"
+    assert fake_api.last_request.params.get("project") == PROJECT_ID
+    assert fake_api.last_request.json() == {
+        "provider": "hosted",
+        "slug": "support",
+        "default_branch": "main",
+    }
+
+
+def test_delete_a_repository(fake_api: FakeAPI):
+    fake_api.add("DELETE", f"/v1/repositories/{REPOSITORY_ID}", status=204)
+    repos = repositories(fake_api)
+    repos.delete(UUID(REPOSITORY_ID), project=PROJECT_ID)
+    assert fake_api.last_request.params.get("project") == PROJECT_ID
+    with pytest.raises(NotFoundError):
+        repos.delete(PROJECT_ID)
+
+
+def test_branches_page_by_cursor(fake_api: FakeAPI):
+    pages = iter(
+        [
+            {
+                "records": [{"name": "main", "sha": HEAD_SHA}],
+                "count": 1,
+                "next": "c1",
+            },
+            {
+                "records": [
+                    {
+                        "name": "walk",
+                        "sha": HEAD_SHA,
+                        "committed_at": "2026-09-01T00:00:00Z",
+                    }
+                ],
+                "count": 1,
+                "next": None,
+            },
+        ]
+    )
+    fake_api.add_handler(
+        "GET", BRANCHES, lambda _request: httpx.Response(200, json=next(pages))
+    )
+    branches = list(
+        repositories(fake_api).branches(REPOSITORY_ID, sort="recent")
+    )
+    assert [b.name for b in branches] == ["main", "walk"]
+    assert branches[1].committed_at is not None
+    assert fake_api.last_request.params.get("cursor") == "c1"
+    assert fake_api.last_request.params.get("sort") == "recent"
+
+
+async def test_async_repository_writes(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", "/v1/repositories", status=201, json_body=repository()
+    )
+    fake_api.add("DELETE", f"/v1/repositories/{REPOSITORY_ID}", status=204)
+    fake_api.add(
+        "GET",
+        BRANCHES,
+        json_body={
+            "records": [{"name": "main", "sha": HEAD_SHA}],
+            "count": 1,
+            "next": None,
+        },
+    )
+    repos = async_repositories(fake_api)
+    await repos.create("support", seed_template="pi-agent")
+    assert fake_api.last_request.json()["seed_template"] == "pi-agent"
+    page = await repos.branches(REPOSITORY_ID, q="ma", limit=10)
+    assert page.records[0].name == "main"
+    assert fake_api.last_request.params.get("q") == "ma"
+    await repos.delete(REPOSITORY_ID)
+    assert fake_api.last_request.method == "DELETE"

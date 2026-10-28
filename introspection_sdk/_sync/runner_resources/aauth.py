@@ -37,8 +37,8 @@ class Missions:
         next: str | None = None,
     ) -> Pager[Mission, Paginated[Mission]]:
         """List missions, newest first; ``member_id`` keeps one person's.
-        Iterate the returned :class:`Pager` to stream every mission, or
-        call ``.page()`` for the first page."""
+        The returned pager streams every mission; ``.page()`` reads the
+        first page only."""
 
         def fetch(cursor: str | None) -> Paginated[Mission]:
             payload = self._http.request(
@@ -74,9 +74,8 @@ class Approvals:
         next: str | None = None,
     ) -> Pager[Approval, Paginated[Approval]]:
         """List approvals, filtered by ``status`` (any of), ``kind``, the
-        person asked, who decided, and the mission. Iterate the returned
-        :class:`Pager` to stream every approval, or call ``.page()`` for
-        the first page."""
+        person asked, who decided, and the mission. The returned pager
+        streams every approval; ``.page()`` reads the first page only."""
 
         def _id(value: UUID | str | None) -> str | None:
             return str(value) if value else None

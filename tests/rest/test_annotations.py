@@ -296,3 +296,78 @@ async def test_async_list_resolves_email_only_once_across_pages(
     assert len([record async for record in pager]) == 2
     assert member_calls == 1
     assert annotation_calls == 2
+
+
+FACETS = [
+    {"dimension": "label", "value": "needs-review", "count": 2},
+    {"dimension": "status", "value": "assigned", "count": 1},
+]
+
+
+def navigation() -> dict[str, object]:
+    return {
+        "previous": None,
+        "current": annotation(),
+        "next": None,
+        "current_position": 1,
+        "total_count": 1,
+    }
+
+
+def test_facets(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/annotations/facets", json_body=FACETS)
+    facets = Annotations(fake_api.client(), fake_api.client()).facets()
+    assert [(f.dimension, f.count) for f in facets] == [
+        ("label", 2),
+        ("status", 1),
+    ]
+
+
+def test_navigation_sends_the_target_and_filters(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/annotations/navigation", json_body=navigation())
+    window = Annotations(fake_api.client(), fake_api.client()).navigation(
+        trace_id=TRACE_ID,
+        span_id=SPAN_ID,
+        labels=["needs-review", "flaky"],
+        status="assigned",
+    )
+    assert window.current is not None
+    assert window.current.span_id == SPAN_ID
+    assert (window.current_position, window.total_count) == (1, 1)
+    params = fake_api.last_request.params
+    assert (params.get("trace_id"), params.get("span_id")) == (
+        TRACE_ID,
+        SPAN_ID,
+    )
+    assert params.get_list("label") == ["needs-review", "flaky"]
+    assert params.get("status") == "assigned"
+    assert "assignee_member_id" not in params
+
+
+def test_navigation_of_a_span_the_plane_rejects(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/annotations/navigation",
+        status=422,
+        json_body={"detail": "trace_id must be 32 hex characters"},
+    )
+    with pytest.raises(ValidationError):
+        Annotations(fake_api.client(), fake_api.client()).navigation(
+            trace_id="nope", span_id=SPAN_ID
+        )
+
+
+async def test_async_facets_and_navigation(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/annotations/facets", json_body=[])
+    fake_api.add("GET", "/v1/annotations/navigation", json_body=navigation())
+    annotations = AsyncAnnotations(
+        fake_api.async_client(), fake_api.async_client()
+    )
+    assert await annotations.facets() == []
+    window = await annotations.navigation(
+        trace_id=TRACE_ID,
+        span_id=SPAN_ID,
+        assignee_member_id=UUID(MEMBER_ID),
+    )
+    assert window.next is None
+    assert fake_api.last_request.params.get("assignee_member_id") == MEMBER_ID

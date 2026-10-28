@@ -315,10 +315,9 @@ class Connectors:
         limit: int | None = None,
         next: str | None = None,
     ) -> Pager[Connector, Paginated[Connector]]:
-        """List connectors. Iterate the returned :class:`Pager` to
-        stream every connector across pages, or call ``.page()`` for the
-        first page only. ``project`` (slug or id) is needed only when the
-        credential does not name one."""
+        """List connectors. The returned pager streams every connector across
+        pages; ``.page()`` reads the first page only. ``project`` (slug or
+        id) is needed only when the credential does not name one."""
 
         def fetch(cursor: str | None) -> Paginated[Connector]:
             params: dict[str, Any] = {

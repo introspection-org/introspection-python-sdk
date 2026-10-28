@@ -181,8 +181,8 @@ class Files:
         task_id: UUID | str | None = None,
         include_versions: bool | None = None,
     ) -> Pager[File, Paginated[File]]:
-        """List files. Iterate the returned :class:`Pager` to stream every
-        file across pages, or call ``.page()`` for the first page only.
+        """List files. The returned pager streams every file across pages;
+        ``.page()`` reads the first page only.
 
         ``metadata`` narrows to files whose metadata holds every pair, each
         matched exactly against the string value; it is sent as one repeated

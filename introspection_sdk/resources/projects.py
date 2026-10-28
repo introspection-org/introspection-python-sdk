@@ -1,8 +1,8 @@
 """``client.projects`` — CP namespace for ``/v1/projects``.
 
-The org's projects, read by slug or id. Read-only here: writing a project
-needs ``projects:write``, which no API key, service account or CLI login
-carries.
+The org's projects, addressed by slug or id. Creating, updating and
+deleting one needs ``projects:write`` / ``projects:delete``, which an
+owner's or admin's session carries and no API key or service account does.
 """
 
 from __future__ import annotations

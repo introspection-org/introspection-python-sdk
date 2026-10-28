@@ -14,6 +14,6 @@
   "mode": "weak",
   "kind": ["exact", "renamed"],
   "ignoreIdentifiers": true,
-  "threshold": 16.0,
+  "threshold": 15.9,
   "reporters": ["console"]
 }

@@ -461,3 +461,30 @@ async def test_async_get_create_and_update(fake_api: FakeAPI):
 
     await members.update(MEMBER_UUID, metadata={})
     assert fake_api.last_request.json() == {"metadata": {}}
+
+
+def test_list_resolves_ids_and_external_keys(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/members", json_body=paginated([member_payload()]))
+    Members(fake_api.client()).list(
+        member_type=MemberType.CUSTOMER,
+        id=[MEMBER_UUID],
+        external_user_id=["user:walk-avery", "user:walk-blake"],
+    ).page()
+    params = fake_api.last_request.params
+    assert params.get("member_type") == "customer"
+    assert params.get_list("id") == [MEMBER_ID]
+    assert params.get_list("external_user_id") == [
+        "user:walk-avery",
+        "user:walk-blake",
+    ]
+
+
+async def test_async_list_by_external_key(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/members", json_body=paginated([member_payload()]))
+    page = await AsyncMembers(fake_api.async_client()).list(
+        external_user_id=["user:walk-avery"]
+    )
+    assert len(page.records) == 1
+    params = fake_api.last_request.params
+    assert params.get_list("external_user_id") == ["user:walk-avery"]
+    assert "id" not in params

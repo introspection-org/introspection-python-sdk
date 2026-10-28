@@ -929,3 +929,27 @@ async def test_async_get_returns_typed_family_member(fake_api: FakeAPI):
 
     assert isinstance(record, ObservationEvent)
     assert record.payload.lens == "task_resolution"
+
+
+def test_list_judgements_of_one_judge(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/events", json_body=cursor_page([judgement_event()], None)
+    )
+    judge = UUID("0199a1b2-0000-7000-8000-00000000a001")
+    page = (
+        _events(fake_api)
+        .list(IntrospectionEventName.JUDGEMENT, judge_id=judge)
+        .page()
+    )
+    assert isinstance(page.records[0], JudgementEvent)
+    assert fake_api.last_request.params.get("judge_id") == str(judge)
+
+
+async def test_async_list_judgements_of_one_judge(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/events", json_body=cursor_page([judgement_event()], None)
+    )
+    events = AsyncEvents(fake_api.async_client())
+    page = await events.list(IntrospectionEventName.JUDGEMENT, judge_id="j-1")
+    assert len(page.records) == 1
+    assert fake_api.last_request.params.get("judge_id") == "j-1"
