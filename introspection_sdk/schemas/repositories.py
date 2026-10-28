@@ -41,6 +41,27 @@ class Repository(_ApiModel):
     is_recipe_source: bool = False
 
 
+class HostedRepositoryCreate(BaseModel):
+    """Body of ``POST /v1/repositories`` for a hosted repository: one the
+    platform serves over its own Git transport."""
+
+    provider: Literal["hosted", "introspection"] = "hosted"
+    slug: str
+    default_branch: str | None = None
+    seed_template: str | None = None
+
+
+class RepositoryBranch(_ApiModel):
+    """A branch of a repository and the commit at its head.
+
+    ``committed_at`` is set only for ``sort="recent"``.
+    """
+
+    name: str
+    sha: str
+    committed_at: datetime | None = None
+
+
 class RepositoryEntry(_ApiModel):
     """One entry of a directory listing."""
 
@@ -140,7 +161,9 @@ class RepositoryMerge(_ApiModel):
 
 
 __all__ = [
+    "HostedRepositoryCreate",
     "Repository",
+    "RepositoryBranch",
     "RepositoryCommit",
     "RepositoryCommitDetail",
     "RepositoryCommitFile",

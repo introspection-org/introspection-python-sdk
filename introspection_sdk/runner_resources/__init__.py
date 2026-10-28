@@ -1,5 +1,13 @@
 """DP-bound namespaces hung off a :class:`Runner` instance."""
 
+from introspection_sdk.runner_resources.aauth import (
+    AAuth,
+    Approvals,
+    AsyncAAuth,
+    AsyncApprovals,
+    AsyncMissions,
+    Missions,
+)
 from introspection_sdk.runner_resources.automations import (
     AsyncAutomations,
     Automations,
@@ -51,6 +59,12 @@ from introspection_sdk.runner_resources.tasks import (
 
 __all__ = [
     "MAX_COMMAND_WAIT_SECONDS",
+    "AAuth",
+    "Approvals",
+    "AsyncAAuth",
+    "AsyncApprovals",
+    "AsyncMissions",
+    "Missions",
     "AsyncImages",
     "AsyncTaskCommands",
     "Images",

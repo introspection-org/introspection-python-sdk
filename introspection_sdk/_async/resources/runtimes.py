@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import builtins
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
+from introspection_sdk._async.resources._crud import _body, _project
 from introspection_sdk._errors import NotFoundError
 from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.pagination import (
@@ -21,7 +23,13 @@ from introspection_sdk.schemas.runner import (
     RunnerSpec,
     RunRequest,
 )
-from introspection_sdk.schemas.runtimes import Runtime
+from introspection_sdk.schemas.runtimes import (
+    Runtime,
+    RuntimeCreate,
+    RuntimeInclude,
+    RuntimeLlmMode,
+    RuntimeUpdate,
+)
 
 
 class AsyncRuntimes:
@@ -76,9 +84,6 @@ class AsyncRuntimes:
             resolved=True,
         )
 
-    # Runtime lifecycle and version selection are managed by the CLI and
-    # platform. The SDK intentionally exposes only read, resolve, and run.
-
     def list(
         self,
         *,
@@ -121,14 +126,115 @@ class AsyncRuntimes:
         return async_cursor_paginate(fetch, start=next)
 
     async def get(
-        self, runtime_id: UUID, *, project: str | None = None
+        self,
+        runtime_id: UUID,
+        *,
+        project: str | None = None,
+        include: builtins.list[RuntimeInclude | str] | None = None,
     ) -> Runtime:
+        """Read one runtime version. ``include`` adds read-time projections
+        (:class:`RuntimeInclude`), such as its ``mcp_requirements``."""
         payload = await self._http.request(
             "GET",
             f"/v1/runtimes/{runtime_id}",
-            params={"project": project},
+            params={
+                "project": project,
+                "include": [str(i) for i in include] if include else None,
+            },
         )
         return Runtime.model_validate(payload)
+
+    async def create(
+        self,
+        *,
+        project: str | UUID,
+        name: str,
+        recipe_id: UUID | str | None = None,
+        slug: str | None = None,
+        description: str | None = None,
+        kind: str | None = None,
+        llm_mode: RuntimeLlmMode | str | None = None,
+        config_json: dict[str, Any] | None = None,
+        template_ref: str | None = None,
+        bootstrap: bool | None = None,
+    ) -> Runtime:
+        """Create a runtime version pinned to ``recipe_id``.
+
+        ``slug`` names the runtime group: an existing group gains this as
+        its next version (the group's id is its ``runtime_group_id``), a new
+        slug starts a group. ``config_json`` carries the runtime's
+        configuration, such as the ``connectors`` it binds. Unset fields
+        take the API's defaults.
+        """
+        body = _body(
+            RuntimeCreate,
+            {
+                "project": str(project),
+                "name": name,
+                "recipe_id": recipe_id,
+                "slug": slug,
+                "description": description,
+                "kind": kind,
+                "llm_mode": llm_mode,
+                "config_json": config_json,
+                "template_ref": template_ref,
+                "bootstrap": bootstrap,
+            },
+        )
+        payload = await self._http.request("POST", "/v1/runtimes", json=body)
+        return Runtime.model_validate(payload)
+
+    async def update(
+        self,
+        runtime_id: UUID | str,
+        *,
+        project: str | UUID | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        llm_mode: RuntimeLlmMode | str | None = None,
+        config_json: dict[str, Any] | None = None,
+        environment: str | None = None,
+        yanked: bool | None = None,
+        yanked_reason: str | None = None,
+        environment_ref: dict[str, str] | None = None,
+    ) -> Runtime:
+        """Update a runtime version; only the fields given are sent.
+
+        ``environment`` points that lane at this version, moving it off the
+        sibling that serves it; ``yanked=True`` withdraws the version.
+        """
+        body = _body(
+            RuntimeUpdate,
+            {
+                "name": name,
+                "description": description,
+                "llm_mode": llm_mode,
+                "config_json": config_json,
+                "environment": environment,
+                "yanked": yanked,
+                "yanked_reason": yanked_reason,
+                "environment_ref": environment_ref,
+            },
+        )
+        payload = await self._http.request(
+            "PATCH",
+            f"/v1/runtimes/{runtime_id}",
+            params=_project(project),
+            json=body,
+        )
+        return Runtime.model_validate(payload)
+
+    async def delete(
+        self, runtime_id: UUID | str, *, project: str | UUID | None = None
+    ) -> None:
+        """Delete a runtime version. Deleting a group's live version takes
+        its sibling versions with it."""
+        await self._http.request(
+            "DELETE",
+            f"/v1/runtimes/{runtime_id}",
+            params=_project(project),
+            expect="empty",
+        )
 
     async def resolve(
         self, runtime: str | UUID, *, project: str | None = None

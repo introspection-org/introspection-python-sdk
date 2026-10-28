@@ -8,12 +8,17 @@ from typing import Any
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._sync.resources._crud import _body, _project
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
 )
 from introspection_sdk.schemas.pagination import Paginated
-from introspection_sdk.schemas.recipes import Recipe
+from introspection_sdk.schemas.recipes import (
+    Recipe,
+    RecipeCreate,
+    RecipeUpdate,
+)
 
 
 class Recipes:
@@ -54,3 +59,71 @@ class Recipes:
     def get(self, recipe_id: UUID) -> Recipe:
         payload = self._http.request("GET", f"/v1/recipes/{recipe_id}")
         return Recipe.model_validate(payload)
+
+    # --- writes -------------------------------------------------------
+
+    def create(
+        self,
+        *,
+        project: str | UUID,
+        repository_id: UUID | str,
+        name: str,
+        git_ref: str | None = None,
+        git_commit_sha: str | None = None,
+        git_commit_subject: str | None = None,
+        sub_path: str | None = None,
+        slug: str | None = None,
+        description: str | None = None,
+    ) -> Recipe:
+        """Pin a recipe to a commit of ``repository_id``.
+
+        ``git_commit_sha`` is the 40-character commit and ``git_ref`` the
+        branch, tag or short sha it was picked from. ``slug`` is derived
+        from ``name`` and the short sha when omitted; ``sub_path`` points
+        into a monorepo.
+        """
+        body = _body(
+            RecipeCreate,
+            {
+                "project": str(project),
+                "repository_id": repository_id,
+                "name": name,
+                "git_ref": git_ref,
+                "git_commit_sha": git_commit_sha,
+                "git_commit_subject": git_commit_subject,
+                "sub_path": sub_path,
+                "slug": slug,
+                "description": description,
+            },
+        )
+        payload = self._http.request("POST", "/v1/recipes", json=body)
+        return Recipe.model_validate(payload)
+
+    def update(
+        self,
+        recipe_id: UUID | str,
+        *,
+        project: str | UUID | None = None,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Recipe:
+        """Rename or redescribe a recipe; only the fields given are sent."""
+        payload = self._http.request(
+            "PATCH",
+            f"/v1/recipes/{recipe_id}",
+            params=_project(project),
+            json=_body(
+                RecipeUpdate, {"name": name, "description": description}
+            ),
+        )
+        return Recipe.model_validate(payload)
+
+    def delete(
+        self, recipe_id: UUID | str, *, project: str | UUID | None = None
+    ) -> None:
+        self._http.request(
+            "DELETE",
+            f"/v1/recipes/{recipe_id}",
+            params=_project(project),
+            expect="empty",
+        )

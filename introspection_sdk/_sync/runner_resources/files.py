@@ -11,6 +11,7 @@ import mimetypes
 from collections.abc import Iterator
 from pathlib import Path
 from typing import IO, Any
+from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
 from introspection_sdk.pagination import (
@@ -176,6 +177,9 @@ class Files:
         storage_path: str | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
+        name_contains: str | None = None,
+        task_id: UUID | str | None = None,
+        include_versions: bool | None = None,
     ) -> Pager[File, Paginated[File]]:
         """List files. Iterate the returned :class:`Pager` to stream every
         file across pages, or call ``.page()`` for the first page only.
@@ -184,7 +188,13 @@ class Files:
         matched exactly against the string value; it is sent as one repeated
         ``metadata=key:value`` param per entry (at most 16). Keys are letters,
         digits, ``_`` and ``-``. A server that predates the filter ignores it
-        and returns the unfiltered list."""
+        and returns the unfiltered list.
+
+        ``name_contains`` matches a case-insensitive substring of the name
+        (``%``, ``_`` and ``\\`` literally). ``task_id`` narrows to the files
+        a task produced. A file that has versions is listed only with
+        ``include_versions=True``, which also lists its superseded
+        versions."""
 
         def fetch(cursor: str | None) -> Paginated[File]:
             params: dict[str, Any] = {
@@ -204,6 +214,9 @@ class Files:
                     if metadata
                     else None
                 ),
+                "name_contains": name_contains,
+                "task_id": str(task_id) if task_id is not None else None,
+                "include_versions": include_versions,
             }
             payload = self._http.request("GET", "/v1/files", params=params)
             return Paginated[File].model_validate(payload)

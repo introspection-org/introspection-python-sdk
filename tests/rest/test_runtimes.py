@@ -382,7 +382,7 @@ def test_run_returns_runner_with_context(fake_api: FakeAPI):
 def test_runtime_surface_excludes_operator_controls(fake_api: FakeAPI):
     runtimes = _runtimes(fake_api)
     handle = runtimes("checkout-agent")
-    for method in ("create", "update", "yank", "unyank"):
+    for method in ("yank", "unyank"):
         assert not hasattr(runtimes, method)
     for method in ("pin", "activate"):
         assert not hasattr(handle, method)

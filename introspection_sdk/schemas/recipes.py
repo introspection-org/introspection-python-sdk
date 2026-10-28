@@ -32,4 +32,26 @@ class Recipe(_ApiModel):
     updated_at: datetime
 
 
-__all__ = ["Recipe"]
+class RecipeCreate(BaseModel):
+    """Body of ``POST /v1/recipes``: a recipe pinned to one commit of a
+    repository."""
+
+    project: str
+    name: str
+    repository_id: UUID | None = None
+    git_ref: str | None = None
+    git_commit_sha: str | None = None
+    git_commit_subject: str | None = None
+    sub_path: str | None = None
+    slug: str | None = None
+    description: str | None = None
+
+
+class RecipeUpdate(BaseModel):
+    """Body of ``PATCH /v1/recipes/{id}``; an unset field is left as is."""
+
+    name: str | None = None
+    description: str | None = None
+
+
+__all__ = ["Recipe", "RecipeCreate", "RecipeUpdate"]

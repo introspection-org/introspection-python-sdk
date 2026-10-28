@@ -9,6 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._sync.resources._crud import _project
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -298,7 +299,8 @@ class Connectors:
     """CP ``/v1/connectors`` namespace.
 
     Connector CRUD uses the project carried by the authenticated
-    credential. Nested ``connections`` and ``authorize`` are addressed
+    credential; :meth:`list` and :meth:`delete` take ``project`` for a
+    credential that names none (an owner's session). Nested ``connections`` and ``authorize`` are addressed
     by connector id alone.
     """
 
@@ -309,15 +311,18 @@ class Connectors:
     def list(
         self,
         *,
+        project: str | UUID | None = None,
         limit: int | None = None,
         next: str | None = None,
     ) -> Pager[Connector, Paginated[Connector]]:
         """List connectors. Iterate the returned :class:`Pager` to
         stream every connector across pages, or call ``.page()`` for the
-        first page only."""
+        first page only. ``project`` (slug or id) is needed only when the
+        credential does not name one."""
 
         def fetch(cursor: str | None) -> Paginated[Connector]:
             params: dict[str, Any] = {
+                **_project(project),
                 "limit": limit,
                 "next": cursor,
             }
@@ -502,11 +507,14 @@ class Connectors:
         )
         return Connector.model_validate(payload)
 
-    def delete(self, connector_id: UUID) -> None:
+    def delete(
+        self, connector_id: UUID, *, project: str | UUID | None = None
+    ) -> None:
         """Soft-delete a connector; its connections are revoked."""
         self._http.request(
             "DELETE",
             f"/v1/connectors/{connector_id}",
+            params=_project(project),
             expect="empty",
         )
 

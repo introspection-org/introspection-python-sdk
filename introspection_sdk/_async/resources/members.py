@@ -32,6 +32,8 @@ def _list_params(
     application_idp_id: UUID | None,
     tag: str | None,
     metadata: dict[str, str] | None,
+    ids: builtins.list[UUID] | None,
+    external_user_ids: builtins.list[str] | None,
     limit: int | None,
     cursor: str | None,
 ) -> dict[str, Any]:
@@ -48,6 +50,8 @@ def _list_params(
             if metadata
             else None
         ),
+        "id": [str(i) for i in ids] if ids else None,
+        "external_user_id": external_user_ids or None,
         "limit": limit,
         "next": cursor,
     }
@@ -99,6 +103,8 @@ class AsyncMembers:
         application_idp_id: UUID | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
+        id: builtins.list[UUID] | None = None,
+        external_user_id: builtins.list[str] | None = None,
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Member, Paginated[Member]]:
@@ -111,8 +117,10 @@ class AsyncMembers:
         tag exactly. ``metadata`` matches members whose metadata holds every
         pair, each compared exactly against the string value; it is sent as
         one repeated ``metadata=key:value`` param per entry (distinct keys,
-        at most 16). ``project`` is only needed by a credential that is not
-        already org-scoped (a deployment token)."""
+        at most 16). ``id`` and ``external_user_id`` resolve those members
+        (tier-prefixed keys such as ``user:abc``), each sent as a repeated
+        param; the two union. ``project`` is only needed by a credential
+        that is not already org-scoped (a deployment token)."""
         # unasync: end
         """List members. Iterate the returned :class:`Pager` to stream every
         member across pages, or call ``.page()`` for the first page only.
@@ -121,8 +129,10 @@ class AsyncMembers:
         tag exactly. ``metadata`` matches members whose metadata holds every
         pair, each compared exactly against the string value; it is sent as
         one repeated ``metadata=key:value`` param per entry (distinct keys,
-        at most 16). ``project`` is only needed by a credential that is not
-        already org-scoped (a deployment token)."""
+        at most 16). ``id`` and ``external_user_id`` resolve those members
+        (tier-prefixed keys such as ``user:abc``), each sent as a repeated
+        param; the two union. ``project`` is only needed by a credential
+        that is not already org-scoped (a deployment token)."""
 
         async def fetch(cursor: str | None) -> Paginated[Member]:
             params = _list_params(
@@ -132,6 +142,8 @@ class AsyncMembers:
                 application_idp_id=application_idp_id,
                 tag=tag,
                 metadata=metadata,
+                ids=id,
+                external_user_ids=external_user_id,
                 limit=limit,
                 cursor=cursor,
             )

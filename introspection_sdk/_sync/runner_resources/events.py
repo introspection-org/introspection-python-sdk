@@ -133,6 +133,7 @@ def build_event_params(
     status: str | None = None,
     automation_id: UUID | str | None = None,
     task_id: UUID | str | None = None,
+    judge_id: UUID | str | None = None,
 ) -> dict[str, Any]:
     """Fold the shared list/arrow kwargs into the wire query params.
 
@@ -141,8 +142,8 @@ def build_event_params(
     ``conversation_ids`` / ``lens`` / ``pattern_id`` / ``include_superseded``
     / ``severities`` / ``runtime_group_unattributed``; pattern: ``lens`` /
     ``status``; automation triggered/skipped: ``automation_id`` /
-    ``task_id``) are passed through; the server validates them against the
-    requested family's allow-map.
+    ``task_id``; judgement: ``judge_id``) are passed through; the server
+    validates them against the requested family's allow-map.
     """
     if not event_name:
         raise ValueError(
@@ -174,6 +175,7 @@ def build_event_params(
         "status": status,
         "automation_id": automation_id,
         "task_id": task_id,
+        "judge_id": judge_id,
     }
 
 
@@ -221,6 +223,7 @@ class Events:
         status: str | None = None,
         automation_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
+        judge_id: UUID | str | None = None,
         format: ReadFormat = "json",
     ) -> Pager[Event, Paginated[Event]]:
         """List events of one family (cursor envelope). Iterate the returned
@@ -271,6 +274,7 @@ class Events:
                 status=status,
                 automation_id=automation_id,
                 task_id=task_id,
+                judge_id=judge_id,
             )
             if format == "arrow":
                 raw = self._http.request(
@@ -349,6 +353,7 @@ class Events:
         status: str | None = None,
         automation_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
+        judge_id: UUID | str | None = None,
     ) -> ArrowPageIterator:
         """Columnar accessor: iterate one ``pyarrow.Table`` per server page
         (constant memory — envelope columns + the family's typed ``payload``
@@ -391,6 +396,7 @@ class Events:
                 status=status,
                 automation_id=automation_id,
                 task_id=task_id,
+                judge_id=judge_id,
             )
             raw = self._http.request(
                 "GET",

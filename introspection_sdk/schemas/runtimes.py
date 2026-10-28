@@ -11,7 +11,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ApiModel(BaseModel):
@@ -43,6 +43,16 @@ class RuntimeGroupType(StrEnum):
     CUSTOM = "custom"
 
 
+class RuntimeInclude(StrEnum):
+    """A read-time projection :meth:`Runtimes.get` can ask for.
+
+    - ``mcp_requirements``: every MCP server the recipe declares, with the
+      connector, connection and endpoint that satisfy it per environment.
+    """
+
+    MCP_REQUIREMENTS = "mcp_requirements"
+
+
 class Runtime(ApiModel):
     id: UUID
     org_id: UUID
@@ -50,6 +60,27 @@ class Runtime(ApiModel):
     name: str
     slug: str
     recipe_id: UUID | None = None
+    # The group every version of this runtime shares; its slug or this id
+    # selects the group's live version.
+    runtime_group_id: UUID | None = None
+    created_by_member_id: UUID | None = None
+    # `byor`, `byoh` or `platform`; a string so a kind the API adds reads.
+    kind: str = "byor"
+    config_json: dict[str, Any] | None = None
+    # `preview` or `production`, and the ref the recipe is read at.
+    recipe_kind: str = "production"
+    recipe_ref: str = "main"
+    # The environments this version serves.
+    environments: list[str] = Field(default_factory=list)
+    # The image bake: `pending`, `queued`, `building`, `ready`, `failed` or
+    # `skipped`, its error, and what the build produced (`image_tag`,
+    # `built_at`, `size_bytes`, ...).
+    image_build_status: str = "pending"
+    image_build_error_message: str | None = None
+    image_build_metadata: dict[str, Any] | None = None
+    # Only with `include=[RuntimeInclude.MCP_REQUIREMENTS]`: each declared
+    # MCP server and what satisfies it per environment.
+    mcp_requirements: list[dict[str, Any]] | None = None
     is_active: bool = False
     description: str | None = None
     metadata: dict[str, Any] | None = None
@@ -74,8 +105,40 @@ class Runtime(ApiModel):
     image_repository: str | None = None
 
 
+class RuntimeCreate(BaseModel):
+    """Body of ``POST /v1/runtimes``: a new version of the group ``slug``
+    names (or a new group), pinned to ``recipe_id``."""
+
+    project: str
+    name: str
+    recipe_id: UUID | None = None
+    slug: str | None = None
+    description: str | None = None
+    kind: str | None = None
+    llm_mode: RuntimeLlmMode | None = None
+    config_json: dict[str, Any] | None = None
+    template_ref: str | None = None
+    bootstrap: bool | None = None
+
+
+class RuntimeUpdate(BaseModel):
+    """Body of ``PATCH /v1/runtimes/{id}``; an unset field is left as is."""
+
+    name: str | None = None
+    description: str | None = None
+    llm_mode: RuntimeLlmMode | None = None
+    config_json: dict[str, Any] | None = None
+    environment: str | None = None
+    yanked: bool | None = None
+    yanked_reason: str | None = None
+    environment_ref: dict[str, str] | None = None
+
+
 __all__ = [
     "Runtime",
+    "RuntimeCreate",
     "RuntimeGroupType",
+    "RuntimeInclude",
     "RuntimeLlmMode",
+    "RuntimeUpdate",
 ]

@@ -21,19 +21,23 @@ from introspection_sdk.resources import (
     Automations,
     Connectors,
     Credentials,
+    Endpoints,
     Experiments,
     Integrations,
     Judges,
     Members,
     Oidc,
+    Organizations,
     Projects,
     Recipes,
     Repositories,
     Runtimes,
     Tags,
+    Tokens,
     Variables,
 )
 from introspection_sdk.runner_resources import (
+    AAuth,
     AppConnections,
     Conversations,
     Events,
@@ -90,6 +94,10 @@ class IntrospectionClient:
     integrations: Integrations
     judges: Judges
     oidc: Oidc
+    organizations: Organizations
+    tokens: Tokens
+    endpoints: Endpoints
+    aauth: AAuth
 
     def __init__(
         self,
@@ -150,6 +158,7 @@ class IntrospectionClient:
         self.shares = Shares(self._dp_http)
         self.connections = AppConnections(self._dp_http)
         self.images = Images(self._dp_http)
+        self.aauth = AAuth(self._dp_http)
         # Project administration: each route needs an org credential (a
         # member session or access token); a project API key carries none
         # of their scopes.
@@ -161,6 +170,9 @@ class IntrospectionClient:
         self.integrations = Integrations(self._http)
         self.judges = Judges(self._http)
         self.oidc = Oidc(self._http)
+        self.organizations = Organizations(self._http)
+        self.tokens = Tokens(self._http)
+        self.endpoints = Endpoints(self._http)
 
     @classmethod
     def from_service_account(

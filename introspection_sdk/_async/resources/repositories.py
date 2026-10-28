@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import builtins
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 from uuid import UUID
 
 from pydantic import TypeAdapter
 
+from introspection_sdk._async.resources._crud import _body, _project
 from introspection_sdk._http import RawResponse, _AsyncHttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -16,7 +17,9 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.repositories import (
+    HostedRepositoryCreate,
     Repository,
+    RepositoryBranch,
     RepositoryCommit,
     RepositoryCommitDetail,
     RepositoryContent,
@@ -39,6 +42,10 @@ def _contents_path(repository_id: UUID | str, path: str) -> str:
 
 def _commits_path(repository_id: UUID | str) -> str:
     return f"/v1/repositories/{repository_id}/commits"
+
+
+def _branches_path(repository_id: UUID | str) -> str:
+    return f"/v1/repositories/{repository_id}/branches"
 
 
 def _commit_path(repository_id: UUID | str, sha: str) -> str:
@@ -207,6 +214,74 @@ class AsyncRepositories:
             params={"project": project},
         )
         return Repository.model_validate(payload)
+
+    async def create(
+        self,
+        slug: str,
+        *,
+        project: str | UUID | None = None,
+        default_branch: str | None = None,
+        seed_template: str | None = None,
+    ) -> Repository:
+        """Create a hosted repository, served over the platform's own Git
+        transport at :attr:`Repository.url`.
+
+        It starts ``provisioning_status="pending"``; poll :meth:`get` until
+        it is ``ready``. Provisioning seeds it from ``seed_template`` (a
+        template the deployment ships), or the deployment's default.
+        """
+        body = _body(
+            HostedRepositoryCreate,
+            {
+                "slug": slug,
+                "default_branch": default_branch,
+                "seed_template": seed_template,
+            },
+        )
+        payload = await self._http.request(
+            "POST", "/v1/repositories", params=_project(project), json=body
+        )
+        return Repository.model_validate(payload)
+
+    async def delete(
+        self,
+        repository_id: UUID | str,
+        *,
+        project: str | UUID | None = None,
+    ) -> None:
+        """Unlink a repository from the project; delete its recipes first."""
+        await self._http.request(
+            "DELETE",
+            f"/v1/repositories/{repository_id}",
+            params=_project(project),
+            expect="empty",
+        )
+
+    def branches(
+        self,
+        repository_id: UUID | str,
+        q: str | None = None,
+        sort: Literal["name", "recent"] | None = None,
+        limit: int | None = None,
+    ) -> AsyncPager[RepositoryBranch, Paginated[RepositoryBranch]]:
+        """The repository's branches across pages, by name; ``q`` keeps
+        those whose name contains it, ignoring case. ``sort="recent"``
+        dates each page's branches by their head commit."""
+
+        async def fetch(cursor: str | None) -> Paginated[RepositoryBranch]:
+            payload = await self._dp_http.request(
+                "GET",
+                _branches_path(repository_id),
+                params={
+                    "q": q,
+                    "sort": sort,
+                    "cursor": cursor,
+                    "limit": limit,
+                },
+            )
+            return Paginated[RepositoryBranch].model_validate(payload)
+
+        return async_cursor_paginate(fetch)
 
     def commits(
         self,

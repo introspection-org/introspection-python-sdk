@@ -25,6 +25,7 @@ from introspection_sdk.resources.credentials import (
     AsyncCredentials,
     Credentials,
 )
+from introspection_sdk.resources.endpoints import AsyncEndpoints, Endpoints
 from introspection_sdk.resources.experiments import (
     AsyncExperimentHandle,
     AsyncExperiments,
@@ -38,6 +39,10 @@ from introspection_sdk.resources.integrations import (
 from introspection_sdk.resources.judges import AsyncJudges, Judges
 from introspection_sdk.resources.members import AsyncMembers, Members
 from introspection_sdk.resources.oidc import AsyncOidc, Oidc
+from introspection_sdk.resources.organizations import (
+    AsyncOrganizations,
+    Organizations,
+)
 from introspection_sdk.resources.projects import AsyncProjects, Projects
 from introspection_sdk.resources.recipes import AsyncRecipes, Recipes
 from introspection_sdk.resources.repositories import (
@@ -55,6 +60,7 @@ from introspection_sdk.resources.runtimes import (
     Runtimes,
 )
 from introspection_sdk.resources.tags import AsyncTags, Tags
+from introspection_sdk.resources.tokens import AsyncTokens, Tokens
 from introspection_sdk.resources.variables import AsyncVariables, Variables
 from introspection_sdk.runner_resources.automations import (
     AsyncAutomations,
@@ -80,6 +86,12 @@ __all__ = [
     "Judges",
     "AsyncOidc",
     "Oidc",
+    "AsyncEndpoints",
+    "Endpoints",
+    "AsyncOrganizations",
+    "Organizations",
+    "AsyncTokens",
+    "Tokens",
     "AsyncProjects",
     "Projects",
     "AsyncVariables",

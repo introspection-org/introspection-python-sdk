@@ -10,8 +10,9 @@ a signed-in ``introspection login`` (or ``INTROSPECTION_CP_SESSION``)::
     VCR_MODE=record uv run pytest tests/walk       # re-record the HAR
     VCR_MODE=passthrough uv run pytest tests/walk  # live, records nothing
 
-A route the SDK has no method for goes through ``Raw`` (the SDK's own HTTP
-client) under a ``todo(sdk)`` comment, and the run report lists it.
+A route the SDK has no method for would go through ``Raw`` (the SDK's own
+HTTP client) under a ``todo(sdk)`` comment, and the run report would list
+it; today every call is an SDK method.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from __future__ import annotations
 import io
 import json
 import shutil
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -39,16 +40,18 @@ from introspection_sdk.auth import service_account_token
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.applications import Application
 from introspection_sdk.schemas.connectors import Connector
+from introspection_sdk.schemas.endpoints import Endpoint
+from introspection_sdk.schemas.events import IntrospectionEventName
 from introspection_sdk.schemas.experiments import Experiment
 from introspection_sdk.schemas.files import File
 from introspection_sdk.schemas.judges import Judge
-from introspection_sdk.schemas.members import CustomerMemberCreate
+from introspection_sdk.schemas.members import CustomerMemberCreate, MemberType
 from introspection_sdk.schemas.projects import Project
 from introspection_sdk.schemas.recipes import Recipe
 from introspection_sdk.schemas.repositories import Repository
-from introspection_sdk.schemas.runtimes import Runtime
+from introspection_sdk.schemas.runtimes import Runtime, RuntimeInclude
 from introspection_sdk.schemas.tags import AccessTagCreate, TagKind, TagUpdate
-from introspection_sdk.schemas.tasks import Task, TaskCreateResponse
+from introspection_sdk.schemas.tasks import Task
 
 from .conftest import HAR
 from .settings import (
@@ -97,11 +100,11 @@ class World:
     application: Application = field(init=False)
     repository: Repository = field(init=False)
     recipe: Recipe = field(init=False)
-    pinned_recipe: dict[str, Any] = field(default_factory=dict)
+    pinned_recipe: Recipe = field(init=False)
     connector: Connector = field(init=False)
     runtime: Runtime = field(init=False)
     runtime_v2: Runtime = field(init=False)
-    endpoint: dict[str, Any] = field(default_factory=dict)
+    endpoint: Endpoint = field(init=False)
     runner: Runner = field(init=False)
     input_file: File = field(init=False)
     task: Task = field(init=False)
@@ -113,10 +116,11 @@ class World:
 
     @property
     def group_id(self) -> str:
-        return _extra(self.runtime, "runtime_group_id")
+        return str(self.runtime.runtime_group_id)
 
     def raw(self, client: IntrospectionClient, plane: str = "cp") -> Raw:
-        # todo(sdk): each use is a documented route with no SDK method.
+        """A route the SDK has no method for (none today), under a
+        ``todo(sdk)`` comment at the call."""
         http = client._http if plane == "cp" else client._dp_http
         return Raw(http, self.report)
 
@@ -163,16 +167,6 @@ def expect_not_found(read: Any) -> None:
         read()
 
 
-def _extra(model: Any, name: str) -> str:
-    """A field the response carries that the SDK's model does not declare.
-
-    todo(sdk): ``Runtime`` declares neither ``runtime_group_id`` nor
-    ``image_build_status`` (nor ``kind``, ``config_json``,
-    ``recipe_kind``, ``environments``, ...); they arrive as untyped extras.
-    """
-    return str((model.model_extra or {})[name])
-
-
 def walk_step(n: int, name: str) -> pytest.MarkDecorator:
     return pytest.mark.walk_step(n, name)
 
@@ -187,22 +181,16 @@ def test_00_clean_slate(world: World) -> None:
     # A run that crashed before its teardown left its project behind; one
     # still running is younger than the cutoff. Measured from this run's own
     # slug, so replay decides as the recording did.
-    # todo(sdk): no `projects.create` or `delete`.
     now = walk_project_born(w.settings.project_slug, WALK.project_slug_prefix)
     assert now is not None, "the walk's own slug carries its time"
     for other in w.owner.projects.list():
         born = walk_project_born(other.slug or "", WALK.project_slug_prefix)
         if born is not None and now - born > WALK.stale_after_seconds:
-            w.raw(w.owner).delete(f"/v1/projects/{other.id}")
-    w.project = Project.model_validate(
-        w.raw(w.owner).post(
-            "/v1/projects",
-            {
-                "name": "SDK end-to-end walk",
-                "slug": w.settings.project_slug,
-                "deployment_id": str(w.login_project.deployment_id),
-            },
-        )
+            w.owner.projects.delete(other.id)
+    w.project = w.owner.projects.create(
+        name="SDK end-to-end walk",
+        slug=w.settings.project_slug,
+        deployment_id=w.login_project.deployment_id,
     )
     if w.mode == "record":
         HAR.parent.mkdir(parents=True, exist_ok=True)
@@ -217,12 +205,9 @@ def test_00_clean_slate(world: World) -> None:
         )
     # The owner's Data Plane token for the project: it carries `git:push`,
     # which no service account can, and the member-only Data Plane writes.
-    # todo(sdk): `POST /v1/tokens` has no method.
-    minted = w.raw(w.owner).post(
-        "/v1/tokens", {"project": str(w.project.id), "expires_hours": 24}
-    )
-    assert minted["project_id"] == str(w.project.id)
-    w.member_token = minted["access_token"]
+    minted = w.owner.tokens.create(project=w.project.id, expires_hours=24)
+    assert minted.project_id == w.project.id
+    w.member_token = minted.access_token.get_secret_value()
     w.member = IntrospectionClient(
         token=w.member_token,
         base_api_url=w.settings.base_api_url,
@@ -252,28 +237,23 @@ def test_01_project(world: World) -> None:
     assert w.owner.projects.get(str(w.project.id)).id == w.project.id
     assert any(p.id == w.project.id for p in w.owner.projects.list())
 
-    cp = w.raw(w.owner)
-    # todo(sdk): no `projects.update`, `create` or `delete`.
-    path = f"/v1/projects/{w.project.id}"
-    updated = cp.patch(
-        path, {"description": "The SDK end-to-end walk ran here"}
+    projects = w.owner.projects
+    updated = projects.update(
+        w.project.id, description="The SDK end-to-end walk ran here"
     )
-    assert updated["description"] == "The SDK end-to-end walk ran here"
+    assert updated.description == "The SDK end-to-end walk ran here"
     # A PATCH with only nulls is "no fields to update", so a project that
     # had no description gets an empty one back.
-    restored = cp.patch(path, {"description": w.original_description or ""})
-    assert (restored["description"] or "") == (w.original_description or "")
+    restored = projects.update(
+        w.project.id, description=w.original_description or ""
+    )
+    assert (restored.description or "") == (w.original_description or "")
 
     # A sibling is created and deleted while the walk's project is in use.
-    sibling = Project.model_validate(
-        cp.post(
-            "/v1/projects",
-            {
-                "name": f"{w.project.name} (walk)",
-                "slug": f"{w.project.slug}{WALK.sibling_suffix}",
-                "deployment_id": str(w.project.deployment_id),
-            },
-        )
+    sibling = projects.create(
+        name=f"{w.project.name} (walk)",
+        slug=f"{w.project.slug}{WALK.sibling_suffix}",
+        deployment_id=w.project.deployment_id,
     )
     assert sibling.deployment_id == w.project.deployment_id
     assert stable({**plain(sibling), "name": None, "slug": None}) == snapshot(
@@ -288,7 +268,7 @@ def test_01_project(world: World) -> None:
             "created_by_member_id": "[uuid]",
         }
     )
-    cp.delete(f"/v1/projects/{sibling.id}")
+    projects.delete(sibling.id)
     expect_not_found(lambda: w.owner.projects.get(str(sibling.id)))
 
 
@@ -464,18 +444,8 @@ def test_02_application(world: World) -> None:
 )
 def test_03_repository(world: World) -> None:
     w = world
-    q = {"project": str(w.project.id)}
-    # todo(sdk): `POST /v1/repositories` is documented for the CLI only.
-    created = Repository.model_validate(
-        w.raw(w.sa).post(
-            "/v1/repositories",
-            {
-                "provider": "hosted",
-                "slug": WALK.recipe_slug,
-                "default_branch": "main",
-            },
-            q,
-        )
+    created = w.sa.repositories.create(
+        WALK.recipe_slug, project=w.project.id, default_branch="main"
     )
     assert created.url, "the credential-free Git transport URL"
     assert stable(created) == snapshot(
@@ -516,17 +486,13 @@ def test_03_repository(world: World) -> None:
         label="seed recipe",
     )
     seed = next(r for r in seeded if r.repository_id == w.repository.id)
-    # todo(sdk): no `runtimes.create`.
-    seed_runtime = w.raw(w.sa).post(
-        "/v1/runtimes",
-        {
-            "project": str(w.project.id),
-            "recipe_id": str(seed.id),
-            "name": WALK.runtime_slug,
-            "slug": WALK.runtime_slug,
-        },
+    seed_runtime = w.sa.runtimes.create(
+        project=w.project.id,
+        recipe_id=seed.id,
+        name=WALK.runtime_slug,
+        slug=WALK.runtime_slug,
     )
-    assert seed_runtime["slug"] == WALK.runtime_slug
+    assert seed_runtime.slug == WALK.runtime_slug
 
     if w.recipe_dir is not None:
         push_recipe(w.recipe_dir, created.url, w.member_token)
@@ -558,9 +524,8 @@ def test_04_recipe(world: World) -> None:
     head = w.sa.repositories.commits(repo, sha="main").records[0]
     assert head.sha, "a commit on the hosted main"
     assert w.sa.repositories.commit(repo, head.sha).sha == head.sha
-    # todo(sdk): no `repositories.branches`.
-    branches = w.raw(w.sa, "dp").get(f"/v1/repositories/{repo}/branches")
-    assert any(b["name"] == "main" for b in branches["records"])
+    branches = w.sa.repositories.branches(repo).page()
+    assert any(b.name == "main" for b in branches.records)
     entry = w.sa.repositories.contents.get(
         repo, "agents/scripted.yaml", ref=head.sha
     )
@@ -611,29 +576,23 @@ def test_04_recipe(world: World) -> None:
         }
     )
     # A second pin of the same commit under the walk's own name: a sibling
-    # of the push's row, not the same row. todo(sdk): no `recipes.create`.
-    w.pinned_recipe = w.raw(w.sa).post(
-        "/v1/recipes",
-        {
-            "project": str(w.project.id),
-            "repository_id": str(repo),
-            "name": "hello-mcp (walk pin)",
-            "git_ref": "main",
-            "git_commit_sha": head.sha,
-        },
+    # of the push's row, not the same row.
+    w.pinned_recipe = w.sa.recipes.create(
+        project=w.project.id,
+        repository_id=repo,
+        name="hello-mcp (walk pin)",
+        git_ref="main",
+        git_commit_sha=head.sha,
     )
-    assert w.pinned_recipe["git_commit_sha"] == head.sha
-    assert w.pinned_recipe["id"] != str(w.recipe.id)
+    assert w.pinned_recipe.git_commit_sha == head.sha
+    assert w.pinned_recipe.id != w.recipe.id
 
     assert w.sa.recipes.get(w.recipe.id).slug == w.recipe.slug
     assert any(
         r.id == w.recipe.id for r in w.sa.recipes.list(project=w.project.id)
     )
-    # todo(sdk): no `recipes.update`.
-    updated = w.raw(w.sa).patch(
-        f"/v1/recipes/{w.recipe.id}", {"description": "The walk's recipe"}
-    )
-    assert updated["description"] == "The walk's recipe"
+    updated = w.sa.recipes.update(w.recipe.id, description="The walk's recipe")
+    assert updated.description == "The walk's recipe"
 
 
 @walk_step(
@@ -781,7 +740,7 @@ def _versioned(client: IntrospectionClient, w: World) -> Runtime | None:
 
 
 def _baked(r: Runtime | None) -> bool:
-    return r is not None and _extra(r, "image_build_status") in (
+    return r is not None and r.image_build_status in (
         "ready",
         "failed",
     )
@@ -803,7 +762,7 @@ def test_07_runtime(world: World) -> None:
     )
     assert runtime is not None
     w.runtime = runtime
-    assert _extra(w.runtime, "image_build_status") == "ready"
+    assert w.runtime.image_build_status == "ready"
     assert stable(w.runtime) == snapshot(
         {
             "id": "[uuid]",
@@ -822,6 +781,7 @@ def test_07_runtime(world: World) -> None:
             "yanked_reason": None,
             "environment_ref": None,
             "runtime_group_type": "custom",
+            "mcp_requirements": None,
             "template_ref": None,
             "image_revision": None,
             "image_commit_subject": None,
@@ -847,22 +807,18 @@ def test_07_runtime(world: World) -> None:
 
     # A version's identity in its group is its recipe, so the next version
     # pins the walk's own recipe of the same commit.
-    # todo(sdk): no `runtimes.create` / `runtimes.update`.
-    created = w.raw(w.sa).post(
-        "/v1/runtimes",
-        {
-            "project": str(w.project.id),
-            "recipe_id": w.pinned_recipe["id"],
-            "name": WALK.runtime_slug,
-            "slug": WALK.runtime_slug,
-            "config_json": {"connectors": [WALK.connector_name]},
-        },
+    created = w.sa.runtimes.create(
+        project=w.project.id,
+        recipe_id=w.pinned_recipe.id,
+        name=WALK.runtime_slug,
+        slug=WALK.runtime_slug,
+        config_json={"connectors": [WALK.connector_name]},
     )
-    assert created["runtime_group_id"] == w.group_id
+    assert str(created.runtime_group_id) == w.group_id
     runtime_v2 = settled(
         w.mode,
-        lambda: w.sa.runtimes.get(created["id"]),
-        lambda: w.sa_quiet.runtimes.get(created["id"]),
+        lambda: w.sa.runtimes.get(created.id),
+        lambda: w.sa_quiet.runtimes.get(created.id),
         _baked,
         label="runtime bake",
         timeout=1800,
@@ -870,15 +826,14 @@ def test_07_runtime(world: World) -> None:
     )
     assert runtime_v2 is not None
     w.runtime_v2 = runtime_v2
-    assert _extra(w.runtime_v2, "image_build_status") == "ready"
-    described = w.raw(w.sa).patch(
-        f"/v1/runtimes/{w.runtime_v2.id}",
-        {"description": "the walk's own version"},
+    assert w.runtime_v2.image_build_status == "ready"
+    described = w.sa.runtimes.update(
+        w.runtime_v2.id, description="the walk's own version"
     )
-    assert described["description"] == "the walk's own version"
+    assert described.description == "the walk's own version"
     # The list serves the group's live version, the newest one.
     assert any(
-        _extra(r, "runtime_group_id") == w.group_id
+        str(r.runtime_group_id) == w.group_id
         for r in w.sa.runtimes.list(
             project=str(w.project.id), runtime=WALK.runtime_slug
         )
@@ -937,13 +892,12 @@ def test_08_connection_and_endpoint(world: World) -> None:
         for c in w.sa.connectors.connections.list(w.connector.id)
     )
 
-    cp = w.raw(w.sa)
-    q = {"project": str(w.project.id)}
-    # todo(sdk): no `endpoints` namespace.
-    endpoints = cp.get(
-        "/v1/endpoints", {**q, "mcp_server_id": WALK.mcp_server_id}
+    endpoints = w.sa.endpoints
+    w.endpoint = (
+        endpoints.list(project=w.project.id, mcp_server_id=WALK.mcp_server_id)
+        .page()
+        .records[0]
     )
-    w.endpoint = endpoints["records"][0]
     assert stable(w.endpoint) == snapshot(
         {
             "created_at": "[timestamp]",
@@ -975,21 +929,16 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "created_by_member_id": "[uuid]",
         }
     )
-    read = cp.get(f"/v1/endpoints/{w.endpoint['id']}", q)
-    assert read["kind"] == "mcp"
-    renamed = cp.patch(
-        f"/v1/endpoints/{w.endpoint['id']}", {"name": "hello-mcp (walk)"}, q
+    read = endpoints.get(w.endpoint.id, project=w.project.id)
+    assert read.kind == "mcp"
+    renamed = endpoints.update(
+        w.endpoint.id, project=w.project.id, name="hello-mcp (walk)"
     )
-    assert renamed["name"] == "hello-mcp (walk)"
+    assert renamed.name == "hello-mcp (walk)"
 
-    # todo(sdk): `connections.get_token` takes no `runtime`.
-    token = cp.post(
-        "/v1/oauth/connections/token",
-        {
-            "connector_id": str(w.connector.id),
-            "runtime": w.group_id,
-        },
-    )
+    # The app connection is the runtime group's; the broker resolves it
+    # from the connector and the service account's project.
+    token = w.sa.connectors.connections.get_token(w.connector.id)
     assert stable(token) == snapshot(
         {
             "token": "[redacted]",
@@ -999,15 +948,14 @@ def test_08_connection_and_endpoint(world: World) -> None:
         }
     )
 
-    # todo(sdk): `runtimes.get` takes no `include`.
-    requirements = cp.get(
-        f"/v1/runtimes/{w.runtime.id}", {"include": "mcp_requirements"}
+    requirements = w.sa.runtimes.get(
+        w.runtime.id, include=[RuntimeInclude.MCP_REQUIREMENTS]
     )
-    assert stable(requirements["mcp_requirements"]) == snapshot([])
+    assert stable(requirements.mcp_requirements) == snapshot([])
 
 
-def _ids(files: Any) -> list[str]:
-    return [str(f["id"]) for f in files["records"]]
+def _ids(files: Iterable[File]) -> list[str]:
+    return [str(f.id) for f in files]
 
 
 @walk_step(9, "files in — an upload the task will find under /workspace/files")
@@ -1061,27 +1009,18 @@ def test_09_files_in(world: World) -> None:
         file_id, metadata={"suite": "walk", "stage": "attached"}
     )
     assert (updated.metadata or {}).get("stage") == "attached"
-    dp = w.raw(w.sa, "dp")
+    files = w.sa.files
     # A file with versions is listed only with `include_versions`.
-    # todo(sdk): `files.list` takes no `include_versions` or `name_contains`.
-    tagged = dp.get(
-        "/v1/files",
-        {
-            "include_versions": "true",
-            "metadata": ["suite:walk", "stage:attached"],
-        },
-    )
-    assert file_id in _ids(tagged), "the metadata filter finds the file"
-    w.sa.files.update(file_id, tags=["suite:walk"])
-    by_tag = dp.get(
-        "/v1/files", {"tag": "suite:walk", "include_versions": "true"}
-    )
-    assert file_id in _ids(by_tag), "the tag filter finds the file"
-    by_name = dp.get(
-        "/v1/files",
-        {"name_contains": "WALK-INPUT", "include_versions": "true"},
-    )
-    assert file_id in _ids(by_name), "the substring filter finds the file"
+    tagged = files.list(
+        include_versions=True,
+        metadata={"suite": "walk", "stage": "attached"},
+    ).page()
+    assert file_id in _ids(tagged.records), "the metadata filter finds it"
+    files.update(file_id, tags=["suite:walk"])
+    by_tag = files.list(tag="suite:walk", include_versions=True).page()
+    assert file_id in _ids(by_tag.records), "the tag filter finds the file"
+    by_name = files.list(name_contains="WALK-INPUT", include_versions=True)
+    assert file_id in _ids(by_name.page().records), "the substring filter"
 
 
 def _idle(task: Task) -> bool:
@@ -1184,9 +1123,8 @@ def test_10_task(world: World) -> None:
     tasks.unarchive(task_id)
 
 
-def _task_files(client: IntrospectionClient, w: World, task_id: str) -> Any:
-    # todo(sdk): `files.list` takes no `task_id`.
-    return w.raw(client, "dp").get("/v1/files", {"task_id": task_id})
+def _task_files(client: IntrospectionClient, task_id: str) -> list[File]:
+    return client.files.list(task_id=task_id).page().records
 
 
 @walk_step(11, "evidence — the output file, the conversation and its items")
@@ -1195,16 +1133,16 @@ def test_11_evidence(world: World) -> None:
     task_id = str(w.task.id)
     outputs = settled(
         w.mode,
-        lambda: _task_files(w.sa, w, task_id)["records"],
-        lambda: _task_files(w.sa_quiet, w, task_id)["records"],
+        lambda: _task_files(w.sa, task_id),
+        lambda: _task_files(w.sa_quiet, task_id),
         lambda files: any(
-            f["name"].endswith(WALK.output_file_name) for f in files
+            f.name.endswith(WALK.output_file_name) for f in files
         ),
         label="task output files",
         timeout=120,
     )
-    w.output_file = File.model_validate(
-        next(f for f in outputs if f["name"].endswith(WALK.output_file_name))
+    w.output_file = next(
+        f for f in outputs if f.name.endswith(WALK.output_file_name)
     )
     assert stable(w.output_file) == snapshot(
         {
@@ -1509,16 +1447,18 @@ def test_13_telemetry_reads(world: World) -> None:
         "introspection.annotation", conversation_id=cid
     ).read_all()
     assert event_table.num_rows >= len(events)
-    dp = w.raw(w.member, "dp")
-    # todo(sdk): no `annotations.facets` / `annotations.navigation`.
-    facets = dp.get("/v1/annotations/facets", {"conversation_id": cid})
+    facets = w.member.annotations.facets()
     assert facets is not None
-    assert dp.get("/v1/annotations/navigation", span) is not None
+    assert (
+        w.member.annotations.navigation(
+            trace_id=target.trace_id, span_id=target.span_id
+        )
+        is not None
+    )
 
-    # The AAuth surfaces, read empty. todo(sdk): no `aauth` namespace.
-    sa_dp = w.raw(w.sa, "dp")
-    assert sa_dp.get("/v1/aauth/missions")["records"] == []
-    assert sa_dp.get("/v1/aauth/approvals")["records"] == []
+    # The AAuth surfaces, read empty.
+    assert w.sa.aauth.missions.list().page().records == []
+    assert w.sa.aauth.approvals.list().page().records == []
     # `/v1/connections` is the apps a member connects through an app
     # connector, which needs that provider's credentials; with none on the
     # project every route answers 404 (member-connections.md).
@@ -1559,20 +1499,14 @@ def test_14_eval(world: World) -> None:
 
     # A trial needs the evals capability, which the runner's session never
     # carries; the service account holds `tasks:eval` and names the runtime.
-    # todo(sdk): `tasks.create` takes no `runtime_id`.
-    created = TaskCreateResponse.model_validate(
-        w.raw(w.sa, "dp").post(
-            "/v1/tasks",
-            {
-                "kind": "eval",
-                "runtime_id": str(w.runtime.id),
-                "commands": True,
-                "prompt": prompt(w.settings),
-                "agent_name": w.settings.agent,
-                "metadata": {"suite": "walk"},
-                "idle_timeout_seconds": 120,
-            },
-        )
+    created = w.sa.tasks.create(
+        kind="eval",
+        runtime_id=w.runtime.id,
+        commands=True,
+        prompt=prompt(w.settings),
+        agent_name=w.settings.agent,
+        metadata={"suite": "walk"},
+        idle_timeout_seconds=120,
     )
     w.eval_task = created.task
     assert (w.eval_task.metadata or {}).get("suite") == "walk"
@@ -1823,15 +1757,14 @@ def test_15_commands(world: World) -> None:
     # Judging runs in the sandbox at teardown and calls the judge's grader
     # through the egress; on the scripted target that grader returns no
     # verdict, so a judgement is asserted only where a real model grades.
-    # todo(sdk): `events.list` takes no `judge_id`.
     def judgements(client: IntrospectionClient) -> list[Any]:
-        return w.raw(client, "dp").get(
-            "/v1/events",
-            {
-                "event_name": "introspection.judgement",
-                "judge_id": str(w.judge.id),
-            },
-        )["records"]
+        return (
+            client.events.list(
+                IntrospectionEventName.JUDGEMENT, judge_id=w.judge.id
+            )
+            .page()
+            .records
+        )
 
     rows = settled(
         w.mode,
@@ -1928,14 +1861,17 @@ def _persona(w: World, name: str, tags: list[str]) -> Person:
     external_user_id = f"user:walk-{name}"
     # Members have no public delete, so a persona from an earlier run is
     # reused and its name and tags set again.
-    # todo(sdk): `members.list` takes no `external_user_id`.
-    existing = w.raw(w.owner).get(
-        "/v1/members",
-        {"member_type": "customer", "external_user_id": [external_user_id]},
-    )["records"]
+    existing = (
+        w.owner.members.list(
+            member_type=MemberType.CUSTOMER,
+            external_user_id=[external_user_id],
+        )
+        .page()
+        .records
+    )
     if existing:
-        member_id = existing[0]["id"]
-        w.owner.members.update(member_id, name=name.title(), tags=tags)
+        member_id = str(existing[0].id)
+        w.owner.members.update(existing[0].id, name=name.title(), tags=tags)
     else:
         member_id = str(
             w.owner.members.create(
@@ -2041,16 +1977,16 @@ def test_17_access(world: World) -> None:
     conversation = task_id
     outputs = settled(
         w.mode,
-        lambda: _task_files(w.member, w, task_id)["records"],
-        lambda: _task_files(owner_quiet, w, task_id)["records"],
+        lambda: _task_files(w.member, task_id),
+        lambda: _task_files(owner_quiet, task_id),
         lambda files: any(
-            f["name"].endswith(WALK.output_file_name) for f in files
+            f.name.endswith(WALK.output_file_name) for f in files
         ),
         label="Avery's output",
         timeout=120,
     )
-    output_id = next(
-        f["id"] for f in outputs if f["name"].endswith(WALK.output_file_name)
+    output_id = str(
+        next(f.id for f in outputs if f.name.endswith(WALK.output_file_name))
     )
     settled(
         w.mode,
@@ -2156,12 +2092,11 @@ def test_18_members_and_keys(world: World) -> None:
     members = list(w.owner.members.list())
     assert len(members) > 0
     w.owner.members.get(members[0].id)
-    # todo(sdk): no `organizations.me`.
-    org = w.raw(w.owner).get("/v1/organizations/me")
+    org = w.owner.organizations.me()
     # An invite outlives the project, so a repeat run finds the one the last
     # run sent; the address names this organisation, since a person belongs
     # to one and a second organisation's walk would answer 409.
-    email = f"walk-member@{org['slug']}.example.com"
+    email = f"walk-member@{org.slug}.example.com"
     invited = next((m for m in members if m.email == email), None) or (
         w.owner.members.create(
             {"email": email, "name": "Walk member", "role": "member"}
@@ -2211,8 +2146,8 @@ def test_18_members_and_keys(world: World) -> None:
     )
     w.sa.api_keys.acknowledge(api_key.id, project=w.project.id)
     # The organisation's name and slug are whoever is running the walk.
-    assert org["slug"]
-    assert stable({**org, "name": None, "slug": None}) == snapshot(
+    assert org.slug
+    assert stable({**plain(org), "name": None, "slug": None}) == snapshot(
         {
             "id": "[uuid]",
             "name": None,
@@ -2229,7 +2164,7 @@ def test_19_teardown(world: World, cassette: Cassette | None) -> None:
     w = world
     # The default file list omits the upload a task holds, so it goes by id.
     w.sa.files.delete(str(w.input_file.id))
-    remove_walk_resources(w.owner, w.member, w.project, w.raw, dp=w.sa)
+    remove_walk_resources(w.owner, w.member, w.project, dp=w.sa)
     expect_not_found(lambda: w.sa.tasks.get(str(w.task.id)))
     expect_not_found(lambda: w.sa.files.get(str(w.input_file.id)))
     expect_not_found(lambda: w.sa.runtimes.get(w.runtime_v2.id))
@@ -2241,7 +2176,7 @@ def test_19_teardown(world: World, cassette: Cassette | None) -> None:
         )
     )
     # The walk's project goes with it; the login's is untouched.
-    w.raw(w.owner).delete(f"/v1/projects/{w.project.id}")
+    w.owner.projects.delete(w.project.id)
     expect_not_found(lambda: w.owner.projects.get(str(w.project.id)))
     assert (
         w.owner.projects.get(str(w.login_project.id)).id == w.login_project.id

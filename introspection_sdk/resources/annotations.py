@@ -6,8 +6,10 @@ import builtins
 import secrets
 import time
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
+
+from pydantic import TypeAdapter
 
 from introspection_sdk._errors import (
     ConflictError,
@@ -22,6 +24,8 @@ from introspection_sdk.pagination import (
     cursor_paginate,
 )
 from introspection_sdk.schemas.annotations import (
+    AnnotationFacet,
+    AnnotationNavigation,
     AnnotationState,
     AnnotationTarget,
 )
@@ -67,6 +71,29 @@ def _member_error(
         code=code,
         body=body,
     )
+
+
+AnnotationStatus = Literal["backlog", "assigned", "reviewed"]
+FACETS = TypeAdapter(list[AnnotationFacet])
+
+
+def _navigation_params(
+    trace_id: str,
+    span_id: str,
+    *,
+    annotated_by_member_id: UUID | None,
+    assignee_member_id: UUID | None,
+    labels: Sequence[str] | None,
+    status: AnnotationStatus | None,
+) -> dict[str, Any]:
+    return {
+        "trace_id": trace_id,
+        "span_id": span_id,
+        "annotated_by_member_id": annotated_by_member_id,
+        "assignee_member_id": assignee_member_id,
+        "label": list(labels) if labels else None,
+        "status": status,
+    }
 
 
 class Annotations:
@@ -170,6 +197,39 @@ class Annotations:
         self._dp_http.request(
             "POST", "/v1/annotations", json=body, expect="empty"
         )
+
+    def facets(self) -> builtins.list[AnnotationFacet]:
+        """Counts of the current annotations per annotator, assignee, label
+        and status, for filter menus."""
+        return FACETS.validate_python(
+            self._dp_http.request("GET", "/v1/annotations/facets")
+        )
+
+    def navigation(
+        self,
+        *,
+        trace_id: str,
+        span_id: str,
+        annotated_by_member_id: UUID | None = None,
+        assignee_member_id: UUID | None = None,
+        labels: Sequence[str] | None = None,
+        status: AnnotationStatus | None = None,
+    ) -> AnnotationNavigation:
+        """The previous and next annotated spans around one, in the list the
+        same filters give."""
+        payload = self._dp_http.request(
+            "GET",
+            "/v1/annotations/navigation",
+            params=_navigation_params(
+                trace_id,
+                span_id,
+                annotated_by_member_id=annotated_by_member_id,
+                assignee_member_id=assignee_member_id,
+                labels=labels,
+                status=status,
+            ),
+        )
+        return AnnotationNavigation.model_validate(payload)
 
     def _resolve_reviewer_ids(
         self, values: Sequence[str]
@@ -332,6 +392,39 @@ class AsyncAnnotations:
         await self._dp_http.request(
             "POST", "/v1/annotations", json=body, expect="empty"
         )
+
+    async def facets(self) -> builtins.list[AnnotationFacet]:
+        """Counts of the current annotations per annotator, assignee, label
+        and status, for filter menus."""
+        return FACETS.validate_python(
+            await self._dp_http.request("GET", "/v1/annotations/facets")
+        )
+
+    async def navigation(
+        self,
+        *,
+        trace_id: str,
+        span_id: str,
+        annotated_by_member_id: UUID | None = None,
+        assignee_member_id: UUID | None = None,
+        labels: Sequence[str] | None = None,
+        status: AnnotationStatus | None = None,
+    ) -> AnnotationNavigation:
+        """The previous and next annotated spans around one, in the list the
+        same filters give."""
+        payload = await self._dp_http.request(
+            "GET",
+            "/v1/annotations/navigation",
+            params=_navigation_params(
+                trace_id,
+                span_id,
+                annotated_by_member_id=annotated_by_member_id,
+                assignee_member_id=assignee_member_id,
+                labels=labels,
+                status=status,
+            ),
+        )
+        return AnnotationNavigation.model_validate(payload)
 
     async def _resolve_reviewer_ids(
         self, values: Sequence[str]

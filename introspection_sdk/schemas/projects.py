@@ -30,4 +30,27 @@ class Project(BaseModel):
     created_by_member_id: UUID | None = None
 
 
-__all__ = ["Project"]
+class ProjectCreate(BaseModel):
+    """Body of ``POST /v1/projects``."""
+
+    name: str
+    deployment_id: UUID
+    """The Data Plane deployment the project lives on."""
+    slug: str | None = None
+    description: str | None = None
+    settings: dict[str, Any] | None = None
+    include_ark: bool | None = None
+    """Seed the Ark runtime. Unset, an organization's first project takes it
+    and later ones do not."""
+
+
+class ProjectUpdate(BaseModel):
+    """Body of ``PATCH /v1/projects/{project}``; an unset field is left as
+    is."""
+
+    name: str | None = None
+    description: str | None = None
+    settings: dict[str, Any] | None = None
+
+
+__all__ = ["Project", "ProjectCreate", "ProjectUpdate"]
