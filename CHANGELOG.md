@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.33.0...v0.34.0) (2026-10-28)
+
+
+### Features
+
+* read runtime peerings ([#224](https://github.com/introspection-org/introspection-python-sdk/issues/224)) ([e92a6b8](https://github.com/introspection-org/introspection-python-sdk/commit/e92a6b867ddfd5880d88a206abb5d8488043ed9d))
+* **walk:** call every walk route through a typed SDK method ([#222](https://github.com/introspection-org/introspection-python-sdk/issues/222)) ([7f8776f](https://github.com/introspection-org/introspection-python-sdk/commit/7f8776fa56073aa5c8bc1efc9ce36a34ae1f4d74))
+
 ## [0.33.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.32.1...v0.33.0) (2026-10-27)
 
 
