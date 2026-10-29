@@ -366,13 +366,7 @@ def test_task_create_sends_mcp_servers_beside_compose(fake_api: FakeAPI):
     compose = {
         "services": {"mcp-server": {"image": "hello", "expose": [8000]}}
     }
-    mcp_servers = [
-        {
-            "name": "hello-mcp",
-            "transport": "streamable-http",
-            "url": "http://mcp-server:8000/mcp",
-        }
-    ]
+    mcp_servers = [{"id": "hello-mcp", "url": "http://mcp-server:8000/mcp"}]
 
     Tasks(fake_api.client()).create(
         kind=TaskKind.EVAL, compose=compose, mcp_servers=mcp_servers

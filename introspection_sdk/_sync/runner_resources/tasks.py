@@ -421,9 +421,9 @@ class Tasks:
         ``kind="eval"`` runs the task as an evaluation trial; with
         ``commands=True`` it also accepts :attr:`commands` against its live
         sandbox, ``compose`` runs services beside it, ``mcp_servers`` binds
-        Recipe MCP ids to those services (Harbor's
-        ``[[environment.mcp_servers]]`` entries: ``name``, ``transport``,
-        ``url``), and ``recipe_git_commit_sha`` pins the Recipe commit it runs.
+        Recipe MCP ids to those services (entries of Pi's ``mcp.local.json``:
+        ``id`` and ``url``), and ``recipe_git_commit_sha`` pins the Recipe
+        commit it runs.
         ``runtime_id`` names the Runtime for a caller whose credential is not
         bound to one (a member token rather than a runner). Each is omitted
         from the body unless given.
