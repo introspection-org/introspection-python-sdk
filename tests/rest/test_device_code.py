@@ -4,6 +4,7 @@ credential and ``GET /v1/oidc/logout``)."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from urllib.parse import parse_qs
 
 import httpx2 as httpx
@@ -168,7 +169,7 @@ def test_poll_raises_any_other_error(fake_api: FakeAPI):
     assert caught.value.code == "invalid_grant"
 
 
-def answers(*bodies: tuple[int, dict[str, object]]) -> httpx.MockTransport:
+def answers(*bodies: tuple[int, Mapping[str, object]]) -> httpx.MockTransport:
     queue = list(bodies)
 
     def handle(_request: httpx.Request) -> httpx.Response:

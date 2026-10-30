@@ -85,6 +85,17 @@ class Walk:
     group_tag: str = "group:platform"
     admin_name: str = "Drew"
     persona_file_name: str = "walk-avery-notes.txt"
+    idp_issuer: str = "https://idp.walk.example.com"
+    registered_token: str = "walk-registered-token-0001"
+    api_endpoint_name: str = "walk-api"
+    api_endpoint_host: str = "walk-api.example.com"
+    image_name: str = "walk/busybox"
+    # Digest-pinned, as a mirror must be; the copy may fail on a stack
+    # with no egress, which the walk does not wait for.
+    image_reference: str = (
+        "docker.io/library/busybox@sha256:"
+        "9ae97d36d26566ff84e8893c64a6dc4fe8ca6d1144bf5b87b2b85a32def253c7"
+    )
     echo_message: str = "hello from the public MCP"
     echo_result: str = "Echo: hello from the public MCP"
     instruction: str = (
