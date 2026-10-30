@@ -799,7 +799,8 @@ def test_06_connector(world: World) -> None:
     )
     assert str(registered.status) == "active"
     assert connections.get(w.connector.id, registered.id).id == registered.id
-    connections.revoke(w.connector.id, registered.id)
+    # `connectors:delete` is the owner's.
+    w.owner.connectors.connections.revoke(w.connector.id, registered.id)
     expect_not_found(lambda: connections.get(w.connector.id, registered.id))
 
 
