@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.34.0...v0.35.0) (2026-10-30)
+
+
+### Features
+
+* **atif:** keep tool span results on observation results ([#226](https://github.com/introspection-org/introspection-python-sdk/issues/226)) ([fc714d9](https://github.com/introspection-org/introspection-python-sdk/commit/fc714d90c2a8080fb0cf4f25fb21ca5b90a3aca9))
+
 ## [0.34.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.33.0...v0.34.0) (2026-10-28)
 
 
