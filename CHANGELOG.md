@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.36.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.35.0...v0.36.0) (2026-10-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **walk:** schemas.connections.Connection.member_id is UUID | None; it is None for a project-owned connection.
+
+### Features
+
+* **walk:** call every platform route through a typed SDK method ([#228](https://github.com/introspection-org/introspection-python-sdk/issues/228)) ([8f0fd99](https://github.com/introspection-org/introspection-python-sdk/commit/8f0fd99febed09bad7ecc8ef0d4dfbc6f37efa35))
+
 ## [0.35.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.34.0...v0.35.0) (2026-10-30)
 
 
