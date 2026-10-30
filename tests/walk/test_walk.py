@@ -27,7 +27,8 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from dirty_equals import AnyThing, IsInt, IsPositiveInt, IsUUID
+from dirty_equals import IsInt, IsPositiveInt, IsUUID
+from inline_snapshot import snapshot
 from vcr.cassette import Cassette
 
 from introspection_sdk import (
@@ -87,11 +88,6 @@ from .support import (
     walk_project_born,
 )
 from .teardown import remove_walk_resources
-
-
-def snapshot(_value: Any = None) -> Any:  # TEMPORARY: record run only
-    return AnyThing
-
 
 IDLE = ("idle", "awaiting_user", "completed")
 #: An id nothing has: the reads of what the walk cannot make answer 404.
@@ -471,6 +467,27 @@ def test_02_application(world: World) -> None:
     )
     idp = apps.idps.create(federated.id, issuer=WALK.idp_issuer)
     assert idp.issuer == WALK.idp_issuer
+    assert stable(idp) == snapshot(
+        {
+            "id": "[uuid]",
+            "org_id": "[uuid]",
+            "application_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+            "idp_provider": "generic",
+            "issuer": "[url]",
+            "client_id": "[redacted]",
+            "scopes": ["openid", "profile", "email"],
+            "external_org_id": None,
+            "external_idp_id": None,
+            "audience_client_id": None,
+            "status": "active",
+            "error_message": None,
+            "disabled_at": None,
+            "client_secret": None,
+            "is_active": True,
+        }
+    )
     assert [i.id for i in apps.idps.list(federated.id)] == [idp.id]
     apps.idps.delete(federated.id, idp.id)
     assert list(apps.idps.list(federated.id)) == []
@@ -801,7 +818,27 @@ def test_06_connector(world: World) -> None:
     registered = connections.create(
         w.connector.id, access_token=WALK.registered_token
     )
-    assert str(registered.status) == "active"
+    assert stable(registered) == snapshot(
+        {
+            "id": "[uuid]",
+            "org_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+            "connector_id": "[uuid]",
+            "project_id": "[uuid]",
+            "member_id": None,
+            "created_by_member_id": None,
+            "runtime_group_id": None,
+            "subject_type": "app",
+            "scopes_granted": [],
+            "status": "active",
+            "token_expires_at": None,
+            "last_verified_at": None,
+            "provider_account_name": None,
+            "provider_app": None,
+            "provider_account_id": None,
+        }
+    )
     assert connections.get(w.connector.id, registered.id).id == registered.id
     # `connectors:delete` is the owner's.
     w.owner.connectors.connections.revoke(w.connector.id, registered.id)
@@ -883,6 +920,8 @@ def test_07_runtime(world: World) -> None:
                 "external_image_name": "[redacted]",
                 "verdict_by": "[timestamp]",
             },
+            "image_version": None,
+            "peering_id": None,
             "created_by_member_id": "[uuid]",
         }
     )
@@ -958,6 +997,7 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
             "connector_id": "[uuid]",
+            "project_id": "[uuid]",
             "member_id": None,
             "created_by_member_id": "[uuid]",
             "runtime_group_id": "[uuid]",
@@ -965,6 +1005,8 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "scopes_granted": [],
             "status": "active",
             "token_expires_at": "[timestamp]",
+            "last_verified_at": "[timestamp]",
+            "provider_account_name": None,
             "provider_app": None,
             "provider_account_id": None,
         }
@@ -980,7 +1022,14 @@ def test_08_connection_and_endpoint(world: World) -> None:
         .page()
         .records[0]
     )
-    assert stable(w.endpoint) == snapshot(
+    # Discovery of the server's tools races this read.
+    assert w.endpoint.model_dump()["mcp_check"]["status"] in (
+        "pending",
+        "ok",
+        "failed",
+        "skipped",
+    )
+    assert stable({**plain(w.endpoint), "mcp_check": None}) == snapshot(
         {
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
@@ -1009,6 +1058,7 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "last_verified_at": None,
             "authorized_application_id": None,
             "created_by_member_id": "[uuid]",
+            "mcp_check": None,
         }
     )
     read = endpoints.get(w.endpoint.id, project=w.project.id)
@@ -1028,7 +1078,38 @@ def test_08_connection_and_endpoint(world: World) -> None:
         headers={"X-Walk": f"${{{WALK.credential_name}}}"},
     )
     assert (api.host, str(api.kind)) == (WALK.api_endpoint_host, "api")
-    assert api.credential_refs == [WALK.credential_name]
+    assert stable(api) == snapshot(
+        {
+            "id": "[uuid]",
+            "org_id": "[uuid]",
+            "project_id": "[uuid]",
+            "name": "walk-api",
+            "host": "walk-api.example.com",
+            "base_url": None,
+            "kind": "api",
+            "metadata": {
+                "mcp_server_id": None,
+                "connector_id": None,
+                "provider_app": None,
+                "extra_hosts": [],
+                "auth_audience": None,
+            },
+            "assertion_claims": None,
+            "runtime_id": None,
+            "runtime_group_id": None,
+            "environment": None,
+            "verify_path": None,
+            "headers": {"X-Walk": "${WALK_SECRET}"},
+            "header_names": ["X-Walk"],
+            "credential_refs": ["WALK_SECRET"],
+            "last_verified_at": None,
+            "authorized_application_id": None,
+            "created_by_member_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+            "mcp_check": None,
+        }
+    )
     endpoints.delete(api.id, project=w.project.id)
     expect_not_found(lambda: endpoints.get(api.id, project=w.project.id))
 
@@ -1581,7 +1662,29 @@ def test_13_telemetry_reads(world: World) -> None:
         for c in w.member.connections.list(connector_id=w.connector.id)
         if str(c.owner) == "project"
     )
-    assert project_grant.member_id is None
+    assert stable(project_grant) == snapshot(
+        {
+            "id": "[uuid]",
+            "owner": "project",
+            "member_id": None,
+            "connector": {
+                "id": "[uuid]",
+                "slug": "hello-mcp",
+                "provider": "hello-mcp",
+                "peering": None,
+            },
+            "subject_type": "app",
+            "app": "hello-mcp",
+            "provider_account_id": None,
+            "account_name": None,
+            "healthy": True,
+            "status": "active",
+            "last_verified_at": "[timestamp]",
+            "created_by_member_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+        }
+    )
     assert project_grant.connector is not None
     assert project_grant.connector.slug == WALK.connector_name
     expect_not_found(lambda: w.member.connections.get(missing))
