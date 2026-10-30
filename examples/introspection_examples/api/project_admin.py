@@ -5,8 +5,8 @@ project's API keys, credentials, variables, judges, endpoints and runtime
 peerings, and mints
 the member's own short-lived access token for the project; then, when
 INTROSPECTION_ADMIN_WRITE=1, mints an API key, saves its one-time plaintext,
-acknowledges it and revokes it again, renames an endpoint and back, and
-creates, renames and deletes a sibling project on the same deployment.
+acknowledges it and revokes it again, renames an endpoint and back, creates
+and deletes another, and creates, renames and deletes a sibling project on the same deployment.
 
 These routes need an org credential: an owner's or admin's Control Plane
 session (or an access token minted for one). A project API key carries none
@@ -134,6 +134,13 @@ def main() -> None:
                 print(f"renamed endpoint {endpoint.name} and back")
             # `client.endpoints.delete(endpoint.id, project=project)` removes
             # one; an MCP server's endpoint comes back with its connection.
+            api = client.endpoints.create(
+                project=project,
+                name="example-api",
+                host="example-api.example.com",
+                kind="api",
+            )
+            client.endpoints.delete(api.id, project=project)
             # #endregion docs:endpoint-edit
 
             # #region docs:project-lifecycle

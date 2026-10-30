@@ -147,6 +147,7 @@ class Connection(_ApiModel):
     created_at: datetime
     updated_at: datetime
     connector_id: UUID
+    project_id: UUID | None = None
     member_id: UUID | None = None
     """``None`` = org-owned (app subject); for a Slack workspace install
     this points at the workspace customer member."""
@@ -161,6 +162,8 @@ class Connection(_ApiModel):
     scopes_granted: list[str] = []
     status: ConnectionStatus = ConnectionStatus.ACTIVE
     token_expires_at: datetime | None = None
+    last_verified_at: datetime | None = None
+    provider_account_name: str | None = None
     provider_app: str | None = None
     """Application slug within a multi-application provider (Pipedream);
     ``None`` otherwise."""

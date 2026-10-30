@@ -88,6 +88,7 @@ from .support import (
 )
 from .teardown import remove_walk_resources
 
+
 def snapshot(_value: Any = None) -> Any:  # TEMPORARY: record run only
     return AnyThing
 
@@ -1570,11 +1571,19 @@ def test_13_telemetry_reads(world: World) -> None:
             NIL, status="denied", member_id=owners[0].id
         )
     )
-    # `/v1/connections` is the apps a member connects through an app
-    # connector, which needs that provider's credentials; with none on the
-    # project every route answers 404 (member-connections.md).
+    # `/v1/connections` holds the project's own grant from step 8, with no
+    # member; an app connector is what a member connects through, which
+    # needs that provider's credentials, so with none on the project the
+    # other routes answer 404 (member-connections.md).
     missing = "019a1000-0000-7000-8000-0000000000c1"
-    expect_not_found(lambda: w.member.connections.list().page())
+    project_grant = next(
+        c
+        for c in w.member.connections.list(connector_id=w.connector.id)
+        if str(c.owner) == "project"
+    )
+    assert project_grant.member_id is None
+    assert project_grant.connector is not None
+    assert project_grant.connector.slug == WALK.connector_name
     expect_not_found(lambda: w.member.connections.get(missing))
     expect_not_found(lambda: w.member.connections.delete(missing))
     expect_not_found(

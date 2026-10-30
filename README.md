@@ -353,7 +353,7 @@ requirements = client.runtimes.get(
 ).mcp_requirements
 ```
 
-`client.endpoints` lists, reads, updates and deletes the upstream hosts a
+`client.endpoints` creates, lists, reads, updates and deletes the upstream hosts a
 project's runtimes reach; an MCP server's endpoint is the one a connection
 binds (`list(mcp_server_id=...)`).
 [`author_runtime.py`](examples/introspection_examples/api/author_runtime.py)
@@ -582,7 +582,9 @@ the four-party flow in one process.
 
 A project's own Data Plane keeps the missions its people approved agents to
 carry out and the approvals agents asked them for: `client.aauth.missions.list()`
-and `client.aauth.approvals.list(status=["pending"])` read them, as
+and `client.aauth.approvals.list(status=["pending"])` read them, `get(id)` reads
+one, and `client.aauth.approvals.decide(id, status="denied", member_id=...)`
+records the approver's answer, as
 [`aauth_inbox.py`](examples/introspection_examples/api/aauth_inbox.py) does.
 
 ## Administer a project
@@ -604,6 +606,10 @@ or id) on project-scoped calls when the credential does not name one.
 | `client.credentials` / `client.variables` | Secrets and environment variables a project's runtimes read |
 | `client.integrations` | The org's own provider installs (org-wide, no `project`) |
 | `client.judges` | The judges a Recipe declares: read, and toggle `enabled` / `sample_rate` |
+| `client.endpoints` | The upstream hosts a project's runtimes reach: `list`, `get`, `create` (an upsert), `update`, `delete` |
+| `client.repositories.access_token(id)` | A short-lived Git provider token for a repository; only a sandbox's token gets one |
+| `client.remotes.connect_docs()` | The `/v1/remotes/connect` WebSocket `introspection dev` dials out on: authentication, handshake and frames |
+| `introspection_sdk.auth` | The device-code login `introspection login` runs ([`device_login.py`](examples/introspection_examples/api/device_login.py)): `request_device_code`, `poll_device_token`, `wait_for_device_token`, `development_credential`, `oidc_logout` |
 
 ```python
 client = IntrospectionClient(cp_session=os.environ["INTROSPECTION_CP_SESSION"])
