@@ -16,6 +16,7 @@ from introspection_sdk._sync.resources._crud import (
 from introspection_sdk.pagination import Pager
 from introspection_sdk.schemas.endpoints import (
     Endpoint,
+    EndpointCreate,
     EndpointKind,
     EndpointMetadata,
     EndpointUpdate,
@@ -28,8 +29,8 @@ logger = logging.getLogger(__name__)
 class Endpoints(_Resource):
     """CP ``/v1/endpoints`` namespace: the upstream hosts a project's
     runtimes reach. An MCP server's endpoint is made by the connection that
-    binds it (:meth:`Connectors.authorize`); this namespace reads, edits and
-    removes them."""
+    binds it (:meth:`Connectors.authorize`); this namespace creates the
+    others and reads, edits and removes every one."""
 
     def list(
         self,
@@ -63,6 +64,60 @@ class Endpoints(_Resource):
                 "next": next,
             },
         )
+
+    def create(
+        self,
+        *,
+        name: str,
+        host: str,
+        project: str | UUID | None = None,
+        headers: dict[str, str] | None = None,
+        base_url: str | None = None,
+        kind: EndpointKind | str | None = None,
+        metadata: EndpointMetadata | dict[str, Any] | None = None,
+        assertion_claims: dict[str, str] | None = None,
+        runtime_id: UUID | str | None = None,
+        runtime_group_id: UUID | str | None = None,
+        environment: str | None = None,
+        verify_path: str | None = None,
+        authorized_application_id: UUID | str | None = None,
+    ) -> Endpoint:
+        """Create an endpoint, or update the one at the same host, runtime
+        scope and environment. ``kind`` defaults to ``llm`` on the server;
+        with ``verify_path`` set, the save fails (``ValidationError``)
+        unless a ``GET`` of it answers 2xx."""
+        body = _body(
+            EndpointCreate,
+            {
+                "name": name,
+                "host": host,
+                "headers": headers or {},
+                "base_url": base_url,
+                "kind": kind,
+                "metadata": metadata,
+                "assertion_claims": assertion_claims,
+                "runtime_id": runtime_id,
+                "runtime_group_id": runtime_group_id,
+                "environment": environment,
+                "verify_path": verify_path,
+                "authorized_application_id": authorized_application_id,
+            },
+        )
+        endpoint = self._call(
+            "POST",
+            "/v1/endpoints",
+            Endpoint,
+            params=_project(project),
+            json=body,
+        )
+        logger.debug(
+            "endpoint created",
+            extra={
+                "endpoint_id": str(endpoint.id),
+                "kind": str(endpoint.kind),
+            },
+        )
+        return endpoint
 
     def get(
         self, endpoint_id: UUID | str, *, project: str | UUID | None = None

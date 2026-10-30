@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ApiModel(BaseModel):
@@ -90,10 +90,58 @@ class Approval(ApiModel):
     updated_at: str
 
 
+class ApproverIdentity(BaseModel):
+    """The approver as the customer's app knows them: its own ``user_id``,
+    or an ``anonymous_id`` for a visitor who has not signed in."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str | None = None
+    anonymous_id: str | None = None
+
+    @model_validator(mode="after")
+    def _one_id(self) -> ApproverIdentity:
+        if self.user_id is None and self.anonymous_id is None:
+            raise ValueError("an approver needs a user_id or an anonymous_id")
+        return self
+
+
+class ApprovalDecider(BaseModel):
+    """Who decided: a customer ``identity``, or a project ``member_id``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    identity: ApproverIdentity | None = None
+    member_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> ApprovalDecider:
+        if (self.identity is None) == (self.member_id is None):
+            raise ValueError(
+                "a decider is an identity or a member_id, not both"
+            )
+        return self
+
+
+class ApprovalDecision(BaseModel):
+    """Body of ``PATCH /v1/aauth/approvals/{id}``: the approver's answer.
+    ``budget`` grants less than the agent asked for; approving does what
+    the agent asked."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: ApprovalStatus
+    decided_by: ApprovalDecider
+    budget: Budget | None = None
+
+
 __all__ = [
     "Approval",
+    "ApprovalDecider",
+    "ApprovalDecision",
     "ApprovalKind",
     "ApprovalStatus",
+    "ApproverIdentity",
     "Budget",
     "Mission",
     "MissionLogEntry",

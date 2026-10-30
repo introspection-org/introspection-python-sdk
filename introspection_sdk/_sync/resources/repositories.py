@@ -21,6 +21,7 @@ from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.repositories import (
     HostedRepositoryCreate,
     Repository,
+    RepositoryAccessGrant,
     RepositoryBranch,
     RepositoryCommit,
     RepositoryCommitDetail,
@@ -317,3 +318,23 @@ class Repositories:
             "GET", _commit_path(repository_id, sha)
         )
         return RepositoryCommitDetail.model_validate(payload)
+
+    def access_token(
+        self,
+        repository_id: UUID | str,
+        *,
+        permissions: dict[str, str] | None = None,
+    ) -> RepositoryAccessGrant:
+        """Mint a short-lived token for the repository's Git provider (DP
+        ``POST /v1/repositories/{id}/access-token``).
+
+        What it may reach is the runtime's grant, read from the caller's
+        verified claims, so only a sandbox's token gets one; any other
+        caller is refused. ``permissions`` narrows the token, e.g.
+        ``{"contents": "read"}``."""
+        payload = self._dp_http.request(
+            "POST",
+            f"/v1/repositories/{repository_id}/access-token",
+            json={"permissions": permissions or {}},
+        )
+        return RepositoryAccessGrant.model_validate(payload)

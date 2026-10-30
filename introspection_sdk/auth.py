@@ -23,6 +23,12 @@ and each type has one way in:
   verify it, and keep the refreshable session current. The one-shot
   calls underneath are :func:`send_email_code`, :func:`email_code_token`,
   :func:`refresh_access_token` and :func:`revoke_session`.
+* A business member's device-code login, the one ``introspection login``
+  runs: :func:`request_device_code`, then :func:`wait_for_device_token`
+  (or :func:`poll_device_token` once per poll). The login refreshes with
+  :func:`refresh_access_token` (``client_id="cli"``), trades its access
+  token for an ``introspection dev`` credential with
+  :func:`development_credential`, and signs out with :func:`oidc_logout`.
 
 A token issued to an end user (``jwks``, ``spa``, ``native``) carries at
 most the Application's ``allowed_scopes``.
@@ -63,6 +69,13 @@ from introspection_sdk._async.auth import (
     async_service_account_token,
     async_token_exchange,
 )
+from introspection_sdk._async.device_code import (
+    async_development_credential,
+    async_oidc_logout,
+    async_poll_device_token,
+    async_request_device_code,
+    async_wait_for_device_token,
+)
 from introspection_sdk._auth_common import (
     AuthSession,
     OAuthToken,
@@ -70,6 +83,13 @@ from introspection_sdk._auth_common import (
     SignInSupersededError,
     _EmailCodeAuthBase,
     _utcnow,
+)
+from introspection_sdk._device_code_common import (
+    DEVICE_CODE_GRANT,
+    DEVICE_FLOW_CLIENT_ID,
+    DeviceCode,
+    DeviceTokenPoll,
+    DeviceTokenStatus,
 )
 from introspection_sdk._errors import (
     AuthenticationError,
@@ -86,6 +106,13 @@ from introspection_sdk._sync.auth import (
     service_account_token,
     token_exchange,
 )
+from introspection_sdk._sync.device_code import (
+    development_credential,
+    oidc_logout,
+    poll_device_token,
+    request_device_code,
+    wait_for_device_token,
+)
 
 if TYPE_CHECKING:
     from introspection_sdk.client import (
@@ -94,28 +121,43 @@ if TYPE_CHECKING:
     )
 
 __all__ = [
+    "DEVICE_CODE_GRANT",
+    "DEVICE_FLOW_CLIENT_ID",
     "GRANT_EMAIL_CODE",
     "AsyncCredentialProvider",
     "AsyncEmailCodeAuth",
     "AuthSession",
     "CredentialProvider",
+    "DeviceCode",
+    "DeviceTokenPoll",
+    "DeviceTokenStatus",
     "EmailCodeAuth",
     "OAuthToken",
     "SignInSupersededError",
     "async_authorization_code_token",
+    "async_development_credential",
     "async_email_code_token",
+    "async_oidc_logout",
+    "async_poll_device_token",
     "async_refresh_access_token",
+    "async_request_device_code",
     "async_revoke_session",
     "async_send_email_code",
     "async_service_account_token",
     "async_token_exchange",
+    "async_wait_for_device_token",
     "authorization_code_token",
+    "development_credential",
     "email_code_token",
+    "oidc_logout",
+    "poll_device_token",
     "refresh_access_token",
+    "request_device_code",
     "revoke_session",
     "send_email_code",
     "service_account_token",
     "token_exchange",
+    "wait_for_device_token",
 ]
 
 

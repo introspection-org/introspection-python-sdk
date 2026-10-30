@@ -13,8 +13,11 @@ from introspection_sdk._sync.resources._crud import _Resource
 from introspection_sdk.pagination import Pager
 from introspection_sdk.schemas.aauth import (
     Approval,
+    ApprovalDecision,
     ApprovalKind,
     ApprovalStatus,
+    ApproverIdentity,
+    Budget,
     Mission,
 )
 from introspection_sdk.schemas.pagination import Paginated
@@ -48,6 +51,10 @@ class Missions(_Resource):
             Paginated[Mission],
             {"member_id": _id(member_id), "limit": limit, "next": next},
         )
+
+    def get(self, mission_id: UUID | str) -> Mission:
+        """Read one mission; an unknown id is a ``NotFoundError``."""
+        return self._call("GET", f"/v1/aauth/missions/{mission_id}", Mission)
 
 
 class Approvals(_Resource):
@@ -91,6 +98,46 @@ class Approvals(_Resource):
                 "next": next,
             },
         )
+
+    def get(self, approval_id: UUID | str) -> Approval:
+        """Read one approval; an unknown id is a ``NotFoundError``."""
+        return self._call(
+            "GET", f"/v1/aauth/approvals/{approval_id}", Approval
+        )
+
+    def decide(
+        self,
+        approval_id: UUID | str,
+        *,
+        status: ApprovalStatus | str,
+        member_id: UUID | str | None = None,
+        identity: ApproverIdentity | dict[str, str] | None = None,
+        budget: Budget | dict[str, object] | None = None,
+    ) -> Approval:
+        """Record the approver's answer (``approved`` or ``denied``) and
+        return the decided approval; approving does what the agent asked.
+
+        The decider is a project ``member_id`` or the customer's own
+        ``identity`` (``user_id`` or ``anonymous_id``), exactly one of the
+        two. ``budget`` grants less than the agent asked for."""
+        decision = ApprovalDecision.model_validate(
+            {
+                "status": status,
+                "decided_by": {"member_id": member_id, "identity": identity},
+                "budget": budget,
+            }
+        )
+        approval = self._call(
+            "PATCH",
+            f"/v1/aauth/approvals/{approval_id}",
+            Approval,
+            json=decision.model_dump(mode="json", exclude_none=True),
+        )
+        logger.debug(
+            "aauth approval decided",
+            extra={"approval_id": str(approval_id), "status": str(status)},
+        )
+        return approval
 
 
 class AAuth:

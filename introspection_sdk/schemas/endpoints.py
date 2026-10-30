@@ -74,6 +74,27 @@ class Endpoint(BaseModel):
     updated_at: datetime | None = None
 
 
+class EndpointCreate(BaseModel):
+    """Body of ``POST /v1/endpoints``, which upserts by the project, host,
+    runtime scope and environment."""
+
+    name: str
+    host: str
+    """Canonical hostname: no scheme, path or port."""
+    headers: dict[str, str] = Field(default_factory=dict)
+    """Header values; ``${NAME}`` references a project credential."""
+    base_url: str | None = None
+    kind: EndpointKind | None = None
+    metadata: EndpointMetadata | None = None
+    assertion_claims: dict[str, str] | None = None
+    runtime_id: UUID | None = None
+    runtime_group_id: UUID | None = None
+    environment: str | None = None
+    verify_path: str | None = None
+    """When set, the save waits for a 2xx ``GET`` of this path."""
+    authorized_application_id: UUID | None = None
+
+
 class EndpointUpdate(BaseModel):
     """Body of ``PATCH /v1/endpoints/{id}``; an unset field is left as is."""
 
@@ -91,4 +112,10 @@ class EndpointUpdate(BaseModel):
     authorized_application_id: UUID | None = None
 
 
-__all__ = ["Endpoint", "EndpointKind", "EndpointMetadata", "EndpointUpdate"]
+__all__ = [
+    "Endpoint",
+    "EndpointCreate",
+    "EndpointKind",
+    "EndpointMetadata",
+    "EndpointUpdate",
+]

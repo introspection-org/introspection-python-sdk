@@ -50,6 +50,17 @@ class OAuthToken(BaseModel):
     org_id: str | None = None
     project_id: str | None = None
     member_id: str | None = None
+    member_name: str | None = None
+    #: The encoded ``intro_cp_session`` cookie of the session a device-code
+    #: login created, for a headless client with no cookie jar of its own.
+    cp_session: str | None = None
+    #: The Control Plane (issuer), Git host and web app base URLs a
+    #: device-code login resolved.
+    cp_url: str | None = None
+    git_url: str | None = None
+    platform_url: str | None = None
+    #: RFC 8693 actor claim on a delegated (token-exchange) token.
+    act: dict[str, Any] | None = None
 
 
 def _resolve_base_api_url(base_api_url: str | None) -> str:
@@ -96,6 +107,17 @@ class AuthSession(BaseModel):
     org_id: str | None = None
     project_id: str | None = None
     member_id: str | None = None
+    member_name: str | None = None
+    #: The encoded ``intro_cp_session`` cookie of the session a device-code
+    #: login created, for a headless client with no cookie jar of its own.
+    cp_session: str | None = None
+    #: The Control Plane (issuer), Git host and web app base URLs a
+    #: device-code login resolved.
+    cp_url: str | None = None
+    git_url: str | None = None
+    platform_url: str | None = None
+    #: RFC 8693 actor claim on a delegated (token-exchange) token.
+    act: dict[str, Any] | None = None
     #: The Data Plane URL returned at sign-in.
     dp_url: str | None = None
     scope: str | None = None
