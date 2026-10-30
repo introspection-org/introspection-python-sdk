@@ -189,6 +189,7 @@ class GenAiToolCall(_SpanModel):
 
     id: str | None = None
     arguments: str | None = None
+    result: Any = None
 
 
 class GenAiTool(_SpanModel):

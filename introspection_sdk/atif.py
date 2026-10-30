@@ -13,6 +13,14 @@ arrive in a later span's input are attached to the step that made the call.
 messages, so each span's input is aligned against what its agent has already
 contributed and only the new messages become steps.
 
+An ``execute_tool`` span adds what the prompt does not hold. Its structured
+``gen_ai.tool.call.result`` goes into the observation result of the same call,
+under ``extra.details``, beside the ``content`` the model read: ATIF has no
+field of its own for it, and ``extra`` is the format's place for custom
+result-level metadata. A tool result the prompt never echoed, such as a
+session's last tool call, becomes an observation result from the span alone.
+The span may be read before or after the spans holding the call and the result.
+
 The caller chooses which spans to pass. Steps are one linear sequence, so a
 conversation with delegated agents is normally read one agent at a time.
 """
@@ -21,6 +29,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from introspection_sdk.schemas.atif import (
@@ -36,7 +45,6 @@ from introspection_sdk.schemas.atif import (
 from introspection_sdk.schemas.genai import (
     CompactionPart,
     InputMessage,
-    OutputMessage,
     TextPart,
     ThinkingPart,
     ToolCallRequestPart,
@@ -46,9 +54,11 @@ from introspection_sdk.schemas.genai_span import GenAiSpan
 
 __all__ = ["AtifProjection", "spans_to_atif"]
 
-_Message = InputMessage | OutputMessage
+UNKNOWN = "unknown"
 
-_UNKNOWN = "unknown"
+#: The keys of an agent framework's tool result, ``{content, details}`` on Pi:
+#: only ``details`` is structured, ``content`` is the text the model reads.
+TOOL_RESULT_ENVELOPE = frozenset({"content", "details", "isError"})
 
 
 def spans_to_atif(
@@ -72,8 +82,12 @@ def spans_to_atif(
         agent_name=agent_name,
         agent_version=agent_version,
     )
+    ordered = sorted(spans, key=lambda span: span.start_time)
+    # The whole list is known, so a tool span that sorts after the result can
+    # still reach its step, and a batch read has no late span to fall back on.
+    projection._expect_tool_spans(ordered)
     steps: list[AtifStep] = []
-    for span in sorted(spans, key=lambda span: span.start_time):
+    for span in ordered:
         steps.extend(projection.add(span))
     steps.extend(projection.finish())
     return projection.trajectory(steps)
@@ -92,7 +106,12 @@ class AtifProjection:
     ``tool_statuses`` maps a tool call id to whether the call succeeded, for a
     caller that knows the outcomes before the spans stream past. Without it
     the outcome is read from the ``execute_tool`` spans, each of which ends
-    before the model call that receives its result.
+    before the model call that receives its result. A call named there also
+    holds its step until its span has been read, so a span that arrives after
+    the result still lands on it. Any other ``execute_tool`` span that arrives
+    once its step has been returned stands alone as a later ``system`` step,
+    the shape of a result whose call was never read; those that remain at
+    :meth:`finish` are written after every other step, so no step id moves.
     """
 
     def __init__(
@@ -108,6 +127,11 @@ class AtifProjection:
         self._agent_version = agent_version
         self._service_name: str | None = None
         self._tool_ok: dict[str, bool] = dict(tool_statuses or {})
+        self._expected: set[str] = set(tool_statuses or {})
+        self._outputs: dict[str, ToolSpanOutput] = {}
+        self._answered: dict[str, tuple[AtifStep, AtifObservationResult]] = {}
+        self._awaited: dict[str, AtifStep] = {}
+        self._released_calls: set[str] = set()
         self._held: list[AtifStep] = []
         self._open: dict[str, list[AtifStep]] = {}
         self._calls: dict[str, AtifStep] = {}
@@ -118,10 +142,10 @@ class AtifProjection:
         self._omitted_parts = 0
         self._model_calls = 0
         self._usage_calls = 0
-        self._prompt_tokens = _Total()
-        self._completion_tokens = _Total()
-        self._cached_tokens = _Total()
-        self._cost_usd = _Total()
+        self._prompt_tokens = Total()
+        self._completion_tokens = Total()
+        self._cached_tokens = Total()
+        self._cost_usd = Total()
 
     def add(self, span: GenAiSpan) -> list[AtifStep]:
         """Read one span and return the steps it made final."""
@@ -137,14 +161,14 @@ class AtifProjection:
         if self.session_id is None:
             self.session_id = span.conversation_id
 
-        self._record_tool_status(span)
+        self._read_tool_span(span)
         inputs = span.input_messages
         outputs = span.output_messages
         if not inputs and not outputs:
             return self._settled()
 
         lane = _lane(span)
-        timestamp = span.start_time.isoformat().replace("+00:00", "Z")
+        timestamp = _timestamp(span)
         instructions = tuple(
             instruction.content.strip()
             for instruction in gen_ai.system_instructions or []
@@ -187,14 +211,22 @@ class AtifProjection:
         """Return the steps still held, and complete the totals."""
         for lane in list(self._open):
             self._close(lane)
+        self._awaited.clear()
+        # Spans without a single message stay refused, by :meth:`trajectory`.
+        if self._step_count:
+            for call_id, output in self._outputs.items():
+                self._add_result(
+                    call_id, output.content, output.details, output.timestamp
+                )
+        self._outputs.clear()
         return self._settled()
 
     @property
     def agent(self) -> AtifAgent:
         """The producing agent; its model is set only when one was observed."""
         return AtifAgent(
-            name=self._agent_name or self._service_name or _UNKNOWN,
-            version=self._agent_version or _UNKNOWN,
+            name=self._agent_name or self._service_name or UNKNOWN,
+            version=self._agent_version or UNKNOWN,
             model_name=(
                 next(iter(self._models)) if len(self._models) == 1 else None
             ),
@@ -256,28 +288,97 @@ class AtifProjection:
     def _settled(self) -> list[AtifStep]:
         """Pop the leading steps no later result can still change."""
         waiting = {id(step) for steps in self._open.values() for step in steps}
+        waiting.update(id(step) for step in self._awaited.values())
         count = 0
         while count < len(self._held) and id(self._held[count]) not in waiting:
             count += 1
         settled, self._held = self._held[:count], self._held[count:]
+        # Only the ids outlive a returned step, so a stream holds no history.
+        released = {id(step) for step in settled}
+        for call_id, (step, _) in list(self._answered.items()):
+            if id(step) in released:
+                del self._answered[call_id]
+                self._released_calls.add(call_id)
         return settled
 
     def _close(self, lane: str) -> None:
         for step in self._open.pop(lane, []):
             for call in step.tool_calls or []:
-                self._calls.pop(call.tool_call_id, None)
+                call_id = call.tool_call_id
+                self._calls.pop(call_id, None)
+                output = (
+                    None
+                    if call_id in self._answered
+                    else self._outputs.pop(call_id, None)
+                )
+                if output is not None:
+                    self._add_result(
+                        call_id,
+                        output.content,
+                        output.details,
+                        output.timestamp,
+                        step=step,
+                    )
+                elif call_id in self._expected:
+                    self._awaited[call_id] = step
 
-    def _record_tool_status(self, span: GenAiSpan) -> None:
+    def _expect_tool_spans(self, spans: Iterable[GenAiSpan]) -> None:
+        self._expected.update(filter(None, map(_tool_call_id, spans)))
+
+    def _read_tool_span(self, span: GenAiSpan) -> None:
+        call_id = _tool_call_id(span)
         gen_ai = span.attributes.gen_ai
-        call_id = (
-            gen_ai.tool.call.id
-            if gen_ai and gen_ai.tool and gen_ai.tool.call
-            else None
-        )
-        code = span.status.code if span.status else None
-        if not call_id or code not in ("Ok", "Error"):
+        call = gen_ai.tool.call if gen_ai and gen_ai.tool else None
+        if not call_id or call is None:
             return
-        self._tool_ok.setdefault(call_id, code == "Ok")
+        code = span.status.code if span.status else None
+        if code in ("Ok", "Error"):
+            self._tool_ok.setdefault(call_id, code == "Ok")
+        self._expected.discard(call_id)
+        awaited = self._awaited.pop(call_id, None)
+        content, details = _tool_output(call.result)
+        failed = self._tool_ok.get(call_id) is False
+        if content is None and details is None and not failed:
+            return
+        output = ToolSpanOutput(_timestamp(span), content, details)
+        answered = self._answered.get(call_id)
+        if answered is not None:
+            self._merge(call_id, answered[1], output)
+        elif call_id in self._released_calls:
+            # The step is already with the caller and cannot change.
+            if details is not None or failed:
+                self._add_result(call_id, content, details, output.timestamp)
+        elif awaited is not None:
+            self._add_result(
+                call_id, content, details, output.timestamp, step=awaited
+            )
+        else:
+            self._outputs[call_id] = output
+
+    def _merge(
+        self,
+        call_id: str,
+        result: AtifObservationResult,
+        output: ToolSpanOutput,
+    ) -> None:
+        """Add a tool span read after its result to that result."""
+        if result.content is None:
+            result.content = output.content
+        extra = {
+            **(result.extra or {}),
+            **self._result_extra(call_id, output.details),
+        }
+        result.extra = extra or None
+
+    def _result_extra(
+        self, call_id: str | None, details: Any
+    ) -> dict[str, Any]:
+        extra: dict[str, Any] = {}
+        if call_id is not None and self._tool_ok.get(call_id) is False:
+            extra["is_error"] = True
+        if details is not None:
+            extra["details"] = details
+        return extra
 
     def _new_messages(
         self,
@@ -346,40 +447,54 @@ class AtifProjection:
         content = (
             response if isinstance(response, str) else json.dumps(response)
         )
-        failed = part.id is not None and self._tool_ok.get(part.id) is False
-        step = self._calls.get(part.id) if part.id else None
+        output = self._outputs.pop(part.id, None) if part.id else None
+        self._add_result(
+            part.id,
+            content,
+            output.details if output else None,
+            timestamp,
+            step=self._calls.get(part.id) if part.id else None,
+        )
+
+    def _add_result(
+        self,
+        call_id: str | None,
+        content: str | None,
+        details: Any,
+        timestamp: str,
+        *,
+        step: AtifStep | None = None,
+    ) -> None:
+        """Add one result to the step of its call, or as a step of its own."""
+        extra = self._result_extra(call_id, details)
         if step is None:
             # ATIF only lets a result name a call of its own step, so a
             # result whose call was never read stands alone.
-            extra: dict[str, Any] = (
-                {"tool_call_id": part.id} if part.id else {}
+            result = AtifObservationResult(
+                content=content,
+                extra=(
+                    {"tool_call_id": call_id, **extra}
+                    if call_id
+                    else extra or None
+                ),
             )
-            if failed:
-                extra["is_error"] = True
-            self._append(
-                AtifStep(
-                    step_id=self._next_id(),
-                    timestamp=timestamp,
-                    source="system",
-                    message="",
-                    observation=AtifObservation(
-                        results=[
-                            AtifObservationResult(
-                                content=content, extra=extra or None
-                            )
-                        ]
-                    ),
-                )
+            step = AtifStep(
+                step_id=self._next_id(),
+                timestamp=timestamp,
+                source="system",
+                message="",
+                observation=AtifObservation(results=[result]),
             )
-            return
-        result = AtifObservationResult(
-            source_call_id=part.id,
-            content=content,
-            extra={"is_error": True} if failed else None,
-        )
-        if step.observation is None:
-            step.observation = AtifObservation(results=[])
-        step.observation.results.append(result)
+            self._append(step)
+        else:
+            result = AtifObservationResult(
+                source_call_id=call_id, content=content, extra=extra or None
+            )
+            if step.observation is None:
+                step.observation = AtifObservation(results=[])
+            step.observation.results.append(result)
+        if call_id:
+            self._answered[call_id] = (step, result)
 
     def _agent_step(
         self,
@@ -433,6 +548,9 @@ class AtifProjection:
             self._open.setdefault(lane, []).append(step)
             for call in calls:
                 self._calls[call.tool_call_id] = step
+                self._answered.pop(call.tool_call_id, None)
+                self._awaited.pop(call.tool_call_id, None)
+                self._released_calls.discard(call.tool_call_id)
 
     def _metrics(self, span: GenAiSpan) -> AtifMetrics:
         gen_ai = span.attributes.gen_ai
@@ -461,7 +579,16 @@ class AtifProjection:
         )
 
 
-class _Total:
+@dataclass
+class ToolSpanOutput:
+    """What an ``execute_tool`` span said, until a result of its call takes it."""
+
+    timestamp: str
+    content: str | None
+    details: Any
+
+
+class Total:
     """A sum that remembers how many model calls reported a value."""
 
     def __init__(self) -> None:
@@ -480,6 +607,57 @@ class _Total:
 
 def _whole(value: float | None) -> int | None:
     return None if value is None else int(value)
+
+
+def _timestamp(span: GenAiSpan) -> str:
+    return span.start_time.isoformat().replace("+00:00", "Z")
+
+
+def _tool_call_id(span: GenAiSpan) -> str | None:
+    gen_ai = span.attributes.gen_ai
+    call = gen_ai.tool.call if gen_ai and gen_ai.tool else None
+    return call.id if call else None
+
+
+def _tool_output(result: Any) -> tuple[str | None, Any]:
+    """``gen_ai.tool.call.result`` as ``(the tool's text, structured details)``.
+
+    The attribute holds what the emitter wrote, and emitters stringify it. A
+    string that holds no object or array is the tool's text and has no details.
+    An envelope (:data:`TOOL_RESULT_ENVELOPE`) splits into its two halves, and
+    any other value is the details itself.
+    """
+    if result is None:
+        return None, None
+    value = result
+    if isinstance(result, str):
+        try:
+            value = json.loads(result)
+        except ValueError:
+            value = None
+        if not isinstance(value, dict | list):
+            return result or None, None
+    if (
+        isinstance(value, dict)
+        and value.keys() <= TOOL_RESULT_ENVELOPE
+        and ("details" in value or isinstance(value.get("content"), list))
+    ):
+        return _envelope_text(value.get("content")), value.get("details")
+    return result if isinstance(result, str) else json.dumps(result), value
+
+
+def _envelope_text(content: Any) -> str | None:
+    """An envelope's content as ATIF's text; a non-text part stays as JSON."""
+    if content is None or content == []:
+        return None
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list) and all(
+        isinstance(part, dict) and part.get("type") == "text"
+        for part in content
+    ):
+        return "\n\n".join(str(part.get("text", "")) for part in content)
+    return json.dumps(content)
 
 
 def _lane(span: GenAiSpan) -> str:

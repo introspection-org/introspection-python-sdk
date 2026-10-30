@@ -72,7 +72,9 @@ class AtifObservationResult(_AtifModel):
     """The result of one tool call.
 
     ATIF has no error field on a result. A failed call is marked
-    ``extra: {"is_error": true}``; a successful one carries no ``extra``.
+    ``extra: {"is_error": true}``. The structured result of the call's
+    ``execute_tool`` span, when it has one, is ``extra: {"details": ...}``. A
+    successful call without one carries no ``extra``.
     """
 
     source_call_id: str | None = None
