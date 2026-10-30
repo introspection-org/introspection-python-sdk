@@ -82,7 +82,7 @@ SpanKind = Literal[
 """OpenTelemetry span kind values."""
 
 
-class _SpanModel(BaseModel):
+class SpanModel(BaseModel):
     """Open, omit-empty base for every model on this surface.
 
     ``extra="allow"`` is not defensive boilerplate here — it is the contract.
@@ -115,25 +115,25 @@ class _SpanModel(BaseModel):
 # --- gen_ai.* -------------------------------------------------------------
 
 
-class GenAiOperation(_SpanModel):
+class GenAiOperation(SpanModel):
     """``gen_ai.operation.name`` — ``chat``, ``execute_tool``, ``invoke_agent``."""
 
     name: str | None = None
 
 
-class GenAiProvider(_SpanModel):
+class GenAiProvider(SpanModel):
     """``gen_ai.provider.name``. Replaced the older ``gen_ai.system``."""
 
     name: str | None = None
 
 
-class GenAiConversation(_SpanModel):
+class GenAiConversation(SpanModel):
     """``gen_ai.conversation.id``."""
 
     id: str | None = None
 
 
-class GenAiAgent(_SpanModel):
+class GenAiAgent(SpanModel):
     """``gen_ai.agent.*``."""
 
     id: str | None = None
@@ -141,7 +141,7 @@ class GenAiAgent(_SpanModel):
     description: str | None = None
 
 
-class GenAiRequest(_SpanModel):
+class GenAiRequest(SpanModel):
     """``gen_ai.request.*`` — what was asked for."""
 
     model: str | None = None
@@ -153,7 +153,7 @@ class GenAiRequest(_SpanModel):
     stream: bool | None = None
 
 
-class GenAiResponse(_SpanModel):
+class GenAiResponse(SpanModel):
     """``gen_ai.response.*`` — what came back."""
 
     id: str | None = None
@@ -161,13 +161,13 @@ class GenAiResponse(_SpanModel):
     finish_reasons: list[str] | None = None
 
 
-class TokenCount(_SpanModel):
+class TokenCount(SpanModel):
     """A nested token count, e.g. ``gen_ai.usage.cache_read.input_tokens``."""
 
     input_tokens: int | None = None
 
 
-class GenAiUsage(_SpanModel):
+class GenAiUsage(SpanModel):
     """``gen_ai.usage.*``.
 
     On an item these are that operation's usage. On a conversation summary they
@@ -184,7 +184,7 @@ class GenAiUsage(_SpanModel):
     cache_creation: TokenCount | None = None
 
 
-class GenAiToolCall(_SpanModel):
+class GenAiToolCall(SpanModel):
     """``gen_ai.tool.call.*``."""
 
     id: str | None = None
@@ -192,7 +192,7 @@ class GenAiToolCall(_SpanModel):
     result: Any = None
 
 
-class GenAiTool(_SpanModel):
+class GenAiTool(SpanModel):
     """``gen_ai.tool.*``."""
 
     name: str | None = None
@@ -202,7 +202,7 @@ class GenAiTool(_SpanModel):
     definitions: list[ToolDefinition] | None = None
 
 
-class GenAiInput(_SpanModel):
+class GenAiInput(SpanModel):
     """``gen_ai.input.messages``.
 
     Full history on item detail; the turn-local delta on the items list.
@@ -211,13 +211,13 @@ class GenAiInput(_SpanModel):
     messages: list[InputMessage] = Field(default_factory=list)
 
 
-class GenAiOutput(_SpanModel):
+class GenAiOutput(SpanModel):
     """``gen_ai.output.messages``."""
 
     messages: list[OutputMessage] = Field(default_factory=list)
 
 
-class GenAiCost(_SpanModel):
+class GenAiCost(SpanModel):
     """``gen_ai.cost.usd``.
 
     Not part of the published semantic conventions, but this is the name the
@@ -236,7 +236,7 @@ class GenAiCost(_SpanModel):
     usd: float | None = None
 
 
-class GenAiAttributes(_SpanModel):
+class GenAiAttributes(SpanModel):
     """The ``gen_ai.*`` attribute family, nested as the convention names it."""
 
     operation: GenAiOperation | None = None
@@ -256,13 +256,13 @@ class GenAiAttributes(_SpanModel):
 # --- introspection.* ------------------------------------------------------
 
 
-class _Id(_SpanModel):
+class IdNode(SpanModel):
     """An ``{id}`` node — ``introspection.org.id`` and friends."""
 
     id: str | None = None
 
 
-class IntrospectionRuntime(_SpanModel):
+class IntrospectionRuntime(SpanModel):
     """``introspection.runtime.*``.
 
     Two ids, not one: ``id`` is the specific runtime deployment, ``group_id``
@@ -274,13 +274,13 @@ class IntrospectionRuntime(_SpanModel):
     group_id: str | None = None
 
 
-class IntrospectionRecipe(_SpanModel):
+class IntrospectionRecipe(SpanModel):
     """``introspection.recipe.*``."""
 
     git_commit_sha: str | None = None
 
 
-class IntrospectionNewMessages(_SpanModel):
+class IntrospectionNewMessages(SpanModel):
     """``introspection.history.new_messages.*``: the half-open range of this
     call's input messages that were new to the conversation."""
 
@@ -288,7 +288,7 @@ class IntrospectionNewMessages(_SpanModel):
     end: int | None = None
 
 
-class IntrospectionHistory(_SpanModel):
+class IntrospectionHistory(SpanModel):
     """``introspection.history.*``: where this model call sits in the
     conversation's message history, as the processor's linker inferred it.
 
@@ -303,7 +303,7 @@ class IntrospectionHistory(_SpanModel):
     new_messages: IntrospectionNewMessages | None = None
 
 
-class IntrospectionContains(_SpanModel):
+class IntrospectionContains(SpanModel):
     """``introspection.contains.*``: what a chat span's sealed input delta and
     output contain.
 
@@ -320,19 +320,19 @@ class IntrospectionContains(_SpanModel):
     values: list[str] | None = None
 
 
-class IntrospectionAttributes(_SpanModel):
+class IntrospectionAttributes(SpanModel):
     """The ``introspection.*`` attribute family.
 
     Everything here is ours.
     """
 
-    org: _Id | None = None
-    project: _Id | None = None
-    member: _Id | None = None
-    run: _Id | None = None
-    task: _Id | None = None
+    org: IdNode | None = None
+    project: IdNode | None = None
+    member: IdNode | None = None
+    run: IdNode | None = None
+    task: IdNode | None = None
     runtime: IntrospectionRuntime | None = None
-    experiment: _Id | None = None
+    experiment: IdNode | None = None
     environment: str | None = None
     turn: int | None = None
     history: IntrospectionHistory | None = None
@@ -343,7 +343,7 @@ class IntrospectionAttributes(_SpanModel):
 # --- the span -------------------------------------------------------------
 
 
-class SpanAttributes(_SpanModel):
+class SpanAttributes(SpanModel):
     """The span's attribute tree.
 
     Typed for the two families we own the meaning of; open for everything
@@ -354,14 +354,14 @@ class SpanAttributes(_SpanModel):
     introspection: IntrospectionAttributes | None = None
 
 
-class SpanStatus(_SpanModel):
+class SpanStatus(SpanModel):
     """OpenTelemetry span status."""
 
     code: SpanStatusCode | None = None
     message: str | None = None
 
 
-class GenAiSpan(_SpanModel):
+class GenAiSpan(SpanModel):
     """One conversation item, or one conversation summary.
 
     Same type either way — see the module docstring for what differs.
@@ -421,7 +421,7 @@ class GenAiSpan(_SpanModel):
         return list(gen_ai.output.messages) if gen_ai and gen_ai.output else []
 
 
-class GenAiSpanList(_SpanModel):
+class GenAiSpanList(SpanModel):
     """The ``/v1/conversations/{id}/items`` envelope.
 
     ``first_id`` and ``last_id`` are informational; pagination uses the opaque
