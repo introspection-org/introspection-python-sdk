@@ -10,6 +10,7 @@ Run with:
         uv run -m introspection_examples.api.aauth_inbox
 
 Optional env:
+    INTROSPECTION_AAUTH_DENY_AS - a member id: deny every pending approval as them
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
 """
 
@@ -41,6 +42,8 @@ def main() -> None:
                     else "no budget"
                 )
                 print(f"mission {mission.id} {mission.mission!r} ({spend})")
+                # One by id, e.g. from a link in a notification.
+                print(f"spent {client.aauth.missions.get(mission.id).spent}")
             for approval in client.aauth.approvals.list(
                 status=[ApprovalStatus.PENDING]
             ):
@@ -48,6 +51,13 @@ def main() -> None:
                     f"pending {approval.kind} for {approval.agent_id}: "
                     f"{approval.description}"
                 )
+                print(client.aauth.approvals.get(approval.id).status)
+                member_id = os.getenv("INTROSPECTION_AAUTH_DENY_AS")
+                if member_id:
+                    denied = client.aauth.approvals.decide(
+                        approval.id, status="denied", member_id=member_id
+                    )
+                    print(f"{denied.id} is now {denied.status}")
         except NotFoundError:
             print("this project's Data Plane runs no AAuth Person Server")
         # #endregion docs:aauth-inbox

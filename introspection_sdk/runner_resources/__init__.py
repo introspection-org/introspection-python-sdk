@@ -41,6 +41,7 @@ from introspection_sdk.runner_resources.metrics import (
     AsyncMetrics,
     Metrics,
 )
+from introspection_sdk.runner_resources.remotes import AsyncRemotes, Remotes
 from introspection_sdk.runner_resources.shares import (
     AsyncShares,
     Shares,
@@ -66,8 +67,10 @@ __all__ = [
     "AsyncMissions",
     "Missions",
     "AsyncImages",
+    "AsyncRemotes",
     "AsyncTaskCommands",
     "Images",
+    "Remotes",
     "TaskCommands",
     "AppConnections",
     "AsyncAppConnections",

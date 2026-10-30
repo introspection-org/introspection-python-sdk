@@ -44,6 +44,7 @@ from introspection_sdk.runner_resources import (
     Files,
     Images,
     Metrics,
+    Remotes,
     Shares,
     Tasks,
 )
@@ -98,6 +99,7 @@ class IntrospectionClient:
     tokens: Tokens
     endpoints: Endpoints
     aauth: AAuth
+    remotes: Remotes
 
     def __init__(
         self,
@@ -159,6 +161,7 @@ class IntrospectionClient:
         self.connections = AppConnections(self._dp_http)
         self.images = Images(self._dp_http)
         self.aauth = AAuth(self._dp_http)
+        self.remotes = Remotes(self._dp_http)
         # Project administration: each route needs an org credential (a
         # member session or access token); a project API key carries none
         # of their scopes.

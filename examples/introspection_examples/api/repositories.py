@@ -1,5 +1,6 @@
 """Browse a project's repositories — list them on the control plane, then
-walk a directory, read a file and page recent commits through the data plane.
+walk a directory, read a file and page recent commits through the data plane,
+and ask for the Git provider token a sandbox clones with.
 
 Run with:
     INTROSPECTION_TOKEN=intro_xxx
@@ -18,6 +19,7 @@ import sys
 
 from dotenv import load_dotenv
 from introspection_sdk import (
+    IntrospectionAPIError,
     IntrospectionClient,
     NotFoundError,
     RepositoryFile,
@@ -53,6 +55,22 @@ def main() -> None:
         if recent:
             detail = client.repositories.commit(repo.id, recent[0].sha)
             print(f"  {recent[0].sha[:7]} changed {len(detail.files)} files")
+
+        # #region docs:repository-access-token
+        # Only a token issued to a sandbox gets a grant, for the runtime it
+        # runs on; any other caller is refused, as this API key is.
+        try:
+            grant = client.repositories.access_token(
+                repo.id, permissions={"contents": "read"}
+            )
+        except IntrospectionAPIError as exc:
+            print(f"no Git provider token here: {exc.status_code}")
+        else:
+            # A SecretStr: `grant.token.get_secret_value()` is the password
+            # for an HTTPS clone of `grant.repository` until it expires.
+            print(f"{grant.provider} token for {grant.repository}")
+            print(f"expires at {grant.expires_at}")
+        # #endregion docs:repository-access-token
 
         try:
             content = client.repositories.contents.get(repo.id, "README.md")

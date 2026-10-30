@@ -19,6 +19,7 @@ from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.repositories import (
     HostedRepositoryCreate,
     Repository,
+    RepositoryAccessGrant,
     RepositoryBranch,
     RepositoryCommit,
     RepositoryCommitDetail,
@@ -29,8 +30,8 @@ from introspection_sdk.schemas.repositories import (
     RepositoryMerge,
 )
 
-_REPOSITORY_LIST = TypeAdapter(list[Repository])
-_CONTENT = TypeAdapter(RepositoryContent)
+REPOSITORY_LIST = TypeAdapter(list[Repository])
+CONTENT = TypeAdapter(RepositoryContent)
 
 
 def _contents_path(repository_id: UUID | str, path: str) -> str:
@@ -73,7 +74,7 @@ def _merge(response: RawResponse) -> RepositoryMerge | None:
 
 
 def _directory(payload: Any, path: str) -> RepositoryDirectory:
-    content = _CONTENT.validate_python(payload)
+    content = CONTENT.validate_python(payload)
     if isinstance(content, RepositoryFile):
         raise ValueError(
             f"{path!r} is a file, not a directory; read it with "
@@ -135,7 +136,7 @@ class AsyncRepositoryContents:
             _contents_path(repository_id, path),
             params={"ref": ref},
         )
-        return _CONTENT.validate_python(payload)
+        return CONTENT.validate_python(payload)
 
 
 class AsyncRepositoryMerges:
@@ -200,7 +201,7 @@ class AsyncRepositories:
             "/v1/repositories",
             params={"project": project, "slug": slug},
         )
-        return _REPOSITORY_LIST.validate_python(payload)
+        return REPOSITORY_LIST.validate_python(payload)
 
     async def get(
         self,
@@ -317,3 +318,30 @@ class AsyncRepositories:
             "GET", _commit_path(repository_id, sha)
         )
         return RepositoryCommitDetail.model_validate(payload)
+
+    async def access_token(
+        self,
+        repository_id: UUID | str,
+        *,
+        permissions: dict[str, str] | None = None,
+    ) -> RepositoryAccessGrant:
+        """Mint a short-lived token for the repository's Git provider (DP
+        ``POST /v1/repositories/{id}/access-token``).
+
+        What it may reach is the runtime's grant, read from the caller's
+        verified claims, so only a sandbox's token gets one; any other
+        caller is refused. ``permissions`` narrows the token, e.g.
+        ``{"contents": "read"}``."""
+        payload = await self._dp_http.request(
+            "POST",
+            f"/v1/repositories/{repository_id}/access-token",
+            json={"permissions": permissions or {}},
+        )
+        return RepositoryAccessGrant.model_validate(payload)
+
+
+__all__ = [
+    "AsyncRepositories",
+    "AsyncRepositoryContents",
+    "AsyncRepositoryMerges",
+]

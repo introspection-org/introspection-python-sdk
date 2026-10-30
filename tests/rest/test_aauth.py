@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from introspection_sdk._errors import NotFoundError
+from introspection_sdk._errors import IntrospectionAPIError, NotFoundError
 from introspection_sdk.runner_resources import AAuth, AsyncAAuth
 from introspection_sdk.schemas.aauth import (
     ApprovalKind,
@@ -160,3 +160,104 @@ async def test_async_aauth_reads_empty(fake_api: FakeAPI):
     assert (await aauth.missions.list(limit=5)).records == []
     assert fake_api.last_request.params.get("limit") == "5"
     assert [a async for a in aauth.approvals.list()] == []
+
+
+def test_mission_and_approval_reads(fake_api: FakeAPI):
+    fake_api.add("GET", f"/v1/aauth/missions/{MISSION_ID}", json_body=MISSION)
+    fake_api.add(
+        "GET", f"/v1/aauth/approvals/{APPROVAL_ID}", json_body=APPROVAL
+    )
+    aauth = AAuth(fake_api.client())
+    assert aauth.missions.get(MISSION_ID).model_dump(mode="json") == MISSION
+    approval = aauth.approvals.get(APPROVAL_ID)
+    assert approval.model_dump(mode="json") == APPROVAL
+    assert fake_api.last_request.path == f"/v1/aauth/approvals/{APPROVAL_ID}"
+
+
+def test_an_unknown_approval(fake_api: FakeAPI):
+    aauth = AAuth(fake_api.client())
+    with pytest.raises(NotFoundError):
+        aauth.approvals.get(APPROVAL_ID)
+    with pytest.raises(NotFoundError):
+        aauth.missions.get(MISSION_ID)
+
+
+def test_decide_as_a_member_with_a_smaller_budget(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        f"/v1/aauth/approvals/{TOKEN_APPROVAL_ID}",
+        json_body=TOKEN_APPROVAL,
+    )
+    decided = AAuth(fake_api.client()).approvals.decide(
+        TOKEN_APPROVAL_ID,
+        status=ApprovalStatus.APPROVED,
+        member_id=MEMBER_ID,
+        budget=Budget(amount=15000, unit="USD", decimals=2),
+    )
+    assert decided.decided_budget == Budget(
+        amount=15000, unit="USD", decimals=2
+    )
+    assert fake_api.last_request.json() == {
+        "status": "approved",
+        "decided_by": {"member_id": MEMBER_ID},
+        "budget": {"amount": 15000, "unit": "USD", "decimals": 2},
+    }
+
+
+async def test_decide_as_a_customer_identity(fake_api: FakeAPI):
+    denied = {**APPROVAL, "status": "denied", "decided_at": NOW}
+    fake_api.add(
+        "PATCH", f"/v1/aauth/approvals/{APPROVAL_ID}", json_body=denied
+    )
+    approval = await AsyncAAuth(fake_api.async_client()).approvals.decide(
+        APPROVAL_ID, status="denied", identity={"user_id": "cust-42"}
+    )
+    assert approval.status == ApprovalStatus.DENIED
+    assert fake_api.last_request.json() == {
+        "status": "denied",
+        "decided_by": {"identity": {"user_id": "cust-42"}},
+    }
+
+
+@pytest.mark.parametrize(
+    "decider",
+    [
+        {},
+        {"member_id": MEMBER_ID, "identity": {"user_id": "cust-42"}},
+        {"identity": {}},
+    ],
+)
+def test_decide_needs_exactly_one_decider(
+    fake_api: FakeAPI, decider: dict[str, Any]
+):
+    with pytest.raises(ValueError, match="decider|approver"):
+        AAuth(fake_api.client()).approvals.decide(
+            APPROVAL_ID, status="approved", **decider
+        )
+    assert fake_api.requests == [], "refused before any request"
+
+
+def test_decide_refused_by_the_server(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        f"/v1/aauth/approvals/{APPROVAL_ID}",
+        status=409,
+        json_body={"detail": "approval already decided"},
+    )
+    with pytest.raises(IntrospectionAPIError) as caught:
+        AAuth(fake_api.client()).approvals.decide(
+            APPROVAL_ID, status="approved", member_id=MEMBER_ID
+        )
+    assert caught.value.status_code == 409
+
+
+async def test_async_decide_and_reads_of_an_unknown_id(fake_api: FakeAPI):
+    aauth = AsyncAAuth(fake_api.async_client())
+    with pytest.raises(NotFoundError):
+        await aauth.approvals.decide(
+            APPROVAL_ID, status="denied", member_id=MEMBER_ID
+        )
+    with pytest.raises(NotFoundError):
+        await aauth.approvals.get(APPROVAL_ID)
+    with pytest.raises(NotFoundError):
+        await aauth.missions.get(MISSION_ID)

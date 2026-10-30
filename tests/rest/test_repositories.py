@@ -583,3 +583,41 @@ async def test_async_repository_writes(fake_api: FakeAPI):
     assert fake_api.last_request.params.get("q") == "ma"
     await repos.delete(REPOSITORY_ID)
     assert fake_api.last_request.method == "DELETE"
+
+
+ACCESS_TOKEN = f"/v1/repositories/{REPOSITORY_ID}/access-token"
+
+
+def test_access_token_mints_a_grant(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        ACCESS_TOKEN,
+        json_body={
+            "provider": "github",
+            "token": "ghs_secret",
+            "expires_at": "2026-10-30T13:00:00Z",
+            "repository": "acme/support",
+        },
+    )
+    grant = repositories(fake_api).access_token(
+        REPOSITORY_ID, permissions={"contents": "read"}
+    )
+    assert (grant.provider, grant.repository) == ("github", "acme/support")
+    assert grant.token.get_secret_value() == "ghs_secret"
+    assert "ghs_secret" not in repr(grant)
+    assert fake_api.last_request.json() == {
+        "permissions": {"contents": "read"}
+    }
+
+
+async def test_access_token_refused_without_a_runtime(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        ACCESS_TOKEN,
+        status=403,
+        json_body={"detail": "runtime claim required"},
+    )
+    with pytest.raises(IntrospectionAPIError) as caught:
+        await async_repositories(fake_api).access_token(REPOSITORY_ID)
+    assert caught.value.status_code == 403
+    assert fake_api.last_request.json() == {"permissions": {}}

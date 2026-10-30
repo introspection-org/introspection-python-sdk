@@ -11,6 +11,7 @@ Run with:
 Optional env:
     INTROSPECTION_CONNECT_APP      - app slug to connect, e.g. gmail
     INTROSPECTION_RUNTIME          - runtime slug or group id the connection serves
+    INTROSPECTION_CONNECT_RETURN   - app link the connect page ends on, e.g. myapp://connected
     INTROSPECTION_BASE_API_URL     - API host (default https://api.introspection.dev)
     INTROSPECTION_DP_URL           - data-plane host, when it differs
 """
@@ -35,12 +36,21 @@ def main() -> None:
             state = "healthy" if connection.healthy else "reconnect"
             print(f"  {connection.app:16} {state:9} {connection.account_name}")
 
+        # An administrator's list includes the project's own connections,
+        # which have no member; narrow it to one subject, connector or peering.
+        for connection in client.connections.list(subject_type="app"):
+            print(f"  app-owned {connection.app} ({connection.owner})")
+
         app = os.getenv("INTROSPECTION_CONNECT_APP")
         runtime = os.getenv("INTROSPECTION_RUNTIME")
         if not (app and runtime):
             return
 
-        page = client.connections.create(app=app, runtime=runtime)
+        page = client.connections.create(
+            app=app,
+            runtime=runtime,
+            return_url=os.getenv("INTROSPECTION_CONNECT_RETURN"),
+        )
         print(f"open within {page.expires_in}s: {page.authorize_url}")
     finally:
         client.shutdown()

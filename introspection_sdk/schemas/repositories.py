@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 
 class ApiModel(BaseModel):
@@ -160,9 +160,21 @@ class RepositoryMerge(ApiModel):
     parents: list[str]
 
 
+class RepositoryAccessGrant(ApiModel):
+    """A short-lived token for a repository's Git provider, minted for the
+    runtime the caller's sandbox runs on."""
+
+    provider: str
+    token: SecretStr
+    expires_at: str
+    repository: str
+    """The canonical ``owner/name``."""
+
+
 __all__ = [
     "HostedRepositoryCreate",
     "Repository",
+    "RepositoryAccessGrant",
     "RepositoryBranch",
     "RepositoryCommit",
     "RepositoryCommitDetail",

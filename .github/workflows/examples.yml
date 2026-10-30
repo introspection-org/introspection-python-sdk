@@ -113,6 +113,8 @@ jobs:
           uv run -m introspection_examples.api.async_runtimes
           uv run -m introspection_examples.api.repositories
           uv run -m introspection_examples.api.aauth_inbox
+          uv run -m introspection_examples.api.device_login
+          uv run -m introspection_examples.api.remotes
           uv run -m introspection_examples.api.author_runtime
           uv run -m introspection_examples.api.project_admin
           uv run -m introspection_examples.api.conversation_atif

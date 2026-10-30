@@ -42,6 +42,7 @@ from introspection_sdk.runner_resources import (
     AsyncFiles,
     AsyncImages,
     AsyncMetrics,
+    AsyncRemotes,
     AsyncShares,
     AsyncTasks,
 )
@@ -114,6 +115,7 @@ class AsyncIntrospectionClient:
     tokens: AsyncTokens
     endpoints: AsyncEndpoints
     aauth: AsyncAAuth
+    remotes: AsyncRemotes
 
     def __init__(
         self,
@@ -175,6 +177,7 @@ class AsyncIntrospectionClient:
         self.connections = AsyncAppConnections(self._dp_http)
         self.images = AsyncImages(self._dp_http)
         self.aauth = AsyncAAuth(self._dp_http)
+        self.remotes = AsyncRemotes(self._dp_http)
         # Project administration: each route needs an org credential (a
         # member session or access token); a project API key carries none
         # of their scopes.

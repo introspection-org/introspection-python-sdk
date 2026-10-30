@@ -18,7 +18,11 @@ import httpx2 as httpx
 import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
-from introspection_sdk._errors import IntrospectionAPIError, NotFoundError
+from introspection_sdk._errors import (
+    IntrospectionAPIError,
+    NotFoundError,
+    ValidationError,
+)
 from introspection_sdk.runner import AsyncRunner, Runner
 from introspection_sdk.runner_resources import (
     AppConnections,
@@ -26,7 +30,11 @@ from introspection_sdk.runner_resources import (
     AsyncRunnerAppConnections,
     RunnerAppConnections,
 )
-from introspection_sdk.schemas.connections import Connection, ConnectPage
+from introspection_sdk.schemas.connections import (
+    Connection,
+    ConnectionOwner,
+    ConnectPage,
+)
 from introspection_sdk.schemas.runner import (
     RunnerContext,
     RunnerDeployment,
@@ -34,6 +42,7 @@ from introspection_sdk.schemas.runner import (
 )
 
 from .conftest import (
+    CONNECTOR_ID,
     MEMBER_ID,
     RUNTIME_GROUP_ID,
     FakeAPI,
@@ -411,3 +420,79 @@ async def test_async_client_and_runner_connections(
     ]
     assert json.loads(dp.requests[2].body)["runtime"] == SPEC_RUNTIME_GROUP_ID
     assert json.loads(dp.requests[-1].body)["runtime"] == RUNTIME_GROUP_ID
+
+
+def test_a_project_owned_connection_has_no_member(fake_api: FakeAPI):
+    project_grant = {
+        "id": CONNECTION_ID,
+        "owner": "project",
+        "member_id": None,
+        "connector": {
+            "id": CONNECTOR_ID,
+            "slug": "hello-mcp",
+            "provider": "hello-mcp",
+            "peering": None,
+        },
+        "subject_type": "app",
+        "app": "hello-mcp",
+        "provider_account_id": None,
+        "account_name": None,
+        "healthy": True,
+        "status": "active",
+        "last_verified_at": None,
+        "created_by_member_id": MEMBER_ID,
+        "created_at": "2026-10-21T12:00:00Z",
+        "updated_at": "2026-10-21T12:00:00Z",
+    }
+    fake_api.add(
+        "GET",
+        "/v1/connections",
+        json_body={"records": [project_grant], "count": 1, "next": None},
+    )
+    found = (
+        AppConnections(fake_api.client())
+        .list(
+            connector_id=UUID(CONNECTOR_ID),
+            subject_type="app",
+            peering="partner",
+        )
+        .page()
+        .records[0]
+    )
+    assert found.owner == ConnectionOwner.PROJECT
+    assert found.member_id is None
+    assert found.connector is not None
+    assert found.connector.slug == "hello-mcp"
+    params = fake_api.last_request.params
+    assert params.get("connector_id") == CONNECTOR_ID
+    assert params.get("subject_type") == "app"
+    assert params.get("peering") == "partner"
+
+
+def test_create_sends_a_return_url(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/connections",
+        json_body={"authorize_url": "https://connect.test", "expires_in": 600},
+    )
+    AppConnections(fake_api.client()).create(
+        app="gmail", runtime="support", return_url="ark://connected"
+    )
+    assert fake_api.last_request.json() == {
+        "app": "gmail",
+        "runtime": "support",
+        "return_url": "ark://connected",
+    }
+
+
+def test_create_refuses_a_return_url_scheme(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/connections",
+        status=422,
+        json_body={"detail": "return_url scheme is not allowed"},
+    )
+    with pytest.raises(ValidationError):
+        AppConnections(fake_api.client()).create(
+            app="gmail", runtime="support", return_url="evil://connected"
+        )

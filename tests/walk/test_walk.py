@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import shutil
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
@@ -31,11 +32,23 @@ from inline_snapshot import snapshot
 from vcr.cassette import Cassette
 
 from introspection_sdk import (
+    ConflictError,
+    IntrospectionAPIError,
     IntrospectionClient,
     NotFoundError,
     ValidationError,
 )
-from introspection_sdk.auth import service_account_token
+from introspection_sdk.auth import (
+    DEVICE_FLOW_CLIENT_ID,
+    DeviceTokenStatus,
+    development_credential,
+    oidc_logout,
+    poll_device_token,
+    refresh_access_token,
+    request_device_code,
+    revoke_session,
+    service_account_token,
+)
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.applications import Application
 from introspection_sdk.schemas.connectors import Connector
@@ -77,6 +90,8 @@ from .support import (
 from .teardown import remove_walk_resources
 
 IDLE = ("idle", "awaiting_user", "completed")
+#: An id nothing has: the reads of what the walk cannot make answer 404.
+NIL = UUID(int=0)
 
 
 @dataclass
@@ -430,6 +445,54 @@ def test_02_application(world: World) -> None:
     apps.secrets.delete(w.application.id, first.id)
     assert second.id != first.id
 
+    # Signing keys: the application is created holding one, and a second
+    # is added and revoked.
+    keys = apps.keys.list(w.application.id)
+    assert len(keys) == 1, "an application starts with one signing key"
+    key = apps.keys.create(w.application.id)
+    assert {k.id for k in apps.keys.list(w.application.id)} == {
+        keys[0].id,
+        key.id,
+    }
+    apps.keys.delete(w.application.id, key.id)
+
+    # A service account signs nobody in, so it refuses an identity
+    # provider; a federated application takes one, checked by its issuer.
+    with pytest.raises(ValidationError):
+        apps.idps.create(w.application.id, issuer=WALK.idp_issuer)
+    federated = apps.create(
+        name=f"{WALK.application_name}-federated",
+        application_type="jwks",
+        project=w.project.id,
+    )
+    idp = apps.idps.create(federated.id, issuer=WALK.idp_issuer)
+    assert idp.issuer == WALK.idp_issuer
+    assert stable(idp) == snapshot(
+        {
+            "id": "[uuid]",
+            "org_id": "[uuid]",
+            "application_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+            "idp_provider": "generic",
+            "issuer": "[url]",
+            "client_id": "[redacted]",
+            "scopes": ["openid", "profile", "email"],
+            "external_org_id": None,
+            "external_idp_id": None,
+            "audience_client_id": None,
+            "status": "active",
+            "error_message": None,
+            "disabled_at": None,
+            "client_secret": None,
+            "is_active": True,
+        }
+    )
+    assert [i.id for i in apps.idps.list(federated.id)] == [idp.id]
+    apps.idps.delete(federated.id, idp.id)
+    assert list(apps.idps.list(federated.id)) == []
+    apps.delete(federated.id, project=w.project.id)
+
 
 @walk_step(
     3, "repository — a hosted repository the walk pushes the recipe into"
@@ -533,14 +596,19 @@ def test_04_recipe(world: World) -> None:
         lambda r: r is not None,
         label="push-versioned recipe",
     )
-    assert stable(w.recipe) == snapshot(
+    # The slug ends in a hash of the pinned commit, which moves with the
+    # recipe repository.
+    assert re.fullmatch(
+        r"hello-mcp-production-main-[0-9a-f]{12}", w.recipe.slug
+    )
+    assert stable({**plain(w.recipe), "slug": None}) == snapshot(
         {
             "id": "[uuid]",
             "org_id": "[uuid]",
             "project_id": "[uuid]",
             "repository_id": "[uuid]",
             "name": "hello-mcp",
-            "slug": "hello-mcp-production-main-543b8db50a83",
+            "slug": None,
             "git_ref": "main",
             "git_commit_sha": "[sha]",
             "sub_path": ".",
@@ -585,6 +653,26 @@ def test_04_recipe(world: World) -> None:
     )
     updated = w.sa.recipes.update(w.recipe.id, description="The walk's recipe")
     assert updated.description == "The walk's recipe"
+
+    # A third pin, removed: `recipes:delete` is the owner's.
+    doomed = w.sa.recipes.create(
+        project=w.project.id,
+        repository_id=repo,
+        name="hello-mcp (walk, deleted)",
+        git_ref="main",
+        git_commit_sha=head.sha,
+    )
+    w.owner.recipes.delete(doomed.id, project=w.project.id)
+    expect_not_found(lambda: w.sa.recipes.get(doomed.id))
+
+    # A merge of a branch into itself has nothing to merge; the owner's
+    # Data Plane token merges as its member.
+    assert w.member.repositories.merges.create(repo, "main", "main") is None
+    # A Git provider token is the grant of the runtime a sandbox runs on,
+    # so a session with no runtime is refused.
+    with pytest.raises(IntrospectionAPIError) as refused:
+        w.member.repositories.access_token(repo)
+    assert refused.value.status_code == 403
 
 
 @walk_step(
@@ -717,6 +805,45 @@ def test_06_connector(world: World) -> None:
     )
     assert updated.name == f"{WALK.connector_name} (walk)"
 
+    # The open MCP registry a custom connector picks from; a connector made
+    # from an issuer has no provider catalogue of its own.
+    listings = w.sa.connectors.search_custom_apps("everything", limit=5)
+    assert all(app.name for app in listings)
+    with pytest.raises(ValidationError):
+        w.sa.connectors.list_apps(w.connector.id, query="mcp")
+
+    # A connection registered with a caller-supplied token, read and
+    # revoked before the OAuth grant makes the runtime's own.
+    connections = w.sa.connectors.connections
+    registered = connections.create(
+        w.connector.id, access_token=WALK.registered_token
+    )
+    assert stable(registered) == snapshot(
+        {
+            "id": "[uuid]",
+            "org_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+            "connector_id": "[uuid]",
+            "project_id": "[uuid]",
+            "member_id": None,
+            "created_by_member_id": None,
+            "runtime_group_id": None,
+            "subject_type": "app",
+            "scopes_granted": [],
+            "status": "active",
+            "token_expires_at": None,
+            "last_verified_at": None,
+            "provider_account_name": None,
+            "provider_app": None,
+            "provider_account_id": None,
+        }
+    )
+    assert connections.get(w.connector.id, registered.id).id == registered.id
+    # `connectors:delete` is the owner's.
+    w.owner.connectors.connections.revoke(w.connector.id, registered.id)
+    expect_not_found(lambda: connections.get(w.connector.id, registered.id))
+
 
 def _versioned(client: IntrospectionClient, w: World) -> Runtime | None:
     return next(
@@ -793,6 +920,8 @@ def test_07_runtime(world: World) -> None:
                 "external_image_name": "[redacted]",
                 "verdict_by": "[timestamp]",
             },
+            "image_version": None,
+            "peering_id": None,
             "created_by_member_id": "[uuid]",
         }
     )
@@ -868,6 +997,7 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
             "connector_id": "[uuid]",
+            "project_id": "[uuid]",
             "member_id": None,
             "created_by_member_id": "[uuid]",
             "runtime_group_id": "[uuid]",
@@ -875,6 +1005,8 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "scopes_granted": [],
             "status": "active",
             "token_expires_at": "[timestamp]",
+            "last_verified_at": "[timestamp]",
+            "provider_account_name": None,
             "provider_app": None,
             "provider_account_id": None,
         }
@@ -890,7 +1022,14 @@ def test_08_connection_and_endpoint(world: World) -> None:
         .page()
         .records[0]
     )
-    assert stable(w.endpoint) == snapshot(
+    # Discovery of the server's tools races this read.
+    assert w.endpoint.model_dump()["mcp_check"]["status"] in (
+        "pending",
+        "ok",
+        "failed",
+        "skipped",
+    )
+    assert stable({**plain(w.endpoint), "mcp_check": None}) == snapshot(
         {
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
@@ -919,6 +1058,7 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "last_verified_at": None,
             "authorized_application_id": None,
             "created_by_member_id": "[uuid]",
+            "mcp_check": None,
         }
     )
     read = endpoints.get(w.endpoint.id, project=w.project.id)
@@ -927,6 +1067,51 @@ def test_08_connection_and_endpoint(world: World) -> None:
         w.endpoint.id, project=w.project.id, name="hello-mcp (walk)"
     )
     assert renamed.name == "hello-mcp (walk)"
+
+    # A plain upstream API, created and deleted; with no `verify_path` the
+    # Control Plane calls nothing.
+    api = endpoints.create(
+        project=w.project.id,
+        name=WALK.api_endpoint_name,
+        host=WALK.api_endpoint_host,
+        kind="api",
+        headers={"X-Walk": f"${{{WALK.credential_name}}}"},
+    )
+    assert (api.host, str(api.kind)) == (WALK.api_endpoint_host, "api")
+    assert stable(api) == snapshot(
+        {
+            "id": "[uuid]",
+            "org_id": "[uuid]",
+            "project_id": "[uuid]",
+            "name": "walk-api",
+            "host": "walk-api.example.com",
+            "base_url": None,
+            "kind": "api",
+            "metadata": {
+                "mcp_server_id": None,
+                "connector_id": None,
+                "provider_app": None,
+                "extra_hosts": [],
+                "auth_audience": None,
+            },
+            "assertion_claims": None,
+            "runtime_id": None,
+            "runtime_group_id": None,
+            "environment": None,
+            "verify_path": None,
+            "headers": {"X-Walk": "${WALK_SECRET}"},
+            "header_names": ["X-Walk"],
+            "credential_refs": ["WALK_SECRET"],
+            "last_verified_at": None,
+            "authorized_application_id": None,
+            "created_by_member_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+            "mcp_check": None,
+        }
+    )
+    endpoints.delete(api.id, project=w.project.id)
+    expect_not_found(lambda: endpoints.get(api.id, project=w.project.id))
 
     # The app connection is the runtime group's; the broker resolves it
     # from the connector and the service account's project.
@@ -1377,6 +1562,9 @@ def test_13_telemetry_reads(world: World) -> None:
         }
     )
     w.sa.shares.get(str(share.id))
+    # `visible_from` is a conversation share's; a file share takes only a
+    # clear.
+    assert w.sa.shares.update(str(share.id), visible_from=None).id == share.id
     assert any(
         s.id == share.id for s in w.sa.shares.list(resource_type="file")
     )
@@ -1433,8 +1621,13 @@ def test_13_telemetry_reads(world: World) -> None:
         label="annotation events",
         timeout=60,
     )
+    # The local stack never makes an annotation visible, so its event is
+    # read where it landed and is a 404 where it did not.
     if events:
         w.sa.events.get(str(events[0].id))
+    else:
+        labels = span_event_id(target.trace_id, target.span_id, "labels")
+        expect_not_found(lambda: w.sa.events.get(str(labels)))
     event_table = w.sa.events.list_arrow(
         "introspection.annotation", conversation_id=cid
     ).read_all()
@@ -1448,14 +1641,52 @@ def test_13_telemetry_reads(world: World) -> None:
         is not None
     )
 
-    # The AAuth surfaces, read empty.
+    # The AAuth surfaces, read empty: no agent has asked for anything, so
+    # there is no mission or approval to read or decide.
     assert w.sa.aauth.missions.list().page().records == []
     assert w.sa.aauth.approvals.list().page().records == []
-    # `/v1/connections` is the apps a member connects through an app
-    # connector, which needs that provider's credentials; with none on the
-    # project every route answers 404 (member-connections.md).
+    expect_not_found(lambda: w.sa.aauth.missions.get(NIL))
+    expect_not_found(lambda: w.sa.aauth.approvals.get(NIL))
+    expect_not_found(
+        lambda: w.sa.aauth.approvals.decide(
+            NIL, status="denied", member_id=owners[0].id
+        )
+    )
+    # `/v1/connections` holds the project's own grant from step 8, with no
+    # member; an app connector is what a member connects through, which
+    # needs that provider's credentials, so with none on the project the
+    # other routes answer 404 (member-connections.md).
     missing = "019a1000-0000-7000-8000-0000000000c1"
-    expect_not_found(lambda: w.member.connections.list().page())
+    project_grant = next(
+        c
+        for c in w.member.connections.list(connector_id=w.connector.id)
+        if str(c.owner) == "project"
+    )
+    assert stable(project_grant) == snapshot(
+        {
+            "id": "[uuid]",
+            "owner": "project",
+            "member_id": None,
+            "connector": {
+                "id": "[uuid]",
+                "slug": "hello-mcp",
+                "provider": "hello-mcp",
+                "peering": None,
+            },
+            "subject_type": "app",
+            "app": "hello-mcp",
+            "provider_account_id": None,
+            "account_name": None,
+            "healthy": True,
+            "status": "active",
+            "last_verified_at": "[timestamp]",
+            "created_by_member_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
+        }
+    )
+    assert project_grant.connector is not None
+    assert project_grant.connector.slug == WALK.connector_name
     expect_not_found(lambda: w.member.connections.get(missing))
     expect_not_found(lambda: w.member.connections.delete(missing))
     expect_not_found(
@@ -1479,6 +1710,14 @@ def test_14_eval(world: World) -> None:
     images = w.sa.images.list().page()
     if images.records:
         w.sa.images.get(images.records[0].id)
+    # A mirror needs no upload: recording it queues the copy, and a
+    # service image is removed whatever its build has reached.
+    mirror = w.sa.images.create(
+        name=WALK.image_name,
+        source={"kind": "mirror", "reference": WALK.image_reference},
+    )
+    assert w.sa.images.get(mirror.id).name == WALK.image_name
+    w.sa.images.delete(mirror.id)
     list(w.owner.integrations.list())
     judges = w.sa.judges.list(
         project=w.project.id, runtime_group_id=UUID(w.group_id)
@@ -2074,6 +2313,46 @@ def test_17_access(world: World) -> None:
     w.owner.applications.delete(drew_app.id, project=w.project.id)
 
 
+def sign_in_routes(w: World) -> None:
+    """What `introspection login`, `logout` and `dev` reach through the SDK,
+    short of a person approving in a browser: a device code and one poll
+    that finds it pending, a refresh and a development credential the
+    server refuses (only an approved login holds what they take), a
+    revocation and a sign-out that name no session (the owner's own would
+    end the walk's), and the remote connection's protocol. The WebSocket
+    itself is not opened: attaching needs a development login."""
+    base = w.settings.base_api_url
+    device = request_device_code(base_api_url=base)
+    assert device.verification_uri_complete.startswith(device.verification_uri)
+    poll = poll_device_token(
+        device.device_code.get_secret_value(), base_api_url=base
+    )
+    assert (poll.status, poll.token) == (DeviceTokenStatus.PENDING, None)
+    with pytest.raises(ValidationError) as refused:
+        refresh_access_token(
+            "walk-no-refresh-token",
+            DEVICE_FLOW_CLIENT_ID,
+            str(NIL),
+            str(NIL),
+            base_api_url=base,
+        )
+    assert refused.value.code == "invalid_grant"
+    with pytest.raises(ValidationError) as refused:
+        development_credential("walk-not-a-login", base_api_url=base)
+    assert refused.value.code == "invalid_grant"
+    revoke_session(
+        str(NIL), str(NIL), DEVICE_FLOW_CLIENT_ID, base_api_url=base
+    )
+    oidc_logout("walk-no-session", base_api_url=base)
+
+    docs = w.member.remotes.connect_docs()
+    assert docs.endpoint == "/v1/remotes/connect"
+    assert any(
+        f.frame == "attach_request"
+        for f in docs.message_protocol.remote_to_cloud
+    )
+
+
 @walk_step(
     18,
     "members and keys — the owner's reads, a development API key, the "
@@ -2089,17 +2368,24 @@ def test_18_members_and_keys(world: World) -> None:
     # run sent; the address names this organisation, since a person belongs
     # to one and a second organisation's walk would answer 409.
     email = f"walk-member@{org.slug}.example.com"
-    invited = next((m for m in members if m.email == email), None) or (
-        w.owner.members.create(
-            {"email": email, "name": "Walk member", "role": "member"}
-        )
-    )
+    invite = {"email": email, "name": "Walk member", "role": "member"}
+    invited = next((m for m in members if m.email == email), None)
+    if invited is None:
+        invited = w.owner.members.create(invite)
+    else:
+        with pytest.raises(ConflictError):
+            w.owner.members.create(invite)
     assert invited.email == email
     assert str(invited.role) == "member"
     renamed = w.owner.members.update(invited.id, name="Walk member (renamed)")
     assert renamed.name == "Walk member (renamed)"
     me = w.owner.oidc.me()
     assert str(me.org_id) == str(w.project.org_id)
+    sign_in_routes(w)
+    # The project offers no runtime group to another project.
+    peerings = w.owner.projects.peerings
+    assert list(peerings.list(w.project.id)) == []
+    expect_not_found(lambda: peerings.get(w.project.id, NIL))
     api_key = w.sa.api_keys.create(
         project=w.project.id,
         name=WALK.api_key_name,

@@ -102,6 +102,11 @@ class Runtime(ApiModel):
     # commit's subject line, and the recipe's GitHub repository (owner/name).
     image_revision: str | None = None
     image_commit_subject: str | None = None
+    image_version: str | None = None
+    """The recipe release this image carries, such as ``1.4.0``."""
+    peering_id: UUID | None = None
+    """The runtime peering this group's sessions take their configuration
+    from; attached and detached in the web app."""
     image_repository: str | None = None
 
 
