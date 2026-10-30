@@ -43,7 +43,7 @@ __all__ = [
 ATIF_SCHEMA_VERSION: Literal["ATIF-v1.7"] = "ATIF-v1.7"
 
 
-class _AtifModel(BaseModel):
+class AtifModel(BaseModel):
     """Closed, omit-absent base: Harbor's models forbid unknown fields."""
 
     model_config = ConfigDict(extra="forbid", protected_namespaces=())
@@ -60,7 +60,7 @@ class _AtifModel(BaseModel):
         }
 
 
-class AtifToolCall(_AtifModel):
+class AtifToolCall(AtifModel):
     """One tool invocation of an agent step."""
 
     tool_call_id: str
@@ -68,11 +68,13 @@ class AtifToolCall(_AtifModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
-class AtifObservationResult(_AtifModel):
+class AtifObservationResult(AtifModel):
     """The result of one tool call.
 
     ATIF has no error field on a result. A failed call is marked
-    ``extra: {"is_error": true}``; a successful one carries no ``extra``.
+    ``extra: {"is_error": true}``. The structured result of the call's
+    ``execute_tool`` span, when it has one, is ``extra: {"details": ...}``. A
+    successful call without one carries no ``extra``.
     """
 
     source_call_id: str | None = None
@@ -80,13 +82,13 @@ class AtifObservationResult(_AtifModel):
     extra: dict[str, Any] | None = None
 
 
-class AtifObservation(_AtifModel):
+class AtifObservation(AtifModel):
     """The tool results an agent step received."""
 
     results: list[AtifObservationResult]
 
 
-class AtifMetrics(_AtifModel):
+class AtifMetrics(AtifModel):
     """Usage of one model call.
 
     ``prompt_tokens`` includes cached tokens, as ``gen_ai.usage.input_tokens``
@@ -99,7 +101,7 @@ class AtifMetrics(_AtifModel):
     cost_usd: float | None = None
 
 
-class AtifStep(_AtifModel):
+class AtifStep(AtifModel):
     """One step: a system prompt, a user turn, or one model call."""
 
     step_id: int = Field(ge=1)
@@ -114,7 +116,7 @@ class AtifStep(_AtifModel):
     llm_call_count: int | None = Field(default=None, ge=0)
 
 
-class AtifAgent(_AtifModel):
+class AtifAgent(AtifModel):
     """The agent system that produced the trajectory."""
 
     name: str
@@ -122,7 +124,7 @@ class AtifAgent(_AtifModel):
     model_name: str | None = None
 
 
-class AtifFinalMetrics(_AtifModel):
+class AtifFinalMetrics(AtifModel):
     """Totals over every step."""
 
     total_prompt_tokens: int | None = None
@@ -132,7 +134,7 @@ class AtifFinalMetrics(_AtifModel):
     total_steps: int | None = Field(default=None, ge=0)
 
 
-class AtifTrajectory(_AtifModel):
+class AtifTrajectory(AtifModel):
     """An ATIF trajectory: Harbor's object-root contract."""
 
     schema_version: Literal["ATIF-v1.7"] = ATIF_SCHEMA_VERSION
