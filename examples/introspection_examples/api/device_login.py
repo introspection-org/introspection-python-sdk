@@ -16,10 +16,12 @@ Optional env:
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime
 
 from dotenv import load_dotenv
 from introspection_sdk.auth import (
     DEVICE_FLOW_CLIENT_ID,
+    AuthSession,
     development_credential,
     oidc_logout,
     poll_device_token,
@@ -47,17 +49,22 @@ def main() -> None:
     # #region docs:device-login-session
     login = wait_for_device_token(device)
     print(f"signed in to org {login.org_id} as {login.member_name}")
-    # Rotates the refresh token: keep the new one.
-    login = refresh_access_token(
-        login.refresh_token or "",
+    session = AuthSession.from_token(login, received_at=datetime.now(UTC))
+    # Rotates the refresh token. The response may carry only the tokens, so
+    # merge it into the session to keep the rest, such as the login's cookie.
+    refreshed = refresh_access_token(
+        session.refresh_token or "",
         DEVICE_FLOW_CLIENT_ID,
-        login.session_id or "",
-        login.org_id or "",
+        session.session_id or "",
+        session.org_id or "",
+    )
+    session = AuthSession.from_token(
+        refreshed, received_at=datetime.now(UTC), previous=session
     )
     # A development login only; anything else is a ValidationError.
-    credential = development_credential(login.access_token)
+    credential = development_credential(session.access_token)
     print(f"development credential lasts {credential.expires_in}s")
-    oidc_logout(login.cp_session or "")
+    oidc_logout(session.cp_session or "")
     # #endregion docs:device-login-session
 
 
