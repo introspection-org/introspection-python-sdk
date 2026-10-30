@@ -607,8 +607,8 @@ or id) on project-scoped calls when the credential does not name one.
 | `client.integrations` | The org's own provider installs (org-wide, no `project`) |
 | `client.judges` | The judges a Recipe declares: read, and toggle `enabled` / `sample_rate` |
 | `client.endpoints` | The upstream hosts a project's runtimes reach: `list`, `get`, `create` (an upsert), `update`, `delete` |
-| `client.repositories.access_token(id)` | A short-lived Git provider token for a repository; only a sandbox's token gets one |
-| `client.remotes.connect_docs()` | The `/v1/remotes/connect` WebSocket `introspection dev` dials out on: authentication, handshake and frames |
+| `client.repositories.access_token(id)` | A short-lived Git provider token for a repository; only a sandbox's token gets one ([`repositories.py`](examples/introspection_examples/api/repositories.py)) |
+| `client.remotes.connect_docs()` | The `/v1/remotes/connect` WebSocket `introspection dev` dials out on: authentication, handshake and frames ([`remotes.py`](examples/introspection_examples/api/remotes.py)) |
 | `introspection_sdk.auth` | The device-code login `introspection login` runs ([`device_login.py`](examples/introspection_examples/api/device_login.py)): `request_device_code`, `poll_device_token`, `wait_for_device_token`, `development_credential`, `oidc_logout` |
 
 ```python

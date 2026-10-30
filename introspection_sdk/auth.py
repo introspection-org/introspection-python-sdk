@@ -78,10 +78,10 @@ from introspection_sdk._async.device_code import (
 )
 from introspection_sdk._auth_common import (
     AuthSession,
+    EmailCodeAuthBase,
     OAuthToken,
     SessionListener,
     SignInSupersededError,
-    _EmailCodeAuthBase,
     _utcnow,
 )
 from introspection_sdk._device_code_common import (
@@ -187,7 +187,7 @@ def _not_signed_in() -> AuthenticationError:
 # EmailCodeAuth and AsyncEmailCodeAuth are written by hand rather than
 # generated from one async source: the sync twin guards its state with
 # thread locks that the async twin, on one event loop, does not take.
-class EmailCodeAuth(_EmailCodeAuthBase):
+class EmailCodeAuth(EmailCodeAuthBase):
     """Native email-code sign-in for a ``native`` Application's end users.
 
     Send a code, verify it, and use the session: the access token is renewed
@@ -372,7 +372,7 @@ class EmailCodeAuth(_EmailCodeAuthBase):
         )
 
 
-class AsyncEmailCodeAuth(_EmailCodeAuthBase):
+class AsyncEmailCodeAuth(EmailCodeAuthBase):
     """Async twin of :class:`EmailCodeAuth`."""
 
     def __init__(

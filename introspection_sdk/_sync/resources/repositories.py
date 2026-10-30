@@ -32,8 +32,8 @@ from introspection_sdk.schemas.repositories import (
     RepositoryMerge,
 )
 
-_REPOSITORY_LIST = TypeAdapter(list[Repository])
-_CONTENT = TypeAdapter(RepositoryContent)
+REPOSITORY_LIST = TypeAdapter(list[Repository])
+CONTENT = TypeAdapter(RepositoryContent)
 
 
 def _contents_path(repository_id: UUID | str, path: str) -> str:
@@ -76,7 +76,7 @@ def _merge(response: RawResponse) -> RepositoryMerge | None:
 
 
 def _directory(payload: Any, path: str) -> RepositoryDirectory:
-    content = _CONTENT.validate_python(payload)
+    content = CONTENT.validate_python(payload)
     if isinstance(content, RepositoryFile):
         raise ValueError(
             f"{path!r} is a file, not a directory; read it with "
@@ -138,7 +138,7 @@ class RepositoryContents:
             _contents_path(repository_id, path),
             params={"ref": ref},
         )
-        return _CONTENT.validate_python(payload)
+        return CONTENT.validate_python(payload)
 
 
 class RepositoryMerges:
@@ -201,7 +201,7 @@ class Repositories:
             "/v1/repositories",
             params={"project": project, "slug": slug},
         )
-        return _REPOSITORY_LIST.validate_python(payload)
+        return REPOSITORY_LIST.validate_python(payload)
 
     def get(
         self,
@@ -338,3 +338,10 @@ class Repositories:
             json={"permissions": permissions or {}},
         )
         return RepositoryAccessGrant.model_validate(payload)
+
+
+__all__ = [
+    "Repositories",
+    "RepositoryContents",
+    "RepositoryMerges",
+]

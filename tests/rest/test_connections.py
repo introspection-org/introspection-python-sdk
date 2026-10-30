@@ -18,7 +18,11 @@ import httpx2 as httpx
 import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
-from introspection_sdk._errors import IntrospectionAPIError, NotFoundError
+from introspection_sdk._errors import (
+    IntrospectionAPIError,
+    NotFoundError,
+    ValidationError,
+)
 from introspection_sdk.runner import AsyncRunner, Runner
 from introspection_sdk.runner_resources import (
     AppConnections,
@@ -479,3 +483,16 @@ def test_create_sends_a_return_url(fake_api: FakeAPI):
         "runtime": "support",
         "return_url": "ark://connected",
     }
+
+
+def test_create_refuses_a_return_url_scheme(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/connections",
+        status=422,
+        json_body={"detail": "return_url scheme is not allowed"},
+    )
+    with pytest.raises(ValidationError):
+        AppConnections(fake_api.client()).create(
+            app="gmail", runtime="support", return_url="evil://connected"
+        )

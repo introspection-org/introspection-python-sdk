@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from introspection_sdk._errors import NotFoundError
+from introspection_sdk._errors import IntrospectionAPIError, NotFoundError
 from introspection_sdk.runner_resources import AAuth, AsyncAAuth
 from introspection_sdk.schemas.aauth import (
     ApprovalKind,
@@ -235,3 +235,29 @@ def test_decide_needs_exactly_one_decider(
             APPROVAL_ID, status="approved", **decider
         )
     assert fake_api.requests == [], "refused before any request"
+
+
+def test_decide_refused_by_the_server(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        f"/v1/aauth/approvals/{APPROVAL_ID}",
+        status=409,
+        json_body={"detail": "approval already decided"},
+    )
+    with pytest.raises(IntrospectionAPIError) as caught:
+        AAuth(fake_api.client()).approvals.decide(
+            APPROVAL_ID, status="approved", member_id=MEMBER_ID
+        )
+    assert caught.value.status_code == 409
+
+
+async def test_async_decide_and_reads_of_an_unknown_id(fake_api: FakeAPI):
+    aauth = AsyncAAuth(fake_api.async_client())
+    with pytest.raises(NotFoundError):
+        await aauth.approvals.decide(
+            APPROVAL_ID, status="denied", member_id=MEMBER_ID
+        )
+    with pytest.raises(NotFoundError):
+        await aauth.approvals.get(APPROVAL_ID)
+    with pytest.raises(NotFoundError):
+        await aauth.missions.get(MISSION_ID)

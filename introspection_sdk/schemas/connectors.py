@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from introspection_sdk.schemas.runner import RunnerIdentity
 
 
-class _ApiModel(BaseModel):
+class ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
@@ -79,14 +79,14 @@ class ConnectionBrokerSubjectType(StrEnum):
     PERSON = "person"
 
 
-class EntityUid(_ApiModel):
+class EntityUid(ApiModel):
     """A Cedar entity reference, ``{"type": "Company", "id": "acme"}``."""
 
     type: str
     id: str
 
 
-class PolicyEntity(_ApiModel):
+class PolicyEntity(ApiModel):
     """A Cedar entity a recipe's policies read, in Cedar's JSON entity
     format: e.g. a company and the seniority its business-class bookings
     need. The egress policy gate adds a connector's entities to every
@@ -97,7 +97,7 @@ class PolicyEntity(_ApiModel):
     parents: list[EntityUid] = Field(default_factory=list)
 
 
-class Connector(_ApiModel):
+class Connector(ApiModel):
     """A connector (`/v1/connectors`) — a provider integration owned by a
     project.
 
@@ -135,7 +135,7 @@ class Connector(_ApiModel):
     requires_runtime: bool = False
 
 
-class Connection(_ApiModel):
+class Connection(ApiModel):
     """A connection — one authorized subject under a connector.
 
     Access/refresh tokens are never serialized by the API and are not
@@ -171,7 +171,7 @@ class Connection(_ApiModel):
     """The provider's own identifier for the connected account."""
 
 
-class ConnectorCreateRequest(_ApiModel):
+class ConnectorCreateRequest(ApiModel):
     """Create a connector (``POST /v1/connectors`` body).
 
     ``client_secret`` and ``signing_secret`` are write-only: accepted
@@ -214,7 +214,7 @@ class ConnectorCreateRequest(_ApiModel):
     webhook_url: str | None = None
 
 
-class ConnectorUpdateRequest(_ApiModel):
+class ConnectorUpdateRequest(ApiModel):
     """Update a connector (``PATCH /v1/connectors/{id}`` body).
 
     Only these fields are mutable; only provided fields change. The
@@ -236,7 +236,7 @@ class ConnectorUpdateRequest(_ApiModel):
     signing_secret: str | None = None
 
 
-class ConnectionCreateRequest(_ApiModel):
+class ConnectionCreateRequest(ApiModel):
     """Register a connection with a caller-supplied token
     (``POST /v1/connectors/{connector_id}/connections`` body).
 
@@ -251,7 +251,7 @@ class ConnectionCreateRequest(_ApiModel):
     token_expires_at: datetime | None = None
 
 
-class ConnectorAuthorizeBinding(_ApiModel):
+class ConnectorAuthorizeBinding(ApiModel):
     """The MCP endpoint binding an authorize completes into.
 
     On a successful grant the control plane writes this endpoint binding
@@ -280,7 +280,7 @@ class ConnectorAuthorizeBinding(_ApiModel):
     token."""
 
 
-class ConnectorAuthorizeRequest(_ApiModel):
+class ConnectorAuthorizeRequest(ApiModel):
     """Mint a consent URL (``POST /v1/oauth/connections/authorize`` body).
 
     ``runtime`` (slug or runtime group id) is required by the server
@@ -306,7 +306,7 @@ class ConnectorAuthorizeRequest(_ApiModel):
     """MCP endpoint binding written with the grant; requires ``runtime``."""
 
 
-class ConnectorAuthorization(_ApiModel):
+class ConnectorAuthorization(ApiModel):
     """The minted consent link (authorize response).
 
     Each call writes a fresh single-use ``state`` into the URL: two
@@ -318,7 +318,7 @@ class ConnectorAuthorization(_ApiModel):
     expires_at: datetime
 
 
-class ConnectorApp(_ApiModel):
+class ConnectorApp(ApiModel):
     """An application listing — from a connector's provider catalogue, or
     from the open MCP registry a custom connector picks from."""
 
@@ -341,7 +341,7 @@ class ConnectorOAuthClientRegistration(StrEnum):
     PRE_REGISTERED = "pre_registered"
 
 
-class ConnectorOAuthDiscoveryRequest(_ApiModel):
+class ConnectorOAuthDiscoveryRequest(ApiModel):
     """Resolve OAuth metadata (``POST /v1/connectors/discover-oauth``
     body). ``issuer`` is an authorization-server issuer URL, or an MCP
     server URL whose RFC 9728 metadata names its authorization server."""
@@ -349,7 +349,7 @@ class ConnectorOAuthDiscoveryRequest(_ApiModel):
     issuer: str = Field(min_length=1)
 
 
-class ConnectorOAuthDiscoveryResponse(_ApiModel):
+class ConnectorOAuthDiscoveryResponse(ApiModel):
     """What OAuth discovery learned about a provider.
 
     ``client_id`` / ``client_secret`` are set when the control plane
@@ -375,7 +375,7 @@ class ConnectorOAuthDiscoveryResponse(_ApiModel):
     client_registration: ConnectorOAuthClientRegistration | None = None
 
 
-class ConnectionMissionConstraints(_ApiModel):
+class ConnectionMissionConstraints(ApiModel):
     """Deterministic, non-PII envelope for a person-authorized action."""
 
     host: str | None = None
@@ -386,21 +386,21 @@ class ConnectionMissionConstraints(_ApiModel):
     payload_binding: str | None = None
 
 
-class ConnectionTokenRequest(_ApiModel):
+class ConnectionTokenRequest(ApiModel):
     connector_id: UUID
     subject: ConnectionBrokerSubjectType | None = None
     action: str | None = None
     requested_permissions: ConnectionMissionConstraints | None = None
 
 
-class ConnectionToken(_ApiModel):
+class ConnectionToken(ApiModel):
     token: str
     token_type: str = "bearer"
     expires_at: datetime | None = None
     scopes: list[str] = Field(default_factory=list)
 
 
-class ConnectionAuthorizationPending(_ApiModel):
+class ConnectionAuthorizationPending(ApiModel):
     status: Literal["authorization_pending"]
     mission_id: UUID
     approval_url: str

@@ -224,3 +224,12 @@ def oidc_logout(
     if res.status_code >= 400:
         raise error_from_response(res)
     logger.debug("signed out", extra={"status": res.status_code})
+
+
+__all__ = [
+    "development_credential",
+    "oidc_logout",
+    "poll_device_token",
+    "request_device_code",
+    "wait_for_device_token",
+]

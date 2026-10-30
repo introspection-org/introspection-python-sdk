@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from introspection_sdk import AuthenticationError, NotFoundError
 from introspection_sdk.runner_resources import AsyncRemotes, Remotes
 from introspection_sdk.runner_resources.remotes import REMOTES_CONNECT_PATH
 
@@ -46,3 +49,25 @@ async def test_async_connect_docs(fake_api: FakeAPI):
     fake_api.add("GET", REMOTES_CONNECT_PATH, json_body=DOCS)
     docs = await AsyncRemotes(fake_api.async_client()).connect_docs()
     assert docs.authentication.method == "bearer"
+
+
+def test_connect_docs_on_a_data_plane_without_remotes(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        REMOTES_CONNECT_PATH,
+        status=404,
+        json_body={"detail": "not found"},
+    )
+    with pytest.raises(NotFoundError):
+        Remotes(fake_api.client()).connect_docs()
+
+
+async def test_async_connect_docs_refuses_a_bad_token(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        REMOTES_CONNECT_PATH,
+        status=401,
+        json_body={"detail": "invalid token"},
+    )
+    with pytest.raises(AuthenticationError):
+        await AsyncRemotes(fake_api.async_client()).connect_docs()

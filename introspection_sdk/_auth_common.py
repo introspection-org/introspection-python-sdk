@@ -16,7 +16,7 @@ from introspection_sdk._errors import (
     AuthenticationError,
 )
 
-_DEFAULT_BASE_API_URL = "https://api.introspection.dev"
+DEFAULT_BASE_API_URL = "https://api.introspection.dev"
 
 
 class OAuthToken(BaseModel):
@@ -65,7 +65,7 @@ class OAuthToken(BaseModel):
 
 def _resolve_base_api_url(base_api_url: str | None) -> str:
     resolved = base_api_url or os.getenv(
-        "INTROSPECTION_BASE_API_URL", _DEFAULT_BASE_API_URL
+        "INTROSPECTION_BASE_API_URL", DEFAULT_BASE_API_URL
     )
     return resolved.rstrip("/")
 
@@ -149,6 +149,15 @@ class AuthSession(BaseModel):
             member_id=token.member_id
             or _claim(claims, "member_id")
             or (previous.member_id if previous else None),
+            member_name=token.member_name
+            or (previous.member_name if previous else None),
+            cp_session=token.cp_session
+            or (previous.cp_session if previous else None),
+            cp_url=token.cp_url or (previous.cp_url if previous else None),
+            git_url=token.git_url or (previous.git_url if previous else None),
+            platform_url=token.platform_url
+            or (previous.platform_url if previous else None),
+            act=token.act or (previous.act if previous else None),
             dp_url=token.dp_url or (previous.dp_url if previous else None),
             scope=token.scope or (previous.scope if previous else None),
         )
@@ -166,7 +175,7 @@ def _utcnow() -> datetime:
 SessionListener = Callable[["AuthSession | None"], None]
 
 
-class _EmailCodeAuthBase:
+class EmailCodeAuthBase:
     def __init__(
         self,
         client_id: str,
@@ -245,3 +254,11 @@ class _EmailCodeAuthBase:
     def _notify(self, session: AuthSession | None) -> None:
         if self._on_session_change is not None:
             self._on_session_change(session)
+
+
+__all__ = [
+    "AuthSession",
+    "OAuthToken",
+    "SessionListener",
+    "SignInSupersededError",
+]

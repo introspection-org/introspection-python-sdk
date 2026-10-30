@@ -42,6 +42,8 @@ def main() -> None:
                     else "no budget"
                 )
                 print(f"mission {mission.id} {mission.mission!r} ({spend})")
+                # One by id, e.g. from a link in a notification.
+                print(f"spent {client.aauth.missions.get(mission.id).spent}")
             for approval in client.aauth.approvals.list(
                 status=[ApprovalStatus.PENDING]
             ):
@@ -49,6 +51,7 @@ def main() -> None:
                     f"pending {approval.kind} for {approval.agent_id}: "
                     f"{approval.description}"
                 )
+                print(client.aauth.approvals.get(approval.id).status)
                 member_id = os.getenv("INTROSPECTION_AAUTH_DENY_AS")
                 if member_id:
                     denied = client.aauth.approvals.decide(
