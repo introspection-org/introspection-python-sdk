@@ -374,3 +374,8 @@ the minor version; say in the PR that the break is only a value change.
    label without a `!` in the title still fails, so a break cannot ship
    without a version bump, and removing either one afterwards turns the
    check red again.
+
+The release PR (head branch `release-please--branches--main` in this
+repository, not a fork's branch of that name) needs neither: griffe still
+runs and prints every breakage, but the check passes with a warning, because
+those breaks were accepted on their own PRs.
