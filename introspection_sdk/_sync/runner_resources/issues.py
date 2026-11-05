@@ -169,12 +169,11 @@ class Issues:
         omitted list is left as it is and ``[]`` clears it. ``if_match``
         (an :attr:`Issue.etag`) refuses the edit with 412 if the issue
         changed since that read; without it the edit applies regardless.
-        An :class:`IssueMutation` carries its own ``expected_revision`` and
-        takes no ``if_match``: passing one raises :class:`ValueError`."""
+        An :class:`IssueMutation` takes no ``if_match``: passing one raises
+        :class:`ValueError`."""
         if if_match is not None and isinstance(change, IssueMutation):
             raise ValueError(
-                "if_match applies to an IssueUpdate only; an IssueMutation "
-                "is checked by its request's expected_revision"
+                "if_match applies to an IssueUpdate, not an IssueMutation"
             )
         payload = self._http.request(
             "PATCH",

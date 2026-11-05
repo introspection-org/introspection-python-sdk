@@ -361,7 +361,6 @@ def test_update_creates_a_request(fake_api: FakeAPI):
         IssueMutation(
             request=IssueRequestMutation(
                 id=UUID(REQUEST_ID),
-                expected_revision=0,
                 question="Ship the retry?",
                 assignee_id=UUID(MEMBER_ID),
             )
@@ -373,7 +372,6 @@ def test_update_creates_a_request(fake_api: FakeAPI):
     assert sent.json() == {
         "request": {
             "id": REQUEST_ID,
-            "expected_revision": 0,
             "question": "Ship the retry?",
             "assignee_id": MEMBER_ID,
         }
@@ -388,7 +386,6 @@ def test_update_resolves_a_request(fake_api: FakeAPI):
         IssueMutation(
             request=IssueRequestMutation(
                 id=UUID(REQUEST_ID),
-                expected_revision=2,
                 status=IssueRequestStatus.RESOLVED,
                 resolution="Shipped in #7",
             )
@@ -399,7 +396,6 @@ def test_update_resolves_a_request(fake_api: FakeAPI):
     assert fake_api.last_request.json() == {
         "request": {
             "id": REQUEST_ID,
-            "expected_revision": 2,
             "status": "resolved",
             "resolution": "Shipped in #7",
         }
@@ -407,9 +403,7 @@ def test_update_resolves_a_request(fake_api: FakeAPI):
 
 
 def test_a_new_request_mints_a_uuid7():
-    mutation = IssueRequestMutation(
-        expected_revision=0, question="q", assignee_id=UUID(MEMBER_ID)
-    )
+    mutation = IssueRequestMutation(question="q", assignee_id=UUID(MEMBER_ID))
 
     assert mutation.id.version == 7
     body = mutation.model_dump(mode="json", exclude_none=True)
@@ -427,8 +421,10 @@ def test_an_empty_update_sends_an_empty_body(fake_api: FakeAPI):
 def test_request_models_reject_what_the_server_refuses():
     with pytest.raises(pydantic.ValidationError):
         IssueUpdate.model_validate({"expected_revision": 1, "title": "t"})
-    with pytest.raises(pydantic.ValidationError, match="question"):
-        IssueRequestMutation(expected_revision=0, assignee_id=UUID(MEMBER_ID))
+    with pytest.raises(pydantic.ValidationError):
+        IssueRequestMutation.model_validate(
+            {"expected_revision": 0, "question": "q"}
+        )
     with pytest.raises(pydantic.ValidationError):
         IssueMutation.model_validate({"request": {}, "extra": 1})
     with pytest.raises(pydantic.ValidationError):
@@ -473,12 +469,10 @@ def test_update_sends_if_match_only_when_given(fake_api: FakeAPI):
 
 def test_update_refuses_if_match_with_a_request_mutation(fake_api: FakeAPI):
     mutation = IssueMutation(
-        request=IssueRequestMutation(
-            expected_revision=0, question="q", assignee_id=UUID(MEMBER_ID)
-        )
+        request=IssueRequestMutation(question="q", assignee_id=UUID(MEMBER_ID))
     )
 
-    with pytest.raises(ValueError, match="IssueUpdate only"):
+    with pytest.raises(ValueError, match="not an IssueMutation"):
         Issues(fake_api.client()).update(
             ISSUE_ID, mutation, if_match='"2026-10-02T11:00:00+00:00"'
         )
@@ -515,7 +509,6 @@ def test_a_stale_request_revision_raises_conflict(fake_api: FakeAPI):
             IssueMutation(
                 request=IssueRequestMutation(
                     id=UUID(REQUEST_ID),
-                    expected_revision=1,
                     status=IssueRequestStatus.CANCELLED,
                     resolution="r",
                 )
@@ -569,7 +562,6 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
         IssueMutation(
             request=IssueRequestMutation(
                 id=UUID(REQUEST_ID),
-                expected_revision=1,
                 status=IssueRequestStatus.CANCELLED,
                 resolution="Not needed",
             )
@@ -579,9 +571,7 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
         await api.update(
             ISSUE_ID,
             IssueMutation(
-                request=IssueRequestMutation(
-                    id=UUID(REQUEST_ID), expected_revision=1, question="q"
-                )
+                request=IssueRequestMutation(id=UUID(REQUEST_ID), question="q")
             ),
             if_match=created.etag,
         )
@@ -609,7 +599,6 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     assert fake_api.requests[6].json() == {
         "request": {
             "id": REQUEST_ID,
-            "expected_revision": 1,
             "status": "cancelled",
             "resolution": "Not needed",
         }

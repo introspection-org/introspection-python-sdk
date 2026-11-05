@@ -60,12 +60,11 @@ def main() -> None:
             tags=["area:checkout"],
         )
 
-        # Ask a member: expected_revision=0 creates the request.
+        # Ask a member: a new request id (minted when left out) creates the request.
         issue = client.issues.update(
             issue.id,
             IssueMutation(
                 request=IssueRequestMutation(
-                    expected_revision=0,
                     question="Should we ship the retry?",
                     assignee_id=UUID(member_id),
                 )

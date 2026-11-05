@@ -569,12 +569,11 @@ issue = client.issues.create(
     task_id=task_id,
 )
 
-# Ask a member: expected_revision=0 creates the request.
+# Ask a member: a new request id (minted when left out) creates the request.
 client.issues.update(
     issue.id,
     IssueMutation(
         request=IssueRequestMutation(
-            expected_revision=0,
             question="Ship the retry?",
             assignee_id=member_id,
         )
@@ -600,9 +599,9 @@ for `metadata`). A brief edit and `delete` take an optional `if_match`, the
 `issue.etag` of the read the write was made against; if the issue changed
 since, the server answers 412 (`IntrospectionAPIError` with
 `status_code == 412`), so read it again before retrying. Without `if_match`
-the write applies regardless. An `IssueMutation` takes no `if_match`: its
-request's own `expected_revision` (0 to create) guards it, and a stale one
-raises `ConflictError` (409). `status`, `owner`, `task_status` and `metadata`
+the write applies regardless. An `IssueMutation` takes no `if_match`: a
+request id the issue does not have yet creates the request, and an existing
+one changes it, last write wins. `status`, `owner`, `task_status` and `metadata`
 filters repeat on the query string. Runnable:
 [`issues.py`](examples/introspection_examples/api/issues.py).
 

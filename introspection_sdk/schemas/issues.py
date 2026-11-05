@@ -22,14 +22,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated, Self
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    model_validator,
 )
 
 from introspection_sdk._uuid import _uuid7
@@ -228,15 +227,13 @@ class IssueUpdate(IssueEvidence):
 class IssueRequestMutation(RequestModel):
     """Create one human request on an issue, or change one.
 
-    ``expected_revision=0`` creates the request and needs ``question`` and
-    ``assignee_id``; ``id`` is minted (a UUIDv7) when left out. Otherwise
-    ``id`` names the request and ``expected_revision`` is its current
-    revision; a stale one answers 409. ``resolved`` and ``cancelled`` need a
-    ``resolution``.
+    An ``id`` the issue does not have yet creates the request and needs
+    ``question`` and ``assignee_id``; ``id`` is minted (a UUIDv7) when left
+    out. An existing ``id`` changes the request, and the last write wins.
+    ``resolved`` and ``cancelled`` need a ``resolution``.
     """
 
     id: UUID = Field(default_factory=_uuid7)
-    expected_revision: int = Field(ge=0)
     question: str | None = Field(default=None, min_length=1, max_length=10000)
     assignee_id: UUID | None = None
     """Set again to reassign."""
@@ -245,17 +242,6 @@ class IssueRequestMutation(RequestModel):
         default=None, min_length=1, max_length=10000
     )
     """The decision and its basis, when closing."""
-
-    @model_validator(mode="after")
-    def _create_names_question_and_assignee(self) -> Self:
-        if self.expected_revision == 0 and (
-            self.question is None or self.assignee_id is None
-        ):
-            raise ValueError(
-                "Creating a request (expected_revision=0) needs a question "
-                "and an assignee_id"
-            )
-        return self
 
 
 class IssueMutation(RequestModel):
