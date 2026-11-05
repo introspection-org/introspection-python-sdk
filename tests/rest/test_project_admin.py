@@ -18,12 +18,19 @@ from pydantic import SecretStr
 from pydantic import ValidationError as PydanticValidationError
 
 from introspection_sdk import IntrospectionClient
-from introspection_sdk._errors import ConflictError, NotFoundError
+from introspection_sdk._errors import (
+    ConflictError,
+    IntrospectionAPIError,
+    NotFoundError,
+    RateLimitError,
+    ValidationError,
+)
 from introspection_sdk.resources import (
     ApiKeys,
     Applications,
     AsyncApiKeys,
     AsyncApplications,
+    AsyncIntegrations,
     Credentials,
     Integrations,
     Judges,
@@ -37,6 +44,8 @@ from introspection_sdk.schemas.api_keys import (
 )
 from introspection_sdk.schemas.applications import ApplicationType
 from introspection_sdk.schemas.integrations import (
+    GitHubAccessTokenRequest,
+    IntegrationPermissionLevel,
     IntegrationStatus,
     IntegrationType,
     IntegrationUpdateRequest,
@@ -740,6 +749,230 @@ def test_integration_oauth_code_never_prints():
     request = IntegrationUpdateRequest(code=SecretStr("oauth-code"))
 
     assert "oauth-code" not in repr(request)
+
+
+GITHUB_TOKEN = "ghs_never_printed"
+ACCESS_TOKEN_PATH = f"/v1/integrations/{INTEGRATION_ID}/access-token"
+
+
+def access_token_payload(**over: Any) -> dict[str, Any]:
+    return {
+        "token": GITHUB_TOKEN,
+        "expires_at": "2026-11-05T11:02:00Z",
+        "type": "github",
+        "permissions": {"metadata": "read"},
+        **over,
+    }
+
+
+def test_integration_access_token_defaults_to_github_metadata_read(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST",
+        ACCESS_TOKEN_PATH,
+        status=201,
+        json_body=access_token_payload(),
+    )
+
+    minted = Integrations(fake_api.client()).access_token(UUID(INTEGRATION_ID))
+
+    assert fake_api.last_request.method == "POST"
+    assert fake_api.last_request.json() == {
+        "type": "github",
+        "permissions": {"metadata": "read"},
+    }
+    assert minted.token.get_secret_value() == GITHUB_TOKEN
+    assert GITHUB_TOKEN not in repr(minted)
+    assert GITHUB_TOKEN not in str(minted)
+    assert minted.type is IntegrationType.GITHUB
+    assert minted.permissions == {"metadata": IntegrationPermissionLevel.READ}
+    assert minted.expires_at.isoformat() == "2026-11-05T11:02:00+00:00"
+
+
+async def test_async_integration_access_token_sends_the_request(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST",
+        ACCESS_TOKEN_PATH,
+        status=201,
+        json_body=access_token_payload(permissions={"contents": "write"}),
+    )
+    request = GitHubAccessTokenRequest(
+        permissions={"contents": IntegrationPermissionLevel.WRITE}
+    )
+
+    minted = await AsyncIntegrations(fake_api.async_client()).access_token(
+        UUID(INTEGRATION_ID), request
+    )
+
+    assert fake_api.last_request.json() == {
+        "type": "github",
+        "permissions": {"contents": "write"},
+    }
+    assert minted.permissions == {"contents": IntegrationPermissionLevel.WRITE}
+
+
+def test_integration_access_token_request_is_typed():
+    with pytest.raises(PydanticValidationError):
+        GitHubAccessTokenRequest.model_validate(
+            {"type": "linear", "permissions": {"metadata": "read"}}
+        )
+    with pytest.raises(PydanticValidationError):
+        GitHubAccessTokenRequest.model_validate(
+            {"permissions": {"metadata": "admin"}}
+        )
+
+
+def test_integration_access_token_cap_exceeded_keeps_its_detail(
+    fake_api: FakeAPI,
+):
+    detail = {
+        "code": "integration_token_cap_exceeded",
+        "message": "permissions exceed the integration token cap",
+        "allowed": {"metadata": "read"},
+    }
+    fake_api.add(
+        "POST", ACCESS_TOKEN_PATH, status=403, json_body={"detail": detail}
+    )
+    request = GitHubAccessTokenRequest(
+        permissions={"contents": IntegrationPermissionLevel.WRITE}
+    )
+
+    with pytest.raises(IntrospectionAPIError) as caught:
+        Integrations(fake_api.client()).access_token(
+            UUID(INTEGRATION_ID), request
+        )
+
+    assert caught.value.status_code == 403
+    assert caught.value.code == "integration_token_cap_exceeded"
+    assert str(caught.value) == detail["message"]
+    assert caught.value.body == {"detail": detail}
+
+
+@pytest.mark.parametrize(
+    ("status", "error", "headers"),
+    [
+        (404, NotFoundError, None),
+        (409, ConflictError, None),
+        (422, ValidationError, None),
+        (429, RateLimitError, {"Retry-After": "30"}),
+        (502, IntrospectionAPIError, None),
+    ],
+)
+def test_integration_access_token_errors_are_typed(
+    fake_api: FakeAPI,
+    status: int,
+    error: type[IntrospectionAPIError],
+    headers: dict[str, str] | None,
+):
+    fake_api.add(
+        "POST",
+        ACCESS_TOKEN_PATH,
+        status=status,
+        json_body={"detail": {"code": "integration_inactive"}},
+        headers=headers,
+    )
+
+    with pytest.raises(error) as caught:
+        Integrations(fake_api.client()).access_token(UUID(INTEGRATION_ID))
+
+    assert caught.value.status_code == status
+    assert caught.value.code == "integration_inactive"
+    if headers:
+        assert caught.value.retry_after == 30.0
+
+
+REPOSITORIES_PATH = f"/v1/integrations/{INTEGRATION_ID}/repositories"
+
+
+def installation_repository(**over: Any) -> dict[str, Any]:
+    return {
+        "id": 1,
+        "name": "recipes",
+        "full_name": "acme/recipes",
+        "html_url": "https://github.com/acme/recipes",
+        "default_branch": "main",
+        "private": True,
+        "description": None,
+        "pushed_at": "2026-11-01T00:00:00Z",
+        **over,
+    }
+
+
+def test_integration_repositories_lists_the_installation(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        REPOSITORIES_PATH,
+        json_body={
+            "type": "github",
+            "records": [
+                installation_repository(),
+                installation_repository(
+                    id=2, name="site", full_name="acme/site", pushed_at=None
+                ),
+            ],
+        },
+    )
+
+    listed = Integrations(fake_api.client()).repositories(UUID(INTEGRATION_ID))
+
+    assert fake_api.last_request.method == "GET"
+    assert fake_api.last_request.url.path == REPOSITORIES_PATH
+    assert listed.type is IntegrationType.GITHUB
+    assert [r.full_name for r in listed.records] == [
+        "acme/recipes",
+        "acme/site",
+    ]
+    first, second = listed.records
+    assert first.private
+    assert first.description is None
+    assert first.pushed_at is not None
+    assert first.pushed_at.isoformat() == "2026-11-01T00:00:00+00:00"
+    assert second.pushed_at is None
+
+
+async def test_async_integration_repositories(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        REPOSITORIES_PATH,
+        json_body={"type": "github", "records": []},
+    )
+
+    listed = await AsyncIntegrations(fake_api.async_client()).repositories(
+        UUID(INTEGRATION_ID)
+    )
+
+    assert listed.records == []
+
+
+@pytest.mark.parametrize(
+    ("status", "error"),
+    [
+        (400, ValidationError),
+        (404, NotFoundError),
+        (409, ConflictError),
+        (502, IntrospectionAPIError),
+    ],
+)
+def test_integration_repositories_errors_are_typed(
+    fake_api: FakeAPI, status: int, error: type[IntrospectionAPIError]
+):
+    detail = {
+        "code": "integration_not_github",
+        "message": "only a GitHub integration has repositories",
+    }
+    fake_api.add(
+        "GET", REPOSITORIES_PATH, status=status, json_body={"detail": detail}
+    )
+
+    with pytest.raises(error) as caught:
+        Integrations(fake_api.client()).repositories(UUID(INTEGRATION_ID))
+
+    assert caught.value.status_code == status
+    assert caught.value.code == "integration_not_github"
+    assert str(caught.value) == detail["message"]
 
 
 # --- judges ----------------------------------------------------------

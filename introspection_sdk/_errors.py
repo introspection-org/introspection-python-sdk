@@ -154,6 +154,45 @@ def _parse_retry_after(value: str | None) -> float | None:
     return max(delay, 0.0)
 
 
+def _message_and_code(body: Any) -> tuple[str | None, str | None]:
+    """The message and code a JSON error body carries, if any.
+
+    The OAuth endpoints answer RFC 6749 §5.2 bodies, where ``error`` is the
+    code; a structured FastAPI ``detail`` carries its own ``message`` and
+    ``code``.
+    """
+    if not isinstance(body, dict):
+        return None, None
+    detail = body.get("detail")
+    nested = detail if isinstance(detail, dict) else {}
+    message = next(
+        (
+            value
+            for value in (
+                detail,
+                nested.get("message"),
+                body.get("message"),
+                body.get("error_description"),
+            )
+            if isinstance(value, str)
+        ),
+        None,
+    )
+    code = next(
+        (
+            value
+            for value in (
+                body.get("code"),
+                body.get("error"),
+                nested.get("code"),
+            )
+            if isinstance(value, str) and value
+        ),
+        None,
+    )
+    return message, code
+
+
 def error_from_response(res: httpx.Response) -> IntrospectionAPIError:
     """Translate an HTTP error response into a typed subclass.
 
@@ -161,30 +200,18 @@ def error_from_response(res: httpx.Response) -> IntrospectionAPIError:
     (when the body is JSON) to choose the most specific subclass.
     """
     body: Any = None
-    message = f"HTTP {res.status_code}"
     ct = res.headers.get("content-type", "")
     if "json" in ct:
         try:
             body = res.json()
         except (ValueError, _json.JSONDecodeError):
             body = res.text
-        if isinstance(body, dict):
-            detail = body.get("detail")
-            if isinstance(detail, str):
-                message = detail
-            elif isinstance(body.get("message"), str):
-                message = body["message"]
-            elif isinstance(body.get("error_description"), str):
-                message = body["error_description"]
     else:
         body = res.text
-
-    code: str | None = None
-    if isinstance(body, dict):
-        # The OAuth endpoints answer RFC 6749 §5.2 bodies: ``error`` is the code.
-        raw_code = body.get("code") or body.get("error")
-        if isinstance(raw_code, str):
-            code = raw_code
+    body_message, code = _message_and_code(body)
+    message = (
+        body_message if body_message is not None else f"HTTP {res.status_code}"
+    )
 
     status = res.status_code
     request_id = res.headers.get("x-request-id")

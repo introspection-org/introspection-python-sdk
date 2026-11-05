@@ -9,8 +9,12 @@ from pydantic import SecretStr
 from introspection_sdk._async.resources._crud import _AsyncResource, _body
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.schemas.integrations import (
+    GitHubAccessTokenRequest,
     Integration,
+    IntegrationAccessToken,
+    IntegrationAccessTokenRequest,
     IntegrationCreateRequest,
+    IntegrationRepositories,
     IntegrationStatus,
     IntegrationType,
     IntegrationUpdateRequest,
@@ -99,3 +103,41 @@ class AsyncIntegrations(_AsyncResource):
 
     async def delete(self, integration_id: UUID) -> None:
         await self._delete(_integration_path(integration_id))
+
+    async def access_token(
+        self,
+        integration_id: UUID,
+        request: IntegrationAccessTokenRequest | None = None,
+    ) -> IntegrationAccessToken:
+        """Mint a short-lived provider token for the integration (``POST
+        /v1/integrations/{id}/access-token``, scope ``integrations:token``).
+
+        ``request`` defaults to a GitHub ``metadata: read`` token; its
+        ``type`` must match the integration's or the server answers
+        :class:`~introspection_sdk.ValidationError`. A request beyond the
+        server's cap is a 403 whose ``code`` is
+        ``integration_token_cap_exceeded``; an inactive or expired
+        integration is a :class:`~introspection_sdk.ConflictError`."""
+        body = (request or GitHubAccessTokenRequest()).model_dump(mode="json")
+        return await self._call(
+            "POST",
+            f"{_integration_path(integration_id)}/access-token",
+            IntegrationAccessToken,
+            json=body,
+        )
+
+    async def repositories(
+        self, integration_id: UUID
+    ) -> IntegrationRepositories:
+        """The repositories the integration's install can reach (``GET
+        /v1/integrations/{id}/repositories``, scope ``integrations:read``),
+        read with the control plane's own credential, all in one response.
+
+        Only a GitHub integration has them; any other type is a
+        :class:`~introspection_sdk.ValidationError`. An inactive or expired
+        integration is a :class:`~introspection_sdk.ConflictError`."""
+        return await self._call(
+            "GET",
+            f"{_integration_path(integration_id)}/repositories",
+            IntegrationRepositories,
+        )
