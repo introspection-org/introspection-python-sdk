@@ -435,23 +435,23 @@ def test_request_models_reject_what_the_server_refuses():
         IssueSpanReference(trace_id="nothex", span_id=SPAN_ID)
 
 
-def test_etag_is_updated_at_in_quoted_epoch_milliseconds():
+def test_etag_is_updated_at_in_quoted_iso_8601():
     issue = Issue.model_validate(
-        issue_body(updated_at="2026-11-04T01:00:00.123Z")
+        issue_body(updated_at="2026-11-04T01:00:00.123456Z")
     )
-    assert issue.etag == '"1793754000123"'
+    assert issue.etag == '"2026-11-04T01:00:00.123456+00:00"'
 
-    # Sub-millisecond precision truncates, as the server's tag does.
+    # The offset is kept and the microseconds are not truncated.
     issue = Issue.model_validate(
-        issue_body(updated_at="2026-11-04T02:00:00.123999+01:00")
+        issue_body(updated_at="2026-11-04T02:00:00.000001+01:00")
     )
-    assert issue.etag == '"1793754000123"'
+    assert issue.etag == '"2026-11-04T02:00:00.000001+01:00"'
 
     # A naive timestamp is read as UTC.
     naive = Issue.model_validate(
-        issue_body(updated_at=datetime(1970, 1, 1, 0, 0, 1))
+        issue_body(updated_at=datetime(2026, 11, 4, 1, 0, 0, 5))
     )
-    assert naive.etag == '"1000"'
+    assert naive.etag == '"2026-11-04T01:00:00.000005+00:00"'
 
     with pytest.raises(ValueError, match="ETag"):
         _ = Issue.model_validate(issue_body(updated_at=None)).etag
@@ -464,7 +464,7 @@ def test_update_sends_if_match_only_when_given(fake_api: FakeAPI):
 
     api.update(ISSUE_ID, IssueUpdate(title="t"), if_match=issue.etag)
     sent = fake_api.last_request
-    assert sent.headers["If-Match"] == '"1790938800000"'
+    assert sent.headers["If-Match"] == '"2026-10-02T11:00:00+00:00"'
     assert sent.json() == {"title": "t"}
 
     api.update(ISSUE_ID, IssueUpdate(title="t"))
@@ -480,7 +480,7 @@ def test_update_refuses_if_match_with_a_request_mutation(fake_api: FakeAPI):
 
     with pytest.raises(ValueError, match="IssueUpdate only"):
         Issues(fake_api.client()).update(
-            ISSUE_ID, mutation, if_match='"1790938800000"'
+            ISSUE_ID, mutation, if_match='"2026-10-02T11:00:00+00:00"'
         )
     assert fake_api.requests == []
 
@@ -527,9 +527,12 @@ def test_delete_sends_if_match_only_when_given(fake_api: FakeAPI):
     fake_api.add("DELETE", ISSUE_PATH, status=204)
     api = Issues(fake_api.client())
 
-    assert api.delete(ISSUE_ID, if_match='"1790938800000"') is None
+    assert api.delete(ISSUE_ID, if_match='"2026-10-02T11:00:00+00:00"') is None
     assert fake_api.last_request.method == "DELETE"
-    assert fake_api.last_request.headers["If-Match"] == '"1790938800000"'
+    assert (
+        fake_api.last_request.headers["If-Match"]
+        == '"2026-10-02T11:00:00+00:00"'
+    )
 
     api.delete(UUID(ISSUE_ID))
     assert "If-Match" not in fake_api.last_request.headers
@@ -594,7 +597,7 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
         ("GET", "/v1/issues", None),
         ("GET", ISSUE_PATH, None),
         ("POST", "/v1/issues", None),
-        ("PATCH", ISSUE_PATH, '"1790938800000"'),
+        ("PATCH", ISSUE_PATH, '"2026-10-02T11:00:00+00:00"'),
         ("PATCH", ISSUE_PATH, None),
         ("DELETE", ISSUE_PATH, '"k3"'),
     ]

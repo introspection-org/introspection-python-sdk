@@ -20,7 +20,7 @@ delete, so a write made against a stale read is refused with 412.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Self
 from uuid import UUID
@@ -34,8 +34,6 @@ from pydantic import (
 
 from introspection_sdk._uuid import _uuid7
 from introspection_sdk.schemas.tasks import TaskStatus
-
-_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 class ApiModel(BaseModel):
@@ -170,17 +168,16 @@ class Issue(ApiModel):
 
     @property
     def etag(self) -> str:
-        """The issue's version as the server's ``ETag``: ``updated_at`` in
-        whole milliseconds since the Unix epoch, quoted. Pass it as
-        ``if_match`` to refuse a write if the issue changed since this
-        read."""
+        """The issue's version as the server's ``ETag``: ``updated_at`` as
+        ISO 8601 with its offset and full microsecond precision, quoted.
+        Pass it as ``if_match`` to refuse a write if the issue changed
+        since this read."""
         if self.updated_at is None:
             raise ValueError("An issue without updated_at has no ETag")
         updated_at = self.updated_at
         if updated_at.tzinfo is None:
             updated_at = updated_at.replace(tzinfo=UTC)
-        millis = (updated_at - _EPOCH) // timedelta(milliseconds=1)
-        return f'"{millis}"'
+        return f'"{updated_at.isoformat()}"'
 
 
 class IssueEvidence(RequestModel):
