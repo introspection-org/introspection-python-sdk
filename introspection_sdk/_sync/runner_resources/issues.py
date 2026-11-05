@@ -36,8 +36,8 @@ def _path(issue_id: UUID | str) -> str:
     return f"/v1/issues/{quote(str(issue_id), safe='')}"
 
 
-def _idempotency(key: str | None) -> dict[str, str] | None:
-    return {"Idempotency-Key": key} if key is not None else None
+def _if_match(etag: str | None) -> dict[str, str] | None:
+    return {"If-Match": etag} if etag is not None else None
 
 
 def _values(values: builtins.list[Any] | None) -> builtins.list[str] | None:
@@ -114,8 +114,8 @@ class Issues:
         return cursor_paginate(fetch, start=next)
 
     def get(self, issue_id: UUID | str) -> Issue:
-        """Read one issue with its evidence, open requests and current
-        ``revision``."""
+        """Read one issue with its evidence and open requests. Its
+        :attr:`Issue.etag` is the version to pass as ``if_match``."""
         return Issue.model_validate(self._http.request("GET", _path(issue_id)))
 
     def create(
@@ -131,13 +131,9 @@ class Issues:
         spans: builtins.list[IssueSpanReference] | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, IssueMetadataValue] | None = None,
-        idempotency_key: str | None = None,
     ) -> Issue:
         """Open an issue on its fixed worker Task (``task_id``). It starts
-        ``open``; change its status later with :meth:`update`.
-
-        Resend the same ``idempotency_key`` when retrying one deliberate
-        create so it applies once."""
+        ``open``; change its status later with :meth:`update`."""
         body = IssueCreate.model_validate(
             {
                 "title": title,
@@ -156,7 +152,6 @@ class Issues:
             "POST",
             "/v1/issues",
             json=body.model_dump(mode="json", exclude_none=True),
-            headers=_idempotency(idempotency_key),
         )
         return Issue.model_validate(payload)
 
@@ -165,21 +160,27 @@ class Issues:
         issue_id: UUID | str,
         change: IssueUpdate | IssueMutation,
         *,
-        idempotency_key: str | None = None,
+        if_match: str | None = None,
     ) -> Issue:
         """Edit the brief (:class:`IssueUpdate`), or create or change one
         human request (:class:`IssueMutation`). Returns the updated issue.
 
         An :class:`IssueUpdate` sends only the fields set on it, so an
-        omitted list is left as it is and ``[]`` clears it. A stale
-        ``expected_revision`` answers 409
-        (:class:`~introspection_sdk._errors.ConflictError`): read the issue
-        again before retrying."""
+        omitted list is left as it is and ``[]`` clears it. ``if_match``
+        (an :attr:`Issue.etag`) refuses the edit with 412 if the issue
+        changed since that read; without it the edit applies regardless.
+        An :class:`IssueMutation` carries its own ``expected_revision`` and
+        takes no ``if_match``: passing one raises :class:`ValueError`."""
+        if if_match is not None and isinstance(change, IssueMutation):
+            raise ValueError(
+                "if_match applies to an IssueUpdate only; an IssueMutation "
+                "is checked by its request's expected_revision"
+            )
         payload = self._http.request(
             "PATCH",
             _path(issue_id),
             json=_update_body(change),
-            headers=_idempotency(idempotency_key),
+            headers=_if_match(if_match),
         )
         return Issue.model_validate(payload)
 
@@ -187,12 +188,14 @@ class Issues:
         self,
         issue_id: UUID | str,
         *,
-        idempotency_key: str | None = None,
+        if_match: str | None = None,
     ) -> None:
-        """Soft-delete an issue. Its activity history is kept."""
+        """Soft-delete an issue. Its activity history is kept. ``if_match``
+        (an :attr:`Issue.etag`) refuses the delete with 412 if the issue
+        changed since that read."""
         self._http.request(
             "DELETE",
             _path(issue_id),
-            headers=_idempotency(idempotency_key),
+            headers=_if_match(if_match),
             expect="empty",
         )

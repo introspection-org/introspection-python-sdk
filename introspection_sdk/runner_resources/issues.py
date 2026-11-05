@@ -5,10 +5,11 @@ evidence it cites (files, links, events, spans) and the human requests
 open on it. It lives on a fixed worker Task, which carries its chat and
 Slack replies. ``update`` takes either an
 :class:`~introspection_sdk.schemas.issues.IssueUpdate`, which edits the
-brief at an ``expected_revision``, or an
+brief, or an
 :class:`~introspection_sdk.schemas.issues.IssueMutation`, which creates or
-changes one human request. Every write takes an optional
-``idempotency_key``; resend it unchanged when retrying that write.
+changes one human request. A brief edit and a delete take an optional
+``if_match`` (an issue's ``etag``), refused with 412 if the issue changed
+since that read.
 """
 
 from __future__ import annotations

@@ -727,7 +727,6 @@ class AsyncIssuesResource(Protocol):
         spans: builtins.list[IssueSpanReference] | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, IssueMetadataValue] | None = None,
-        idempotency_key: str | None = None,
     ) -> Issue: ...
 
     async def update(
@@ -735,14 +734,14 @@ class AsyncIssuesResource(Protocol):
         issue_id: UUID | str,
         change: IssueUpdate | IssueMutation,
         *,
-        idempotency_key: str | None = None,
+        if_match: str | None = None,
     ) -> Issue: ...
 
     async def delete(
         self,
         issue_id: UUID | str,
         *,
-        idempotency_key: str | None = None,
+        if_match: str | None = None,
     ) -> None: ...
 
 

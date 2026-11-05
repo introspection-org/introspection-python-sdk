@@ -13,11 +13,14 @@ this SDK does not know yet decodes as a plain ``str``.
 unset is omitted and left as it is, while an explicit ``[]`` (or ``{}``
 for ``metadata``) is sent and clears it, since each list replaces its list
 wholesale.
+
+:attr:`Issue.etag` is the issue's version for ``If-Match`` on an update or
+delete, so a write made against a stale read is refused with 412.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Self
 from uuid import UUID
@@ -31,6 +34,8 @@ from pydantic import (
 
 from introspection_sdk._uuid import _uuid7
 from introspection_sdk.schemas.tasks import TaskStatus
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 class ApiModel(BaseModel):
@@ -140,7 +145,6 @@ class Issue(ApiModel):
     priority: OpenIssuePriority = IssuePriority.MEDIUM
     status: OpenIssueStatus = IssueStatus.OPEN
     revision: int = 1
-    """Name it as ``expected_revision`` on the next :class:`IssueUpdate`."""
     files: list[IssueFile] = Field(default_factory=list)
     links: list[IssueLink] = Field(default_factory=list)
     events: list[IssueEventReference] = Field(default_factory=list)
@@ -163,6 +167,20 @@ class Issue(ApiModel):
     """Open human requests, oldest first."""
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    @property
+    def etag(self) -> str:
+        """The issue's version as the server's ``ETag``: ``updated_at`` in
+        whole milliseconds since the Unix epoch, quoted. Pass it as
+        ``if_match`` to refuse a write if the issue changed since this
+        read."""
+        if self.updated_at is None:
+            raise ValueError("An issue without updated_at has no ETag")
+        updated_at = self.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=UTC)
+        millis = (updated_at - _EPOCH) // timedelta(milliseconds=1)
+        return f'"{millis}"'
 
 
 class IssueEvidence(RequestModel):
@@ -196,25 +214,18 @@ class IssueCreate(IssueEvidence):
 class IssueUpdate(IssueEvidence):
     """Edit an issue's brief (``PATCH /v1/issues/{id}``).
 
-    ``expected_revision`` is the issue's ``revision`` the edit was made
-    against; a stale one answers 409, so read the issue again before
-    retrying. Only the fields you set are sent: each list replaces its list
-    wholesale and ``[]`` clears it, ``{}`` clears ``metadata``.
+    Only the fields you set are sent: each list replaces its list wholesale
+    and ``[]`` clears it, ``{}`` clears ``metadata``. To refuse the edit if
+    the issue changed since you read it, pass that read's
+    :attr:`Issue.etag` as ``if_match``.
     """
 
-    expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, max_length=500)
     description: str | None = Field(
         default=None, min_length=1, max_length=50000
     )
     priority: IssuePriority | None = None
     status: IssueStatus | None = None
-
-    @model_validator(mode="after")
-    def _names_a_change(self) -> Self:
-        if not self.model_fields_set - {"expected_revision"}:
-            raise ValueError("An issue update must set at least one field")
-        return self
 
 
 class IssueRequestMutation(RequestModel):

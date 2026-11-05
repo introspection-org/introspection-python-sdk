@@ -2,7 +2,7 @@
 
 Lists the open issues the caller may read. When INTROSPECTION_TASK_ID and
 INTROSPECTION_MEMBER_ID are set, it also opens an issue on that worker task,
-asks that member a question on it, edits the brief at the revision it read,
+asks that member a question on it, edits the brief against the version it read,
 and deletes the issue again.
 
 Run with:
@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import os
 import sys
-import uuid
 from uuid import UUID
 
 from dotenv import load_dotenv
@@ -59,8 +58,6 @@ def main() -> None:
             description="Stripe calls exceed 30s under load.",
             task_id=UUID(task_id),
             tags=["area:checkout"],
-            # One key per deliberate write; resend it when retrying.
-            idempotency_key=str(uuid.uuid4()),
         )
 
         # Ask a member: expected_revision=0 creates the request.
@@ -75,17 +72,18 @@ def main() -> None:
             ),
         )
 
-        # Edit the brief at the revision just read. A list you pass replaces
-        # the issue's list; `tags=[]` clears it, an omitted field is kept.
+        # Edit the brief; `if_match` refuses it (412) if the issue changed
+        # since the read. A list you pass replaces the issue's list;
+        # `tags=[]` clears it, an omitted field is kept.
         issue = client.issues.update(
             issue.id,
             IssueUpdate(
-                expected_revision=issue.revision,
                 links=[IssueLink(url="https://github.com/acme/app/pull/7")],
                 tags=[],
             ),
+            if_match=issue.etag,
         )
-        print(f"#{issue.display_index} at revision {issue.revision}")
+        print(f"#{issue.display_index} at version {issue.etag}")
         # #endregion docs:issues-lifecycle
 
         client.issues.delete(issue.id)

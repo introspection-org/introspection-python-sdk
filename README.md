@@ -567,7 +567,6 @@ issue = client.issues.create(
     title="Checkout times out",
     description="Stripe calls exceed 30s under load.",
     task_id=task_id,
-    idempotency_key=write_key,  # resend it unchanged when retrying
 )
 
 # Ask a member: expected_revision=0 creates the request.
@@ -582,11 +581,12 @@ client.issues.update(
     ),
 )
 
-# Edit the brief at the revision it was read at.
+# Edit the brief, refused if the issue changed since this read.
 issue = client.issues.get(issue.id)
 client.issues.update(
     issue.id,
-    IssueUpdate(expected_revision=issue.revision, status=IssueStatus.CLOSED, tags=[]),
+    IssueUpdate(status=IssueStatus.CLOSED, tags=[]),
+    if_match=issue.etag,
 )
 
 for issue in client.issues.list(status=[IssueStatus.OPEN], assigned_to_me=True):
@@ -595,11 +595,15 @@ for issue in client.issues.list(status=[IssueStatus.OPEN], assigned_to_me=True):
 
 `update` takes an `IssueUpdate`, which edits the brief, or an `IssueMutation`,
 which creates or changes one human request. An `IssueUpdate` sends only the
-fields set on it: an omitted list is left as it is, `[]` clears it (`{}` for
-`metadata`), and a stale `expected_revision` raises `ConflictError` (409), so
-read the issue again before retrying. `status`, `owner`, `task_status` and
-`metadata` filters repeat on the query string. `create`, `update` and
-`delete` take an optional `idempotency_key`. Runnable:
+fields set on it: an omitted list is left as it is and `[]` clears it (`{}`
+for `metadata`). A brief edit and `delete` take an optional `if_match`, the
+`issue.etag` of the read the write was made against; if the issue changed
+since, the server answers 412 (`IntrospectionAPIError` with
+`status_code == 412`), so read it again before retrying. Without `if_match`
+the write applies regardless. An `IssueMutation` takes no `if_match`: its
+request's own `expected_revision` (0 to create) guards it, and a stale one
+raises `ConflictError` (409). `status`, `owner`, `task_status` and `metadata`
+filters repeat on the query string. Runnable:
 [`issues.py`](examples/introspection_examples/api/issues.py).
 
 ## Connect apps for a member

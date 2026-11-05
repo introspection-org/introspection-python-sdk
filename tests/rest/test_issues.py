@@ -15,9 +15,10 @@ import pydantic
 import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
-from introspection_sdk._errors import ConflictError
+from introspection_sdk._errors import ConflictError, IntrospectionAPIError
 from introspection_sdk.runner_resources.issues import AsyncIssues, Issues
 from introspection_sdk.schemas.issues import (
+    Issue,
     IssueEventReference,
     IssueFile,
     IssueLink,
@@ -263,7 +264,7 @@ def test_list_reads_total_count_and_omits_unset_filters(fake_api: FakeAPI):
     assert result.records[0].title == "Checkout times out"
 
 
-def test_create_sends_the_body_and_idempotency_key(fake_api: FakeAPI):
+def test_create_sends_the_body(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/issues", status=201, json_body=issue_body())
 
     issue = Issues(fake_api.client()).create(
@@ -275,13 +276,12 @@ def test_create_sends_the_body_and_idempotency_key(fake_api: FakeAPI):
         spans=[IssueSpanReference(trace_id=TRACE_ID, span_id=SPAN_ID)],
         tags=["customer:acme"],
         metadata={"severity": 2},
-        idempotency_key="create-1",
     )
 
     assert issue.id == UUID(ISSUE_ID)
     sent = fake_api.last_request
     assert (sent.method, sent.path) == ("POST", "/v1/issues")
-    assert sent.headers["Idempotency-Key"] == "create-1"
+    assert "If-Match" not in sent.headers
     assert sent.json() == {
         "title": "Checkout times out",
         "description": "Stripe calls exceed 30s under load.",
@@ -294,14 +294,13 @@ def test_create_sends_the_body_and_idempotency_key(fake_api: FakeAPI):
     }
 
 
-def test_create_without_a_key_sends_no_header(fake_api: FakeAPI):
+def test_create_omits_unset_fields(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/issues", status=201, json_body=issue_body())
 
     Issues(fake_api.client()).create(
         title="t", description="d", task_id=TASK_ID
     )
 
-    assert "Idempotency-Key" not in fake_api.last_request.headers
     assert fake_api.last_request.json() == {
         "title": "t",
         "description": "d",
@@ -323,19 +322,16 @@ def test_update_sends_only_set_fields(fake_api: FakeAPI):
     issue = Issues(fake_api.client()).update(
         ISSUE_ID,
         IssueUpdate(
-            expected_revision=3,
             status=IssueStatus.CLOSED,
             links=[IssueLink(url="https://x.test", title="fix")],
         ),
-        idempotency_key="close-1",
     )
 
     assert issue.revision == 4
     sent = fake_api.last_request
     assert (sent.method, sent.path) == ("PATCH", ISSUE_PATH)
-    assert sent.headers["Idempotency-Key"] == "close-1"
+    assert "If-Match" not in sent.headers
     assert sent.json() == {
-        "expected_revision": 3,
         "status": "closed",
         "links": [{"url": "https://x.test", "title": "fix"}],
     }
@@ -346,14 +342,10 @@ def test_update_sends_an_empty_list_and_an_explicit_null(fake_api: FakeAPI):
 
     Issues(fake_api.client()).update(
         ISSUE_ID,
-        IssueUpdate(
-            expected_revision=3, tags=[], files=[], metadata={}, priority=None
-        ),
+        IssueUpdate(tags=[], files=[], metadata={}, priority=None),
     )
 
-    assert "Idempotency-Key" not in fake_api.last_request.headers
     assert fake_api.last_request.json() == {
-        "expected_revision": 3,
         "tags": [],
         "files": [],
         "metadata": {},
@@ -374,11 +366,10 @@ def test_update_creates_a_request(fake_api: FakeAPI):
                 assignee_id=UUID(MEMBER_ID),
             )
         ),
-        idempotency_key="ask-1",
     )
 
     sent = fake_api.last_request
-    assert sent.headers["Idempotency-Key"] == "ask-1"
+    assert "If-Match" not in sent.headers
     assert sent.json() == {
         "request": {
             "id": REQUEST_ID,
@@ -425,11 +416,17 @@ def test_a_new_request_mints_a_uuid7():
     assert body["id"] == str(mutation.id)
 
 
+def test_an_empty_update_sends_an_empty_body(fake_api: FakeAPI):
+    fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
+
+    Issues(fake_api.client()).update(ISSUE_ID, IssueUpdate())
+
+    assert fake_api.last_request.json() == {}
+
+
 def test_request_models_reject_what_the_server_refuses():
-    with pytest.raises(pydantic.ValidationError, match="at least one field"):
-        IssueUpdate(expected_revision=1)
     with pytest.raises(pydantic.ValidationError):
-        IssueUpdate(expected_revision=0, title="t")
+        IssueUpdate.model_validate({"expected_revision": 1, "title": "t"})
     with pytest.raises(pydantic.ValidationError, match="question"):
         IssueRequestMutation(expected_revision=0, assignee_id=UUID(MEMBER_ID))
     with pytest.raises(pydantic.ValidationError):
@@ -438,7 +435,73 @@ def test_request_models_reject_what_the_server_refuses():
         IssueSpanReference(trace_id="nothex", span_id=SPAN_ID)
 
 
-def test_a_stale_revision_raises_conflict(fake_api: FakeAPI):
+def test_etag_is_updated_at_in_quoted_epoch_milliseconds():
+    issue = Issue.model_validate(
+        issue_body(updated_at="2026-11-04T01:00:00.123Z")
+    )
+    assert issue.etag == '"1793754000123"'
+
+    # Sub-millisecond precision truncates, as the server's tag does.
+    issue = Issue.model_validate(
+        issue_body(updated_at="2026-11-04T02:00:00.123999+01:00")
+    )
+    assert issue.etag == '"1793754000123"'
+
+    # A naive timestamp is read as UTC.
+    naive = Issue.model_validate(
+        issue_body(updated_at=datetime(1970, 1, 1, 0, 0, 1))
+    )
+    assert naive.etag == '"1000"'
+
+    with pytest.raises(ValueError, match="ETag"):
+        _ = Issue.model_validate(issue_body(updated_at=None)).etag
+
+
+def test_update_sends_if_match_only_when_given(fake_api: FakeAPI):
+    fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
+    api = Issues(fake_api.client())
+    issue = Issue.model_validate(issue_body())
+
+    api.update(ISSUE_ID, IssueUpdate(title="t"), if_match=issue.etag)
+    sent = fake_api.last_request
+    assert sent.headers["If-Match"] == '"1790938800000"'
+    assert sent.json() == {"title": "t"}
+
+    api.update(ISSUE_ID, IssueUpdate(title="t"))
+    assert "If-Match" not in fake_api.last_request.headers
+
+
+def test_update_refuses_if_match_with_a_request_mutation(fake_api: FakeAPI):
+    mutation = IssueMutation(
+        request=IssueRequestMutation(
+            expected_revision=0, question="q", assignee_id=UUID(MEMBER_ID)
+        )
+    )
+
+    with pytest.raises(ValueError, match="IssueUpdate only"):
+        Issues(fake_api.client()).update(
+            ISSUE_ID, mutation, if_match='"1790938800000"'
+        )
+    assert fake_api.requests == []
+
+
+def test_a_stale_if_match_raises_precondition_failed(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        ISSUE_PATH,
+        status=412,
+        json_body={"detail": "The issue changed since it was read"},
+    )
+
+    with pytest.raises(IntrospectionAPIError) as raised:
+        Issues(fake_api.client()).update(
+            ISSUE_ID, IssueUpdate(title="t"), if_match='"1"'
+        )
+    assert raised.value.status_code == 412
+    assert not isinstance(raised.value, ConflictError)
+
+
+def test_a_stale_request_revision_raises_conflict(fake_api: FakeAPI):
     fake_api.add(
         "PATCH",
         ISSUE_PATH,
@@ -448,20 +511,28 @@ def test_a_stale_revision_raises_conflict(fake_api: FakeAPI):
 
     with pytest.raises(ConflictError):
         Issues(fake_api.client()).update(
-            ISSUE_ID, IssueUpdate(expected_revision=1, title="t")
+            ISSUE_ID,
+            IssueMutation(
+                request=IssueRequestMutation(
+                    id=UUID(REQUEST_ID),
+                    expected_revision=1,
+                    status=IssueRequestStatus.CANCELLED,
+                    resolution="r",
+                )
+            ),
         )
 
 
-def test_delete_sends_the_idempotency_key(fake_api: FakeAPI):
+def test_delete_sends_if_match_only_when_given(fake_api: FakeAPI):
     fake_api.add("DELETE", ISSUE_PATH, status=204)
     api = Issues(fake_api.client())
 
-    assert api.delete(ISSUE_ID, idempotency_key="rm-1") is None
+    assert api.delete(ISSUE_ID, if_match='"1790938800000"') is None
     assert fake_api.last_request.method == "DELETE"
-    assert fake_api.last_request.headers["Idempotency-Key"] == "rm-1"
+    assert fake_api.last_request.headers["If-Match"] == '"1790938800000"'
 
     api.delete(UUID(ISSUE_ID))
-    assert "Idempotency-Key" not in fake_api.last_request.headers
+    assert "If-Match" not in fake_api.last_request.headers
 
 
 async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
@@ -487,15 +558,9 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     listed = [issue async for issue in api.list(owner=[IssueOwner.ME])]
     assert len(listed) == 2
     assert (await api.get(ISSUE_ID)).title == "Checkout times out"
-    created = await api.create(
-        title="t", description="d", task_id=TASK_ID, idempotency_key="k1"
-    )
+    created = await api.create(title="t", description="d", task_id=TASK_ID)
     assert created.id == UUID(ISSUE_ID)
-    await api.update(
-        ISSUE_ID,
-        IssueUpdate(expected_revision=3, events=[]),
-        idempotency_key="k2",
-    )
+    await api.update(ISSUE_ID, IssueUpdate(events=[]), if_match=created.etag)
     await api.update(
         ISSUE_ID,
         IssueMutation(
@@ -507,10 +572,20 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
             )
         ),
     )
-    await api.delete(ISSUE_ID, idempotency_key="k3")
+    with pytest.raises(ValueError):
+        await api.update(
+            ISSUE_ID,
+            IssueMutation(
+                request=IssueRequestMutation(
+                    id=UUID(REQUEST_ID), expected_revision=1, question="q"
+                )
+            ),
+            if_match=created.etag,
+        )
+    await api.delete(ISSUE_ID, if_match='"k3"')
 
     calls = [
-        (r.method, r.path, r.headers.get("Idempotency-Key"))
+        (r.method, r.path, r.headers.get("If-Match"))
         for r in fake_api.requests
     ]
     assert calls == [
@@ -518,15 +593,14 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
         ("GET", "/v1/issues", None),
         ("GET", "/v1/issues", None),
         ("GET", ISSUE_PATH, None),
-        ("POST", "/v1/issues", "k1"),
-        ("PATCH", ISSUE_PATH, "k2"),
+        ("POST", "/v1/issues", None),
+        ("PATCH", ISSUE_PATH, '"1790938800000"'),
         ("PATCH", ISSUE_PATH, None),
-        ("DELETE", ISSUE_PATH, "k3"),
+        ("DELETE", ISSUE_PATH, '"k3"'),
     ]
     assert fake_api.requests[0].params.get_list("status") == ["open"]
     assert fake_api.requests[1].params.get_list("owner") == ["me"]
     assert fake_api.requests[5].json() == {
-        "expected_revision": 3,
         "events": [],
     }
     assert fake_api.requests[6].json() == {
