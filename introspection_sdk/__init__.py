@@ -78,6 +78,12 @@ from introspection_sdk.schemas.automations import (
     AutomationTriggerResponse,
     AutomationTriggerType,
 )
+from introspection_sdk.schemas.issues import (
+    Issue,
+    IssueMutation,
+    IssueRequestMutation,
+    IssueUpdate,
+)
 from introspection_sdk.schemas.repositories import (
     Repository,
     RepositoryCommit,
@@ -193,6 +199,10 @@ __all__ = [
     "AutomationMetadata",
     "AutomationTriggerResponse",
     "AutomationTriggerType",
+    "Issue",
+    "IssueMutation",
+    "IssueRequestMutation",
+    "IssueUpdate",
     "ConflictError",
     "EmailCodeAuth",
     "EventType",

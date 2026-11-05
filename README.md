@@ -192,7 +192,7 @@ async for summary in runner.conversations.list(
 ```
 
 The runner also exposes `files`, `shares`, `events`, `metrics`,
-`automations` and `connections`.
+`automations`, `issues` and `connections`.
 
 ## Export a conversation as a Harbor trajectory
 
@@ -221,7 +221,7 @@ and returns the steps that are final. Runnable:
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:
 `tasks` (with `tasks.runs`), `files`, `conversations`, `events`, `metrics`,
-`shares`, `automations` and `connections`. The contract is
+`shares`, `automations`, `issues` and `connections`. The contract is
 `introspection_sdk.protocols.DataPlaneResources` (and
 `AsyncDataPlaneResources` for `AsyncIntrospectionClient` / `AsyncRunner`),
 so code written against it runs with either handle:
@@ -547,6 +547,60 @@ sends.
 The routes need the `automations:read` and `automations:write` scopes, so a `native` sign-in cannot use them yet.
 `can_manage` says whether the caller may change an automation, and
 `created_by_member_id` who created it.
+
+## Track issues
+
+`client.issues` / `runner.issues` manage a project's issues on the data
+plane: a brief (title, description, priority, status), the evidence it cites
+(files, links, events, spans) and the human requests open on it. Each issue
+lives on a fixed worker task, which carries its chat.
+
+```python
+from introspection_sdk.schemas.issues import (
+    IssueMutation,
+    IssueRequestMutation,
+    IssueStatus,
+    IssueUpdate,
+)
+
+issue = client.issues.create(
+    title="Checkout times out",
+    description="Stripe calls exceed 30s under load.",
+    task_id=task_id,
+    idempotency_key=write_key,  # resend it unchanged when retrying
+)
+
+# Ask a member: expected_revision=0 creates the request.
+client.issues.update(
+    issue.id,
+    IssueMutation(
+        request=IssueRequestMutation(
+            expected_revision=0,
+            question="Ship the retry?",
+            assignee_id=member_id,
+        )
+    ),
+)
+
+# Edit the brief at the revision it was read at.
+issue = client.issues.get(issue.id)
+client.issues.update(
+    issue.id,
+    IssueUpdate(expected_revision=issue.revision, status=IssueStatus.CLOSED, tags=[]),
+)
+
+for issue in client.issues.list(status=[IssueStatus.OPEN], assigned_to_me=True):
+    print(issue.display_index, issue.title, len(issue.open_requests))
+```
+
+`update` takes an `IssueUpdate`, which edits the brief, or an `IssueMutation`,
+which creates or changes one human request. An `IssueUpdate` sends only the
+fields set on it: an omitted list is left as it is, `[]` clears it (`{}` for
+`metadata`), and a stale `expected_revision` raises `ConflictError` (409), so
+read the issue again before retrying. `status`, `owner`, `task_status` and
+`metadata` filters repeat on the query string. `create`, `update` and
+`delete` take an optional `idempotency_key`. Runnable:
+[`issues.py`](examples/introspection_examples/api/issues.py).
 
 ## Connect apps for a member
 

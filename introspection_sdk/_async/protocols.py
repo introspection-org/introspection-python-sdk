@@ -52,6 +52,19 @@ from introspection_sdk.schemas.images import (
     ImageStatus,
     MirrorImageSource,
 )
+from introspection_sdk.schemas.issues import (
+    Issue,
+    IssueEventReference,
+    IssueFile,
+    IssueLink,
+    IssueMetadataValue,
+    IssueMutation,
+    IssueOwner,
+    IssuePriority,
+    IssueSpanReference,
+    IssueStatus,
+    IssueUpdate,
+)
 from introspection_sdk.schemas.metrics import (
     MetricQueryRequest,
     MetricQueryResponse,
@@ -79,6 +92,7 @@ from introspection_sdk.schemas.tasks import (
     TaskRepoRequest,
     TaskRun,
     TaskRunKind,
+    TaskStatus,
 )
 from introspection_sdk.schemas.trajectory import Trajectory
 
@@ -678,6 +692,62 @@ class AsyncImagesResource(Protocol):
 
 
 @runtime_checkable
+class AsyncIssuesResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.issues.AsyncIssues`."""
+
+    def list(
+        self,
+        *,
+        status: builtins.list[IssueStatus | str] | None = None,
+        owner: builtins.list[IssueOwner | str] | None = None,
+        assigned_to_me: bool | None = None,
+        has_open_requests: bool | None = None,
+        task_status: builtins.list[TaskStatus | str] | None = None,
+        exclude_task_status: builtins.list[TaskStatus | str] | None = None,
+        display_index: int | None = None,
+        tag: str | None = None,
+        metadata: dict[str, str] | None = None,
+        search: str | None = None,
+        include_total: bool = False,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> AsyncPager[Issue, Paginated[Issue]]: ...
+
+    async def get(self, issue_id: UUID | str) -> Issue: ...
+
+    async def create(
+        self,
+        *,
+        title: str,
+        description: str,
+        task_id: UUID | str,
+        priority: IssuePriority | str | None = None,
+        files: builtins.list[IssueFile] | None = None,
+        links: builtins.list[IssueLink] | None = None,
+        events: builtins.list[IssueEventReference] | None = None,
+        spans: builtins.list[IssueSpanReference] | None = None,
+        tags: builtins.list[str] | None = None,
+        metadata: dict[str, IssueMetadataValue] | None = None,
+        idempotency_key: str | None = None,
+    ) -> Issue: ...
+
+    async def update(
+        self,
+        issue_id: UUID | str,
+        change: IssueUpdate | IssueMutation,
+        *,
+        idempotency_key: str | None = None,
+    ) -> Issue: ...
+
+    async def delete(
+        self,
+        issue_id: UUID | str,
+        *,
+        idempotency_key: str | None = None,
+    ) -> None: ...
+
+
+@runtime_checkable
 class AsyncDataPlaneResources(Protocol):
     """The data-plane namespaces :class:`~introspection_sdk.AsyncIntrospectionClient`
     and :class:`~introspection_sdk.runner.AsyncRunner` both expose."""
@@ -708,3 +778,6 @@ class AsyncDataPlaneResources(Protocol):
 
     @property
     def images(self) -> AsyncImagesResource: ...
+
+    @property
+    def issues(self) -> AsyncIssuesResource: ...

@@ -43,6 +43,7 @@ from introspection_sdk.runner_resources import (
     Events,
     Files,
     Images,
+    Issues,
     Metrics,
     Remotes,
     Shares,
@@ -87,6 +88,7 @@ class IntrospectionClient:
     shares: Shares
     connections: AppConnections
     images: Images
+    issues: Issues
     projects: Projects
     api_keys: ApiKeys
     applications: Applications
@@ -160,6 +162,7 @@ class IntrospectionClient:
         self.shares = Shares(self._dp_http)
         self.connections = AppConnections(self._dp_http)
         self.images = Images(self._dp_http)
+        self.issues = Issues(self._dp_http)
         self.aauth = AAuth(self._dp_http)
         self.remotes = Remotes(self._dp_http)
         # Project administration: each route needs an org credential (a
