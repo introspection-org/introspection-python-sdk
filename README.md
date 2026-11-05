@@ -605,6 +605,7 @@ or id) on project-scoped calls when the credential does not name one.
 | `client.applications` | OAuth clients, with `.idps`, `.secrets` and `.keys` under each |
 | `client.credentials` / `client.variables` | Secrets and environment variables a project's runtimes read |
 | `client.integrations` | The org's own provider installs (org-wide, no `project`) |
+| `client.integrations.repositories(id)` | The repositories a GitHub integration's installation can reach, read with the control plane's own credential, in one response ([`project_admin.py`](examples/introspection_examples/api/project_admin.py)) |
 | `client.integrations.access_token(id, request=None)` | A short-lived provider token for an integration, never stored server-side; `request` is a `GitHubAccessTokenRequest` (default `metadata: read`, the server's cap today) ([`project_admin.py`](examples/introspection_examples/api/project_admin.py)) |
 | `client.judges` | The judges a Recipe declares: read, and toggle `enabled` / `sample_rate` |
 | `client.endpoints` | The upstream hosts a project's runtimes reach: `list`, `get`, `create` (an upsert), `update`, `delete` |

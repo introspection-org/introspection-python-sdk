@@ -14,6 +14,7 @@ from introspection_sdk.schemas.integrations import (
     IntegrationAccessToken,
     IntegrationAccessTokenRequest,
     IntegrationCreateRequest,
+    IntegrationRepositories,
     IntegrationStatus,
     IntegrationType,
     IntegrationUpdateRequest,
@@ -123,4 +124,20 @@ class AsyncIntegrations(_AsyncResource):
             f"{_integration_path(integration_id)}/access-token",
             IntegrationAccessToken,
             json=body,
+        )
+
+    async def repositories(
+        self, integration_id: UUID
+    ) -> IntegrationRepositories:
+        """The repositories the integration's install can reach (``GET
+        /v1/integrations/{id}/repositories``, scope ``integrations:read``),
+        read with the control plane's own credential, all in one response.
+
+        Only a GitHub integration has them; any other type is a
+        :class:`~introspection_sdk.ValidationError`. An inactive or expired
+        integration is a :class:`~introspection_sdk.ConflictError`."""
+        return await self._call(
+            "GET",
+            f"{_integration_path(integration_id)}/repositories",
+            IntegrationRepositories,
         )

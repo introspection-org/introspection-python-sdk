@@ -884,6 +884,97 @@ def test_integration_access_token_errors_are_typed(
         assert caught.value.retry_after == 30.0
 
 
+REPOSITORIES_PATH = f"/v1/integrations/{INTEGRATION_ID}/repositories"
+
+
+def installation_repository(**over: Any) -> dict[str, Any]:
+    return {
+        "id": 1,
+        "name": "recipes",
+        "full_name": "acme/recipes",
+        "html_url": "https://github.com/acme/recipes",
+        "default_branch": "main",
+        "private": True,
+        "description": None,
+        "pushed_at": "2026-11-01T00:00:00Z",
+        **over,
+    }
+
+
+def test_integration_repositories_lists_the_installation(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        REPOSITORIES_PATH,
+        json_body={
+            "type": "github",
+            "records": [
+                installation_repository(),
+                installation_repository(
+                    id=2, name="site", full_name="acme/site", pushed_at=None
+                ),
+            ],
+        },
+    )
+
+    listed = Integrations(fake_api.client()).repositories(UUID(INTEGRATION_ID))
+
+    assert fake_api.last_request.method == "GET"
+    assert fake_api.last_request.url.path == REPOSITORIES_PATH
+    assert listed.type is IntegrationType.GITHUB
+    assert [r.full_name for r in listed.records] == [
+        "acme/recipes",
+        "acme/site",
+    ]
+    first, second = listed.records
+    assert first.private
+    assert first.description is None
+    assert first.pushed_at is not None
+    assert first.pushed_at.isoformat() == "2026-11-01T00:00:00+00:00"
+    assert second.pushed_at is None
+
+
+async def test_async_integration_repositories(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        REPOSITORIES_PATH,
+        json_body={"type": "github", "records": []},
+    )
+
+    listed = await AsyncIntegrations(fake_api.async_client()).repositories(
+        UUID(INTEGRATION_ID)
+    )
+
+    assert listed.records == []
+
+
+@pytest.mark.parametrize(
+    ("status", "error"),
+    [
+        (400, ValidationError),
+        (404, NotFoundError),
+        (409, ConflictError),
+        (502, IntrospectionAPIError),
+    ],
+)
+def test_integration_repositories_errors_are_typed(
+    fake_api: FakeAPI, status: int, error: type[IntrospectionAPIError]
+):
+    detail = {
+        "code": "integration_not_github",
+        "message": "only a GitHub integration has repositories",
+    }
+    fake_api.add(
+        "GET", REPOSITORIES_PATH, status=status, json_body={"detail": detail}
+    )
+
+    with pytest.raises(error) as caught:
+        Integrations(fake_api.client()).repositories(UUID(INTEGRATION_ID))
+
+    assert caught.value.status_code == status
+    assert caught.value.code == "integration_not_github"
+    assert str(caught.value) == detail["message"]
+
+
 # --- judges ----------------------------------------------------------
 
 

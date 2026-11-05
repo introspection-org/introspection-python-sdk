@@ -128,13 +128,52 @@ class IntegrationAccessToken(BaseModel):
     permissions: dict[str, IntegrationPermissionLevel]
 
 
+class GitHubInstallationRepository(BaseModel):
+    """A repository the GitHub App installation can reach, as GitHub
+    reports it."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: int
+    """GitHub's numeric repository id."""
+    name: str
+    full_name: str
+    """``owner/name``."""
+    html_url: str
+    default_branch: str
+    private: bool
+    description: str | None = None
+    pushed_at: datetime | None = None
+
+
+class GitHubInstallationRepositories(BaseModel):
+    """``GET /v1/integrations/{id}/repositories`` for a GitHub integration:
+    every repository the installation can reach, in one response."""
+
+    model_config = ConfigDict(extra="allow")
+
+    type: Literal[IntegrationType.GITHUB] = IntegrationType.GITHUB
+    records: list[GitHubInstallationRepository]
+
+
+# One variant today, and pydantic refuses a discriminator on a single-member
+# union. A second provider becomes
+# ``Annotated[GitHubInstallationRepositories | LinearRepositories,
+# Field(discriminator="type")]``.
+IntegrationRepositories = GitHubInstallationRepositories
+"""``GET /v1/integrations/{id}/repositories``, tagged by ``type``."""
+
+
 __all__ = [
     "GitHubAccessTokenRequest",
+    "GitHubInstallationRepositories",
+    "GitHubInstallationRepository",
     "Integration",
     "IntegrationAccessToken",
     "IntegrationAccessTokenRequest",
     "IntegrationCreateRequest",
     "IntegrationPermissionLevel",
+    "IntegrationRepositories",
     "IntegrationStatus",
     "IntegrationType",
     "IntegrationUpdateRequest",

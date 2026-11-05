@@ -3,8 +3,8 @@
 Reads the signed-in member and organization, the org's projects, a
 project's API keys, credentials, variables, judges, endpoints and runtime
 peerings, and mints
-the member's own short-lived access token for the project and a GitHub
-integration's short-lived installation token; then, when
+the member's own short-lived access token for the project, lists a GitHub
+integration's repositories and mints its short-lived installation token; then, when
 INTROSPECTION_ADMIN_WRITE=1, mints an API key, saves its one-time plaintext,
 acknowledges it and revokes it again, renames an endpoint and back, creates
 and deletes another, and creates, renames and deletes a sibling project on the same deployment.
@@ -45,7 +45,8 @@ from introspection_sdk.schemas.lanes import Environment
 
 # #region docs:integration-access-token
 def print_integration_token(client: IntrospectionClient) -> None:
-    """Mint a short-lived token for the org's GitHub App installation,
+    """List the repositories the org's GitHub App installation reaches, then
+    mint a short-lived token for the org's GitHub App installation,
     never stored server-side. The server caps what it grants (today
     `metadata: read`) and answers a 403 with
     `code == "integration_token_cap_exceeded"` beyond it."""
@@ -61,6 +62,9 @@ def print_integration_token(client: IntrospectionClient) -> None:
     if github is None:
         print("no active GitHub integration")
         return
+    # Read with the control plane's own credential: no token comes back.
+    for repo in client.integrations.repositories(github.id).records:
+        print(f"  installation repository {repo.full_name}")
     request = GitHubAccessTokenRequest(
         permissions={"metadata": IntegrationPermissionLevel.READ}
     )
