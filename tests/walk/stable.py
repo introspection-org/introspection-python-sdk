@@ -3,7 +3,9 @@ ids and ``*_id`` to ``[uuid]``, ``*_at`` to ``[timestamp]``, ``*_sha`` to
 ``[sha]``, tokens and secrets to ``[redacted]``, any URL to ``[url]``, and a
 number that moves between runs (``duration_ms``, ``*_count``, ``*_tokens``,
 ``max_turn``, a task's per-project ``display_index``) to ``[number]``,
-asserted as a bound beside the snapshot instead.
+asserted as a bound beside the snapshot instead. A dependency version the
+server reports (``validator_version``) becomes ``[version]``, since it moves
+with the server's pin, not the API.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ URL = re.compile(r"^https?://")
 MEASURED_KEY = re.compile(
     r"(_ms$|_count$|_tokens$|^max_turn$|^display_index$)"
 )
+VERSION_KEY = re.compile(r"^validator_version$")
 VOLATILE_KEY = re.compile(
     r"(^id$|_at$|_sha$|token$|secret$|^key$|_key$|cookie$|^url$|_url$"
     r"|^expires_in$|^client_id$|_prefix$|_suffix$|^prefix$|^key_display$"
@@ -52,6 +55,8 @@ def plain(value: Any) -> Any:
 
 
 def _string(value: str, key: str) -> str:
+    if VERSION_KEY.search(key):
+        return "[version]"
     if UUID.match(value):
         return "[uuid]"
     if TIMESTAMP.match(value):

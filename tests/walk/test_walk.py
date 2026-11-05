@@ -628,7 +628,7 @@ def test_04_recipe(world: World) -> None:
             "validation": {
                 "status": "valid",
                 "validator_name": "introspection-recipe-check",
-                "validator_version": "0.12.0",
+                "validator_version": "[version]",
                 "checked_at": "[timestamp]",
                 "error_message": None,
                 "diagnostics": [],
