@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.37.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.36.0...v0.37.0) (2026-11-05)
+
+
+### Features
+
+* **integrations:** add integration access tokens and repositories ([#235](https://github.com/introspection-org/introspection-python-sdk/issues/235)) ([92122f4](https://github.com/introspection-org/introspection-python-sdk/commit/92122f461b938e2a52ef6e9ca3c919bf87b29941))
+* **issues:** add the Data Plane issues client ([#236](https://github.com/introspection-org/introspection-python-sdk/issues/236)) ([74398f2](https://github.com/introspection-org/introspection-python-sdk/commit/74398f296964ad6db0ff93c5e78ce13b4ac018a2))
+
+
+### Bug Fixes
+
+* **walk:** record through introspection-cloud's SDK Walks workflow ([#232](https://github.com/introspection-org/introspection-python-sdk/issues/232)) ([f543775](https://github.com/introspection-org/introspection-python-sdk/commit/f543775c0c39c372004b1084952b52fc9cd719e2))
+
 ## [0.36.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.35.0...v0.36.0) (2026-11-02)
 
 
