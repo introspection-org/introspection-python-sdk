@@ -707,7 +707,6 @@ class AsyncIssuesResource(Protocol):
         display_index: int | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
-        search: str | None = None,
         include_total: bool = False,
         limit: int | None = None,
         next: str | None = None,

@@ -220,7 +220,6 @@ def test_list_repeats_params_and_paginates(fake_api: FakeAPI):
             display_index=42,
             tag="customer:acme",
             metadata={"severity": "2", "team": "payments"},
-            search="checkout",
             include_total=True,
             limit=1,
         )
@@ -244,7 +243,6 @@ def test_list_repeats_params_and_paginates(fake_api: FakeAPI):
         ("tag", "customer:acme"),
         ("metadata", "severity:2"),
         ("metadata", "team:payments"),
-        ("search", "checkout"),
         ("include_total", "true"),
     ]
     assert second.params["next"] == "cur-2"

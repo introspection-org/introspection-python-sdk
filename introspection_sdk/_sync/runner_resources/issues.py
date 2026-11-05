@@ -72,7 +72,6 @@ class Issues:
         display_index: int | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
-        search: str | None = None,
         include_total: bool = False,
         limit: int | None = None,
         next: str | None = None,
@@ -87,8 +86,8 @@ class Issues:
         for the caller's own private ones. ``exclude_task_status`` keeps an
         issue without a live Task. ``tag`` is one ``key:value`` tag;
         ``metadata`` is sent as one ``metadata=key:value`` param per entry
-        (at most 16). ``search`` is a case-insensitive substring of the
-        title. ``limit`` is the page size (1-200, server default 50)."""
+        (at most 16). ``limit`` is the page size (1-200, server default
+        50)."""
 
         def fetch(cursor: str | None) -> Paginated[Issue]:
             params: dict[str, Any] = {
@@ -107,7 +106,6 @@ class Issues:
                     if metadata
                     else None
                 ),
-                "search": search,
                 "include_total": include_total or None,
             }
             payload = self._http.request("GET", "/v1/issues", params=params)
