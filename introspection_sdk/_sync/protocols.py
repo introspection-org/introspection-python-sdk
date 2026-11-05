@@ -54,6 +54,19 @@ from introspection_sdk.schemas.images import (
     ImageStatus,
     MirrorImageSource,
 )
+from introspection_sdk.schemas.issues import (
+    Issue,
+    IssueEventReference,
+    IssueFile,
+    IssueLink,
+    IssueMetadataValue,
+    IssueMutation,
+    IssueOwner,
+    IssuePriority,
+    IssueSpanReference,
+    IssueStatus,
+    IssueUpdate,
+)
 from introspection_sdk.schemas.metrics import (
     MetricQueryRequest,
     MetricQueryResponse,
@@ -81,6 +94,7 @@ from introspection_sdk.schemas.tasks import (
     TaskRepoRequest,
     TaskRun,
     TaskRunKind,
+    TaskStatus,
 )
 from introspection_sdk.schemas.trajectory import Trajectory
 
@@ -678,6 +692,60 @@ class ImagesResource(Protocol):
 
 
 @runtime_checkable
+class IssuesResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.issues.Issues`."""
+
+    def list(
+        self,
+        *,
+        status: builtins.list[IssueStatus | str] | None = None,
+        owner: builtins.list[IssueOwner | str] | None = None,
+        assigned_to_me: bool | None = None,
+        has_open_requests: bool | None = None,
+        task_status: builtins.list[TaskStatus | str] | None = None,
+        exclude_task_status: builtins.list[TaskStatus | str] | None = None,
+        display_index: int | None = None,
+        tag: str | None = None,
+        metadata: dict[str, str] | None = None,
+        include_total: bool = False,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> Pager[Issue, Paginated[Issue]]: ...
+
+    def get(self, issue_id: UUID | str) -> Issue: ...
+
+    def create(
+        self,
+        *,
+        title: str,
+        description: str,
+        task_id: UUID | str,
+        priority: IssuePriority | str | None = None,
+        files: builtins.list[IssueFile] | None = None,
+        links: builtins.list[IssueLink] | None = None,
+        events: builtins.list[IssueEventReference] | None = None,
+        spans: builtins.list[IssueSpanReference] | None = None,
+        tags: builtins.list[str] | None = None,
+        metadata: dict[str, IssueMetadataValue] | None = None,
+    ) -> Issue: ...
+
+    def update(
+        self,
+        issue_id: UUID | str,
+        change: IssueUpdate | IssueMutation,
+        *,
+        if_match: str | None = None,
+    ) -> Issue: ...
+
+    def delete(
+        self,
+        issue_id: UUID | str,
+        *,
+        if_match: str | None = None,
+    ) -> None: ...
+
+
+@runtime_checkable
 class DataPlaneResources(Protocol):
     """The data-plane namespaces :class:`~introspection_sdk.IntrospectionClient`
     and :class:`~introspection_sdk.runner.Runner` both expose."""
@@ -708,3 +776,6 @@ class DataPlaneResources(Protocol):
 
     @property
     def images(self) -> ImagesResource: ...
+
+    @property
+    def issues(self) -> IssuesResource: ...

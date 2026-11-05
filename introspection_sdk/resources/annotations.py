@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import builtins
-import secrets
-import time
 from collections.abc import Sequence
 from typing import Any, Literal
 from uuid import UUID
@@ -17,6 +15,7 @@ from introspection_sdk._errors import (
     ValidationError,
 )
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._uuid import _uuid7
 from introspection_sdk.pagination import (
     AsyncPager,
     Pager,
@@ -30,16 +29,6 @@ from introspection_sdk.schemas.annotations import (
     AnnotationTarget,
 )
 from introspection_sdk.schemas.pagination import Paginated
-
-
-def _uuid7() -> UUID:
-    """Mint a UUIDv7 without depending on Python 3.14's ``uuid.uuid7``."""
-    value = (
-        (int(time.time() * 1000) & ((1 << 48) - 1)) << 80
-    ) | secrets.randbits(80)
-    value = (value & ~(0xF << 76)) | (0x7 << 76)
-    value = (value & ~(0x3 << 62)) | (0x2 << 62)
-    return UUID(int=value)
 
 
 def _reviewer_emails(values: Sequence[str]) -> list[str]:

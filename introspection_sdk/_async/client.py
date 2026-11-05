@@ -41,6 +41,7 @@ from introspection_sdk.runner_resources import (
     AsyncEvents,
     AsyncFiles,
     AsyncImages,
+    AsyncIssues,
     AsyncMetrics,
     AsyncRemotes,
     AsyncShares,
@@ -103,6 +104,7 @@ class AsyncIntrospectionClient:
     shares: AsyncShares
     connections: AsyncAppConnections
     images: AsyncImages
+    issues: AsyncIssues
     projects: AsyncProjects
     api_keys: AsyncApiKeys
     applications: AsyncApplications
@@ -176,6 +178,7 @@ class AsyncIntrospectionClient:
         self.shares = AsyncShares(self._dp_http)
         self.connections = AsyncAppConnections(self._dp_http)
         self.images = AsyncImages(self._dp_http)
+        self.issues = AsyncIssues(self._dp_http)
         self.aauth = AsyncAAuth(self._dp_http)
         self.remotes = AsyncRemotes(self._dp_http)
         # Project administration: each route needs an org credential (a

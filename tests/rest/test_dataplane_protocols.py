@@ -110,6 +110,7 @@ EXPECTED_PATHS = [
     ("GET", "/v1/automations"),
     ("GET", "/v1/connections"),
     ("POST", "/v1/connections"),
+    ("GET", "/v1/issues"),
 ]
 
 
@@ -132,6 +133,7 @@ def _seed(dp: LocalDP) -> None:
         "/v1/connections",
         {"authorize_url": "https://connect.example/c", "expires_in": 60},
     )
+    dp.add("GET", "/v1/issues", {"records": [], "count": 0})
 
 
 def _spec(dp: LocalDP) -> RunnerSpec:
@@ -156,6 +158,7 @@ def _drive(dp: DataPlaneResources) -> None:
     assert (
         dp.connections.create(app="gmail", runtime="support").expires_in == 60
     )
+    assert dp.issues.list().page().count == 0
 
 
 async def _adrive(dp: AsyncDataPlaneResources) -> None:
@@ -170,6 +173,7 @@ async def _adrive(dp: AsyncDataPlaneResources) -> None:
     assert (await dp.connections.list().page()).count == 0
     page = await dp.connections.create(app="gmail", runtime="support")
     assert page.expires_in == 60
+    assert (await dp.issues.list().page()).count == 0
 
 
 def _calls(dp: LocalDP) -> list[tuple[str, str]]:

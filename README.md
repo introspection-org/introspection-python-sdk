@@ -192,7 +192,7 @@ async for summary in runner.conversations.list(
 ```
 
 The runner also exposes `files`, `shares`, `events`, `metrics`,
-`automations` and `connections`.
+`automations`, `issues` and `connections`.
 
 ## Export a conversation as a Harbor trajectory
 
@@ -221,7 +221,7 @@ and returns the steps that are final. Runnable:
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:
 `tasks` (with `tasks.runs`), `files`, `conversations`, `events`, `metrics`,
-`shares`, `automations` and `connections`. The contract is
+`shares`, `automations`, `issues` and `connections`. The contract is
 `introspection_sdk.protocols.DataPlaneResources` (and
 `AsyncDataPlaneResources` for `AsyncIntrospectionClient` / `AsyncRunner`),
 so code written against it runs with either handle:
@@ -547,6 +547,63 @@ sends.
 The routes need the `automations:read` and `automations:write` scopes, so a `native` sign-in cannot use them yet.
 `can_manage` says whether the caller may change an automation, and
 `created_by_member_id` who created it.
+
+## Track issues
+
+`client.issues` / `runner.issues` manage a project's issues on the data
+plane: a brief (title, description, priority, status), the evidence it cites
+(files, links, events, spans) and the human requests open on it. Each issue
+lives on a fixed worker task, which carries its chat.
+
+```python
+from introspection_sdk.schemas.issues import (
+    IssueMutation,
+    IssueRequestMutation,
+    IssueStatus,
+    IssueUpdate,
+)
+
+issue = client.issues.create(
+    title="Checkout times out",
+    description="Stripe calls exceed 30s under load.",
+    task_id=task_id,
+)
+
+# Ask a member: a new request id (minted when left out) creates the request.
+client.issues.update(
+    issue.id,
+    IssueMutation(
+        request=IssueRequestMutation(
+            question="Ship the retry?",
+            assignee_id=member_id,
+        )
+    ),
+)
+
+# Edit the brief, refused if the issue changed since this read.
+issue = client.issues.get(issue.id)
+client.issues.update(
+    issue.id,
+    IssueUpdate(status=IssueStatus.CLOSED, tags=[]),
+    if_match=issue.etag,
+)
+
+for issue in client.issues.list(status=[IssueStatus.OPEN], assigned_to_me=True):
+    print(issue.display_index, issue.title, len(issue.open_requests))
+```
+
+`update` takes an `IssueUpdate`, which edits the brief, or an `IssueMutation`,
+which creates or changes one human request. An `IssueUpdate` sends only the
+fields set on it: an omitted list is left as it is and `[]` clears it (`{}`
+for `metadata`). A brief edit and `delete` take an optional `if_match`, the
+`issue.etag` of the read the write was made against; if the issue changed
+since, the server answers 412 (`IntrospectionAPIError` with
+`status_code == 412`), so read it again before retrying. Without `if_match`
+the write applies regardless. An `IssueMutation` takes no `if_match`: a
+request id the issue does not have yet creates the request, and an existing
+one changes it, last write wins. `status`, `owner`, `task_status` and `metadata`
+filters repeat on the query string. Runnable:
+[`issues.py`](examples/introspection_examples/api/issues.py).
 
 ## Connect apps for a member
 
