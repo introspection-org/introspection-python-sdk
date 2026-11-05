@@ -299,7 +299,6 @@ class IntrospectionHistory(SpanModel):
     position: int | None = None
     is_new: bool | None = None
     continuation_method: str | None = None
-    hash_hit: bool | None = None
     new_messages: IntrospectionNewMessages | None = None
 
 

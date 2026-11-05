@@ -101,7 +101,6 @@ FULL_SPAN: dict[str, Any] = {
                 "position": 1,
                 "is_new": True,
                 "continuation_method": "history",
-                "hash_hit": True,
                 "new_messages": {"start": 0, "end": 1},
             },
         },
@@ -154,7 +153,6 @@ class TestSemconvNaming:
         assert history.position == 1
         assert history.is_new is True
         assert history.continuation_method == "history"
-        assert history.hash_hit is True
         new_messages = present(history.new_messages)
         assert (new_messages.start, new_messages.end) == (0, 1)
         assert not history.model_extra
