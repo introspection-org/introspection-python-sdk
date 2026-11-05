@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from introspection_sdk.schemas._secrets import WireSecret
 
@@ -81,9 +81,60 @@ class IntegrationUpdateRequest(BaseModel):
     """Only ``False`` is accepted: turns Slack interactivity off."""
 
 
+class IntegrationPermissionLevel(StrEnum):
+    """How far an integration access token may act on one permission."""
+
+    READ = "read"
+    WRITE = "write"
+
+
+def _github_default_permissions() -> dict[str, IntegrationPermissionLevel]:
+    return {"metadata": IntegrationPermissionLevel.READ}
+
+
+class GitHubAccessTokenRequest(BaseModel):
+    """Body of ``POST /v1/integrations/{id}/access-token`` for a GitHub
+    integration: GitHub App permission names mapped to a level. The server
+    refuses anything beyond its cap, which today is ``metadata: read``, the
+    default here."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal[IntegrationType.GITHUB] = IntegrationType.GITHUB
+    permissions: dict[str, IntegrationPermissionLevel] = Field(
+        default_factory=_github_default_permissions
+    )
+
+
+# One variant today, and pydantic refuses a discriminator on a single-member
+# union. A second provider becomes
+# ``Annotated[GitHubAccessTokenRequest | LinearAccessTokenRequest,
+# Field(discriminator="type")]``.
+IntegrationAccessTokenRequest = GitHubAccessTokenRequest
+"""Body of ``POST /v1/integrations/{id}/access-token``, tagged by ``type``,
+which must match the integration's own type."""
+
+
+class IntegrationAccessToken(BaseModel):
+    """A short-lived provider token for an integration, minted on request
+    and never stored server-side. Lives at most an hour."""
+
+    model_config = ConfigDict(extra="allow")
+
+    token: SecretStr
+    """Read the plaintext with ``token.get_secret_value()``."""
+    expires_at: datetime
+    type: IntegrationType
+    permissions: dict[str, IntegrationPermissionLevel]
+
+
 __all__ = [
+    "GitHubAccessTokenRequest",
     "Integration",
+    "IntegrationAccessToken",
+    "IntegrationAccessTokenRequest",
     "IntegrationCreateRequest",
+    "IntegrationPermissionLevel",
     "IntegrationStatus",
     "IntegrationType",
     "IntegrationUpdateRequest",

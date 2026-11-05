@@ -3,7 +3,8 @@
 Reads the signed-in member and organization, the org's projects, a
 project's API keys, credentials, variables, judges, endpoints and runtime
 peerings, and mints
-the member's own short-lived access token for the project; then, when
+the member's own short-lived access token for the project and a GitHub
+integration's short-lived installation token; then, when
 INTROSPECTION_ADMIN_WRITE=1, mints an API key, saves its one-time plaintext,
 acknowledges it and revokes it again, renames an endpoint and back, creates
 and deletes another, and creates, renames and deletes a sibling project on the same deployment.
@@ -32,8 +33,47 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from introspection_sdk import IntrospectionClient
+from introspection_sdk import IntrospectionAPIError, IntrospectionClient
+from introspection_sdk.schemas.integrations import (
+    GitHubAccessTokenRequest,
+    IntegrationPermissionLevel,
+    IntegrationStatus,
+    IntegrationType,
+)
 from introspection_sdk.schemas.lanes import Environment
+
+
+# #region docs:integration-access-token
+def print_integration_token(client: IntrospectionClient) -> None:
+    """Mint a short-lived token for the org's GitHub App installation,
+    never stored server-side. The server caps what it grants (today
+    `metadata: read`) and answers a 403 with
+    `code == "integration_token_cap_exceeded"` beyond it."""
+    github = next(
+        (
+            each
+            for each in client.integrations.list()
+            if each.type is IntegrationType.GITHUB
+            and each.status is IntegrationStatus.ACTIVE
+        ),
+        None,
+    )
+    if github is None:
+        print("no active GitHub integration")
+        return
+    request = GitHubAccessTokenRequest(
+        permissions={"metadata": IntegrationPermissionLevel.READ}
+    )
+    try:
+        grant = client.integrations.access_token(github.id, request)
+    except IntrospectionAPIError as exc:
+        print(f"no integration token: {exc.status_code} {exc.code}")
+        return
+    # A SecretStr: `grant.token.get_secret_value()` is the token.
+    print(f"GitHub token until {grant.expires_at}")
+
+
+# #endregion docs:integration-access-token
 
 
 def main() -> None:
@@ -98,6 +138,8 @@ def main() -> None:
         finally:
             member.shutdown()
         # #endregion docs:project-token
+
+        print_integration_token(client)
 
         if os.getenv("INTROSPECTION_ADMIN_WRITE") == "1":
             # #region docs:api-key-rotate
