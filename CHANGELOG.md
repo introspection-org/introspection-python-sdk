@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.37.0...v0.38.0) (2026-11-06)
+
+
+### Features
+
+* **schemas:** add opt-in strict decoding of responses ([#237](https://github.com/introspection-org/introspection-python-sdk/issues/237)) ([6a1536d](https://github.com/introspection-org/introspection-python-sdk/commit/6a1536ddeeb1fe27f255c145aac7752b75bed58b))
+
 ## [0.37.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.36.0...v0.37.0) (2026-11-05)
 
 
