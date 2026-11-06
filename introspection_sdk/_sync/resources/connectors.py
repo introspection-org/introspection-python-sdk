@@ -9,6 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import _project
 from introspection_sdk.pagination import (
     Pager,
@@ -194,8 +195,8 @@ def _token_result(payload: Any) -> ConnectionTokenResult:
         isinstance(payload, dict)
         and payload.get("status") == "authorization_pending"
     ):
-        return ConnectionAuthorizationPending.model_validate(payload)
-    return ConnectionToken.model_validate(payload)
+        return decode(ConnectionAuthorizationPending, payload)
+    return decode(ConnectionToken, payload)
 
 
 class Connections:
@@ -226,7 +227,7 @@ class Connections:
                 f"/v1/connectors/{connector_id}/connections",
                 params=params,
             )
-            return Paginated[Connection].model_validate(payload)
+            return decode(Paginated[Connection], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -254,7 +255,7 @@ class Connections:
                 token_expires_at=token_expires_at,
             ),
         )
-        return Connection.model_validate(payload)
+        return decode(Connection, payload)
 
     def get_token(
         self,
@@ -284,7 +285,7 @@ class Connections:
             "GET",
             f"/v1/connectors/{connector_id}/connections/{connection_id}",
         )
-        return Connection.model_validate(payload)
+        return decode(Connection, payload)
 
     def revoke(self, connector_id: UUID, connection_id: UUID) -> None:
         """Revoke a connection — destroys the stored provider token."""
@@ -328,7 +329,7 @@ class Connectors:
             payload = self._http.request(
                 "GET", "/v1/connectors", params=params
             )
-            return Paginated[Connector].model_validate(payload)
+            return decode(Paginated[Connector], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -401,7 +402,7 @@ class Connectors:
                 webhook_url=webhook_url,
             ),
         )
-        return Connector.model_validate(payload)
+        return decode(Connector, payload)
 
     def list_apps(
         self,
@@ -416,7 +417,10 @@ class Connectors:
             f"/v1/connectors/{connector_id}/apps",
             params={"q": query, "limit": limit},
         )
-        return [ConnectorApp.model_validate(app) for app in payload["data"]]
+        return [
+            decode(ConnectorApp, app, at=f"$.data[{index}]")
+            for index, app in enumerate(payload["data"])
+        ]
 
     def search_custom_apps(
         self,
@@ -437,7 +441,10 @@ class Connectors:
             "/v1/connectors/custom/apps",
             params={"q": query, "limit": limit},
         )
-        return [ConnectorApp.model_validate(app) for app in payload["data"]]
+        return [
+            decode(ConnectorApp, app, at=f"$.data[{index}]")
+            for index, app in enumerate(payload["data"])
+        ]
 
     def discover_oauth(self, issuer: str) -> ConnectorOAuthDiscoveryResponse:
         """Resolve a provider's OAuth metadata before creating a connector
@@ -459,14 +466,14 @@ class Connectors:
                 mode="json"
             ),
         )
-        return ConnectorOAuthDiscoveryResponse.model_validate(payload)
+        return decode(ConnectorOAuthDiscoveryResponse, payload)
 
     def get(self, connector_id: UUID) -> Connector:
         payload = self._http.request(
             "GET",
             f"/v1/connectors/{connector_id}",
         )
-        return Connector.model_validate(payload)
+        return decode(Connector, payload)
 
     def update(
         self,
@@ -504,7 +511,7 @@ class Connectors:
                 signing_secret=signing_secret,
             ),
         )
-        return Connector.model_validate(payload)
+        return decode(Connector, payload)
 
     def delete(
         self, connector_id: UUID, *, project: str | UUID | None = None
@@ -571,4 +578,4 @@ class Connectors:
                 binding=binding,
             ),
         )
-        return ConnectorAuthorization.model_validate(payload)
+        return decode(ConnectorAuthorization, payload)

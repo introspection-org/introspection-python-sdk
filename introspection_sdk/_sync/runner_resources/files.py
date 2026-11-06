@@ -14,6 +14,7 @@ from typing import IO, Any
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -119,7 +120,7 @@ class FileVersions:
             payload = self._http.request(
                 "GET", f"/v1/files/{file_id}/versions", params=params
             )
-            return Paginated[File].model_validate(payload)
+            return decode(Paginated[File], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -127,7 +128,7 @@ class FileVersions:
         payload = self._http.request(
             "GET", f"/v1/files/{file_id}/versions/{version_id}"
         )
-        return File.model_validate(payload)
+        return decode(File, payload)
 
     def create(
         self,
@@ -158,7 +159,7 @@ class FileVersions:
                 files=files,
                 data=data,
             )
-        return File.model_validate(payload)
+        return decode(File, payload)
 
 
 class Files:
@@ -219,7 +220,7 @@ class Files:
                 "include_versions": include_versions,
             }
             payload = self._http.request("GET", "/v1/files", params=params)
-            return Paginated[File].model_validate(payload)
+            return decode(Paginated[File], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -255,7 +256,7 @@ class Files:
             payload = self._http.request(
                 "POST", "/v1/files", files=files, data=data
             )
-        return File.model_validate(payload)
+        return decode(File, payload)
 
     def create_text(
         self,
@@ -281,11 +282,11 @@ class Files:
         payload = self._http.request(
             "POST", "/v1/files", json=body.model_dump(exclude_none=True)
         )
-        return File.model_validate(payload)
+        return decode(File, payload)
 
     def get(self, file_id: str) -> File:
         payload = self._http.request("GET", f"/v1/files/{file_id}")
-        return File.model_validate(payload)
+        return decode(File, payload)
 
     def update(
         self,
@@ -303,7 +304,7 @@ class Files:
         payload = self._http.request(
             "PATCH", f"/v1/files/{file_id}", json=body
         )
-        return File.model_validate(payload)
+        return decode(File, payload)
 
     def delete(self, file_id: str) -> None:
         self._http.request("DELETE", f"/v1/files/{file_id}", expect="empty")

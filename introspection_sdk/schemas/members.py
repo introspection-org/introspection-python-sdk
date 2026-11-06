@@ -46,6 +46,12 @@ class Member(_ApiModel):
     role: str = "member"
     member_type: MemberType = MemberType.BUSINESS
     is_deactivated: bool = False
+    seat_tier: str | None = None
+    """The member's Ark seat (``standard`` or ``pro``); ``None`` is a standard
+    seat. Only an org on the Ark plan is billed by it."""
+    spend_limit_cents: int | None = None
+    """The member's monthly spend limit override in cents; ``None`` takes
+    their seat's default."""
     tags: list[str] = []
     """Access-bearing tags: this member is admitted by every share whose
     ``granted_tag`` is one of these. The implicit grant to files and tasks

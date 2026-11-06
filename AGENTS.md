@@ -70,7 +70,12 @@ a request with no recorded match fails naming the method, URL and body
 diff. `VCR_MODE=record` (or `--record-mode=all`) re-records against a live
 stack with the scrubbing in `introspection_sdk/testing/redaction.py`, the
 same patterns every SDK's walk scrubs. Each run writes
-`generated/walk-report.json` (steps, entries consumed, SDK gaps). The walk has no
+`generated/walk-report.json` (steps, entries consumed, SDK gaps).
+The walk runs with `INTROSPECTION_STRICT_SCHEMA=1` (`tests/walk/conftest.py`),
+so a response field the SDK does not model fails the step with its JSON path.
+Model the field; don't drop it from the recording. A model whose extra keys
+are open by design (the `gen_ai.*` nodes, the GenAI message and part types)
+sets `open_schema: ClassVar[bool] = True`. The walk has no
 raw HTTP helper: every call it makes is a typed SDK method, so a route the SDK
 has no method for gets one (with its tests) before the walk calls it.
 

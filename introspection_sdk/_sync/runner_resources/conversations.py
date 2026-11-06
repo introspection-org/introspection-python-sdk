@@ -14,6 +14,7 @@ from uuid import UUID
 from pydantic import TypeAdapter
 
 from introspection_sdk._http import RawResponse, _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -332,7 +333,7 @@ class ConversationItems:
                         _normalize_item_payload(d) for d in payload["data"]
                     ],
                 }
-            return GenAiSpanList.model_validate(payload)
+            return decode(GenAiSpanList, payload)
 
         return Pager(
             fetch,
@@ -357,7 +358,7 @@ class ConversationItems:
             f"/v1/conversations/{conversation_id}/items/{item_id}",
             params=params,
         )
-        return GenAiSpan.model_validate(_normalize_item_payload(payload))
+        return decode(GenAiSpan, _normalize_item_payload(payload))
 
 
 class Conversations:
@@ -460,7 +461,7 @@ class Conversations:
             payload = self._http.request(
                 "GET", "/v1/conversations", params=params
             )
-            return Paginated[Conversation].model_validate(payload)
+            return decode(Paginated[Conversation], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -566,7 +567,7 @@ class Conversations:
         payload = self._http.request(
             "GET", f"/v1/conversations/{conversation_id}"
         )
-        return Conversation.model_validate(payload)
+        return decode(Conversation, payload)
 
     def export_json(
         self,
@@ -580,7 +581,7 @@ class Conversations:
             params=build_export_params(**params),
             headers=JSON_EXPORT_HEADERS,
         )
-        return GenAiSpanList.model_validate(payload)
+        return decode(GenAiSpanList, payload)
 
     def export_stream(
         self,
@@ -631,7 +632,7 @@ class Conversations:
             ),
             headers=TRAJECTORY_ACCEPT_HEADERS,
         )
-        return TRAJECTORY_ADAPTER.validate_python(payload)
+        return decode(TRAJECTORY_ADAPTER, payload)
 
     def export_arrow(
         self,

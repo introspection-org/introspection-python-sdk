@@ -9,6 +9,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -113,7 +114,7 @@ class AppConnections:
             payload = self._http.request(
                 "GET", CONNECTIONS_PATH, params=params
             )
-            return Paginated[Connection].model_validate(payload)
+            return decode(Paginated[Connection], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -135,12 +136,12 @@ class AppConnections:
             CONNECTIONS_PATH,
             json=_create_body(app, runtime, return_url),
         )
-        return ConnectPage.model_validate(payload)
+        return decode(ConnectPage, payload)
 
     def get(self, connection_id: UUID | str) -> Connection:
         """Read one connection."""
-        return Connection.model_validate(
-            self._http.request("GET", _path(connection_id))
+        return decode(
+            Connection, self._http.request("GET", _path(connection_id))
         )
 
     def delete(self, connection_id: UUID | str) -> None:

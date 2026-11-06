@@ -26,6 +26,8 @@ import vcr
 from vcr.cassette import Cassette
 from vcr.record_mode import RecordMode
 
+from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
+
 from . import har
 from .matching import (
     MATCH_ON,
@@ -44,6 +46,16 @@ REPORT = Path(
         Path(__file__).parents[2] / "generated" / "walk-report.json",
     )
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def strict_schema() -> Iterator[None]:
+    """Run every step strict: a response field the SDK does not model fails
+    the step with its JSON path, in replay and in a live run alike. Model the
+    field; don't drop it from the recording."""
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv(STRICT_SCHEMA_ENV, "1")
+        yield
 
 
 def _mode(config: pytest.Config) -> Mode:

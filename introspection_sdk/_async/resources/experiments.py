@@ -8,6 +8,7 @@ from uuid import UUID
 
 from introspection_sdk._errors import ValidationError
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -83,7 +84,7 @@ class AsyncExperiments:
             payload = await self._http.request(
                 "GET", "/v1/experiments", params=params
             )
-            return Paginated[Experiment].model_validate(payload)
+            return decode(Paginated[Experiment], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -98,7 +99,7 @@ class AsyncExperiments:
             f"/v1/experiments/{experiment_id}",
             params=params or None,
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
     async def create(
         self,
@@ -123,8 +124,9 @@ class AsyncExperiments:
                 )
             body.pop("project_id", None)
             body["project"] = str(project)
-        return Experiment.model_validate(
-            await self._http.request("POST", "/v1/experiments", json=body)
+        return decode(
+            Experiment,
+            await self._http.request("POST", "/v1/experiments", json=body),
         )
 
     async def update(
@@ -134,7 +136,8 @@ class AsyncExperiments:
         *,
         project: str | UUID | None = None,
     ) -> Experiment:
-        return Experiment.model_validate(
+        return decode(
+            Experiment,
             await self._http.request(
                 "PATCH",
                 f"/v1/experiments/{experiment_id}",
@@ -142,7 +145,7 @@ class AsyncExperiments:
                     "project": str(project) if project is not None else None
                 },
                 json=dict(document),
-            )
+            ),
         )
 
     async def delete(
@@ -169,26 +172,26 @@ class AsyncExperiments:
         payload = await self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/run", json=body
         )
-        return RunnerSpec.model_validate(payload)
+        return decode(RunnerSpec, payload)
 
     async def _start(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/start"
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
     async def _end(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST",
             f"/v1/experiments/{experiment_id}/end",
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
     async def _cancel(self, experiment_id: UUID) -> Experiment:
         payload = await self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/cancel"
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
 
 class AsyncExperimentHandle:

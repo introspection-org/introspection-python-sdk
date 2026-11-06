@@ -8,6 +8,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -159,14 +160,14 @@ class AsyncAutomations:
             payload = await self._http.request(
                 "GET", "/v1/automations", params=params
             )
-            return Paginated[Automation].model_validate(payload)
+            return decode(Paginated[Automation], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
     async def get(self, automation_id: UUID | str) -> Automation:
         """Read one automation, soft-deleted ones included."""
-        return Automation.model_validate(
-            await self._http.request("GET", _path(automation_id))
+        return decode(
+            Automation, await self._http.request("GET", _path(automation_id))
         )
 
     async def create(
@@ -211,7 +212,7 @@ class AsyncAutomations:
                 enabled=enabled,
             ),
         )
-        return Automation.model_validate(payload)
+        return decode(Automation, payload)
 
     async def update(
         self,
@@ -246,7 +247,7 @@ class AsyncAutomations:
                 enabled=enabled,
             ),
         )
-        return Automation.model_validate(payload)
+        return decode(Automation, payload)
 
     async def delete(self, automation_id: UUID | str) -> None:
         """Soft-delete an automation. A project default
@@ -267,4 +268,4 @@ class AsyncAutomations:
         payload = await self._http.request(
             "POST", f"{_path(automation_id)}/trigger"
         )
-        return AutomationTriggerResponse.model_validate(payload)
+        return decode(AutomationTriggerResponse, payload)

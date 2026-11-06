@@ -10,6 +10,7 @@ from pydantic import TypeAdapter
 
 from introspection_sdk._errors import ValidationError
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -80,24 +81,26 @@ class Tags:
                     "next": cursor,
                 },
             )
-            return Paginated[Tag].model_validate(payload)
+            return decode(Paginated[Tag], payload)
 
         return cursor_paginate(fetch, start=next)
 
     def create(self, tag: TagCreate) -> Tag:
         """Add a tag. An existing one comes back as it is, a deleted one revives."""
-        return Tag.model_validate(
-            self._http.request("POST", "/v1/tags", json=_create_body(tag))
+        return decode(
+            Tag,
+            self._http.request("POST", "/v1/tags", json=_create_body(tag)),
         )
 
     def get(self, kind: TagKind, name: str) -> Tag:
-        return Tag.model_validate(self._http.request("GET", _path(kind, name)))
+        return decode(Tag, self._http.request("GET", _path(kind, name)))
 
     def update(self, kind: TagKind, name: str, patch: TagUpdate) -> Tag:
-        return Tag.model_validate(
+        return decode(
+            Tag,
             self._http.request(
                 "PATCH", _path(kind, name), json=_update_body(kind, patch)
-            )
+            ),
         )
 
     def delete(self, kind: TagKind, name: str) -> None:

@@ -127,6 +127,22 @@ class NetworkError(IntrospectionAPIError):
         super().__init__(message, status_code=status_code, **kwargs)
 
 
+class SchemaDriftError(IntrospectionAPIError):
+    """A response held fields this SDK does not model (strict mode only).
+
+    Raised only with ``INTROSPECTION_STRICT_SCHEMA=1``. ``path`` is the route
+    the response came from and ``fields`` every unmodelled field by its JSON
+    path, such as ``$.records[0].color``.
+    """
+
+    def __init__(
+        self, message: str, *, path: str | None, fields: list[str]
+    ) -> None:
+        super().__init__(message, status_code=0, code="schema_drift")
+        self.path = path
+        self.fields = fields
+
+
 def _parse_retry_after(value: str | None) -> float | None:
     """Seconds to wait, from either RFC 9110 ``Retry-After`` form.
 

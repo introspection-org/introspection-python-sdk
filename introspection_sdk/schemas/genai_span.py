@@ -22,7 +22,7 @@ attribute nobody modelled still arrives and still round-trips.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from pydantic import (
     BaseModel,
@@ -40,6 +40,7 @@ from introspection_sdk.schemas.genai import (
 )
 
 __all__ = [
+    "ConversationCompaction",
     "GenAiAgent",
     "GenAiAttributes",
     "GenAiConversation",
@@ -55,12 +56,17 @@ __all__ = [
     "GenAiToolCall",
     "GenAiCost",
     "GenAiUsage",
+    "IntrospectionAgent",
     "IntrospectionAttributes",
     "IntrospectionContains",
     "IntrospectionHistory",
+    "IntrospectionIngest",
+    "IntrospectionInvocation",
     "IntrospectionNewMessages",
     "IntrospectionRecipe",
+    "IntrospectionRun",
     "IntrospectionRuntime",
+    "IntrospectionTask",
     "SpanAttributes",
     "SpanKind",
     "SpanStatus",
@@ -91,6 +97,13 @@ class SpanModel(BaseModel):
     never declared it. Forbidding extras would reintroduce exactly the lossiness
     this representation exists to remove.
 
+    A subclass that sets ``open_schema = True`` is open in strict mode too
+    (``INTROSPECTION_STRICT_SCHEMA=1``): the ``gen_ai.*`` nodes and the
+    attribute tree itself, whose keys the GenAI conventions and providers keep
+    adding to. ``introspection.*`` and the span's own fields are the server's,
+    so a key there the SDK does not model is API drift, which strict mode
+    reports.
+
     ``protected_namespaces=()`` silences Pydantic's ``model_`` warning for wire
     fields like ``model``.
     """
@@ -118,11 +131,15 @@ class SpanModel(BaseModel):
 class GenAiOperation(SpanModel):
     """``gen_ai.operation.name`` — ``chat``, ``execute_tool``, ``invoke_agent``."""
 
+    open_schema: ClassVar[bool] = True
+
     name: str | None = None
 
 
 class GenAiProvider(SpanModel):
     """``gen_ai.provider.name``. Replaced the older ``gen_ai.system``."""
+
+    open_schema: ClassVar[bool] = True
 
     name: str | None = None
 
@@ -130,11 +147,15 @@ class GenAiProvider(SpanModel):
 class GenAiConversation(SpanModel):
     """``gen_ai.conversation.id``."""
 
+    open_schema: ClassVar[bool] = True
+
     id: str | None = None
 
 
 class GenAiAgent(SpanModel):
     """``gen_ai.agent.*``."""
+
+    open_schema: ClassVar[bool] = True
 
     id: str | None = None
     name: str | None = None
@@ -143,6 +164,8 @@ class GenAiAgent(SpanModel):
 
 class GenAiRequest(SpanModel):
     """``gen_ai.request.*`` — what was asked for."""
+
+    open_schema: ClassVar[bool] = True
 
     model: str | None = None
     temperature: float | None = None
@@ -156,6 +179,8 @@ class GenAiRequest(SpanModel):
 class GenAiResponse(SpanModel):
     """``gen_ai.response.*`` — what came back."""
 
+    open_schema: ClassVar[bool] = True
+
     id: str | None = None
     model: str | None = None
     finish_reasons: list[str] | None = None
@@ -163,6 +188,8 @@ class GenAiResponse(SpanModel):
 
 class TokenCount(SpanModel):
     """A nested token count, e.g. ``gen_ai.usage.cache_read.input_tokens``."""
+
+    open_schema: ClassVar[bool] = True
 
     input_tokens: int | None = None
 
@@ -178,6 +205,8 @@ class GenAiUsage(SpanModel):
     conventions adopted them.
     """
 
+    open_schema: ClassVar[bool] = True
+
     input_tokens: int | None = None
     output_tokens: int | None = None
     cache_read: TokenCount | None = None
@@ -187,6 +216,8 @@ class GenAiUsage(SpanModel):
 class GenAiToolCall(SpanModel):
     """``gen_ai.tool.call.*``."""
 
+    open_schema: ClassVar[bool] = True
+
     id: str | None = None
     arguments: str | None = None
     result: Any = None
@@ -194,6 +225,8 @@ class GenAiToolCall(SpanModel):
 
 class GenAiTool(SpanModel):
     """``gen_ai.tool.*``."""
+
+    open_schema: ClassVar[bool] = True
 
     name: str | None = None
     type: str | None = None
@@ -208,11 +241,15 @@ class GenAiInput(SpanModel):
     Full history on item detail; the turn-local delta on the items list.
     """
 
+    open_schema: ClassVar[bool] = True
+
     messages: list[InputMessage] = Field(default_factory=list)
 
 
 class GenAiOutput(SpanModel):
     """``gen_ai.output.messages``."""
+
+    open_schema: ClassVar[bool] = True
 
     messages: list[OutputMessage] = Field(default_factory=list)
 
@@ -233,11 +270,15 @@ class GenAiCost(SpanModel):
     own calculation. Both can be present; they are different measurements.
     """
 
+    open_schema: ClassVar[bool] = True
+
     usd: float | None = None
 
 
 class GenAiAttributes(SpanModel):
     """The ``gen_ai.*`` attribute family, nested as the convention names it."""
+
+    open_schema: ClassVar[bool] = True
 
     operation: GenAiOperation | None = None
     provider: GenAiProvider | None = None
@@ -260,6 +301,54 @@ class IdNode(SpanModel):
     """An ``{id}`` node — ``introspection.org.id`` and friends."""
 
     id: str | None = None
+
+
+class IntrospectionRun(IdNode):
+    """``introspection.run.*``."""
+
+    root_id: str | None = None
+    """The run at the root of a chain of delegated runs."""
+    parent_id: str | None = None
+
+
+class IntrospectionTask(IdNode):
+    """``introspection.task.*``."""
+
+    run_id: str | None = None
+
+
+class IntrospectionAgent(SpanModel):
+    """``introspection.agent.*``: which agent in a runtime's agent tree made
+    the call."""
+
+    kind: str | None = None
+    """``session`` for the top-level agent."""
+    depth: str | None = None
+    """Nesting depth, ``"0"`` at the top. A string: it travels as baggage."""
+    parent_id: str | None = None
+    invocation_id: str | None = None
+    invocation_index: int | None = None
+
+
+class IntrospectionInvocation(SpanModel):
+    """``introspection.invocation.*``."""
+
+    kind: str | None = None
+    """``turn`` for a span that wraps one turn of the agent loop."""
+
+
+class IntrospectionIngest(SpanModel):
+    """``introspection.ingest.*``: the processor that handled the span."""
+
+    host: str | None = None
+    """Processor pod name."""
+    ip: str | None = None
+    """Processor pod IP."""
+    node: str | None = None
+    """Node the pod runs on."""
+    time: int | None = None
+    """When the processor handled the span's batch, microseconds since the
+    epoch."""
 
 
 class IntrospectionRuntime(SpanModel):
@@ -329,8 +418,8 @@ class IntrospectionAttributes(SpanModel):
     org: IdNode | None = None
     project: IdNode | None = None
     member: IdNode | None = None
-    run: IdNode | None = None
-    task: IdNode | None = None
+    run: IntrospectionRun | None = None
+    task: IntrospectionTask | None = None
     runtime: IntrospectionRuntime | None = None
     experiment: IdNode | None = None
     environment: str | None = None
@@ -338,6 +427,22 @@ class IntrospectionAttributes(SpanModel):
     history: IntrospectionHistory | None = None
     recipe: IntrospectionRecipe | None = None
     contains: IntrospectionContains | None = None
+    tool_response_ids: list[str] | None = None
+    """``introspection.tool_response_ids``: the id of each tool response in a
+    chat span's input delta, which is the id of the tool call it answers.
+    Stamped from contains version 2; a list the processor cut at its bound
+    ends in ``*``."""
+    tool_call_ids: list[str] | None = None
+    """``introspection.tool_call_ids``: the id of each tool call a chat span's
+    output requests. Stamped from contains version 2; a list the processor
+    cut at its bound ends in ``*``."""
+    agent: IntrospectionAgent | None = None
+    invocation: IntrospectionInvocation | None = None
+    ingest: IntrospectionIngest | None = None
+    byok: bool | None = None
+    """Whether the call used the customer's own provider key."""
+    termination_reason: str | None = None
+    """Why the agent loop ended (``completed``, ...)."""
 
 
 # --- the span -------------------------------------------------------------
@@ -349,6 +454,8 @@ class SpanAttributes(SpanModel):
     Typed for the two families we own the meaning of; open for everything
     else, so a customer attribute survives the round trip.
     """
+
+    open_schema: ClassVar[bool] = True
 
     gen_ai: GenAiAttributes | None = None
     introspection: IntrospectionAttributes | None = None
@@ -421,6 +528,21 @@ class GenAiSpan(SpanModel):
         return list(gen_ai.output.messages) if gen_ai and gen_ai.output else []
 
 
+class ConversationCompaction(SpanModel):
+    """The compaction anchor an items read started from."""
+
+    applied: bool = False
+    """``False`` when no compaction anchor resolved and the read started at
+    the beginning of the conversation."""
+    response_id: str | None = None
+    """The response id the compaction anchor names."""
+    cursor: str | None = None
+    """Opaque cursor positioned at the anchor item."""
+    history: list[dict[str, Any]] = Field(default_factory=list)
+    """Recorded compactions, oldest first: each ``response_id`` with its
+    ``at_compaction`` and ``since_compaction`` counts."""
+
+
 class GenAiSpanList(SpanModel):
     """The ``/v1/conversations/{id}/items`` envelope.
 
@@ -430,6 +552,9 @@ class GenAiSpanList(SpanModel):
 
     object: Literal["list"] = "list"
     data: list[GenAiSpan] = Field(default_factory=list)
+    compaction: ConversationCompaction | None = None
+    """Where an items read started when it began at the compaction anchor;
+    absent on a read that did not ask for it."""
     first_id: str | None = None
     last_id: str | None = None
     has_more: bool = False

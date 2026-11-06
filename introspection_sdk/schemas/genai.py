@@ -5,7 +5,7 @@ Based on the OpenTelemetry Gen AI semantic conventions:
 - https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-output-messages.json
 """
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 try:
     from pydantic import (
@@ -60,6 +60,11 @@ class OmitNoneModel(BaseModel):
     out when a conversation is read. Applying it at the base rather than at
     each call site keeps the two consistent, which matters because a round trip
     through the API should be an identity.
+
+    The message and part types set ``open_schema = True``: providers keep
+    adding keys to them, so strict decoding (``INTROSPECTION_STRICT_SCHEMA=1``)
+    never reports one. Other subclasses, such as the conversation summary's,
+    are the server's and stay closed.
     """
 
     @model_serializer(mode="wrap")
@@ -76,6 +81,8 @@ class OmitNoneModel(BaseModel):
 
 class TextPart(OmitNoneModel):
     """Text content part."""
+
+    open_schema: ClassVar[bool] = True
 
     type: Literal["text"] = Field(
         default="text",
@@ -101,6 +108,8 @@ class ThinkingPart(OmitNoneModel):
     as spans written with either one exist.
     """
 
+    open_schema: ClassVar[bool] = True
+
     type: Literal["thinking", "reasoning"] = Field(
         default="thinking",
         description="Part type discriminator. ``'thinking'`` is canonical; ``'reasoning'`` is the semantic-convention spelling and is accepted on read.",
@@ -125,6 +134,8 @@ class ThinkingPart(OmitNoneModel):
 class ToolCallRequestPart(OmitNoneModel):
     """Tool/function call request part."""
 
+    open_schema: ClassVar[bool] = True
+
     type: Literal["tool_call"] = Field(
         description="Part type discriminator, always ``'tool_call'``.",
     )
@@ -140,6 +151,8 @@ class ToolCallRequestPart(OmitNoneModel):
 
 class ToolCallResponsePart(OmitNoneModel):
     """Tool/function call response part."""
+
+    open_schema: ClassVar[bool] = True
 
     type: Literal["tool_call_response"] = Field(
         description="Part type discriminator, always ``'tool_call_response'``.",
@@ -158,6 +171,8 @@ class BinaryPart(OmitNoneModel):
     name the media type ``mime_type``, so both spellings are accepted and
     ``media_type`` stays the field a reader can rely on.
     """
+
+    open_schema: ClassVar[bool] = True
 
     type: Literal["binary", "blob"] = Field(
         default="binary",
@@ -189,6 +204,8 @@ class UrlPart(OmitNoneModel):
     with ``uri`` read into ``url``.
     """
 
+    open_schema: ClassVar[bool] = True
+
     type: Literal[
         "image-url", "audio-url", "video-url", "document-url", "uri"
     ] = Field(
@@ -215,6 +232,8 @@ class UrlPart(OmitNoneModel):
 class FilePart(OmitNoneModel):
     """Content referenced by a provider-assigned file id (semconv ``file``)."""
 
+    open_schema: ClassVar[bool] = True
+
     type: Literal["file"] = Field(default="file")
     file_id: str | None = Field(default=None)
     mime_type: str | None = Field(default=None)
@@ -223,6 +242,8 @@ class FilePart(OmitNoneModel):
 
 class CompactionPart(OmitNoneModel):
     """A compaction marker — history summarized to fit a context window."""
+
+    open_schema: ClassVar[bool] = True
 
     type: Literal["compaction"] = Field(default="compaction")
     content: str | None = Field(
@@ -241,6 +262,8 @@ class GenericPart(OmitNoneModel):
     platform can write a type this build has never heard of. It degrades to
     "some part, contents preserved" instead.
     """
+
+    open_schema: ClassVar[bool] = True
 
     model_config = ConfigDict(extra="allow")
 
@@ -305,6 +328,8 @@ MessagePart = Annotated[
 class InputMessage(OmitNoneModel):
     """Input message in OTel Gen AI semantic convention format."""
 
+    open_schema: ClassVar[bool] = True
+
     role: Literal["system", "user", "assistant", "tool"] = Field(
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
     )
@@ -320,6 +345,8 @@ class InputMessage(OmitNoneModel):
 
 class OutputMessage(OmitNoneModel):
     """Output message in OTel Gen AI semantic convention format."""
+
+    open_schema: ClassVar[bool] = True
 
     role: Literal["system", "user", "assistant", "tool"] = Field(
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
@@ -349,6 +376,8 @@ OutputMessages = list[OutputMessage]
 class SystemInstruction(OmitNoneModel):
     """A single system instruction part (text content)."""
 
+    open_schema: ClassVar[bool] = True
+
     type: Literal["text"] = Field(
         default="text",
         description="Part type discriminator, always ``'text'``.",
@@ -362,6 +391,8 @@ SystemInstructions = list[SystemInstruction]
 
 class ToolDefinition(OmitNoneModel):
     """A tool/function definition available to the model."""
+
+    open_schema: ClassVar[bool] = True
 
     type: str | None = Field(
         default=None,

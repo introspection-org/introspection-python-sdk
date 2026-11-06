@@ -10,6 +10,7 @@ from uuid import UUID
 
 from introspection_sdk._errors import ValidationError
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -72,7 +73,7 @@ class Experiments:
             payload = self._http.request(
                 "GET", "/v1/experiments", params=params
             )
-            return Paginated[Experiment].model_validate(payload)
+            return decode(Paginated[Experiment], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -87,7 +88,7 @@ class Experiments:
             f"/v1/experiments/{experiment_id}",
             params=params or None,
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
     def create(
         self,
@@ -112,8 +113,9 @@ class Experiments:
                 )
             body.pop("project_id", None)
             body["project"] = str(project)
-        return Experiment.model_validate(
-            self._http.request("POST", "/v1/experiments", json=body)
+        return decode(
+            Experiment,
+            self._http.request("POST", "/v1/experiments", json=body),
         )
 
     def update(
@@ -123,7 +125,8 @@ class Experiments:
         *,
         project: str | UUID | None = None,
     ) -> Experiment:
-        return Experiment.model_validate(
+        return decode(
+            Experiment,
             self._http.request(
                 "PATCH",
                 f"/v1/experiments/{experiment_id}",
@@ -131,7 +134,7 @@ class Experiments:
                     "project": str(project) if project is not None else None
                 },
                 json=dict(document),
-            )
+            ),
         )
 
     def delete(
@@ -158,26 +161,26 @@ class Experiments:
         payload = self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/run", json=body
         )
-        return RunnerSpec.model_validate(payload)
+        return decode(RunnerSpec, payload)
 
     def _start(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/start"
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
     def _end(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST",
             f"/v1/experiments/{experiment_id}/end",
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
     def _cancel(self, experiment_id: UUID) -> Experiment:
         payload = self._http.request(
             "POST", f"/v1/experiments/{experiment_id}/cancel"
         )
-        return Experiment.model_validate(payload)
+        return decode(Experiment, payload)
 
 
 class ExperimentHandle:

@@ -42,6 +42,29 @@ class EndpointMetadata(BaseModel):
     auth_audience: str | None = None
 
 
+class EndpointMcpCheck(BaseModel):
+    """The last check of an MCP endpoint: whether its server answers."""
+
+    model_config = ConfigDict(extra="allow")
+
+    check_id: UUID
+    """Identifies one requested check; a result lands only on its own
+    check."""
+    status: str
+    """``pending``, ``ok``, ``failed`` or ``skipped``."""
+    requested_at: datetime
+    requested_by_member_id: UUID | None = None
+    """The member whose connection authenticates a connector-backed binding
+    during the check."""
+    checked_at: datetime | None = None
+    server_name: str | None = None
+    """``serverInfo.name`` the server reported. Display only."""
+    tools: list[str] | None = None
+    """Tool names the server listed; ``None`` until a check succeeds."""
+    error_message: str | None = None
+    """Why the check failed or was skipped."""
+
+
 class Endpoint(BaseModel):
     """An upstream host a project's runtimes reach, scoped to a runtime
     group, a runtime and an environment where those are set (``None``
@@ -69,6 +92,8 @@ class Endpoint(BaseModel):
     """The credential names header values reference as ``${NAME}``."""
     last_verified_at: datetime | None = None
     authorized_application_id: UUID | None = None
+    mcp_check: EndpointMcpCheck | None = None
+    """The last MCP check, on a ``kind="mcp"`` endpoint that has had one."""
     created_by_member_id: UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None

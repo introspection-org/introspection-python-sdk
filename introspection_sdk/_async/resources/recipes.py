@@ -10,6 +10,7 @@ from introspection_sdk._async.resources._crud import (
     _body,
     _project,
 )
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -61,13 +62,13 @@ class AsyncRecipes(_AsyncResource):
             payload = await self._http.request(
                 "GET", "/v1/recipes", params=params
             )
-            return Paginated[Recipe].model_validate(payload)
+            return decode(Paginated[Recipe], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
     async def get(self, recipe_id: UUID) -> Recipe:
         payload = await self._http.request("GET", f"/v1/recipes/{recipe_id}")
-        return Recipe.model_validate(payload)
+        return decode(Recipe, payload)
 
     # --- writes -------------------------------------------------------
 

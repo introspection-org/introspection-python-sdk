@@ -11,6 +11,7 @@ from introspection_sdk._async.resources._crud import (
     _body,
     _project,
 )
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.schemas.api_keys import (
     ApiKey,
     ApiKeyAcknowledgement,
@@ -47,7 +48,10 @@ class AsyncApiKeys(_AsyncResource):
             "/v1/api-keys",
             params={**_project(project), "expiring": expiring},
         )
-        return [ApiKey.model_validate(key) for key in payload["api_keys"]]
+        return [
+            decode(ApiKey, key, at=f"$.api_keys[{index}]")
+            for index, key in enumerate(payload["api_keys"])
+        ]
 
     async def create(
         self,

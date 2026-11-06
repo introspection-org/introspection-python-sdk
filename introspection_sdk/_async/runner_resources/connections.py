@@ -7,6 +7,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -111,7 +112,7 @@ class AsyncAppConnections:
             payload = await self._http.request(
                 "GET", CONNECTIONS_PATH, params=params
             )
-            return Paginated[Connection].model_validate(payload)
+            return decode(Paginated[Connection], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -133,12 +134,12 @@ class AsyncAppConnections:
             CONNECTIONS_PATH,
             json=_create_body(app, runtime, return_url),
         )
-        return ConnectPage.model_validate(payload)
+        return decode(ConnectPage, payload)
 
     async def get(self, connection_id: UUID | str) -> Connection:
         """Read one connection."""
-        return Connection.model_validate(
-            await self._http.request("GET", _path(connection_id))
+        return decode(
+            Connection, await self._http.request("GET", _path(connection_id))
         )
 
     async def delete(self, connection_id: UUID | str) -> None:

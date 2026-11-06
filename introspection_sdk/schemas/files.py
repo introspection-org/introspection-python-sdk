@@ -39,6 +39,10 @@ class File(_ApiModel):
     #: Coalesced caller identity that created this file.
     #: Task this file was created from (accounting only).
     task_id: UUID | None = None
+    generated_output_task_id: UUID | None = None
+    """The task whose run generated this file as an output."""
+    expires_at: datetime | None = None
+    """When the file is deleted; ``None`` keeps it."""
     tags: list[str] = []
     """Grouping tags stamped on this file. Tags belong to the file rather
     than to a version, so they carry forward when a new version is written."""

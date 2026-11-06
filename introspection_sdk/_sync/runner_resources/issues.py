@@ -10,6 +10,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -109,14 +110,14 @@ class Issues:
                 "include_total": include_total or None,
             }
             payload = self._http.request("GET", "/v1/issues", params=params)
-            return Paginated[Issue].model_validate(payload)
+            return decode(Paginated[Issue], payload)
 
         return cursor_paginate(fetch, start=next)
 
     def get(self, issue_id: UUID | str) -> Issue:
         """Read one issue with its evidence and open requests. Its
         :attr:`Issue.etag` is the version to pass as ``if_match``."""
-        return Issue.model_validate(self._http.request("GET", _path(issue_id)))
+        return decode(Issue, self._http.request("GET", _path(issue_id)))
 
     def create(
         self,
@@ -153,7 +154,7 @@ class Issues:
             "/v1/issues",
             json=body.model_dump(mode="json", exclude_none=True),
         )
-        return Issue.model_validate(payload)
+        return decode(Issue, payload)
 
     def update(
         self,
@@ -181,7 +182,7 @@ class Issues:
             json=_update_body(change),
             headers=_if_match(if_match),
         )
-        return Issue.model_validate(payload)
+        return decode(Issue, payload)
 
     def delete(
         self,

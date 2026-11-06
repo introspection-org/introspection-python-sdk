@@ -11,6 +11,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -136,7 +137,7 @@ class Members:
                 cursor=cursor,
             )
             payload = self._http.request("GET", "/v1/members", params=params)
-            return Paginated[Member].model_validate(payload)
+            return decode(Paginated[Member], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -148,7 +149,7 @@ class Members:
             f"/v1/members/{member_id}",
             params={"project": str(project) if project else None},
         )
-        return Member.model_validate(payload)
+        return decode(Member, payload)
 
     def create(
         self,
@@ -169,7 +170,7 @@ class Members:
         payload = self._http.request(
             "POST", "/v1/members", json=_create_body(member)
         )
-        return Member.model_validate(payload)
+        return decode(Member, payload)
 
     def update(
         self,
@@ -201,4 +202,4 @@ class Members:
                 policy_attributes=policy_attributes,
             ),
         )
-        return Member.model_validate(payload)
+        return decode(Member, payload)
