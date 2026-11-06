@@ -12,6 +12,7 @@ from uuid import UUID
 from pydantic import TypeAdapter
 
 from introspection_sdk._http import RawResponse, _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import _body, _project
 from introspection_sdk.pagination import (
     Pager,
@@ -76,7 +77,7 @@ def _merge(response: RawResponse) -> RepositoryMerge | None:
 
 
 def _directory(payload: Any, path: str) -> RepositoryDirectory:
-    content = CONTENT.validate_python(payload)
+    content = decode(CONTENT, payload)
     if isinstance(content, RepositoryFile):
         raise ValueError(
             f"{path!r} is a file, not a directory; read it with "
@@ -138,7 +139,7 @@ class RepositoryContents:
             _contents_path(repository_id, path),
             params={"ref": ref},
         )
-        return CONTENT.validate_python(payload)
+        return decode(CONTENT, payload)
 
 
 class RepositoryMerges:
@@ -201,7 +202,7 @@ class Repositories:
             "/v1/repositories",
             params={"project": project, "slug": slug},
         )
-        return REPOSITORY_LIST.validate_python(payload)
+        return decode(REPOSITORY_LIST, payload)
 
     def get(
         self,
@@ -214,7 +215,7 @@ class Repositories:
             f"/v1/repositories/{repository_id}",
             params={"project": project},
         )
-        return Repository.model_validate(payload)
+        return decode(Repository, payload)
 
     def create(
         self,
@@ -242,7 +243,7 @@ class Repositories:
         payload = self._http.request(
             "POST", "/v1/repositories", params=_project(project), json=body
         )
-        return Repository.model_validate(payload)
+        return decode(Repository, payload)
 
     def delete(
         self,
@@ -280,7 +281,7 @@ class Repositories:
                     "limit": limit,
                 },
             )
-            return Paginated[RepositoryBranch].model_validate(payload)
+            return decode(Paginated[RepositoryBranch], payload)
 
         return cursor_paginate(fetch)
 
@@ -306,7 +307,7 @@ class Repositories:
                     "limit": limit,
                 },
             )
-            return Paginated[RepositoryCommit].model_validate(payload)
+            return decode(Paginated[RepositoryCommit], payload)
 
         return cursor_paginate(fetch)
 
@@ -317,7 +318,7 @@ class Repositories:
         payload = self._dp_http.request(
             "GET", _commit_path(repository_id, sha)
         )
-        return RepositoryCommitDetail.model_validate(payload)
+        return decode(RepositoryCommitDetail, payload)
 
     def access_token(
         self,
@@ -337,7 +338,7 @@ class Repositories:
             f"/v1/repositories/{repository_id}/access-token",
             json={"permissions": permissions or {}},
         )
-        return RepositoryAccessGrant.model_validate(payload)
+        return decode(RepositoryAccessGrant, payload)
 
 
 __all__ = [

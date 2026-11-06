@@ -9,6 +9,7 @@ from uuid import UUID
 
 from introspection_sdk._errors import RunFailedError, StreamIncompleteError
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -219,7 +220,7 @@ class AsyncTaskRuns:
         payload = await self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs", json=body
         )
-        res = TaskRunResponse.model_validate(payload)
+        res = decode(TaskRunResponse, payload)
         return AsyncRunHandle(None, res.run, self)
 
     async def resume(
@@ -231,14 +232,14 @@ class AsyncTaskRuns:
         payload = await self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs", json=_resume_body(resume)
         )
-        res = TaskRunResponse.model_validate(payload)
+        res = decode(TaskRunResponse, payload)
         return AsyncRunHandle(None, res.run, self)
 
     async def get(self, task_id: str, run_id: str) -> TaskRun:
         payload = await self._http.request(
             "GET", f"/v1/tasks/{task_id}/runs/{run_id}"
         )
-        return TaskRun.model_validate(payload)
+        return decode(TaskRun, payload)
 
     async def cancel(
         self,
@@ -256,7 +257,7 @@ class AsyncTaskRuns:
         payload = await self._http.request(
             "POST", f"/v1/tasks/{task_id}/runs/{run_id}/cancel"
         )
-        return TaskCancelResponse.model_validate(payload)
+        return decode(TaskCancelResponse, payload)
 
     async def _cancel_with(
         self, task_id: str, run_id: str, request: TaskCancelRequest
@@ -266,7 +267,7 @@ class AsyncTaskRuns:
             f"/v1/tasks/{task_id}/runs/{run_id}/cancel",
             json=request.model_dump(exclude_none=True, mode="json"),
         )
-        return TaskCancelResponse.model_validate(payload)
+        return decode(TaskCancelResponse, payload)
 
     def stream(
         self,
@@ -326,7 +327,7 @@ class AsyncTaskCommands:
             f"/v1/tasks/{task_id}/commands",
             json=spec.model_dump(mode="json", exclude_none=True),
         )
-        return TaskCommand.model_validate(payload)
+        return decode(TaskCommand, payload)
 
     def list(
         self,
@@ -348,7 +349,7 @@ class AsyncTaskCommands:
                     "next": cursor,
                 },
             )
-            return Paginated[TaskCommand].model_validate(payload)
+            return decode(Paginated[TaskCommand], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -370,7 +371,7 @@ class AsyncTaskCommands:
             f"/v1/tasks/{task_id}/commands/{command_id}",
             params={"wait_seconds": wait_seconds},
         )
-        return TaskCommand.model_validate(payload)
+        return decode(TaskCommand, payload)
 
 
 class AsyncTasks:
@@ -410,7 +411,7 @@ class AsyncTasks:
             payload = await self._http.request(
                 "GET", "/v1/tasks", params=params
             )
-            return Paginated[Task].model_validate(payload)
+            return decode(Paginated[Task], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -463,11 +464,11 @@ class AsyncTasks:
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
-        return TaskCreateResponse.model_validate(payload)
+        return decode(TaskCreateResponse, payload)
 
     async def get(self, task_id: str) -> Task:
         payload = await self._http.request("GET", f"/v1/tasks/{task_id}")
-        return Task.model_validate(payload)
+        return decode(Task, payload)
 
     async def update(
         self,
@@ -492,7 +493,7 @@ class AsyncTasks:
         payload = await self._http.request(
             "PATCH", f"/v1/tasks/{task_id}", json=body
         )
-        return Task.model_validate(payload)
+        return decode(Task, payload)
 
     async def delete(self, task_id: str) -> None:
         """Soft-delete a task. Requires ``tasks:delete`` scope.

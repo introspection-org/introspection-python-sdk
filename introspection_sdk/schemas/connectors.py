@@ -409,6 +409,12 @@ class ConnectionAuthorizationPending(ApiModel):
 ConnectionTokenResult = ConnectionToken | ConnectionAuthorizationPending
 
 
+class ConnectorAppList(ApiModel):
+    """The envelope of an app-catalogue search; the SDK returns its apps."""
+
+    data: list[ConnectorApp] = []
+
+
 __all__ = [
     "Connection",
     "ConnectionAuthorizationPending",

@@ -8,6 +8,7 @@ import builtins
 from datetime import datetime
 from uuid import UUID
 
+from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import (
     _body,
     _project,
@@ -19,6 +20,7 @@ from introspection_sdk.schemas.api_keys import (
     ApiKeyCapability,
     ApiKeyCreated,
     ApiKeyCreateRequest,
+    ApiKeyList,
     ApiKeyUpdateRequest,
 )
 from introspection_sdk.schemas.lanes import Environment
@@ -49,7 +51,7 @@ class ApiKeys(_Resource):
             "/v1/api-keys",
             params={**_project(project), "expiring": expiring},
         )
-        return [ApiKey.model_validate(key) for key in payload["api_keys"]]
+        return decode(ApiKeyList, payload).api_keys
 
     def create(
         self,

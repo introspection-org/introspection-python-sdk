@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -111,7 +112,7 @@ class AsyncShares:
                     granted_to_me=granted_to_me,
                 ),
             )
-            return Paginated[ResourceShare].model_validate(payload)
+            return decode(Paginated[ResourceShare], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -144,11 +145,11 @@ class AsyncShares:
                 visible_from=visible_from,
             ),
         )
-        return ResourceShare.model_validate(payload)
+        return decode(ResourceShare, payload)
 
     async def get(self, share_id: str) -> ResourceShare:
         payload = await self._http.request("GET", f"/v1/shares/{share_id}")
-        return ResourceShare.model_validate(payload)
+        return decode(ResourceShare, payload)
 
     async def update(
         self,
@@ -167,7 +168,7 @@ class AsyncShares:
             f"/v1/shares/{share_id}",
             json=_update_body(visible_from),
         )
-        return ResourceShare.model_validate(payload)
+        return decode(ResourceShare, payload)
 
     async def delete(self, share_id: str) -> None:
         await self._http.request(

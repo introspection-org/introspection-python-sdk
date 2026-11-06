@@ -10,6 +10,7 @@ from uuid import UUID
 from pydantic import SecretStr, TypeAdapter
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import (
     _body,
     _project,
@@ -146,7 +147,7 @@ class ApplicationKeys(_Resource):
         payload = self._http.request(
             "GET", f"{_app_path(application_id)}/keys"
         )
-        return _KEYS.validate_python(payload)
+        return decode(_KEYS, payload)
 
     def create(self, application_id: UUID) -> ApplicationKey:
         """Mint a key pair; the API keeps the private half."""

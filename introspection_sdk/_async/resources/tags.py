@@ -8,6 +8,7 @@ from pydantic import TypeAdapter
 
 from introspection_sdk._errors import ValidationError
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -78,28 +79,28 @@ class AsyncTags:
                     "next": cursor,
                 },
             )
-            return Paginated[Tag].model_validate(payload)
+            return decode(Paginated[Tag], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
     async def create(self, tag: TagCreate) -> Tag:
         """Add a tag. An existing one comes back as it is, a deleted one revives."""
-        return Tag.model_validate(
+        return decode(
+            Tag,
             await self._http.request(
                 "POST", "/v1/tags", json=_create_body(tag)
-            )
+            ),
         )
 
     async def get(self, kind: TagKind, name: str) -> Tag:
-        return Tag.model_validate(
-            await self._http.request("GET", _path(kind, name))
-        )
+        return decode(Tag, await self._http.request("GET", _path(kind, name)))
 
     async def update(self, kind: TagKind, name: str, patch: TagUpdate) -> Tag:
-        return Tag.model_validate(
+        return decode(
+            Tag,
             await self._http.request(
                 "PATCH", _path(kind, name), json=_update_body(kind, patch)
-            )
+            ),
         )
 
     async def delete(self, kind: TagKind, name: str) -> None:

@@ -87,9 +87,12 @@ class ExperimentGoal(_ApiModel):
 class ExperimentArm(_ApiModel):
     """One arm as returned on the experiment row."""
 
+    id: UUID | None = None
     runtime_id: UUID
     arm_label: str
     agent_overrides: dict[str, str] | None = None
+    initial_weight: int | None = None
+    """Share of traffic the arm starts with, before the bandit reweights."""
 
 
 class Experiment(_ApiModel):
@@ -113,6 +116,8 @@ class Experiment(_ApiModel):
     ended_at: datetime | None = None
     halted_at: datetime | None = None
     halted_reason: str | None = None
+    created_by_member_id: UUID | None = None
+    archived_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

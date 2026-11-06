@@ -8,6 +8,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -115,16 +116,14 @@ class AsyncIssues:
             payload = await self._http.request(
                 "GET", "/v1/issues", params=params
             )
-            return Paginated[Issue].model_validate(payload)
+            return decode(Paginated[Issue], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
     async def get(self, issue_id: UUID | str) -> Issue:
         """Read one issue with its evidence and open requests. Its
         :attr:`Issue.etag` is the version to pass as ``if_match``."""
-        return Issue.model_validate(
-            await self._http.request("GET", _path(issue_id))
-        )
+        return decode(Issue, await self._http.request("GET", _path(issue_id)))
 
     async def create(
         self,
@@ -161,7 +160,7 @@ class AsyncIssues:
             "/v1/issues",
             json=body.model_dump(mode="json", exclude_none=True),
         )
-        return Issue.model_validate(payload)
+        return decode(Issue, payload)
 
     async def update(
         self,
@@ -189,7 +188,7 @@ class AsyncIssues:
             json=_update_body(change),
             headers=_if_match(if_match),
         )
-        return Issue.model_validate(payload)
+        return decode(Issue, payload)
 
     async def delete(
         self,

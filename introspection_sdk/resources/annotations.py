@@ -15,6 +15,7 @@ from introspection_sdk._errors import (
     ValidationError,
 )
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk._uuid import _uuid7
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -145,7 +146,7 @@ class Annotations:
                     "include_total": include_total,
                 },
             )
-            return Paginated[AnnotationState].model_validate(payload)
+            return decode(Paginated[AnnotationState], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -190,8 +191,8 @@ class Annotations:
     def facets(self) -> builtins.list[AnnotationFacet]:
         """Counts of the current annotations per annotator, assignee, label
         and status, for filter menus."""
-        return FACETS.validate_python(
-            self._dp_http.request("GET", "/v1/annotations/facets")
+        return decode(
+            FACETS, self._dp_http.request("GET", "/v1/annotations/facets")
         )
 
     def navigation(
@@ -218,7 +219,7 @@ class Annotations:
                 status=status,
             ),
         )
-        return AnnotationNavigation.model_validate(payload)
+        return decode(AnnotationNavigation, payload)
 
     def _resolve_reviewer_ids(
         self, values: Sequence[str]
@@ -338,7 +339,7 @@ class AsyncAnnotations:
                     "include_total": include_total,
                 },
             )
-            return Paginated[AnnotationState].model_validate(payload)
+            return decode(Paginated[AnnotationState], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -385,8 +386,9 @@ class AsyncAnnotations:
     async def facets(self) -> builtins.list[AnnotationFacet]:
         """Counts of the current annotations per annotator, assignee, label
         and status, for filter menus."""
-        return FACETS.validate_python(
-            await self._dp_http.request("GET", "/v1/annotations/facets")
+        return decode(
+            FACETS,
+            await self._dp_http.request("GET", "/v1/annotations/facets"),
         )
 
     async def navigation(
@@ -413,7 +415,7 @@ class AsyncAnnotations:
                 status=status,
             ),
         )
-        return AnnotationNavigation.model_validate(payload)
+        return decode(AnnotationNavigation, payload)
 
     async def _resolve_reviewer_ids(
         self, values: Sequence[str]

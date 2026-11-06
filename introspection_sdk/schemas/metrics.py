@@ -226,6 +226,10 @@ class MetricQueryMeta(_ResponseModel):
     approximate: bool = False
     truncated: bool = False
     order_by: list[MetricOrderBy] = Field(default_factory=list)
+    owner_scoped: bool = False
+    """The read was confined to the caller's own owner key, not the project.
+    A project API key reads only its system agent's rows, so expect ``True``
+    with one; a member login reads the whole project."""
 
 
 class MetricQueryResponse(_ResponseModel):

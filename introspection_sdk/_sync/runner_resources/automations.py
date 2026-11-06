@@ -10,6 +10,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -155,14 +156,14 @@ class Automations:
             payload = self._http.request(
                 "GET", "/v1/automations", params=params
             )
-            return Paginated[Automation].model_validate(payload)
+            return decode(Paginated[Automation], payload)
 
         return cursor_paginate(fetch, start=next)
 
     def get(self, automation_id: UUID | str) -> Automation:
         """Read one automation, soft-deleted ones included."""
-        return Automation.model_validate(
-            self._http.request("GET", _path(automation_id))
+        return decode(
+            Automation, self._http.request("GET", _path(automation_id))
         )
 
     def create(
@@ -207,7 +208,7 @@ class Automations:
                 enabled=enabled,
             ),
         )
-        return Automation.model_validate(payload)
+        return decode(Automation, payload)
 
     def update(
         self,
@@ -242,7 +243,7 @@ class Automations:
                 enabled=enabled,
             ),
         )
-        return Automation.model_validate(payload)
+        return decode(Automation, payload)
 
     def delete(self, automation_id: UUID | str) -> None:
         """Soft-delete an automation. A project default
@@ -257,4 +258,4 @@ class Automations:
         carries its ``reason``. Neither reads nor clears a scheduled slot.
         """
         payload = self._http.request("POST", f"{_path(automation_id)}/trigger")
-        return AutomationTriggerResponse.model_validate(payload)
+        return decode(AutomationTriggerResponse, payload)

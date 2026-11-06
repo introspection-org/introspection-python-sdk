@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -113,7 +114,7 @@ class Shares:
                     granted_to_me=granted_to_me,
                 ),
             )
-            return Paginated[ResourceShare].model_validate(payload)
+            return decode(Paginated[ResourceShare], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -146,11 +147,11 @@ class Shares:
                 visible_from=visible_from,
             ),
         )
-        return ResourceShare.model_validate(payload)
+        return decode(ResourceShare, payload)
 
     def get(self, share_id: str) -> ResourceShare:
         payload = self._http.request("GET", f"/v1/shares/{share_id}")
-        return ResourceShare.model_validate(payload)
+        return decode(ResourceShare, payload)
 
     def update(
         self,
@@ -169,7 +170,7 @@ class Shares:
             f"/v1/shares/{share_id}",
             json=_update_body(visible_from),
         )
-        return ResourceShare.model_validate(payload)
+        return decode(ResourceShare, payload)
 
     def delete(self, share_id: str) -> None:
         self._http.request("DELETE", f"/v1/shares/{share_id}", expect="empty")

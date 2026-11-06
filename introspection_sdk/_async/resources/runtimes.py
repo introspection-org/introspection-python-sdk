@@ -11,6 +11,7 @@ from uuid import UUID
 from introspection_sdk._async.resources._crud import _body, _project
 from introspection_sdk._errors import NotFoundError
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -121,7 +122,7 @@ class AsyncRuntimes:
             payload = await self._http.request(
                 "GET", "/v1/runtimes", params=params
             )
-            return Paginated[Runtime].model_validate(payload)
+            return decode(Paginated[Runtime], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
@@ -142,7 +143,7 @@ class AsyncRuntimes:
                 "include": [str(i) for i in include] if include else None,
             },
         )
-        return Runtime.model_validate(payload)
+        return decode(Runtime, payload)
 
     async def create(
         self,
@@ -182,7 +183,7 @@ class AsyncRuntimes:
             },
         )
         payload = await self._http.request("POST", "/v1/runtimes", json=body)
-        return Runtime.model_validate(payload)
+        return decode(Runtime, payload)
 
     async def update(
         self,
@@ -222,7 +223,7 @@ class AsyncRuntimes:
             params=_project(project),
             json=body,
         )
-        return Runtime.model_validate(payload)
+        return decode(Runtime, payload)
 
     async def delete(
         self, runtime_id: UUID | str, *, project: str | UUID | None = None
@@ -294,7 +295,7 @@ class AsyncRuntimes:
             params={"project": project},
             json=body,
         )
-        return RunnerSpec.model_validate(payload)
+        return decode(RunnerSpec, payload)
 
 
 def _no_runtime(runtime: str | UUID) -> NotFoundError:

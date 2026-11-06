@@ -32,6 +32,7 @@ from introspection_sdk._errors import (
     RunFailedError,
     RunnerExpiredError,
     SandboxUnavailableError,
+    SchemaDriftError,
     StreamIncompleteError,
     ValidationError,
 )
@@ -236,6 +237,7 @@ __all__ = [
     "Runner",
     "RunnerExpiredError",
     "SandboxUnavailableError",
+    "SchemaDriftError",
     "SignInSupersededError",
     "ValidationError",
     # OAuth helpers (one per Application type)

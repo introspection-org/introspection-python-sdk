@@ -66,6 +66,7 @@ class Task(_ApiModel):
     member_id: UUID | None = None
     automation_id: UUID | None = None
     runtime_id: UUID | None = None
+    runtime_group_id: UUID | None = None
     is_archived: bool = False
     started_at: datetime | None = None
     completed_at: datetime | None = None
@@ -235,6 +236,9 @@ class TaskRun(_ApiModel):
     id: str
     task_id: UUID
     status: TaskStatus
+    error: str | None = None
+    """Why the run failed; set only on a failed run."""
+    completion_reason: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

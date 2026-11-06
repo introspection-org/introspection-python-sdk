@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Any
 
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.schemas.metrics import (
     MetricQueryRequest,
     MetricQueryResponse,
@@ -35,4 +36,4 @@ class Metrics:
             else request
         )
         payload = self._http.request("POST", "/v1/metrics", json=body)
-        return MetricQueryResponse.model_validate(payload)
+        return decode(MetricQueryResponse, payload)

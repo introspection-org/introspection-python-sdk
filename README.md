@@ -718,7 +718,28 @@ export INTROSPECTION_TOKEN="intro_xxx"
 export INTROSPECTION_BASE_API_URL="https://api.introspection.dev"  # optional
 export INTROSPECTION_SERVICE_NAME="my-service"   # optional
 export INTROSPECTION_LOG_LEVEL="debug"           # optional
+export INTROSPECTION_STRICT_SCHEMA=1             # optional, see below
 ```
+
+### Catch API drift with `INTROSPECTION_STRICT_SCHEMA`
+
+By default a response field this SDK version does not model is tolerated, so
+a server that adds a field never breaks your client. With
+`INTROSPECTION_STRICT_SCHEMA=1`, the same response raises `SchemaDriftError`
+(an `IntrospectionAPIError`), naming the route and every unmodelled field by
+its JSON path:
+
+```text
+/v1/tags: response fields this SDK does not model: $.records[0].color, $.cursor_v2
+```
+
+The SDK's end-to-end walk runs strict, and so does the platform's SDK coverage
+run against a live stack, so a field the API adds shows up there before a
+release ships without it. Keys in maps that are open by design are never
+reported: a field typed as a `dict` (span `resource`, endpoint `metadata`,
+...), the `gen_ai.*` span attributes and the attribute families the SDK does
+not type, and the GenAI message and part types. `error.fields` lists the
+paths and `error.path` the route.
 
 ## Documentation
 

@@ -12,6 +12,7 @@ from uuid import UUID
 
 from introspection_sdk._errors import NotFoundError
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import _body, _project
 from introspection_sdk.pagination import (
     Pager,
@@ -105,7 +106,7 @@ class Runtimes:
                 "next": cursor,
             }
             payload = self._http.request("GET", "/v1/runtimes", params=params)
-            return Paginated[Runtime].model_validate(payload)
+            return decode(Paginated[Runtime], payload)
 
         return cursor_paginate(fetch, start=next)
 
@@ -126,7 +127,7 @@ class Runtimes:
                 "include": [str(i) for i in include] if include else None,
             },
         )
-        return Runtime.model_validate(payload)
+        return decode(Runtime, payload)
 
     def create(
         self,
@@ -166,7 +167,7 @@ class Runtimes:
             },
         )
         payload = self._http.request("POST", "/v1/runtimes", json=body)
-        return Runtime.model_validate(payload)
+        return decode(Runtime, payload)
 
     def update(
         self,
@@ -206,7 +207,7 @@ class Runtimes:
             params=_project(project),
             json=body,
         )
-        return Runtime.model_validate(payload)
+        return decode(Runtime, payload)
 
     def delete(
         self, runtime_id: UUID | str, *, project: str | UUID | None = None
@@ -268,7 +269,7 @@ class Runtimes:
             params={"project": project},
             json=body,
         )
-        return RunnerSpec.model_validate(payload)
+        return decode(RunnerSpec, payload)
 
 
 def _no_runtime(runtime: str | UUID) -> NotFoundError:

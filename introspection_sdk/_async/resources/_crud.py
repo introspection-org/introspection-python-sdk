@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -47,7 +48,7 @@ class _AsyncResource:
             payload = await self._http.request(
                 "GET", path, params={**params, "next": cursor}
             )
-            return page.model_validate(payload)
+            return decode(page, payload)
 
         return async_cursor_paginate(fetch, start=start)
 
@@ -63,7 +64,7 @@ class _AsyncResource:
         payload = await self._http.request(
             method, path, params=params, json=json
         )
-        return response.model_validate(payload)
+        return decode(response, payload)
 
     async def _delete(
         self, path: str, params: dict[str, Any] | None = None

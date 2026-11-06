@@ -13,6 +13,7 @@ from introspection_sdk._async.resources._crud import (
     _project,
 )
 from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.schemas.applications import (
     Application,
@@ -146,7 +147,7 @@ class AsyncApplicationKeys(_AsyncResource):
         payload = await self._http.request(
             "GET", f"{_app_path(application_id)}/keys"
         )
-        return _KEYS.validate_python(payload)
+        return decode(_KEYS, payload)
 
     async def create(self, application_id: UUID) -> ApplicationKey:
         """Mint a key pair; the API keeps the private half."""

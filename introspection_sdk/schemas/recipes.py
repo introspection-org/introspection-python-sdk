@@ -7,13 +7,39 @@ via ``extra="allow"`` so CP additions don't break the SDK.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
+
+
+class RecipeValidationDiagnostic(ApiModel):
+    """One finding of a recipe check."""
+
+    code: str
+    severity: str = "error"
+    path: str
+    """The file the diagnostic is about."""
+    span: dict[str, Any] | None = None
+    message: str
+    help: str | None = None
+
+
+class RecipeValidation(ApiModel):
+    """The recipe check of a recipe's commit."""
+
+    status: str = "pending"
+    """``pending``, ``valid``, ``invalid`` or ``failed`` (the check could
+    not run; ``error_message`` says why)."""
+    validator_name: str | None = None
+    validator_version: str | None = None
+    checked_at: datetime | None = None
+    error_message: str | None = None
+    diagnostics: list[RecipeValidationDiagnostic] = Field(default_factory=list)
 
 
 class Recipe(ApiModel):
@@ -25,8 +51,14 @@ class Recipe(ApiModel):
     slug: str
     git_ref: str
     git_commit_sha: str
+    git_commit_subject: str | None = None
     sub_path: str | None = None
     description: str | None = None
+    mcp_servers: list[dict[str, Any]] | None = None
+    """MCP servers the recipe declares (``id``, ``required``, ``tools``)."""
+    policies: dict[str, Any] | None = None
+    """The recipe's Cedar policies (``schema``, ``policies``, ``routes``)."""
+    validation: RecipeValidation | None = None
     created_by_member_id: UUID
     created_at: datetime
     updated_at: datetime
@@ -54,4 +86,10 @@ class RecipeUpdate(BaseModel):
     description: str | None = None
 
 
-__all__ = ["Recipe", "RecipeCreate", "RecipeUpdate"]
+__all__ = [
+    "Recipe",
+    "RecipeCreate",
+    "RecipeUpdate",
+    "RecipeValidation",
+    "RecipeValidationDiagnostic",
+]

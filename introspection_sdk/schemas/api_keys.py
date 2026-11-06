@@ -96,6 +96,14 @@ class ApiKeyAcknowledgement(BaseModel):
     acknowledged: bool
 
 
+class ApiKeyList(BaseModel):
+    """The ``GET /v1/api-keys`` envelope; the SDK returns its keys."""
+
+    model_config = ConfigDict(extra="allow")
+
+    api_keys: list[ApiKey] = []
+
+
 __all__ = [
     "ApiKey",
     "ApiKeyAcknowledgement",

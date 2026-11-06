@@ -24,6 +24,7 @@ from introspection_sdk._errors import (
 from introspection_sdk._http_common import (
     RawResponse,
 )
+from introspection_sdk._strict_schema import note_response
 
 if TYPE_CHECKING:
     from introspection_sdk.auth import (
@@ -180,6 +181,7 @@ class _HttpClient:
                 return res.content
             if expect == "raw":
                 return RawResponse(content=res.content, headers=res.headers)
+            note_response(path)
             return res.json()
 
     def stream_bytes(
