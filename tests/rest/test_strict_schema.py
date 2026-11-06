@@ -12,6 +12,7 @@ from pydantic import AliasChoices, AliasPath, BaseModel, Field
 from introspection_sdk import IntrospectionAPIError, SchemaDriftError
 from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV, unmodelled
 from introspection_sdk.resources.api_keys import ApiKeys
+from introspection_sdk.resources.connectors import Connectors
 from introspection_sdk.resources.recipes import AsyncRecipes, Recipes
 from introspection_sdk.runner_resources import Conversations
 from introspection_sdk.schemas.genai_span import GenAiSpanList
@@ -138,7 +139,7 @@ def test_strict_passes_a_fully_modelled_response(fake_api: FakeAPI):
 
 
 @pytest.mark.usefixtures("strict")
-def test_strict_paths_an_item_cut_from_a_larger_body(fake_api: FakeAPI):
+def test_strict_checks_a_list_envelope(fake_api: FakeAPI):
     key = api_key_payload()
     fake_api.add(
         "GET", "/v1/api-keys", json_body={"api_keys": [key, {**key, "x": 1}]}
@@ -147,7 +148,22 @@ def test_strict_paths_an_item_cut_from_a_larger_body(fake_api: FakeAPI):
     with pytest.raises(SchemaDriftError) as caught:
         ApiKeys(fake_api.client()).list(project=PROJECT_ID)
 
-    assert "$.api_keys[1].x" in caught.value.fields
+    assert caught.value.fields == ["$.api_keys[1].x"]
+
+
+@pytest.mark.usefixtures("strict")
+def test_strict_checks_an_empty_list_envelope(fake_api: FakeAPI):
+    connector = "01a1a9b0-0000-7000-8000-000000000001"
+    fake_api.add(
+        "GET",
+        f"/v1/connectors/{connector}/apps",
+        json_body={"data": [], "has_more": False},
+    )
+
+    with pytest.raises(SchemaDriftError) as caught:
+        Connectors(fake_api.client()).list_apps(UUID(connector))
+
+    assert caught.value.fields == ["$.has_more"]
 
 
 @pytest.mark.usefixtures("strict")

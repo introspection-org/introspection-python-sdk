@@ -18,6 +18,7 @@ from introspection_sdk.schemas.api_keys import (
     ApiKeyCapability,
     ApiKeyCreated,
     ApiKeyCreateRequest,
+    ApiKeyList,
     ApiKeyUpdateRequest,
 )
 from introspection_sdk.schemas.lanes import Environment
@@ -48,10 +49,7 @@ class AsyncApiKeys(_AsyncResource):
             "/v1/api-keys",
             params={**_project(project), "expiring": expiring},
         )
-        return [
-            decode(ApiKey, key, at=f"$.api_keys[{index}]")
-            for index, key in enumerate(payload["api_keys"])
-        ]
+        return decode(ApiKeyList, payload).api_keys
 
     async def create(
         self,

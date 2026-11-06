@@ -25,6 +25,7 @@ from introspection_sdk.schemas.connectors import (
     ConnectionTokenResult,
     Connector,
     ConnectorApp,
+    ConnectorAppList,
     ConnectorAuthMode,
     ConnectorAuthorization,
     ConnectorAuthorizeBinding,
@@ -425,10 +426,7 @@ class AsyncConnectors:
             f"/v1/connectors/{connector_id}/apps",
             params={"q": query, "limit": limit},
         )
-        return [
-            decode(ConnectorApp, app, at=f"$.data[{index}]")
-            for index, app in enumerate(payload["data"])
-        ]
+        return decode(ConnectorAppList, payload).data
 
     async def search_custom_apps(
         self,
@@ -449,10 +447,7 @@ class AsyncConnectors:
             "/v1/connectors/custom/apps",
             params={"q": query, "limit": limit},
         )
-        return [
-            decode(ConnectorApp, app, at=f"$.data[{index}]")
-            for index, app in enumerate(payload["data"])
-        ]
+        return decode(ConnectorAppList, payload).data
 
     async def discover_oauth(
         self, issuer: str

@@ -18,6 +18,7 @@ and the GenAI message and part types).
 
 from __future__ import annotations
 
+import logging
 import os
 from contextvars import ContextVar
 from typing import Any, TypeVar, overload
@@ -27,6 +28,8 @@ from pydantic import AliasChoices, AliasPath, BaseModel, TypeAdapter
 from introspection_sdk._errors import SchemaDriftError
 
 __all__ = ["STRICT_SCHEMA_ENV", "decode", "note_response", "strict_schema"]
+
+logger = logging.getLogger(__name__)
 
 #: The environment variable that turns strict decoding on (``1``/``true``).
 STRICT_SCHEMA_ENV = "INTROSPECTION_STRICT_SCHEMA"
@@ -53,39 +56,38 @@ def note_response(path: str) -> None:
 
 
 @overload
-def decode(target: type[M], payload: Any, *, at: str = "$") -> M: ...
+def decode(target: type[M], payload: Any) -> M: ...
 
 
 @overload
-def decode(target: TypeAdapter[T], payload: Any, *, at: str = "$") -> T: ...
+def decode(target: TypeAdapter[T], payload: Any) -> T: ...
 
 
-def decode(
-    target: type[BaseModel] | TypeAdapter[Any], payload: Any, *, at: str = "$"
-) -> Any:
+def decode(target: type[BaseModel] | TypeAdapter[Any], payload: Any) -> Any:
     """Validate a response ``payload``; under strict mode, report drift.
 
     ``target`` is a model class or a ``TypeAdapter``. Strict mode compares the
     decoded value with ``payload`` and raises
     :class:`~introspection_sdk.SchemaDriftError` when ``payload`` holds a key
-    no model on its path names. ``at`` is the JSON path of ``payload`` in
-    the response, for a payload cut from a larger body.
+    no model on its path names.
     """
     if isinstance(target, TypeAdapter):
         value = target.validate_python(payload)
     else:
         value = target.model_validate(payload)
     if strict_schema():
-        check(value, payload, response_path.get(), at=at)
+        check(value, payload, response_path.get())
     return value
 
 
-def check(
-    value: Any, payload: Any, path: str | None, *, at: str = "$"
-) -> None:
+def check(value: Any, payload: Any, path: str | None) -> None:
     """Raise when ``payload`` holds a key the decoded ``value`` does not model."""
-    fields = unmodelled(value, payload, at)
+    fields = unmodelled(value, payload)
     if fields:
+        logger.debug(
+            "response fields not modelled",
+            extra={"path": path, "fields": fields},
+        )
         raise SchemaDriftError(
             f"{path or 'response'}: response fields this SDK does not model: "
             + ", ".join(fields),
