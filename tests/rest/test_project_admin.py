@@ -25,6 +25,7 @@ from introspection_sdk._errors import (
     RateLimitError,
     ValidationError,
 )
+from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
 from introspection_sdk.resources import (
     ApiKeys,
     Applications,
@@ -248,6 +249,21 @@ def test_project_get_by_id_and_missing_is_typed(fake_api: FakeAPI):
     assert projects.get(UUID(PROJECT_ID)).deployment_id == UUID(DEPLOYMENT_ID)
     with pytest.raises(NotFoundError):
         projects.get("gone")
+
+
+def test_project_get_models_the_git_origin_under_strict_decoding(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    fake_api.add(
+        "GET",
+        f"/v1/projects/{PROJECT_ID}",
+        json_body=project_payload(git_origin="https://git.example.test"),
+    )
+
+    project = Projects(fake_api.client()).get(UUID(PROJECT_ID))
+
+    assert project.git_origin == "https://git.example.test"
 
 
 def test_project_list_pages_and_narrows_by_project(fake_api: FakeAPI):
