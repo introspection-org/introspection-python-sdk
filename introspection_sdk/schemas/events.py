@@ -23,7 +23,7 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
 from introspection_sdk.schemas.automations import (
     OpenSkipReason,
@@ -45,8 +45,12 @@ __all__ = [
     "FeedbackPayload",
     "IntrospectionEventBase",
     "IntrospectionEventName",
+    "JudgeType",
+    "JudgementBasePayload",
+    "JudgementEgressPayload",
     "JudgementEvent",
     "JudgementPayload",
+    "JudgementVerdictPayload",
     "KNOWN_EVENT_NAMES",
     "ObservationEvent",
     "ObservationLens",
@@ -59,6 +63,7 @@ __all__ = [
     "TrackEvent",
     "TrackPayload",
     "UnknownEvent",
+    "UnknownJudgementPayload",
 ]
 
 
@@ -114,6 +119,19 @@ ObservationLens = Literal[
 
 ObservationSeverity = Literal["low", "medium", "high"]
 """Severity of a lens observation."""
+
+
+class JudgeType(StrEnum):
+    """Where a judge runs: on live traffic, on a dataset, or on a mission."""
+
+    ONLINE = "online"
+    OFFLINE = "offline"
+    MISSION = "mission"
+
+
+# A known value decodes to the member and an unknown one stays a ``str``, so a
+# value the API adds later still decodes.
+OpenJudgeType = Annotated[JudgeType | str, Field(union_mode="left_to_right")]
 
 
 class _ApiModel(BaseModel):
@@ -240,27 +258,104 @@ class FeedbackPayload(_ApiModel):
     agent_name: str | None = None  #: gen_ai.agent.name
     agent_id: str | None = None  #: gen_ai.agent.id
     properties: dict[str, Any] | None = None
+    #: The authenticated member who authored the feedback.
+    author_member_id: UUID | None = None
 
 
 class AnnotationPayload(_ApiModel):
     """One member-authored annotation mutation."""
 
     member_id: UUID
+    #: The member that ran the request for ``member_id``, e.g. an agent.
+    actor_member_id: UUID | None = None
+    actor_member_type: str | None = None
     labels: list[str] | None = None
     comment: str | None = None
     assignee_member_ids: list[UUID] | None = None
 
 
-class JudgementPayload(_ApiModel):
-    """One judge evaluation result event."""
+class JudgementBasePayload(_ApiModel):
+    """What every judgement carries, whichever kind it is."""
 
     judgement_id: str
     judge_id: str | None = None
+    judge_slug: str | None = None
+    judge_type: OpenJudgeType | None = None
+    runtime_slug: str | None = None
     result: str | None = None
+    #: The execution outcome (``ok`` / ``error``), distinct from ``result``.
+    status: str | None = None
+    error_class: str | None = None
+    error_message: str | None = None
+    source_component: str | None = None
+    judge_model: str | None = None
+    experiment_arm_id: UUID | None = None
+
+
+class JudgementVerdictPayload(JudgementBasePayload):
+    """A recipe judge's verdict on a conversation."""
+
+    kind: Literal["verdict"] = "verdict"
+    reasoning: str | None = None
     definition_hash: str | None = None
+    engine_version: str | None = None
+    judge_provider: str | None = None
     contract_version: str | None = None
     sequence_hash: str | None = None
-    experiment_arm_id: UUID | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+
+
+class JudgementEgressPayload(JudgementBasePayload):
+    """The egress policy gate's decision on one outbound request."""
+
+    kind: Literal["egress"] = "egress"
+    #: Each answered question's probability of true, 0-100.
+    scores: dict[str, int] | None = None
+    questions: dict[str, str] | None = None
+    policy_id: str | None = None
+    policy_action: str | None = None
+    reason: str | None = None
+    request_host: str | None = None
+    request_method: str | None = None
+    request_path: str | None = None
+
+
+class UnknownJudgementPayload(JudgementBasePayload):
+    """Fallback for a judgement ``kind`` this SDK version predates: the
+    shared fields are typed and the kind's own are kept as extras."""
+
+    kind: str
+
+
+#: ``result_schema`` of an egress decision on a payload that names no kind.
+EGRESS_RESULT_SCHEMA = "question_scores.v1"
+
+
+def judgement_kind(payload: Any) -> str:
+    """The union tag of a judgement payload.
+
+    A data plane that predates ``kind`` sends one flat payload, told apart
+    by its ``result_schema``.
+    """
+    if not isinstance(payload, dict):
+        kind = getattr(payload, "kind", None)
+        return kind if kind in ("verdict", "egress") else "unknown"
+    kind = payload.get("kind")
+    if kind is None:
+        legacy_egress = payload.get("result_schema") == EGRESS_RESULT_SCHEMA
+        return "egress" if legacy_egress else "verdict"
+    return kind if kind in ("verdict", "egress") else "unknown"
+
+
+JudgementPayload = Annotated[
+    Annotated[JudgementVerdictPayload, Tag("verdict")]
+    | Annotated[JudgementEgressPayload, Tag("egress")]
+    | Annotated[UnknownJudgementPayload, Tag("unknown")],
+    Discriminator(judgement_kind),
+]
+"""One judgement, discriminated by its ``kind`` (``verdict`` or ``egress``)."""
 
 
 class AutomationTriggeredPayload(_ApiModel):
