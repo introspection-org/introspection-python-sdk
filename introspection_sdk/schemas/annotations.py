@@ -28,6 +28,11 @@ class AnnotationState(AnnotationTarget):
     comment_count: int = 0
     latest_comment: str | None = None
     latest_comment_member_id: UUID | None = None
+    commenter_member_ids: list[UUID] = Field(default_factory=list)
+    human_commenter_member_ids: list[UUID] = Field(default_factory=list)
+    has_human_comment: bool = False
+    latest_comment_actor_member_id: UUID | None = None
+    latest_comment_actor_type: str | None = None
     updated_at: datetime
     updated_by_member_id: UUID
     assignment_event_id: UUID | None = None

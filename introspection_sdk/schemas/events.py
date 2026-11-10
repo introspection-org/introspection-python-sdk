@@ -45,8 +45,10 @@ __all__ = [
     "FeedbackPayload",
     "IntrospectionEventBase",
     "IntrospectionEventName",
+    "JudgeType",
     "JudgementEvent",
     "JudgementPayload",
+    "JudgementResultSchema",
     "KNOWN_EVENT_NAMES",
     "ObservationEvent",
     "ObservationLens",
@@ -113,6 +115,29 @@ ObservationLens = Literal[
 """Perspective used to extract an observation from a conversation."""
 
 ObservationSeverity = Literal["low", "medium", "high"]
+
+
+class JudgeType(StrEnum):
+    """Where a judge runs: on live traffic, on a dataset, or on a mission."""
+
+    ONLINE = "online"
+    OFFLINE = "offline"
+    MISSION = "mission"
+
+
+class JudgementResultSchema(StrEnum):
+    """The shape of a judgement's ``result``."""
+
+    VERDICT_V1 = "verdict.v1"
+    QUESTION_SCORES_V1 = "question_scores.v1"
+
+
+# A known value decodes to the member and an unknown one stays a ``str``, so a
+# value the API adds later still decodes.
+OpenJudgeType = Annotated[JudgeType | str, Field(union_mode="left_to_right")]
+OpenJudgementResultSchema = Annotated[
+    JudgementResultSchema | str, Field(union_mode="left_to_right")
+]
 """Severity of a lens observation."""
 
 
@@ -240,12 +265,15 @@ class FeedbackPayload(_ApiModel):
     agent_name: str | None = None  #: gen_ai.agent.name
     agent_id: str | None = None  #: gen_ai.agent.id
     properties: dict[str, Any] | None = None
+    author_member_id: UUID | None = None
 
 
 class AnnotationPayload(_ApiModel):
     """One member-authored annotation mutation."""
 
     member_id: UUID
+    actor_member_id: UUID | None = None
+    actor_member_type: str | None = None
     labels: list[str] | None = None
     comment: str | None = None
     assignee_member_ids: list[UUID] | None = None
@@ -261,6 +289,29 @@ class JudgementPayload(_ApiModel):
     contract_version: str | None = None
     sequence_hash: str | None = None
     experiment_arm_id: UUID | None = None
+    judge_slug: str | None = None
+    judge_type: OpenJudgeType | None = None
+    result_schema: OpenJudgementResultSchema | None = None
+    runtime_slug: str | None = None
+    status: str | None = None
+    error_class: str | None = None
+    error_message: str | None = None
+    source_component: str | None = None
+    reasoning: str | None = None
+    reason: str | None = None
+    engine_version: str | None = None
+    judge_provider: str | None = None
+    judge_model: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    scores: dict[str, int] | None = None
+    questions: dict[str, str] | None = None
+    policy_id: str | None = None
+    policy_action: str | None = None
+    request_host: str | None = None
+    request_method: str | None = None
+    request_path: str | None = None
 
 
 class AutomationTriggeredPayload(_ApiModel):
