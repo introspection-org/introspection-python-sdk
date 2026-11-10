@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # The release tags and the history that reaches them.
+          # The base commit as well as the PR's.
           fetch-depth: 0
 
       - name: Install uv
@@ -58,23 +58,17 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Check for breaking changes against the latest release
+      # Against the PR's base, not the last release: a break an earlier PR
+      # accepted is already on main and is not this PR's to label.
+      - name: Check for breaking changes against the base
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          # The head repo as well as the ref: a fork can name a branch anything.
-          IS_RELEASE_PR: ${{ github.event.pull_request.head.ref == 'release-please--branches--main' && github.event.pull_request.head.repo.full_name == github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          against=$(git describe --tags --abbrev=0 --match 'v*' HEAD)
           if uv run griffe check introspection_sdk --search . \
-            --against "$against" -e scripts/griffe_reexports.py \
+            --against "$BASE_SHA" -e scripts/griffe_reexports.py \
             --format github; then
-            exit 0
-          fi
-          # A release PR only carries breaks already accepted on their own PRs,
-          # but griffe compares against the last tag, so it still reports them.
-          if [[ "$IS_RELEASE_PR" == "true" ]]; then
-            echo "::warning::Release PR: these breaks were accepted on their own PRs."
             exit 0
           fi
           pr=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \

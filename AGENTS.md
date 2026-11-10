@@ -336,15 +336,13 @@ switching preview off. `[tool.ruff.format]` keeps preview off.
 
 The `API Compatibility` workflow (`api-compat.yml`) runs `griffe` on every
 PR and fails when the change breaks the public API of `introspection_sdk` against the
-latest `v*` release tag (resolved with `git describe --tags --abbrev=0
---match 'v*' HEAD`, never hard-coded). Run the same check locally:
+PR's base commit, so a break an earlier PR accepted is not reported again on
+every PR until the next release. Run the same check locally:
 
 ```shell
-uv run griffe check introspection_sdk --search . --against v0.29.0 \
-  -e scripts/griffe_reexports.py
+uv run griffe check introspection_sdk --search . \
+  --against "$(git merge-base HEAD origin/main)" -e scripts/griffe_reexports.py
 ```
-
-Pass the tag CI uses, `git describe --tags --abbrev=0 --match 'v*' HEAD`.
 
 It needs the release tags locally (`git fetch --tags`).
 
@@ -388,8 +386,3 @@ the minor version; say in the PR that the break is only a value change.
    label without a `!` in the title still fails, so a break cannot ship
    without a version bump, and removing either one afterwards turns the
    check red again.
-
-The release PR (head branch `release-please--branches--main` in this
-repository, not a fork's branch of that name) needs neither: griffe still
-runs and prints every breakage, but the check passes with a warning, because
-those breaks were accepted on their own PRs.
