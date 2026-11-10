@@ -194,6 +194,26 @@ async for summary in runner.conversations.list(
 The runner also exposes `files`, `shares`, `events`, `metrics`,
 `automations`, `issues` and `connections`.
 
+## Export a conversation's spans
+
+`client.conversations.export_jsonl(conversation_id)` reads the whole
+conversation as JSON lines (`application/x-ndjson`): one GenAI span per line,
+each line a complete JSON object. It yields each span as its line arrives, so
+the export is never held in memory whole:
+
+```python
+for span in client.conversations.export_jsonl(conversation_id):
+    print(span.span_id, span.name, span.model)
+```
+
+`export_stream(conversation_id, "jsonl")` yields the same response as raw
+bytes, to write to a `.jsonl` file. The JSON-envelope export, `export_json`,
+was removed; `export_trajectory` and `export_arrow` are unchanged.
+
+`include=["annotations", "comments"]` also sets `span.annotation`, the span's
+row from `client.annotations.list`, on every annotated span, with its
+comments. It needs the annotations read scope.
+
 ## Export a conversation as a Harbor trajectory
 
 `spans_to_atif` projects the GenAI spans of a conversation onto one
@@ -216,10 +236,6 @@ the call. A total in `final_metrics` is set only when every model call
 reported it. For a streamed read, `AtifProjection` takes one span at a time
 and returns the steps that are final. Runnable:
 [`conversation_atif.py`](examples/introspection_examples/api/conversation_atif.py).
-
-`export_jsonl(conversation_id, include=["annotations", "comments"])` also sets
-`span.annotation`, the span's row from `client.annotations.list`, on every
-annotated span, with its comments. It needs the annotations read scope.
 
 ## One data-plane interface on the client and the Runner
 

@@ -8,8 +8,8 @@ from typing import Literal, TypedDict
 ConversationExportInclude = Literal["annotations", "comments"]
 """Optional expansions of an exported span, passed as a repeated ``include``
 query param. ``annotations`` sets ``annotation`` on each annotated span;
-``comments``, with it, fills that row's ``comments``. JSON and JSON lines
-only."""
+``comments``, with it, fills that row's ``comments``. JSON lines only: the
+server refuses it on the trajectory and Arrow representations."""
 
 
 class ConversationExportParams(TypedDict, total=False):

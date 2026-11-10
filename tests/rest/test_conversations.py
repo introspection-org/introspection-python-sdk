@@ -1163,20 +1163,6 @@ def test_export_trajectory_negotiates_v1_and_types_records(fake_api: FakeAPI):
     assert prose_turn.tool_calls is None
 
 
-def test_export_json_negotiates_json_and_types_span_list(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/conversations/conv-1/export",
-        json_body=make_page([make_item()], False),
-    )
-
-    result = _conversations(fake_api).export_json("conv-1")
-
-    assert fake_api.last_request.headers["accept"] == "application/json"
-    assert len(result.data) == 1
-    assert result.data[0].span_id == "span-1"
-
-
 def jsonl_body(*span_ids: str) -> bytes:
     return b"".join(
         json.dumps({**make_item(), "span_id": span_id}).encode() + b"\n"
@@ -1262,28 +1248,17 @@ def test_export_jsonl_carries_annotations_inline(fake_api: FakeAPI):
     assert "annotation" not in second.model_dump()
 
 
-@pytest.mark.parametrize("format", ["json", "jsonl"])
-def test_export_include_reaches_the_json_and_raw_exports(
-    fake_api: FakeAPI, format: str
-):
+def test_export_include_reaches_the_raw_export(fake_api: FakeAPI):
     fake_api.add(
-        "GET",
-        "/v1/conversations/conv-1/export",
-        json_body=make_page([make_item()], False),
+        "GET", "/v1/conversations/conv-1/export", content=jsonl_body("span-1")
     )
-    conversations = _conversations(fake_api)
-
-    result = conversations.export_json("conv-1", include=["annotations"])
-    assert fake_api.last_request.params.get_list("include") == ["annotations"]
-    assert result.data[0].annotation is None
 
     b"".join(
-        conversations.export_stream(
-            "conv-1",
-            format,  # type: ignore[arg-type]
-            include=["annotations", "comments"],
+        _conversations(fake_api).export_stream(
+            "conv-1", "jsonl", include=["annotations", "comments"]
         )
     )
+
     assert fake_api.last_request.params.get_list("include") == [
         "annotations",
         "comments",
@@ -1356,7 +1331,6 @@ async def test_async_export_jsonl(fake_api: FakeAPI):
     ("format", "accept"),
     [
         ("jsonl", "application/x-ndjson"),
-        ("json", "application/json"),
         ("trajectory", "application/vnd.letta.trajectory+json;version=1"),
         ("arrow", ARROW_STREAM_MEDIA_TYPE),
     ],
@@ -1410,7 +1384,7 @@ def test_export_encodes_conversation_id(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/conversations/conv/one/export", content=b"export")
 
     assert (
-        b"".join(_conversations(fake_api).export_stream("conv/one", "json"))
+        b"".join(_conversations(fake_api).export_stream("conv/one", "jsonl"))
         == b"export"
     )
     assert b"conv%2Fone" in fake_api.last_request.url.raw_path
@@ -1478,13 +1452,8 @@ async def test_async_export_trajectory(fake_api: FakeAPI):
 
 
 @pytest.mark.asyncio
-async def test_async_export_json_and_stream(fake_api: FakeAPI):
-    body = make_page([make_item()], False)
-    fake_api.add("GET", "/v1/conversations/conv-1/export", json_body=body)
+async def test_async_export_stream(fake_api: FakeAPI):
     conversations = AsyncConversations(fake_api.async_client())
-
-    result = await conversations.export_json("conv-1")
-    assert result.data[0].span_id == "span-1"
 
     raw = b'[{"wire":"bytes"}]'
     fake_api.add("GET", "/v1/conversations/conv-1/export", content=raw)

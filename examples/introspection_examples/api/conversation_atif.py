@@ -11,10 +11,10 @@ Run with:
         uv run python -m introspection_examples.api.conversation_atif
 
 The projection itself needs no platform. To project spans you already hold
-(a saved ``conversations.export_json`` result), pass the file instead; no
-token is read:
+(a saved ``conversations.export_stream(id, "jsonl")`` export), pass the file
+instead; no token is read:
 
-        uv run python -m introspection_examples.api.conversation_atif spans.json
+        uv run python -m introspection_examples.api.conversation_atif spans.jsonl
 
 Optional env:
     INTROSPECTION_CONVERSATION  - conversation id (default: the newest with a model call)
@@ -31,7 +31,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from introspection_sdk import IntrospectionClient
 from introspection_sdk.atif import spans_to_atif
-from introspection_sdk.schemas import AtifStep, AtifTrajectory, GenAiSpanList
+from introspection_sdk.schemas import AtifStep, AtifTrajectory, GenAiSpan
 
 RECENT = 20
 
@@ -72,9 +72,11 @@ def describe(step: AtifStep) -> str:
 def main() -> None:
     load_dotenv()
     if len(sys.argv) > 1:
-        spans = GenAiSpanList.model_validate_json(
-            Path(sys.argv[1]).read_text()
-        ).data
+        spans = [
+            GenAiSpan.model_validate_json(line)
+            for line in Path(sys.argv[1]).read_text().splitlines()
+            if line.strip()
+        ]
         trajectory = spans_to_atif(spans)
     else:
         if not os.getenv("INTROSPECTION_TOKEN"):

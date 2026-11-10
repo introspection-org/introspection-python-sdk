@@ -46,14 +46,16 @@ TRAJECTORY_ADAPTER: TypeAdapter[list[TrajectoryRecord]] = TypeAdapter(
     list[TrajectoryRecord]
 )
 
-ConversationExportFormat = Literal["jsonl", "json", "trajectory", "arrow"]
+ConversationExportFormat = Literal["jsonl", "trajectory", "arrow"]
 """Wire representation accepted by the complete conversation export route.
 
-``jsonl`` is the preferred raw form: one GenAI span per line, no envelope.
+``jsonl`` is the span list as JSON lines (``application/x-ndjson``): one
+GenAI span per line, each line a complete JSON object, so it can be read
+as it streams. The JSON-envelope export (``json``) was removed.
+``trajectory`` and ``arrow`` are the other representations.
 """
 
 
-JSON_EXPORT_HEADERS = {"Accept": "application/json"}
 JSONL_EXPORT_HEADERS = JSONL_ACCEPT_HEADERS
 
 
@@ -117,9 +119,7 @@ def _export_headers(format: ConversationExportFormat) -> dict[str, str]:
         return TRAJECTORY_ACCEPT_HEADERS
     if format == "arrow":
         return ARROW_ACCEPT_HEADERS
-    if format == "jsonl":
-        return JSONL_EXPORT_HEADERS
-    return JSON_EXPORT_HEADERS
+    return JSONL_EXPORT_HEADERS
 
 
 ConversationResolution = Literal[
@@ -648,37 +648,22 @@ class AsyncConversations:
         )
         return decode(Conversation, payload)
 
-    async def export_json(
-        self,
-        conversation_id: str,
-        **params: Unpack[ConversationExportParams],
-    ) -> GenAiSpanList:
-        """Export one complete conversation as the standard GenAI-span list.
-
-        .. deprecated::
-            Prefer :meth:`export_jsonl`, which reads the same spans without
-            buffering the whole export.
-        """
-        payload = await self._http.request(
-            "GET",
-            _export_path(conversation_id),
-            params=build_export_params(**params),
-            headers=JSON_EXPORT_HEADERS,
-        )
-        return decode(GenAiSpanList, payload)
-
     async def export_jsonl(
         self,
         conversation_id: str,
         **params: Unpack[ConversationExportParams],
     ) -> AsyncIterator[GenAiSpan]:
-        """Stream one complete conversation as GenAI spans, one per line.
+        """Export one complete conversation's spans, read as JSON lines.
 
-        Each span is decoded as its line arrives, so the export is never
-        held whole. ``include=["annotations"]`` sets ``annotation`` on each
-        annotated span, and ``"comments"`` with it fills that row's
-        ``comments``. A data plane that predates the JSON-lines form answers
-        406, which raises rather than falling back to :meth:`export_json`.
+        The response is ``application/x-ndjson``: one GenAI span per line,
+        each line a complete JSON object. Each span is decoded and yielded
+        as its line arrives, so the export is never held whole. This is the
+        span-list export; the JSON-envelope ``export_json`` was removed.
+
+        ``include=["annotations"]`` sets ``annotation`` on each annotated
+        span, and ``"comments"`` with it fills that row's ``comments``. A
+        data plane that predates the JSON-lines form answers 406, which
+        raises.
         """
         path = _export_path(conversation_id)
         spans = iter_jsonl_async(
@@ -698,7 +683,15 @@ class AsyncConversations:
         format: ConversationExportFormat,
         **params: Unpack[ConversationExportParams],
     ) -> AsyncIterator[bytes]:
-        """Stream raw complete-export bytes without buffering them in the SDK."""
+        """Stream raw complete-export bytes without buffering them in the SDK.
+
+        ``format="jsonl"`` is the span list as JSON lines
+        (``application/x-ndjson``): one GenAI span per line, each line a
+        complete JSON object, so the bytes can be written to a ``.jsonl``
+        file or split on newlines as they arrive. There is no JSON-envelope
+        format any more. ``"trajectory"`` and ``"arrow"`` stream those
+        representations unchanged.
+        """
         return self._http.stream_bytes(
             _export_path(conversation_id),
             params=build_export_params(**params),
@@ -717,6 +710,8 @@ class AsyncConversations:
         end_date: str | datetime | None = None,
     ) -> Trajectory:
         """Export one complete conversation as trajectory-v1.
+
+        For the spans themselves, as JSON lines, use :meth:`export_jsonl`.
 
         This is not :meth:`ConversationItems.list` in another coat. The
         export is assembled server-side over the whole conversation, so it
@@ -755,6 +750,8 @@ class AsyncConversations:
         end_date: str | datetime | None = None,
     ) -> Any:
         """Export one complete conversation as a single ``pyarrow.Table``.
+
+        For the spans themselves, as JSON lines, use :meth:`export_jsonl`.
 
         Unlike :meth:`list_arrow`, this is one table for the whole conversation
         rather than an iterator of pages: the export route assembles the

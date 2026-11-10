@@ -24,6 +24,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 import pytest
@@ -1304,6 +1305,24 @@ def _task_files(client: IntrospectionClient, task_id: str) -> list[File]:
     return client.files.list(task_id=task_id).page().records
 
 
+def exported_spans(
+    w: World, conversations: Any, cid: str, *, raw: bool
+) -> list[Any]:
+    """The spans of one conversation export, typed or as raw lines.
+
+    The recording predates the removal of the JSON-envelope export, and the
+    replay matches on the URL alone, so its two JSON entries are played in
+    place, around the Arrow one. Drop the replay branch at the next
+    re-record.
+    """
+    if w.mode == "replay":
+        path = f"/v1/conversations/{quote(cid, safe='')}/export"
+        return conversations._http.request("GET", path)["data"]
+    if raw:
+        return b"".join(conversations.export_stream(cid, "jsonl")).splitlines()
+    return list(conversations.export_jsonl(cid))
+
+
 @walk_step(11, "evidence — the output file, the conversation and its items")
 def test_11_evidence(world: World) -> None:
     w = world
@@ -1445,14 +1464,14 @@ def test_11_evidence(world: World) -> None:
     assert turn is not None
     latest = conversations.retrieve(cid, str(turn.span_id))
     assert latest is not None and latest.span_id, "the latest LLM turn"
-    exported = conversations.export_json(cid)
-    assert len(exported.data) >= len(page.data)
+    exported = exported_spans(w, conversations, cid, raw=False)
+    assert len(exported) >= len(page.data)
     # Spans can still be arriving between two exports, so each is held to
     # the items the step already read rather than to the other.
     table = conversations.export_arrow(cid)
     assert table.num_rows >= len(page.data)
-    streamed = json.loads(b"".join(conversations.export_stream(cid, "json")))
-    assert len(streamed["data"]) >= len(page.data)
+    streamed = exported_spans(w, conversations, cid, raw=True)
+    assert len(streamed) >= len(page.data)
     listed = conversations.list_arrow(
         runtime_group_id=UUID(w.group_id)
     ).read_all()

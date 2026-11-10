@@ -417,10 +417,6 @@ class ConversationsResource(Protocol):
 
     def get(self, conversation_id: str) -> Conversation: ...
 
-    def export_json(
-        self, conversation_id: str, **params: Unpack[ConversationExportParams]
-    ) -> GenAiSpanList: ...
-
     def export_jsonl(
         self, conversation_id: str, **params: Unpack[ConversationExportParams]
     ) -> Iterator[GenAiSpan]: ...
