@@ -69,6 +69,7 @@ from introspection_sdk.schemas.agui import (
     EventType,
     Interrupt,
     ResumeEntry,
+    UnknownEvent,
 )
 from introspection_sdk.schemas.annotations import (
     AnnotationState,
@@ -194,6 +195,7 @@ __all__ = [
     "AsyncRunner",
     "AGUIEvent",
     "AGUIStreamEvent",
+    "UnknownEvent",
     "AnnotationState",
     "AnnotationTarget",
     "AuthSession",

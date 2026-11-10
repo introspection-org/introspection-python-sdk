@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 from introspection_sdk import IntrospectionClient, Runner
 from introspection_sdk.otel import IntrospectionLogs
-from introspection_sdk.schemas import AGUIEvent
+from introspection_sdk.schemas import AGUIStreamEvent
 
 REQUIRED_ENV = (
     "INTROSPECTION_SERVICE_ACCOUNT_CLIENT_ID",
@@ -74,7 +74,7 @@ def start_task(runner: Runner, order_id: str, user_id: str) -> AgentBinding:
         print(f"  saved task {task_id} for order {order_id} ({user_id})")
 
     # Your app's code: push the event over server-sent events or a WebSocket.
-    def send_event_to_browser(event: AGUIEvent) -> None:
+    def send_event_to_browser(event: AGUIStreamEvent) -> None:
         print(f"  -> browser: {event.type}")
 
     handle = runner.tasks.start(
@@ -94,7 +94,7 @@ def start_task(runner: Runner, order_id: str, user_id: str) -> AgentBinding:
 def reconnect(runner: Runner, binding: AgentBinding) -> None:
     # #region docs:patterns/add-to-your-app/reconnect
     # Your app's code: push the event over server-sent events or a WebSocket.
-    def send_event_to_browser(event: AGUIEvent) -> None:
+    def send_event_to_browser(event: AGUIStreamEvent) -> None:
         print(f"  -> browser: {event.type}")
 
     task = runner.tasks.get(binding.task_id)
