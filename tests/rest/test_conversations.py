@@ -1297,21 +1297,6 @@ def test_export_jsonl_joins_a_line_split_across_chunks(fake_api: FakeAPI):
     assert [span.span_id for span in spans] == ["span-1", "span-2"]
 
 
-def test_export_jsonl_surfaces_406_from_an_older_plane(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/conversations/conv-1/export",
-        status=406,
-        json_body={"detail": "Not Acceptable"},
-    )
-
-    with pytest.raises(IntrospectionAPIError) as error:
-        list(_conversations(fake_api).export_jsonl("conv-1"))
-
-    assert error.value.status_code == 406
-    assert len(fake_api.requests) == 1
-
-
 @pytest.mark.asyncio
 async def test_async_export_jsonl(fake_api: FakeAPI):
     fake_api.add(

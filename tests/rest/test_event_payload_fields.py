@@ -1,22 +1,34 @@
-"""The annotation, feedback and judgement event payloads, in the shape the
-Data Plane API returns them."""
+"""The annotation, feedback, judgement and issue event payloads, in the shape
+the Data Plane API returns them."""
 
 from __future__ import annotations
 
 from typing import Any
 from uuid import UUID
 
+import pytest
+from pydantic import ValidationError as PydanticValidationError
+
 from introspection_sdk.runner_resources.events import Events
 from introspection_sdk.schemas.events import (
     AnnotationEvent,
     FeedbackEvent,
     IntrospectionEventName,
+    IssueActivityEvent,
+    IssueCreatedPayload,
+    IssueDeletedPayload,
+    IssueEventAction,
+    IssueRequestCreatedPayload,
+    IssueRequestUpdatedPayload,
+    IssueUpdatedPayload,
     JudgementEgressPayload,
     JudgementEvent,
     JudgementVerdictPayload,
     JudgeType,
+    UnknownIssuePayload,
     UnknownJudgementPayload,
 )
+from introspection_sdk.schemas.issues import IssueRequestStatus
 
 from .conftest import FakeAPI
 
@@ -111,30 +123,9 @@ def test_judgement_payload_is_a_union_on_kind(fake_api: FakeAPI):
     )
 
 
-def test_a_judgement_without_kind_is_told_apart_by_result_schema(
-    fake_api: FakeAPI,
-):
-    """A data plane that predates ``kind`` sends one flat payload."""
-    flat = {
-        key: value
-        for key, value in {**EGRESS, **VERDICT}.items()
-        if key != "kind"
-    }
-    verdict, egress, bare = judgements(
-        fake_api,
-        {**flat, "result_schema": "verdict.v1"},
-        {**flat, "result_schema": "question_scores.v1"},
-        {"judgement_id": "judgement-2"},
-    )
-
-    assert isinstance(verdict, JudgementVerdictPayload)
-    assert (verdict.kind, verdict.reasoning) == (
-        "verdict",
-        VERDICT["reasoning"],
-    )
-    assert isinstance(egress, JudgementEgressPayload)
-    assert (egress.kind, egress.scores) == ("egress", EGRESS["scores"])
-    assert isinstance(bare, JudgementVerdictPayload)
+def test_a_judgement_without_kind_does_not_decode(fake_api: FakeAPI):
+    with pytest.raises(PydanticValidationError):
+        judgements(fake_api, {"judgement_id": "judgement-2"})
 
 
 def test_an_unknown_judgement_kind_keeps_the_row(fake_api: FakeAPI):
@@ -217,3 +208,160 @@ def test_feedback_payload_models_its_author(fake_api: FakeAPI):
 
     assert isinstance(feedback, FeedbackEvent)
     assert feedback.payload.author_member_id == UUID(MEMBER_ID)
+
+
+ISSUE_ID = "019fc000-0000-7000-8000-0000000000a1"
+REQUEST_ID = "019fc000-0000-7000-8000-0000000000b2"
+TASK_ID = "019fc000-0000-7000-8000-0000000000c3"
+# The events read drops nulls, so an unset field is an absent key.
+REQUEST: dict[str, Any] = {
+    "id": REQUEST_ID,
+    "issue_id": ISSUE_ID,
+    "task_id": TASK_ID,
+    "question": "Ship it?",
+    "assignee_id": MEMBER_ID,
+    "status": "open",
+    "revision": 1,
+    "issue_revision": 3,
+    "files": [],
+    "links": [{"url": "https://example.com/pr/1"}],
+    "events": [],
+    "spans": [],
+    "created_at": "2026-11-10T05:00:00Z",
+    "updated_at": "2026-11-10T05:00:00Z",
+}
+
+
+def issue_payloads(fake_api: FakeAPI, *payloads: dict[str, Any]) -> list[Any]:
+    fake_api.add(
+        "GET",
+        "/v1/events",
+        json_body=page(
+            [
+                event(
+                    "introspection.issue",
+                    {"issue_id": ISSUE_ID, "revision": 2, **payload},
+                )
+                for payload in payloads
+            ]
+        ),
+    )
+    records = list(
+        Events(fake_api.client()).list(IntrospectionEventName.ISSUE)
+    )
+    assert fake_api.last_request.params["event_name"] == "introspection.issue"
+    assert all(isinstance(record, IssueActivityEvent) for record in records)
+    return [record.payload for record in records]
+
+
+def test_issue_created_carries_its_data(fake_api: FakeAPI):
+    (created,) = issue_payloads(
+        fake_api,
+        {
+            "action": "created",
+            "resource_id": ISSUE_ID,
+            "data": {"title": "Flaky export", "priority": "high"},
+        },
+    )
+
+    assert isinstance(created, IssueCreatedPayload)
+    assert created.action is IssueEventAction.CREATED
+    assert (created.issue_id, created.resource_id) == (
+        UUID(ISSUE_ID),
+        UUID(ISSUE_ID),
+    )
+    assert created.revision == 2
+    assert created.data == {"title": "Flaky export", "priority": "high"}
+
+
+def test_issue_updated_carries_its_changes(fake_api: FakeAPI):
+    (updated,) = issue_payloads(
+        fake_api,
+        {
+            "action": "updated",
+            "changes": {
+                "status": {"before": "open", "after": "closed"},
+                # A side that was empty is dropped with the other nulls.
+                "closed_at": {"after": "2026-11-10T05:00:00Z"},
+            },
+        },
+    )
+
+    assert isinstance(updated, IssueUpdatedPayload)
+    assert updated.changes["status"].before == "open"
+    assert updated.changes["status"].after == "closed"
+    assert updated.changes["closed_at"].before is None
+    assert updated.resource_id is None
+
+
+def test_issue_deleted_carries_only_the_shared_fields(fake_api: FakeAPI):
+    (deleted,) = issue_payloads(fake_api, {"action": "deleted"})
+
+    assert isinstance(deleted, IssueDeletedPayload)
+    assert deleted.issue_id == UUID(ISSUE_ID)
+    assert deleted.model_extra == {}
+
+
+def test_issue_request_created_carries_the_request(fake_api: FakeAPI):
+    (created,) = issue_payloads(
+        fake_api,
+        {
+            "action": "request.created",
+            "resource_id": REQUEST_ID,
+            "request": REQUEST,
+        },
+    )
+
+    assert isinstance(created, IssueRequestCreatedPayload)
+    request = created.request
+    assert (request.id, request.issue_id) == (UUID(REQUEST_ID), UUID(ISSUE_ID))
+    assert request.status is IssueRequestStatus.OPEN
+    assert (request.resolution, request.issue_member_id) == (None, None)
+    assert request.links[0].url == "https://example.com/pr/1"
+
+
+def test_issue_request_updated_carries_the_request_and_changes(
+    fake_api: FakeAPI,
+):
+    (updated,) = issue_payloads(
+        fake_api,
+        {
+            "action": "request.updated",
+            "resource_id": REQUEST_ID,
+            "request": {
+                **REQUEST,
+                "status": "resolved",
+                "resolution": "Shipped.",
+                "revision": 2,
+            },
+            "changes": {"status": {"before": "open", "after": "resolved"}},
+        },
+    )
+
+    assert isinstance(updated, IssueRequestUpdatedPayload)
+    assert updated.request.status is IssueRequestStatus.RESOLVED
+    assert updated.request.resolution == "Shipped."
+    assert updated.changes["status"].after == "resolved"
+
+
+def test_an_issue_member_missing_its_own_field_does_not_decode(
+    fake_api: FakeAPI,
+):
+    with pytest.raises(PydanticValidationError):
+        issue_payloads(fake_api, {"action": "request.created"})
+
+
+def test_an_unknown_issue_action_keeps_the_row(fake_api: FakeAPI):
+    unknown, deleted = issue_payloads(
+        fake_api,
+        {"action": "request.reopened", "resource_id": REQUEST_ID, "by": "x"},
+        {"action": "deleted"},
+    )
+
+    assert isinstance(unknown, UnknownIssuePayload)
+    assert (unknown.action, unknown.resource_id) == (
+        "request.reopened",
+        UUID(REQUEST_ID),
+    )
+    assert unknown.model_extra == {"by": "x"}
+    assert isinstance(deleted, IssueDeletedPayload)

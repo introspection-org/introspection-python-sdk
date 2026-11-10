@@ -355,37 +355,6 @@ async def test_async_navigation(fake_api: FakeAPI):
     assert fake_api.last_request.params.get("assignee_member_id") == MEMBER_ID
 
 
-def test_a_row_from_an_older_plane_still_parses(fake_api: FakeAPI) -> None:
-    """A plane that predates the narrower row sends the removed fields and
-    the reviewers under their old name."""
-    row = annotation()
-    del row["reviewer_member_ids"]
-    row.update(
-        {
-            "human_commenter_member_ids": [MEMBER_ID],
-            "has_human_comment": True,
-            "has_comment": True,
-            "latest_comment": "Looks wrong.",
-            "latest_comment_member_id": MEMBER_ID,
-            "latest_comment_actor_member_id": MEMBER_ID,
-            "latest_comment_actor_type": "member",
-            "annotator_member_ids": [MEMBER_ID],
-            "commenter_member_ids": [MEMBER_ID],
-        }
-    )
-    fake_api.add("GET", "/v1/annotations", json_body=page([row]))
-
-    state = (
-        Annotations(fake_api.client(), fake_api.client())
-        .list()
-        .page()
-        .records[0]
-    )
-
-    assert state.reviewer_member_ids == [UUID(MEMBER_ID)]
-    assert state.comment_count == 0
-
-
 def test_a_row_names_its_reviewers(fake_api: FakeAPI) -> None:
     fake_api.add("GET", "/v1/annotations", json_body=page([annotation()]))
 
@@ -491,13 +460,18 @@ def test_a_dataset_size_is_the_lists_total(fake_api: FakeAPI) -> None:
     listed = (
         Annotations(fake_api.client(), fake_api.client())
         .list(
-            label="needs-review", limit=1, include_total=True, lookback_days=7
+            label="needs-review",
+            status="reviewed",
+            limit=1,
+            include_total=True,
+            lookback_days=7,
         )
         .page()
     )
 
     assert dict(fake_api.last_request.params) == {
         "label": "needs-review",
+        "status": "reviewed",
         "limit": "1",
         "include_total": "true",
         "lookback_days": "7",
@@ -515,3 +489,16 @@ async def test_async_list_sends_lookback_days(fake_api: FakeAPI) -> None:
 
     assert fake_api.last_request.params.get("lookback_days") == "7"
     assert "include_total" not in fake_api.last_request.params
+
+
+def test_list_repeats_the_label_filter(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([]))
+
+    Annotations(fake_api.client(), fake_api.client()).list(
+        label=["needs-review", "flaky"]
+    ).page()
+
+    assert fake_api.last_request.params.get_list("label") == [
+        "needs-review",
+        "flaky",
+    ]

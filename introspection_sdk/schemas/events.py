@@ -18,6 +18,7 @@ All reads share the standard cursor envelope
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
@@ -29,6 +30,7 @@ from introspection_sdk.schemas.automations import (
     OpenSkipReason,
     OpenTriggerType,
 )
+from introspection_sdk.schemas.issues import IssueRequest
 
 __all__ = [
     "AnnotationEvent",
@@ -45,6 +47,16 @@ __all__ = [
     "FeedbackPayload",
     "IntrospectionEventBase",
     "IntrospectionEventName",
+    "IssueActivityBasePayload",
+    "IssueActivityEvent",
+    "IssueActivityPayload",
+    "IssueCreatedPayload",
+    "IssueDeletedPayload",
+    "IssueEventAction",
+    "IssueFieldChange",
+    "IssueRequestCreatedPayload",
+    "IssueRequestUpdatedPayload",
+    "IssueUpdatedPayload",
     "JudgeType",
     "JudgementBasePayload",
     "JudgementEgressPayload",
@@ -63,6 +75,7 @@ __all__ = [
     "TrackEvent",
     "TrackPayload",
     "UnknownEvent",
+    "UnknownIssuePayload",
     "UnknownJudgementPayload",
 ]
 
@@ -79,6 +92,7 @@ class IntrospectionEventName(StrEnum):
     OBSERVATION = "introspection.observation"
     OBSERVATION_CLUSTERING_RUN = "introspection.observation_clustering.run"
     JUDGEMENT = "introspection.judgement"
+    ISSUE = "introspection.issue"
     PATTERN = "introspection.pattern"
     PATTERN_ASSIGNMENT = "introspection.pattern.assignment"
     AUTOMATION_TRIGGERED = "introspection.automation.triggered"
@@ -138,6 +152,20 @@ class _ApiModel(BaseModel):
     # ``extra="allow"`` keeps unknown server fields; ``protected_namespaces=()``
     # silences the ``model_`` warning for wire fields like ``model``.
     model_config = ConfigDict(extra="allow", protected_namespaces=())
+
+
+def tag_or_unknown(field: str, known: frozenset[str]) -> Callable[[Any], str]:
+    """A union discriminator on ``field``: a value outside ``known`` selects
+    the union's ``unknown`` member, so a member the API adds later decodes."""
+
+    def tag(payload: Any) -> str:
+        if isinstance(payload, dict):
+            value = payload.get(field)
+        else:
+            value = getattr(payload, field, None)
+        return value if value in known else "unknown"
+
+    return tag
 
 
 class IntrospectionEventBase(_ApiModel):
@@ -295,7 +323,7 @@ class JudgementBasePayload(_ApiModel):
 class JudgementVerdictPayload(JudgementBasePayload):
     """A recipe judge's verdict on a conversation."""
 
-    kind: Literal["verdict"] = "verdict"
+    kind: Literal["verdict"]
     reasoning: str | None = None
     definition_hash: str | None = None
     engine_version: str | None = None
@@ -310,7 +338,7 @@ class JudgementVerdictPayload(JudgementBasePayload):
 class JudgementEgressPayload(JudgementBasePayload):
     """The egress policy gate's decision on one outbound request."""
 
-    kind: Literal["egress"] = "egress"
+    kind: Literal["egress"]
     #: Each answered question's probability of true, 0-100.
     scores: dict[str, int] | None = None
     questions: dict[str, str] | None = None
@@ -329,33 +357,98 @@ class UnknownJudgementPayload(JudgementBasePayload):
     kind: str
 
 
-#: ``result_schema`` of an egress decision on a payload that names no kind.
-EGRESS_RESULT_SCHEMA = "question_scores.v1"
-
-
-def judgement_kind(payload: Any) -> str:
-    """The union tag of a judgement payload.
-
-    A data plane that predates ``kind`` sends one flat payload, told apart
-    by its ``result_schema``.
-    """
-    if not isinstance(payload, dict):
-        kind = getattr(payload, "kind", None)
-        return kind if kind in ("verdict", "egress") else "unknown"
-    kind = payload.get("kind")
-    if kind is None:
-        legacy_egress = payload.get("result_schema") == EGRESS_RESULT_SCHEMA
-        return "egress" if legacy_egress else "verdict"
-    return kind if kind in ("verdict", "egress") else "unknown"
-
-
 JudgementPayload = Annotated[
     Annotated[JudgementVerdictPayload, Tag("verdict")]
     | Annotated[JudgementEgressPayload, Tag("egress")]
     | Annotated[UnknownJudgementPayload, Tag("unknown")],
-    Discriminator(judgement_kind),
+    Discriminator(tag_or_unknown("kind", frozenset({"verdict", "egress"}))),
 ]
 """One judgement, discriminated by its ``kind`` (``verdict`` or ``egress``)."""
+
+
+class IssueEventAction(StrEnum):
+    """What an ``introspection.issue`` event records."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    DELETED = "deleted"
+    REQUEST_CREATED = "request.created"
+    REQUEST_UPDATED = "request.updated"
+
+
+class IssueFieldChange(_ApiModel):
+    """One authored field's value on either side of an update. A side that
+    was empty is absent."""
+
+    before: Any = None
+    after: Any = None
+
+
+class IssueActivityBasePayload(_ApiModel):
+    """What every issue event carries, whichever action it records."""
+
+    issue_id: UUID
+    #: The issue for an issue action, the request for a ``request.*`` action.
+    resource_id: UUID | None = None
+    #: Revision of the resource the action wrote.
+    revision: int | None = None
+
+
+class IssueCreatedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.CREATED]
+    #: The authored fields the issue was created with.
+    data: dict[str, Any]
+
+
+class IssueUpdatedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.UPDATED]
+    #: Each changed field, by name.
+    changes: dict[str, IssueFieldChange]
+
+
+class IssueDeletedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.DELETED]
+
+
+class IssueRequestCreatedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.REQUEST_CREATED]
+    #: The request as created.
+    request: IssueRequest
+
+
+class IssueRequestUpdatedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.REQUEST_UPDATED]
+    #: The request after the update.
+    request: IssueRequest
+    #: Each changed field, by name.
+    changes: dict[str, IssueFieldChange]
+
+
+class UnknownIssuePayload(IssueActivityBasePayload):
+    """Fallback for an issue ``action`` this SDK version predates: the
+    shared fields are typed and the action's own are kept as extras."""
+
+    action: str
+
+
+IssueActivityPayload = Annotated[
+    Annotated[IssueCreatedPayload, Tag(IssueEventAction.CREATED)]
+    | Annotated[IssueUpdatedPayload, Tag(IssueEventAction.UPDATED)]
+    | Annotated[IssueDeletedPayload, Tag(IssueEventAction.DELETED)]
+    | Annotated[
+        IssueRequestCreatedPayload, Tag(IssueEventAction.REQUEST_CREATED)
+    ]
+    | Annotated[
+        IssueRequestUpdatedPayload, Tag(IssueEventAction.REQUEST_UPDATED)
+    ]
+    | Annotated[UnknownIssuePayload, Tag("unknown")],
+    Discriminator(
+        tag_or_unknown(
+            "action", frozenset(action.value for action in IssueEventAction)
+        )
+    ),
+]
+"""One issue event, discriminated by its ``action``."""
 
 
 class AutomationTriggeredPayload(_ApiModel):
@@ -441,6 +534,13 @@ class AnnotationEvent(IntrospectionEventBase):
     payload: AnnotationPayload
 
 
+class IssueActivityEvent(IntrospectionEventBase):
+    """An issue or issue-request change (``event_name=introspection.issue``)."""
+
+    event_name: Literal[IntrospectionEventName.ISSUE]
+    payload: IssueActivityPayload
+
+
 class JudgementEvent(IntrospectionEventBase):
     """A judge evaluation (``event_name=introspection.judgement``)."""
 
@@ -482,6 +582,7 @@ Event = Annotated[
     | ClusteringRunEvent
     | FeedbackEvent
     | AnnotationEvent
+    | IssueActivityEvent
     | JudgementEvent
     | AutomationTriggeredEvent
     | AutomationSkippedEvent

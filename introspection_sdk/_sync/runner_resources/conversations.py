@@ -58,9 +58,6 @@ as it streams. The JSON-envelope export (``json``) was removed.
 """
 
 
-JSONL_EXPORT_HEADERS = JSONL_ACCEPT_HEADERS
-
-
 #: How many items ``retrieve()`` scans, newest-first, looking for the latest
 #: LLM turn. The scan used to be unbounded: it drove the auto-paging
 #: ``Pager`` and, on a conversation whose recent items are all tool or
@@ -121,7 +118,7 @@ def _export_headers(format: ConversationExportFormat) -> dict[str, str]:
         return TRAJECTORY_ACCEPT_HEADERS
     if format == "arrow":
         return ARROW_ACCEPT_HEADERS
-    return JSONL_EXPORT_HEADERS
+    return JSONL_ACCEPT_HEADERS
 
 
 ConversationResolution = Literal[
@@ -593,16 +590,14 @@ class Conversations:
         span-list export; the JSON-envelope ``export_json`` was removed.
 
         ``include=["annotations"]`` sets ``annotation`` on each annotated
-        span, and ``"comments"`` with it fills that row's ``comments``. A
-        data plane that predates the JSON-lines form answers 406, which
-        raises.
+        span, and ``"comments"`` with it fills that row's ``comments``.
         """
         path = _export_path(conversation_id)
         spans = iter_jsonl(
             self._http.stream_bytes(
                 path,
                 params=build_export_params(**params),
-                headers=JSONL_EXPORT_HEADERS,
+                headers=JSONL_ACCEPT_HEADERS,
             )
         )
         for span in spans:

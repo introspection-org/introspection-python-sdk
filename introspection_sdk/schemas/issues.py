@@ -85,6 +85,9 @@ OpenIssueStatus = Annotated[
 OpenIssuePriority = Annotated[
     IssuePriority | str, Field(union_mode="left_to_right")
 ]
+OpenIssueRequestStatus = Annotated[
+    IssueRequestStatus | str, Field(union_mode="left_to_right")
+]
 OpenTaskStatus = Annotated[TaskStatus | str, Field(union_mode="left_to_right")]
 
 IssueMetadataValue = str | int | float | bool | None
@@ -129,6 +132,30 @@ class IssueOpenRequest(ApiModel):
     question: str
     assignee_id: UUID
     created_at: datetime
+
+
+class IssueRequest(ApiModel):
+    """One human request on an issue, as an ``introspection.issue`` event
+    records it."""
+
+    id: UUID
+    issue_id: UUID
+    task_id: UUID
+    question: str
+    assignee_id: UUID
+    status: OpenIssueRequestStatus
+    resolution: str | None = None
+    revision: int
+    issue_revision: int
+    issue_member_id: UUID | None = None
+    """Owning member of the parent issue; ``None`` for a project-owned
+    (Operator) issue."""
+    files: list[IssueFile]
+    links: list[IssueLink]
+    events: list[IssueEventReference]
+    spans: list[IssueSpanReference]
+    created_at: datetime
+    updated_at: datetime
 
 
 class Issue(ApiModel):
@@ -263,12 +290,14 @@ __all__ = [
     "IssueOpenRequest",
     "IssueOwner",
     "IssuePriority",
+    "IssueRequest",
     "IssueRequestMutation",
     "IssueRequestStatus",
     "IssueSpanReference",
     "IssueStatus",
     "IssueUpdate",
     "OpenIssuePriority",
+    "OpenIssueRequestStatus",
     "OpenIssueStatus",
     "OpenTaskStatus",
 ]

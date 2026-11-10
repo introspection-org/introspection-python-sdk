@@ -123,6 +123,7 @@ def pattern_assignment_event(**overrides: Any) -> dict[str, Any]:
 def judgement_event(**overrides: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "judgement_id": "jdg-1",
+        "kind": "verdict",
         "judge_id": "judge-1",
         "result": "pass",
         "definition_hash": "abc",

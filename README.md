@@ -639,6 +639,17 @@ one changes it, last write wins. `status`, `owner`, `task_status` and `metadata`
 filters repeat on the query string. Runnable:
 [`issues.py`](examples/introspection_examples/api/issues.py).
 
+Each change to an issue or one of its requests is an `introspection.issue`
+event. Its `payload` is a union on `action`: `created` carries `data`,
+`updated` carries `changes` (field name to `before` / `after`), `deleted`
+nothing more, and `request.created` / `request.updated` carry the `request`
+(`IssueRequest`), the latter with its `changes`:
+
+```python
+for event in client.events.list("introspection.issue"):
+    print(event.payload.action, event.payload.issue_id)
+```
+
 ## Connect apps for a member
 
 `client.connections` / `runner.connections` manage the apps (Gmail, Slack, …)

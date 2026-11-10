@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 AnnotationInclude = Literal["comments"]
 """Optional expansions of a listed row, passed as a repeated ``include``
@@ -44,17 +44,11 @@ class AnnotationState(AnnotationTarget):
     model_config = ConfigDict(extra="allow")
 
     conversation_id: str | None = None
-    labels: list[str] = Field(default_factory=list)
-    assignee_member_ids: list[UUID] = Field(default_factory=list)
-    #: Members whose comment completed a review. A data plane that predates
-    #: the rename sends it as ``human_commenter_member_ids``.
-    reviewer_member_ids: list[UUID] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices(
-            "reviewer_member_ids", "human_commenter_member_ids"
-        ),
-    )
-    comment_count: int = 0
+    labels: list[str]
+    assignee_member_ids: list[UUID]
+    #: Members whose comment completed a review.
+    reviewer_member_ids: list[UUID]
+    comment_count: int
     updated_at: datetime
     updated_by_member_id: UUID
     assignment_event_id: UUID | None = None
@@ -71,7 +65,7 @@ class AnnotationNavigation(BaseModel):
     current: AnnotationState | None = None
     next: AnnotationState | None = None
     current_position: int | None = None
-    total_count: int = 0
+    total_count: int
 
 
 __all__ = [

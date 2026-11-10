@@ -84,6 +84,12 @@ def _reject_conflicting_filters(
         )
 
 
+def _labels(label: str | Sequence[str] | None) -> str | list[str] | None:
+    if label is None or isinstance(label, str):
+        return label
+    return list(label)
+
+
 def _navigation_params(
     trace_id: str,
     span_id: str,
@@ -120,7 +126,8 @@ class Annotations:
         trace_id: str | None = None,
         span_id: str | None = None,
         conversation_id: str | None = None,
-        label: str | None = None,
+        label: str | Sequence[str] | None = None,
+        status: AnnotationStatus | None = None,
         limit: int | None = None,
         next: str | None = None,
         include_total: bool | None = None,
@@ -152,7 +159,8 @@ class Annotations:
                     "trace_id": trace_id,
                     "span_id": span_id,
                     "conversation_id": conversation_id,
-                    "label": label,
+                    "label": _labels(label),
+                    "status": status,
                     "limit": limit,
                     "next": cursor,
                     "include_total": include_total,
@@ -297,7 +305,8 @@ class AsyncAnnotations:
         trace_id: str | None = None,
         span_id: str | None = None,
         conversation_id: str | None = None,
-        label: str | None = None,
+        label: str | Sequence[str] | None = None,
+        status: AnnotationStatus | None = None,
         limit: int | None = None,
         next: str | None = None,
         include_total: bool | None = None,
@@ -335,7 +344,8 @@ class AsyncAnnotations:
                     "trace_id": trace_id,
                     "span_id": span_id,
                     "conversation_id": conversation_id,
-                    "label": label,
+                    "label": _labels(label),
+                    "status": status,
                     "limit": limit,
                     "next": cursor,
                     "include_total": include_total,
