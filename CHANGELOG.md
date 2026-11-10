@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.39.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.38.0...v0.39.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* model the project git_origin ([#240](https://github.com/introspection-org/introspection-python-sdk/issues/240))
+
+### Reverts
+
+* model the project git_origin ([#240](https://github.com/introspection-org/introspection-python-sdk/issues/240)) ([924ff16](https://github.com/introspection-org/introspection-python-sdk/commit/924ff16d3b997b6806b8da0a81dcf529ed747f36))
+
 ## [0.38.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.37.0...v0.38.0) (2026-11-09)
 
 
