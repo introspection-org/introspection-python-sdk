@@ -30,7 +30,7 @@ __all__ = [
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
 
 
 class TrajectoryToolCall(_ApiModel):
