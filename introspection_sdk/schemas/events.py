@@ -261,7 +261,6 @@ class JudgementPayload(_ApiModel):
     judge_type: str | None = None
     #: ``verdict.v1`` or ``question_scores.v1``.
     result_schema: str | None = None
-    runtime_slug: str | None = None
     #: The verdict.
     result: str | None = None
     #: Whether the judgement ran (``ok``/``error``), distinct from the verdict.
@@ -269,27 +268,13 @@ class JudgementPayload(_ApiModel):
     error_class: str | None = None
     error_message: str | None = None
     source_component: str | None = None
-    reasoning: str | None = None
     definition_hash: str | None = None
     engine_version: str | None = None
     judge_provider: str | None = None
     judge_model: str | None = None
     contract_version: str | None = None
     sequence_hash: str | None = None
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    total_tokens: int | None = None
     experiment_arm_id: UUID | None = None
-    #: Each answered question's probability of true, 0-100.
-    scores: dict[str, int] | None = None
-    #: An egress judgement's questions, by name.
-    questions: dict[str, str] | None = None
-    policy_id: str | None = None
-    policy_action: str | None = None
-    reason: str | None = None
-    request_host: str | None = None
-    request_method: str | None = None
-    request_path: str | None = None
 
 
 class AutomationTriggeredPayload(_ApiModel):
