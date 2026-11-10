@@ -15,18 +15,21 @@ import pydantic
 import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
-from introspection_sdk._errors import ConflictError, IntrospectionAPIError
+from introspection_sdk._errors import (
+    ConflictError,
+    IntrospectionAPIError,
+    NotFoundError,
+)
 from introspection_sdk.runner_resources.issues import AsyncIssues, Issues
 from introspection_sdk.schemas.issues import (
     Issue,
     IssueEventReference,
     IssueFile,
     IssueLink,
-    IssueMutation,
+    IssueMember,
+    IssueMemberRelation,
     IssueOwner,
     IssuePriority,
-    IssueRequestMutation,
-    IssueRequestStatus,
     IssueSpanReference,
     IssueStatus,
     IssueUpdate,
@@ -45,13 +48,46 @@ from .conftest import (
 ISSUE_ID = "0199a1b2-0000-7000-8000-0000000000e1"
 ISSUE_PATH = f"/v1/issues/{ISSUE_ID}"
 EVENT_ID = "0199a1b2-0000-7000-8000-0000000000e2"
-REQUEST_ID = "0199a1b2-0000-7000-8000-0000000000e3"
+COMMENT_ID = "0199a1b2-0000-7000-8000-0000000000e3"
+REVIEWER_ID = "0199a1b2-0000-7000-8000-0000000000e4"
 TRACE_ID = "0af7651916cd43dd8448eb211c80319c"
 SPAN_ID = "b7ad6b7169203331"
 
 
+ATTACHMENTS: dict[str, Any] = {
+    "files": [
+        {
+            "file_id": FILE_ID,
+            "name": "trace.json",
+            "checksum": "sha256:abc",
+            "source_event_ids": [EVENT_ID],
+        }
+    ],
+    "links": [{"url": "https://github.com/acme/app/pull/7", "title": "PR"}],
+    "events": [{"event_id": EVENT_ID}],
+    "spans": [{"trace_id": TRACE_ID, "span_id": SPAN_ID}],
+}
+MEMBERS: dict[str, Any] = {
+    "members": [
+        {"member_id": MEMBER_ID, "relation": "creator"},
+        {"member_id": MEMBER_ID, "relation": "assignee"},
+        {"member_id": REVIEWER_ID, "relation": "reviewer"},
+    ]
+}
+COMMENT: dict[str, Any] = {
+    "id": COMMENT_ID,
+    "issue_id": ISSUE_ID,
+    "comment": "Ship the retry?",
+    "member_id": MEMBER_ID,
+    "actor_member_id": None,
+    "actor_member_type": None,
+    "created_at": "2026-10-02T11:30:00Z",
+}
+
+
 def issue_body(**over: Any) -> dict[str, Any]:
-    """Every field the DP ``Issue`` schema documents."""
+    """The brief the DP ``Issue`` schema returns: every list not included
+    is null."""
     body: dict[str, Any] = {
         "id": ISSUE_ID,
         "org_id": ORG_ID,
@@ -63,34 +99,22 @@ def issue_body(**over: Any) -> dict[str, Any]:
         "priority": "high",
         "status": "waiting",
         "revision": 3,
-        "files": [
-            {
-                "file_id": FILE_ID,
-                "name": "trace.json",
-                "checksum": "sha256:abc",
-                "source_event_ids": [EVENT_ID],
-            }
-        ],
-        "links": [
-            {"url": "https://github.com/acme/app/pull/7", "title": "PR"}
-        ],
-        "events": [{"event_id": EVENT_ID}],
-        "spans": [{"trace_id": TRACE_ID, "span_id": SPAN_ID}],
         "tags": ["customer:acme"],
         "metadata": {"severity": 2, "flaky": True, "ratio": 0.5, "x": None},
         "display_index": 42,
         "task_id": TASK_ID,
         "task_status": "awaiting_user",
         "member_id": None,
+        "created_by_member_id": MEMBER_ID,
+        "assignee_member_id": MEMBER_ID,
+        "reviewer_member_id": None,
         "closed_at": None,
-        "open_requests": [
-            {
-                "id": REQUEST_ID,
-                "question": "Ship the retry?",
-                "assignee_id": MEMBER_ID,
-                "created_at": "2026-10-02T11:00:00Z",
-            }
-        ],
+        "members": None,
+        "links": None,
+        "files": None,
+        "events": None,
+        "spans": None,
+        "comments": None,
     }
     body.update(over)
     return body
@@ -130,30 +154,18 @@ async def test_async_client_exposes_issues():
         await client.shutdown()
 
 
-def test_get_decodes_every_documented_field(fake_api: FakeAPI):
+def test_get_decodes_the_brief_and_leaves_the_lists_none(fake_api: FakeAPI):
     fake_api.add("GET", ISSUE_PATH, json_body=issue_body())
 
     issue = Issues(fake_api.client()).get(UUID(ISSUE_ID))
 
     assert fake_api.last_request.method == "GET"
+    assert "include" not in fake_api.last_request.params
     assert issue.model_extra == {}
     assert issue.id == UUID(ISSUE_ID)
     assert issue.priority is IssuePriority.HIGH
     assert issue.status is IssueStatus.WAITING
     assert issue.revision == 3
-    assert issue.files == [
-        IssueFile(
-            file_id=UUID(FILE_ID),
-            name="trace.json",
-            checksum="sha256:abc",
-            source_event_ids=[UUID(EVENT_ID)],
-        )
-    ]
-    assert issue.links[0].url == "https://github.com/acme/app/pull/7"
-    assert issue.events == [IssueEventReference(event_id=UUID(EVENT_ID))]
-    assert issue.spans == [
-        IssueSpanReference(trace_id=TRACE_ID, span_id=SPAN_ID)
-    ]
     assert issue.metadata == {
         "severity": 2,
         "flaky": True,
@@ -164,37 +176,126 @@ def test_get_decodes_every_documented_field(fake_api: FakeAPI):
     assert issue.task_id == UUID(TASK_ID)
     assert issue.task_status is TaskStatus.AWAITING_USER
     assert issue.member_id is None
+    assert issue.created_by_member_id == UUID(MEMBER_ID)
+    assert issue.assignee_member_id == UUID(MEMBER_ID)
+    assert issue.reviewer_member_id is None
     assert issue.closed_at is None
-    (request,) = issue.open_requests
-    assert request.assignee_id == UUID(MEMBER_ID)
-    assert request.created_at == datetime(2026, 10, 2, 11, tzinfo=UTC)
-
-
-def test_minimal_issue_and_open_enums(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/issues/minimal",
-        json_body={
-            "id": ISSUE_ID,
-            "org_id": ORG_ID,
-            "project_id": PROJECT_ID,
-            "title": "t",
-            "description": "d",
-            "status": "triaged",
-            "priority": "someday",
-            "task_status": "hibernating",
-        },
+    assert issue.created_at == datetime(2026, 10, 1, 10, tzinfo=UTC)
+    assert (issue.members, issue.comments) == (None, None)
+    assert (issue.links, issue.files, issue.events, issue.spans) == (
+        None,
+        None,
+        None,
+        None,
     )
 
-    issue = Issues(fake_api.client()).get("minimal")
+
+def test_get_includes_members(fake_api: FakeAPI):
+    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(**MEMBERS))
+
+    issue = Issues(fake_api.client()).get(ISSUE_ID, include=["members"])
+
+    assert fake_api.last_request.params.get_list("include") == ["members"]
+    assert issue.members == [
+        IssueMember(
+            member_id=UUID(MEMBER_ID), relation=IssueMemberRelation.CREATOR
+        ),
+        IssueMember(
+            member_id=UUID(MEMBER_ID), relation=IssueMemberRelation.ASSIGNEE
+        ),
+        IssueMember(
+            member_id=UUID(REVIEWER_ID), relation=IssueMemberRelation.REVIEWER
+        ),
+    ]
+    assert issue.files is None
+
+
+def test_get_includes_attachments(fake_api: FakeAPI):
+    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(**ATTACHMENTS))
+
+    issue = Issues(fake_api.client()).get(ISSUE_ID, include=["attachments"])
+
+    assert fake_api.last_request.params.get_list("include") == ["attachments"]
+    assert issue.files == [
+        IssueFile(
+            file_id=UUID(FILE_ID),
+            name="trace.json",
+            checksum="sha256:abc",
+            source_event_ids=[UUID(EVENT_ID)],
+        )
+    ]
+    assert issue.links is not None
+    assert issue.links[0].url == "https://github.com/acme/app/pull/7"
+    assert issue.events == [IssueEventReference(event_id=UUID(EVENT_ID))]
+    assert issue.spans == [
+        IssueSpanReference(trace_id=TRACE_ID, span_id=SPAN_ID)
+    ]
+    assert issue.members is None
+
+
+def test_get_includes_comments(fake_api: FakeAPI):
+    agent_comment = {
+        **COMMENT,
+        "comment": "Retry shipped.",
+        "actor_member_id": REVIEWER_ID,
+        "actor_member_type": "agent",
+    }
+    fake_api.add(
+        "GET",
+        ISSUE_PATH,
+        json_body=issue_body(comments=[COMMENT, agent_comment]),
+    )
+
+    issue = Issues(fake_api.client()).get(
+        ISSUE_ID, include=["members", "comments"]
+    )
+
+    assert fake_api.last_request.params.get_list("include") == [
+        "members",
+        "comments",
+    ]
+    assert issue.comments is not None
+    first, second = issue.comments
+    assert (first.id, first.issue_id) == (UUID(COMMENT_ID), UUID(ISSUE_ID))
+    assert (first.comment, first.member_id) == (
+        "Ship the retry?",
+        UUID(MEMBER_ID),
+    )
+    assert first.actor_member_id is None
+    assert (second.actor_member_id, second.actor_member_type) == (
+        UUID(REVIEWER_ID),
+        "agent",
+    )
+
+
+def test_open_enums_decode_an_unknown_value(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        ISSUE_PATH,
+        json_body=issue_body(
+            status="triaged",
+            priority="someday",
+            task_status="hibernating",
+            members=[{"member_id": MEMBER_ID, "relation": "watcher"}],
+        ),
+    )
+
+    issue = Issues(fake_api.client()).get(ISSUE_ID)
 
     assert issue.status == "triaged"
     assert not isinstance(issue.status, IssueStatus)
     assert issue.priority == "someday"
     assert issue.task_status == "hibernating"
-    assert issue.revision == 1
-    assert issue.files == issue.links == issue.open_requests == []
-    assert issue.metadata == {}
+    assert issue.members is not None
+    assert issue.members[0].relation == "watcher"
+
+
+def test_an_issue_without_a_field_the_server_always_sends_does_not_decode():
+    body = issue_body()
+    del body["revision"]
+
+    with pytest.raises(pydantic.ValidationError):
+        Issue.model_validate(body)
 
 
 def test_list_repeats_params_and_paginates(fake_api: FakeAPI):
@@ -214,8 +315,9 @@ def test_list_repeats_params_and_paginates(fake_api: FakeAPI):
         for issue in Issues(fake_api.client()).list(
             status=[IssueStatus.OPEN, "waiting"],
             owner=[IssueOwner.PROJECT, IssueOwner.ME],
-            assigned_to_me=True,
-            has_open_requests=False,
+            relation=[IssueMemberRelation.ASSIGNEE, "reviewer"],
+            member_id=UUID(MEMBER_ID),
+            include=["members", "attachments"],
             task_status=[TaskStatus.RUNNING, TaskStatus.IDLE],
             exclude_task_status=[TaskStatus.FAILED],
             display_index=42,
@@ -235,8 +337,11 @@ def test_list_repeats_params_and_paginates(fake_api: FakeAPI):
         ("status", "waiting"),
         ("owner", "project"),
         ("owner", "me"),
-        ("assigned_to_me", "true"),
-        ("has_open_requests", "false"),
+        ("relation", "assignee"),
+        ("relation", "reviewer"),
+        ("member_id", MEMBER_ID),
+        ("include", "members"),
+        ("include", "attachments"),
         ("task_status", "running"),
         ("task_status", "idle"),
         ("exclude_task_status", "failed"),
@@ -294,6 +399,38 @@ def test_create_sends_the_body(fake_api: FakeAPI):
     }
 
 
+def test_create_sets_the_people_and_asks_for_lists(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/issues",
+        status=201,
+        json_body=issue_body(**MEMBERS, **ATTACHMENTS),
+    )
+
+    issue = Issues(fake_api.client()).create(
+        title="t",
+        description="d",
+        task_id=TASK_ID,
+        assignee_member_id=MEMBER_ID,
+        reviewer_member_id=UUID(REVIEWER_ID),
+        follower_member_ids=[UUID(REVIEWER_ID)],
+        include=["members", "attachments"],
+    )
+
+    sent = fake_api.last_request
+    assert sent.params.get_list("include") == ["members", "attachments"]
+    assert sent.json() == {
+        "title": "t",
+        "description": "d",
+        "task_id": TASK_ID,
+        "assignee_member_id": MEMBER_ID,
+        "reviewer_member_id": REVIEWER_ID,
+        "follower_member_ids": [REVIEWER_ID],
+    }
+    assert issue.members is not None
+    assert issue.files is not None
+
+
 def test_create_omits_unset_fields(fake_api: FakeAPI):
     fake_api.add("POST", "/v1/issues", status=201, json_body=issue_body())
 
@@ -337,6 +474,36 @@ def test_update_sends_only_set_fields(fake_api: FakeAPI):
     }
 
 
+def test_update_clears_a_person_with_null_and_leaves_an_omitted_one(
+    fake_api: FakeAPI,
+):
+    fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body(**MEMBERS))
+    api = Issues(fake_api.client())
+
+    issue = api.update(
+        ISSUE_ID,
+        IssueUpdate(
+            assignee_member_id=None,
+            reviewer_member_id=UUID(REVIEWER_ID),
+            follower_member_ids=[],
+        ),
+        include=["members"],
+    )
+
+    sent = fake_api.last_request
+    assert sent.json() == {
+        "assignee_member_id": None,
+        "reviewer_member_id": REVIEWER_ID,
+        "follower_member_ids": [],
+    }
+    assert sent.params.get_list("include") == ["members"]
+    assert issue.members is not None
+
+    api.update(ISSUE_ID, IssueUpdate(status=IssueStatus.WAITING))
+    assert fake_api.last_request.json() == {"status": "waiting"}
+    assert "include" not in fake_api.last_request.params
+
+
 def test_update_sends_an_empty_list_and_an_explicit_null(fake_api: FakeAPI):
     fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
 
@@ -353,63 +520,6 @@ def test_update_sends_an_empty_list_and_an_explicit_null(fake_api: FakeAPI):
     }
 
 
-def test_update_creates_a_request(fake_api: FakeAPI):
-    fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
-
-    Issues(fake_api.client()).update(
-        ISSUE_ID,
-        IssueMutation(
-            request=IssueRequestMutation(
-                id=UUID(REQUEST_ID),
-                question="Ship the retry?",
-                assignee_id=UUID(MEMBER_ID),
-            )
-        ),
-    )
-
-    sent = fake_api.last_request
-    assert "If-Match" not in sent.headers
-    assert sent.json() == {
-        "request": {
-            "id": REQUEST_ID,
-            "question": "Ship the retry?",
-            "assignee_id": MEMBER_ID,
-        }
-    }
-
-
-def test_update_resolves_a_request(fake_api: FakeAPI):
-    fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body(open_requests=[]))
-
-    issue = Issues(fake_api.client()).update(
-        ISSUE_ID,
-        IssueMutation(
-            request=IssueRequestMutation(
-                id=UUID(REQUEST_ID),
-                status=IssueRequestStatus.RESOLVED,
-                resolution="Shipped in #7",
-            )
-        ),
-    )
-
-    assert issue.open_requests == []
-    assert fake_api.last_request.json() == {
-        "request": {
-            "id": REQUEST_ID,
-            "status": "resolved",
-            "resolution": "Shipped in #7",
-        }
-    }
-
-
-def test_a_new_request_mints_a_uuid7():
-    mutation = IssueRequestMutation(question="q", assignee_id=UUID(MEMBER_ID))
-
-    assert mutation.id.version == 7
-    body = mutation.model_dump(mode="json", exclude_none=True)
-    assert body["id"] == str(mutation.id)
-
-
 def test_an_empty_update_sends_an_empty_body(fake_api: FakeAPI):
     fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
 
@@ -421,14 +531,44 @@ def test_an_empty_update_sends_an_empty_body(fake_api: FakeAPI):
 def test_request_models_reject_what_the_server_refuses():
     with pytest.raises(pydantic.ValidationError):
         IssueUpdate.model_validate({"expected_revision": 1, "title": "t"})
+    # The request body the server removed.
     with pytest.raises(pydantic.ValidationError):
-        IssueRequestMutation.model_validate(
-            {"expected_revision": 0, "question": "q"}
-        )
+        IssueUpdate.model_validate({"request": {"question": "q"}})
     with pytest.raises(pydantic.ValidationError):
-        IssueMutation.model_validate({"request": {}, "extra": 1})
+        IssueUpdate(follower_member_ids=[UUID(MEMBER_ID)] * 51)
     with pytest.raises(pydantic.ValidationError):
         IssueSpanReference(trace_id="nothex", span_id=SPAN_ID)
+
+
+def test_comment_create_posts_the_comment(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"{ISSUE_PATH}/comments", status=201, json_body=COMMENT
+    )
+
+    comment = Issues(fake_api.client()).comments.create(
+        UUID(ISSUE_ID), comment="Ship the retry?"
+    )
+
+    sent = fake_api.last_request
+    assert (sent.method, sent.path) == ("POST", f"{ISSUE_PATH}/comments")
+    assert sent.json() == {"comment": "Ship the retry?"}
+    assert comment.id == UUID(COMMENT_ID)
+    assert comment.issue_id == UUID(ISSUE_ID)
+    assert comment.member_id == UUID(MEMBER_ID)
+    assert comment.created_at == datetime(2026, 10, 2, 11, 30, tzinfo=UTC)
+    assert comment.model_extra == {}
+
+
+def test_comment_create_surfaces_a_refusal(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"{ISSUE_PATH}/comments",
+        status=404,
+        json_body={"detail": "Issue not found"},
+    )
+
+    with pytest.raises(NotFoundError):
+        Issues(fake_api.client()).comments.create(ISSUE_ID, comment="hi")
 
 
 def test_etag_is_updated_at_in_quoted_iso_8601():
@@ -449,9 +589,6 @@ def test_etag_is_updated_at_in_quoted_iso_8601():
     )
     assert naive.etag == '"2026-11-04T01:00:00.000005+00:00"'
 
-    with pytest.raises(ValueError, match="ETag"):
-        _ = Issue.model_validate(issue_body(updated_at=None)).etag
-
 
 def test_update_sends_if_match_only_when_given(fake_api: FakeAPI):
     fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
@@ -465,18 +602,6 @@ def test_update_sends_if_match_only_when_given(fake_api: FakeAPI):
 
     api.update(ISSUE_ID, IssueUpdate(title="t"))
     assert "If-Match" not in fake_api.last_request.headers
-
-
-def test_update_refuses_if_match_with_a_request_mutation(fake_api: FakeAPI):
-    mutation = IssueMutation(
-        request=IssueRequestMutation(question="q", assignee_id=UUID(MEMBER_ID))
-    )
-
-    with pytest.raises(ValueError, match="not an IssueMutation"):
-        Issues(fake_api.client()).update(
-            ISSUE_ID, mutation, if_match='"2026-10-02T11:00:00+00:00"'
-        )
-    assert fake_api.requests == []
 
 
 def test_a_stale_if_match_raises_precondition_failed(fake_api: FakeAPI):
@@ -493,27 +618,6 @@ def test_a_stale_if_match_raises_precondition_failed(fake_api: FakeAPI):
         )
     assert raised.value.status_code == 412
     assert not isinstance(raised.value, ConflictError)
-
-
-def test_a_stale_request_revision_raises_conflict(fake_api: FakeAPI):
-    fake_api.add(
-        "PATCH",
-        ISSUE_PATH,
-        status=409,
-        json_body={"detail": "stale revision"},
-    )
-
-    with pytest.raises(ConflictError):
-        Issues(fake_api.client()).update(
-            ISSUE_ID,
-            IssueMutation(
-                request=IssueRequestMutation(
-                    id=UUID(REQUEST_ID),
-                    status=IssueRequestStatus.CANCELLED,
-                    resolution="r",
-                )
-            ),
-        )
 
 
 def test_delete_sends_if_match_only_when_given(fake_api: FakeAPI):
@@ -546,6 +650,9 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     fake_api.add("GET", ISSUE_PATH, json_body=issue_body())
     fake_api.add("POST", "/v1/issues", status=201, json_body=issue_body())
     fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
+    fake_api.add(
+        "POST", f"{ISSUE_PATH}/comments", status=201, json_body=COMMENT
+    )
     fake_api.add("DELETE", ISSUE_PATH, status=204)
     api = AsyncIssues(fake_api.async_client())
 
@@ -557,24 +664,8 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     created = await api.create(title="t", description="d", task_id=TASK_ID)
     assert created.id == UUID(ISSUE_ID)
     await api.update(ISSUE_ID, IssueUpdate(events=[]), if_match=created.etag)
-    await api.update(
-        ISSUE_ID,
-        IssueMutation(
-            request=IssueRequestMutation(
-                id=UUID(REQUEST_ID),
-                status=IssueRequestStatus.CANCELLED,
-                resolution="Not needed",
-            )
-        ),
-    )
-    with pytest.raises(ValueError):
-        await api.update(
-            ISSUE_ID,
-            IssueMutation(
-                request=IssueRequestMutation(id=UUID(REQUEST_ID), question="q")
-            ),
-            if_match=created.etag,
-        )
+    comment = await api.comments.create(ISSUE_ID, comment="Ship the retry?")
+    assert comment.id == UUID(COMMENT_ID)
     await api.delete(ISSUE_ID, if_match='"k3"')
 
     calls = [
@@ -588,7 +679,7 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
         ("GET", ISSUE_PATH, None),
         ("POST", "/v1/issues", None),
         ("PATCH", ISSUE_PATH, '"2026-10-02T11:00:00+00:00"'),
-        ("PATCH", ISSUE_PATH, None),
+        ("POST", f"{ISSUE_PATH}/comments", None),
         ("DELETE", ISSUE_PATH, '"k3"'),
     ]
     assert fake_api.requests[0].params.get_list("status") == ["open"]
@@ -596,10 +687,4 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     assert fake_api.requests[5].json() == {
         "events": [],
     }
-    assert fake_api.requests[6].json() == {
-        "request": {
-            "id": REQUEST_ID,
-            "status": "cancelled",
-            "resolution": "Not needed",
-        }
-    }
+    assert fake_api.requests[6].json() == {"comment": "Ship the retry?"}

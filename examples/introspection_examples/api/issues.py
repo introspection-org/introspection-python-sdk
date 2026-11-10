@@ -2,8 +2,9 @@
 
 Lists the open issues the caller may read. When INTROSPECTION_TASK_ID and
 INTROSPECTION_MEMBER_ID are set, it also opens an issue on that worker task,
-asks that member a question on it, edits the brief against the version it read,
-and deletes the issue again.
+asks that member a question (assign, move to waiting, comment), reads the
+comments back, edits the brief against the version it read, and deletes the
+issue again.
 
 Run with:
     INTROSPECTION_TOKEN=intro_xxx
@@ -12,7 +13,7 @@ Run with:
 
 Optional env:
     INTROSPECTION_TASK_ID       - worker task the issue lives on
-    INTROSPECTION_MEMBER_ID     - member the request is assigned to
+    INTROSPECTION_MEMBER_ID     - member the issue is assigned to
     INTROSPECTION_BASE_API_URL  - API host (default https://api.introspection.dev)
     INTROSPECTION_DP_URL        - data-plane host, when it differs
 """
@@ -27,8 +28,6 @@ from dotenv import load_dotenv
 from introspection_sdk import IntrospectionClient
 from introspection_sdk.schemas.issues import (
     IssueLink,
-    IssueMutation,
-    IssueRequestMutation,
     IssueStatus,
     IssueUpdate,
 )
@@ -60,16 +59,26 @@ def main() -> None:
             tags=["area:checkout"],
         )
 
-        # Ask a member: a new request id (minted when left out) creates the request.
+        # Ask a member: assign the issue, move it to waiting, and post the
+        # question as a comment.
         issue = client.issues.update(
             issue.id,
-            IssueMutation(
-                request=IssueRequestMutation(
-                    question="Should we ship the retry?",
-                    assignee_id=UUID(member_id),
-                )
+            IssueUpdate(
+                assignee_member_id=UUID(member_id),
+                status=IssueStatus.WAITING,
             ),
         )
+        client.issues.comments.create(
+            issue.id, comment="Should we ship the retry?"
+        )
+
+        # Comments are read with the issue. One just posted is an event
+        # still being ingested, so it may not be here yet.
+        issue = client.issues.get(issue.id, include=["members", "comments"])
+        for comment in issue.comments or []:
+            print(
+                f"  {comment.created_at} {comment.member_id}: {comment.comment}"
+            )
 
         # Edit the brief; `if_match` refuses it (412) if the issue changed
         # since the read. A list you pass replaces the issue's list;

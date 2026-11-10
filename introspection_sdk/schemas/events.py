@@ -30,7 +30,6 @@ from introspection_sdk.schemas.automations import (
     OpenSkipReason,
     OpenTriggerType,
 )
-from introspection_sdk.schemas.issues import IssueRequest
 
 __all__ = [
     "AnnotationEvent",
@@ -50,12 +49,11 @@ __all__ = [
     "IssueActivityBasePayload",
     "IssueActivityEvent",
     "IssueActivityPayload",
+    "IssueCommentedPayload",
     "IssueCreatedPayload",
     "IssueDeletedPayload",
     "IssueEventAction",
     "IssueFieldChange",
-    "IssueRequestCreatedPayload",
-    "IssueRequestUpdatedPayload",
     "IssueUpdatedPayload",
     "JudgeType",
     "JudgementBasePayload",
@@ -371,9 +369,8 @@ class IssueEventAction(StrEnum):
 
     CREATED = "created"
     UPDATED = "updated"
+    COMMENTED = "commented"
     DELETED = "deleted"
-    REQUEST_CREATED = "request.created"
-    REQUEST_UPDATED = "request.updated"
 
 
 class IssueFieldChange(_ApiModel):
@@ -388,10 +385,13 @@ class IssueActivityBasePayload(_ApiModel):
     """What every issue event carries, whichever action it records."""
 
     issue_id: UUID
-    #: The issue for an issue action, the request for a ``request.*`` action.
-    resource_id: UUID | None = None
-    #: Revision of the resource the action wrote.
+    #: Revision of the issue the action wrote.
     revision: int | None = None
+    #: The member who made the change or comment.
+    member_id: UUID | None = None
+    #: The member acting for ``member_id``, when the write was delegated.
+    actor_member_id: UUID | None = None
+    actor_member_type: str | None = None
 
 
 class IssueCreatedPayload(IssueActivityBasePayload):
@@ -402,26 +402,20 @@ class IssueCreatedPayload(IssueActivityBasePayload):
 
 class IssueUpdatedPayload(IssueActivityBasePayload):
     action: Literal[IssueEventAction.UPDATED]
-    #: Each changed field, by name.
+    #: Each changed field, by name; ``members`` holds the people on the
+    #: issue before and after.
     changes: dict[str, IssueFieldChange]
+
+
+class IssueCommentedPayload(IssueActivityBasePayload):
+    """A comment. Its author is ``member_id``; its time is the event's."""
+
+    action: Literal[IssueEventAction.COMMENTED]
+    comment: str
 
 
 class IssueDeletedPayload(IssueActivityBasePayload):
     action: Literal[IssueEventAction.DELETED]
-
-
-class IssueRequestCreatedPayload(IssueActivityBasePayload):
-    action: Literal[IssueEventAction.REQUEST_CREATED]
-    #: The request as created.
-    request: IssueRequest
-
-
-class IssueRequestUpdatedPayload(IssueActivityBasePayload):
-    action: Literal[IssueEventAction.REQUEST_UPDATED]
-    #: The request after the update.
-    request: IssueRequest
-    #: Each changed field, by name.
-    changes: dict[str, IssueFieldChange]
 
 
 class UnknownIssuePayload(IssueActivityBasePayload):
@@ -434,13 +428,8 @@ class UnknownIssuePayload(IssueActivityBasePayload):
 IssueActivityPayload = Annotated[
     Annotated[IssueCreatedPayload, Tag(IssueEventAction.CREATED)]
     | Annotated[IssueUpdatedPayload, Tag(IssueEventAction.UPDATED)]
+    | Annotated[IssueCommentedPayload, Tag(IssueEventAction.COMMENTED)]
     | Annotated[IssueDeletedPayload, Tag(IssueEventAction.DELETED)]
-    | Annotated[
-        IssueRequestCreatedPayload, Tag(IssueEventAction.REQUEST_CREATED)
-    ]
-    | Annotated[
-        IssueRequestUpdatedPayload, Tag(IssueEventAction.REQUEST_UPDATED)
-    ]
     | Annotated[UnknownIssuePayload, Tag("unknown")],
     Discriminator(
         tag_or_unknown(
@@ -535,7 +524,7 @@ class AnnotationEvent(IntrospectionEventBase):
 
 
 class IssueActivityEvent(IntrospectionEventBase):
-    """An issue or issue-request change (``event_name=introspection.issue``)."""
+    """An issue change or comment (``event_name=introspection.issue``)."""
 
     event_name: Literal[IntrospectionEventName.ISSUE]
     payload: IssueActivityPayload

@@ -1,8 +1,10 @@
 """Pydantic mirrors of DP ``/v1/issues`` request/response models.
 
-An issue is a brief (title, description, priority, status) with the
-evidence it cites (files, links, events, spans), the human requests still
-open on it, and a fixed worker Task that carries its chat.
+An issue is a brief (title, description, priority, status) on a fixed
+worker Task that carries its chat, the people on it (creator, assignee,
+reviewer, followers), the evidence it cites (files, links, events, spans)
+and its comments. The related lists are read with ``include`` and are
+``None`` when not asked for.
 
 Response models tolerate unknown fields (``extra="allow"``) so a DP
 addition never breaks the SDK; request bodies forbid them, as the server
@@ -12,7 +14,8 @@ this SDK does not know yet decodes as a plain ``str``.
 :class:`IssueUpdate` is dumped with ``exclude_unset=True``: a field left
 unset is omitted and left as it is, while an explicit ``[]`` (or ``{}``
 for ``metadata``) is sent and clears it, since each list replaces its list
-wholesale.
+wholesale, and an explicit ``None`` for ``assignee_member_id`` or
+``reviewer_member_id`` is sent and clears that person.
 
 :attr:`Issue.etag` is the issue's version for ``If-Match`` on an update or
 delete, so a write made against a stale read is refused with 412.
@@ -22,7 +25,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -31,7 +34,6 @@ from pydantic import (
     Field,
 )
 
-from introspection_sdk._uuid import _uuid7
 from introspection_sdk.schemas.tasks import TaskStatus
 
 
@@ -71,13 +73,22 @@ class IssueOwner(StrEnum):
     """The caller's own private issues."""
 
 
-class IssueRequestStatus(StrEnum):
-    """Status of one human request on an issue."""
+class IssueMemberRelation(StrEnum):
+    """How a member stands to an issue."""
 
-    OPEN = "open"
-    RESOLVED = "resolved"
-    CANCELLED = "cancelled"
+    CREATOR = "creator"
+    ASSIGNEE = "assignee"
+    REVIEWER = "reviewer"
+    FOLLOWER = "follower"
 
+
+IssueInclude = Literal["members", "attachments", "comments"]
+"""The related lists a single-issue read returns with the brief, passed as
+a repeated ``include`` query param."""
+
+IssueStoredInclude = Literal["members", "attachments"]
+"""The related lists a list read or a write may return. ``comments`` is on
+the single-issue read only."""
 
 OpenIssueStatus = Annotated[
     IssueStatus | str, Field(union_mode="left_to_right")
@@ -85,8 +96,8 @@ OpenIssueStatus = Annotated[
 OpenIssuePriority = Annotated[
     IssuePriority | str, Field(union_mode="left_to_right")
 ]
-OpenIssueRequestStatus = Annotated[
-    IssueRequestStatus | str, Field(union_mode="left_to_right")
+OpenIssueMemberRelation = Annotated[
+    IssueMemberRelation | str, Field(union_mode="left_to_right")
 ]
 OpenTaskStatus = Annotated[TaskStatus | str, Field(union_mode="left_to_right")]
 
@@ -125,57 +136,45 @@ class IssueSpanReference(ApiModel):
     span_id: str = Field(pattern=r"^[0-9a-fA-F]{16}$")
 
 
-class IssueOpenRequest(ApiModel):
-    """One open human request, projected onto its issue."""
+class IssueMember(ApiModel):
+    """One person on an issue."""
+
+    member_id: UUID
+    relation: OpenIssueMemberRelation
+
+
+class IssueComment(ApiModel):
+    """One comment on an issue. Comments are append-only."""
 
     id: UUID
-    question: str
-    assignee_id: UUID
-    created_at: datetime
-
-
-class IssueRequest(ApiModel):
-    """One human request on an issue, as an ``introspection.issue`` event
-    records it."""
-
-    id: UUID
+    """The comment's id, which is its event's id."""
     issue_id: UUID
-    task_id: UUID
-    question: str
-    assignee_id: UUID
-    status: OpenIssueRequestStatus
-    resolution: str | None = None
-    revision: int
-    issue_revision: int
-    issue_member_id: UUID | None = None
-    """Owning member of the parent issue; ``None`` for a project-owned
-    (Operator) issue."""
-    files: list[IssueFile]
-    links: list[IssueLink]
-    events: list[IssueEventReference]
-    spans: list[IssueSpanReference]
+    comment: str
+    member_id: UUID | None = None
+    """The member who commented."""
+    actor_member_id: UUID | None = None
+    """The member acting for ``member_id``, when delegated."""
+    actor_member_type: str | None = None
     created_at: datetime
-    updated_at: datetime
 
 
 class Issue(ApiModel):
-    """A stored issue: the brief, its evidence and its open requests."""
+    """A stored issue: the brief, and each related list the read asked for.
+
+    A list that was not included is ``None``.
+    """
 
     id: UUID
     org_id: UUID
     project_id: UUID
     title: str
     description: str
-    priority: OpenIssuePriority = IssuePriority.MEDIUM
-    status: OpenIssueStatus = IssueStatus.OPEN
-    revision: int = 1
-    files: list[IssueFile] = Field(default_factory=list)
-    links: list[IssueLink] = Field(default_factory=list)
-    events: list[IssueEventReference] = Field(default_factory=list)
-    spans: list[IssueSpanReference] = Field(default_factory=list)
-    tags: list[str] = Field(default_factory=list)
+    priority: OpenIssuePriority
+    status: OpenIssueStatus
+    revision: int
+    tags: list[str]
     """Free-form tags, conventionally ``key:value``."""
-    metadata: dict[str, IssueMetadataValue] = Field(default_factory=dict)
+    metadata: dict[str, IssueMetadataValue]
     display_index: int | None = None
     """Project-scoped display ID."""
     task_id: UUID | None = None
@@ -185,12 +184,25 @@ class Issue(ApiModel):
     member_id: UUID | None = None
     """Owning member of a private issue; ``None`` for a project-owned
     (Operator) issue."""
+    created_by_member_id: UUID | None = None
+    """``None`` when a caller that is not a member created the issue."""
+    assignee_member_id: UUID | None = None
+    reviewer_member_id: UUID | None = None
     closed_at: datetime | None = None
     """When the issue last entered ``closed`` or ``cancelled``."""
-    open_requests: list[IssueOpenRequest] = Field(default_factory=list)
-    """Open human requests, oldest first."""
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    members: list[IssueMember] | None = None
+    """With ``include=members``: the creator, then the assignee, the
+    reviewer, and the followers in the order they were added."""
+    links: list[IssueLink] | None = None
+    """With ``include=attachments``, as ``files``, ``events`` and ``spans``."""
+    files: list[IssueFile] | None = None
+    events: list[IssueEventReference] | None = None
+    spans: list[IssueSpanReference] | None = None
+    comments: list[IssueComment] | None = None
+    """With ``include=comments`` on the single-issue read: oldest first, at
+    most 500. Page the issue's events for more."""
+    created_at: datetime
+    updated_at: datetime
 
     @property
     def etag(self) -> str:
@@ -198,8 +210,6 @@ class Issue(ApiModel):
         ISO 8601 with its offset and full microsecond precision, quoted.
         Pass it as ``if_match`` to refuse a write if the issue changed
         since this read."""
-        if self.updated_at is None:
-            raise ValueError("An issue without updated_at has no ETag")
         updated_at = self.updated_at
         if updated_at.tzinfo is None:
             updated_at = updated_at.replace(tzinfo=UTC)
@@ -232,6 +242,9 @@ class IssueCreate(IssueEvidence):
     """The fixed worker Task used by the issue chat and Slack replies."""
     priority: IssuePriority | None = None
     """The server defaults to ``medium``."""
+    assignee_member_id: UUID | None = None
+    reviewer_member_id: UUID | None = None
+    follower_member_ids: list[UUID] | None = Field(default=None, max_length=50)
 
 
 class IssueUpdate(IssueEvidence):
@@ -249,55 +262,34 @@ class IssueUpdate(IssueEvidence):
     )
     priority: IssuePriority | None = None
     status: IssueStatus | None = None
-
-
-class IssueRequestMutation(RequestModel):
-    """Create one human request on an issue, or change one.
-
-    An ``id`` the issue does not have yet creates the request and needs
-    ``question`` and ``assignee_id``; ``id`` is minted (a UUIDv7) when left
-    out. An existing ``id`` changes the request, and the last write wins.
-    ``resolved`` and ``cancelled`` need a ``resolution``.
-    """
-
-    id: UUID = Field(default_factory=_uuid7)
-    question: str | None = Field(default=None, min_length=1, max_length=10000)
-    assignee_id: UUID | None = None
-    """Set again to reassign."""
-    status: IssueRequestStatus | None = None
-    resolution: str | None = Field(
-        default=None, min_length=1, max_length=10000
-    )
-    """The decision and its basis, when closing."""
-
-
-class IssueMutation(RequestModel):
-    """``PATCH /v1/issues/{id}`` with ``{"request": {...}}``: create or
-    change one human request."""
-
-    request: IssueRequestMutation
+    assignee_member_id: UUID | None = None
+    """Assigns, replacing the assignee; an explicit ``None`` unassigns."""
+    reviewer_member_id: UUID | None = None
+    """Sets, replacing the reviewer; an explicit ``None`` clears it."""
+    follower_member_ids: list[UUID] | None = Field(default=None, max_length=50)
+    """Replaces the followers wholesale; ``[]`` clears them."""
 
 
 __all__ = [
     "Issue",
+    "IssueComment",
     "IssueCreate",
     "IssueEvidence",
     "IssueEventReference",
     "IssueFile",
+    "IssueInclude",
     "IssueLink",
+    "IssueMember",
+    "IssueMemberRelation",
     "IssueMetadataValue",
-    "IssueMutation",
-    "IssueOpenRequest",
     "IssueOwner",
     "IssuePriority",
-    "IssueRequest",
-    "IssueRequestMutation",
-    "IssueRequestStatus",
     "IssueSpanReference",
     "IssueStatus",
+    "IssueStoredInclude",
     "IssueUpdate",
+    "OpenIssueMemberRelation",
     "OpenIssuePriority",
-    "OpenIssueRequestStatus",
     "OpenIssueStatus",
     "OpenTaskStatus",
 ]

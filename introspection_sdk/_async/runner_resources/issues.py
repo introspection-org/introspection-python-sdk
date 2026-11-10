@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+from collections.abc import Sequence
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
@@ -15,16 +16,19 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.schemas.issues import (
     Issue,
+    IssueComment,
     IssueCreate,
     IssueEventReference,
     IssueFile,
+    IssueInclude,
     IssueLink,
+    IssueMemberRelation,
     IssueMetadataValue,
-    IssueMutation,
     IssueOwner,
     IssuePriority,
     IssueSpanReference,
     IssueStatus,
+    IssueStoredInclude,
     IssueUpdate,
 )
 from introspection_sdk.schemas.pagination import Paginated
@@ -43,14 +47,31 @@ def _values(values: builtins.list[Any] | None) -> builtins.list[str] | None:
     return [str(value) for value in values] if values else None
 
 
-def _update_body(change: IssueUpdate | IssueMutation) -> dict[str, Any]:
-    if isinstance(change, IssueUpdate):
-        # `exclude_unset`: an omitted field stays omitted and is left as it
-        # is, while an explicit `[]` or `{}` is sent and clears it.
-        return change.model_dump(mode="json", exclude_unset=True)
-    # `exclude_none`, not `exclude_unset`: the request id is minted by a
-    # default factory and must still be sent.
-    return change.model_dump(mode="json", exclude_none=True)
+def _include(include: Sequence[str] | None) -> dict[str, Any] | None:
+    return {"include": list(include)} if include else None
+
+
+class AsyncIssueComments:
+    """Comments on an issue (``/v1/issues/{issue_id}/comments``).
+
+    A comment is read back with ``issues.get(issue_id,
+    include=["comments"])`` or from the issue's ``introspection.issue``
+    events; there is no comments list.
+    """
+
+    def __init__(self, http: _AsyncHttpClient) -> None:
+        self._http = http
+
+    async def create(
+        self, issue_id: UUID | str, *, comment: str
+    ) -> IssueComment:
+        """Comment on an issue. The comment does not edit the issue: its
+        ``revision`` and ``etag`` are unchanged. It is recorded as an event,
+        so a read made straight after may not include it yet."""
+        payload = await self._http.request(
+            "POST", f"{_path(issue_id)}/comments", json={"comment": comment}
+        )
+        return decode(IssueComment, payload)
 
 
 class AsyncIssues:
@@ -58,19 +79,21 @@ class AsyncIssues:
 
     def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
+        self.comments = AsyncIssueComments(http)
 
     def list(
         self,
         *,
         status: builtins.list[IssueStatus | str] | None = None,
         owner: builtins.list[IssueOwner | str] | None = None,
-        assigned_to_me: bool | None = None,
-        has_open_requests: bool | None = None,
+        relation: builtins.list[IssueMemberRelation | str] | None = None,
+        member_id: UUID | str | None = None,
         task_status: builtins.list[TaskStatus | str] | None = None,
         exclude_task_status: builtins.list[TaskStatus | str] | None = None,
         display_index: int | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
+        include: Sequence[IssueStoredInclude] | None = None,
         include_total: bool = False,
         limit: int | None = None,
         next: str | None = None,
@@ -92,7 +115,14 @@ class AsyncIssues:
         issue without a live Task. ``tag`` is one ``key:value`` tag;
         ``metadata`` is sent as one ``metadata=key:value`` param per entry
         (at most 16). ``limit`` is the page size (1-200, server default
-        50)."""
+        50).
+
+        ``relation`` repeats and ORs: on its own it keeps the issues the
+        caller is on in one of those relations, so ``["assignee",
+        "reviewer"]`` is what is waiting on the caller. ``member_id``
+        matches that member's relations instead of the caller's; alone, any
+        relation. ``include`` adds ``members`` and ``attachments`` to each
+        issue."""
 
         async def fetch(cursor: str | None) -> Paginated[Issue]:
             params: dict[str, Any] = {
@@ -100,8 +130,9 @@ class AsyncIssues:
                 "next": cursor,
                 "status": _values(status),
                 "owner": _values(owner),
-                "assigned_to_me": assigned_to_me,
-                "has_open_requests": has_open_requests,
+                "relation": _values(relation),
+                "member_id": member_id,
+                "include": list(include) if include else None,
                 "task_status": _values(task_status),
                 "exclude_task_status": _values(exclude_task_status),
                 "display_index": display_index,
@@ -120,10 +151,19 @@ class AsyncIssues:
 
         return async_cursor_paginate(fetch, start=next)
 
-    async def get(self, issue_id: UUID | str) -> Issue:
-        """Read one issue with its evidence and open requests. Its
+    async def get(
+        self,
+        issue_id: UUID | str,
+        *,
+        include: Sequence[IssueInclude] | None = None,
+    ) -> Issue:
+        """Read one issue's brief, with the lists ``include`` names:
+        ``members``, ``attachments`` and ``comments``. Its
         :attr:`Issue.etag` is the version to pass as ``if_match``."""
-        return decode(Issue, await self._http.request("GET", _path(issue_id)))
+        payload = await self._http.request(
+            "GET", _path(issue_id), params=_include(include)
+        )
+        return decode(Issue, payload)
 
     async def create(
         self,
@@ -138,9 +178,14 @@ class AsyncIssues:
         spans: builtins.list[IssueSpanReference] | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, IssueMetadataValue] | None = None,
+        assignee_member_id: UUID | str | None = None,
+        reviewer_member_id: UUID | str | None = None,
+        follower_member_ids: builtins.list[UUID] | None = None,
+        include: Sequence[IssueStoredInclude] | None = None,
     ) -> Issue:
         """Open an issue on its fixed worker Task (``task_id``). It starts
-        ``open``; change its status later with :meth:`update`."""
+        ``open``; change its status later with :meth:`update`. ``include``
+        adds ``members`` and ``attachments`` to the returned issue."""
         body = IssueCreate.model_validate(
             {
                 "title": title,
@@ -153,11 +198,15 @@ class AsyncIssues:
                 "spans": spans,
                 "tags": tags,
                 "metadata": metadata,
+                "assignee_member_id": assignee_member_id,
+                "reviewer_member_id": reviewer_member_id,
+                "follower_member_ids": follower_member_ids,
             }
         )
         payload = await self._http.request(
             "POST",
             "/v1/issues",
+            params=_include(include),
             json=body.model_dump(mode="json", exclude_none=True),
         )
         return decode(Issue, payload)
@@ -165,27 +214,27 @@ class AsyncIssues:
     async def update(
         self,
         issue_id: UUID | str,
-        change: IssueUpdate | IssueMutation,
+        change: IssueUpdate,
         *,
         if_match: str | None = None,
+        include: Sequence[IssueStoredInclude] | None = None,
     ) -> Issue:
-        """Edit the brief (:class:`IssueUpdate`), or create or change one
-        human request (:class:`IssueMutation`). Returns the updated issue.
+        """Edit an issue: its brief, its evidence and the people on it.
+        Returns the updated issue, with the lists ``include`` names.
 
-        An :class:`IssueUpdate` sends only the fields set on it, so an
-        omitted list is left as it is and ``[]`` clears it. ``if_match``
-        (an :attr:`Issue.etag`) refuses the edit with 412 if the issue
-        changed since that read; without it the edit applies regardless.
-        An :class:`IssueMutation` takes no ``if_match``: passing one raises
-        :class:`ValueError`."""
-        if if_match is not None and isinstance(change, IssueMutation):
-            raise ValueError(
-                "if_match applies to an IssueUpdate, not an IssueMutation"
-            )
+        Only the fields set on ``change`` are sent. An omitted field is left
+        as it is, ``[]`` clears a list, and an explicit ``None`` for
+        ``assignee_member_id`` or ``reviewer_member_id`` clears that person.
+        ``if_match`` (an :attr:`Issue.etag`) refuses the edit with 412 if
+        the issue changed since that read; without it the edit applies
+        regardless."""
         payload = await self._http.request(
             "PATCH",
             _path(issue_id),
-            json=_update_body(change),
+            params=_include(include),
+            # `exclude_unset`: an omitted field stays omitted, while an
+            # explicit `[]`, `{}` or `None` is sent and clears it.
+            json=change.model_dump(mode="json", exclude_unset=True),
             headers=_if_match(if_match),
         )
         return decode(Issue, payload)

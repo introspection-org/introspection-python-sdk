@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import builtins
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from datetime import datetime
 from typing import Any, Literal, Protocol, Unpack, runtime_checkable
 from uuid import UUID
@@ -56,15 +56,18 @@ from introspection_sdk.schemas.images import (
 )
 from introspection_sdk.schemas.issues import (
     Issue,
+    IssueComment,
     IssueEventReference,
     IssueFile,
+    IssueInclude,
     IssueLink,
+    IssueMemberRelation,
     IssueMetadataValue,
-    IssueMutation,
     IssueOwner,
     IssuePriority,
     IssueSpanReference,
     IssueStatus,
+    IssueStoredInclude,
     IssueUpdate,
 )
 from introspection_sdk.schemas.metrics import (
@@ -692,27 +695,44 @@ class ImagesResource(Protocol):
 
 
 @runtime_checkable
+class IssueCommentsResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.issues.IssueComments`."""
+
+    def create(
+        self, issue_id: UUID | str, *, comment: str
+    ) -> IssueComment: ...
+
+
 class IssuesResource(Protocol):
     """Protocol of :class:`~introspection_sdk.runner_resources.issues.Issues`."""
+
+    @property
+    def comments(self) -> IssueCommentsResource: ...
 
     def list(
         self,
         *,
         status: builtins.list[IssueStatus | str] | None = None,
         owner: builtins.list[IssueOwner | str] | None = None,
-        assigned_to_me: bool | None = None,
-        has_open_requests: bool | None = None,
+        relation: builtins.list[IssueMemberRelation | str] | None = None,
+        member_id: UUID | str | None = None,
         task_status: builtins.list[TaskStatus | str] | None = None,
         exclude_task_status: builtins.list[TaskStatus | str] | None = None,
         display_index: int | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
+        include: Sequence[IssueStoredInclude] | None = None,
         include_total: bool = False,
         limit: int | None = None,
         next: str | None = None,
     ) -> Pager[Issue, Paginated[Issue]]: ...
 
-    def get(self, issue_id: UUID | str) -> Issue: ...
+    def get(
+        self,
+        issue_id: UUID | str,
+        *,
+        include: Sequence[IssueInclude] | None = None,
+    ) -> Issue: ...
 
     def create(
         self,
@@ -727,14 +747,19 @@ class IssuesResource(Protocol):
         spans: builtins.list[IssueSpanReference] | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, IssueMetadataValue] | None = None,
+        assignee_member_id: UUID | str | None = None,
+        reviewer_member_id: UUID | str | None = None,
+        follower_member_ids: builtins.list[UUID] | None = None,
+        include: Sequence[IssueStoredInclude] | None = None,
     ) -> Issue: ...
 
     def update(
         self,
         issue_id: UUID | str,
-        change: IssueUpdate | IssueMutation,
+        change: IssueUpdate,
         *,
         if_match: str | None = None,
+        include: Sequence[IssueStoredInclude] | None = None,
     ) -> Issue: ...
 
     def delete(

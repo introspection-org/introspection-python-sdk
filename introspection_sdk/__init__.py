@@ -81,8 +81,7 @@ from introspection_sdk.schemas.automations import (
 )
 from introspection_sdk.schemas.issues import (
     Issue,
-    IssueMutation,
-    IssueRequestMutation,
+    IssueComment,
     IssueUpdate,
 )
 from introspection_sdk.schemas.repositories import (
@@ -201,8 +200,7 @@ __all__ = [
     "AutomationTriggerResponse",
     "AutomationTriggerType",
     "Issue",
-    "IssueMutation",
-    "IssueRequestMutation",
+    "IssueComment",
     "IssueUpdate",
     "ConflictError",
     "EmailCodeAuth",
