@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.40.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.39.0...v0.40.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **annotations:** `AnnotationState` no longer has `annotator_member_ids`, `has_comment`, `latest_comment`, `latest_comment_member_id` or `updated_by_member_id`.
+* an AG-UI event the SDK does not model streams through as an UnknownEvent ([#249](https://github.com/introspection-org/introspection-python-sdk/issues/249))
+
+### Features
+
+* **annotations:** follow the narrowed annotation row; read comments with include; add the JSON-lines conversation export ([#248](https://github.com/introspection-org/introspection-python-sdk/issues/248)) ([a27c644](https://github.com/introspection-org/introspection-python-sdk/commit/a27c644d57fcc3187ce483cbc5aed679ce7833ce))
+
+
+### Bug Fixes
+
+* an AG-UI event the SDK does not model streams through as an UnknownEvent ([#249](https://github.com/introspection-org/introspection-python-sdk/issues/249)) ([34f2966](https://github.com/introspection-org/introspection-python-sdk/commit/34f2966e184c4fdf60f0329b3daf302807525ae8))
+* every response model keeps the fields the API adds (extra="allow") ([#246](https://github.com/introspection-org/introspection-python-sdk/issues/246)) ([8162155](https://github.com/introspection-org/introspection-python-sdk/commit/8162155b4af6a86db53c78ca2401c02323043630))
+* text() reads a snapshot, delta or run error it could not model instead of returning partial text ([#250](https://github.com/introspection-org/introspection-python-sdk/issues/250)) ([4e4e781](https://github.com/introspection-org/introspection-python-sdk/commit/4e4e781a7dcf1902c35a576d73d427c7a067077c))
+
 ## [0.39.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.38.0...v0.39.0) (2026-11-10)
 
 
