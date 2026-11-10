@@ -37,6 +37,7 @@ class AnnotationState(AnnotationTarget):
     )
     comment_count: int = 0
     updated_at: datetime
+    updated_by_member_id: UUID
     assignment_event_id: UUID | None = None
 
 

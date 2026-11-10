@@ -55,6 +55,7 @@ def annotation() -> dict[str, object]:
         "reviewer_member_ids": [MEMBER_ID],
         "comment_count": 0,
         "updated_at": "2026-08-25T12:00:00Z",
+        "updated_by_member_id": MEMBER_ID,
         "assignment_event_id": str(EVENT_ID),
     }
 
@@ -390,7 +391,6 @@ def test_a_row_from_an_older_plane_still_parses(fake_api: FakeAPI) -> None:
             "latest_comment_actor_type": "member",
             "annotator_member_ids": [MEMBER_ID],
             "commenter_member_ids": [MEMBER_ID],
-            "updated_by_member_id": MEMBER_ID,
         }
     )
     fake_api.add("GET", "/v1/annotations", json_body=page([row]))
@@ -417,6 +417,7 @@ def test_a_row_names_its_reviewers(fake_api: FakeAPI) -> None:
     )
 
     assert state.reviewer_member_ids == [UUID(MEMBER_ID)]
+    assert state.updated_by_member_id == UUID(MEMBER_ID)
     assert "reviewer_member_ids" in state.model_dump()
 
 
