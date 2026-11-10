@@ -71,6 +71,15 @@ diff. `VCR_MODE=record` (or `--record-mode=all`) re-records against a live
 stack with the scrubbing in `introspection_sdk/testing/redaction.py`, the
 same patterns every SDK's walk scrubs. Each run writes
 `generated/walk-report.json` (steps, entries consumed, SDK gaps).
+**Decoding never fails on what the server adds.** A new field is tolerated: a
+response model keeps it (`extra="allow"`) or ignores it, and never sets
+`extra="forbid"`. A new enum value decodes: a response field takes the enum's
+`Open<Enum>` alias (`Annotated[Enum | str, Field(union_mode="left_to_right")]`,
+as `OpenIssueStatus`), never the bare enum or a `Literal`, so a known value is
+the member and an unknown one the raw string. A new variant of a discriminated
+union decodes to its fallback (`UnknownEvent`, `GenericPart`), so every response
+union has one. Strict mode is the only place an unmodelled field fails.
+
 The walk runs with `INTROSPECTION_STRICT_SCHEMA=1` (`tests/walk/conftest.py`),
 so a response field the SDK does not model fails the step with its JSON path.
 Model the field; don't drop it from the recording. A model whose extra keys
