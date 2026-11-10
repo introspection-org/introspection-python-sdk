@@ -21,11 +21,13 @@ from introspection_sdk.schemas.agui import (
     AGUIStreamEvent,
     AssistantMessage,
     CustomEvent,
+    EventType,
     MessagesSnapshotEvent,
     ResumeEntry,
     RunErrorEvent,
     TextMessageChunkEvent,
     TextMessageContentEvent,
+    UnknownEvent,
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.task_commands import (
@@ -101,6 +103,21 @@ def _snapshot_text(event: MessagesSnapshotEvent) -> list[str]:
         m.content
         for m in event.messages
         if isinstance(m, AssistantMessage) and isinstance(m.content, str)
+    ]
+
+
+def _unknown_snapshot_text(event: UnknownEvent) -> list[str]:
+    """The assistant text of a snapshot the SDK could not model, such as one
+    holding a message with a new role."""
+    messages = (event.model_extra or {}).get("messages")
+    if not isinstance(messages, list):
+        return []
+    return [
+        m["content"]
+        for m in messages
+        if isinstance(m, dict)
+        and m.get("role") == "assistant"
+        and isinstance(m.get("content"), str)
     ]
 
 
@@ -186,6 +203,21 @@ class AsyncRunHandle:
                 ev, TextMessageContentEvent | TextMessageChunkEvent
             ):
                 out.append(str(ev.delta or ""))
+            elif isinstance(ev, UnknownEvent):
+                # A known type with a value the SDK does not model still
+                # carries the output, so it is read raw, never skipped.
+                extra = ev.model_extra or {}
+                if ev.type == EventType.RUN_ERROR:
+                    raise RunFailedError(
+                        str(extra.get("message") or ""), code=extra.get("code")
+                    )
+                if ev.type == EventType.MESSAGES_SNAPSHOT:
+                    out = _unknown_snapshot_text(ev)
+                elif ev.type in (
+                    EventType.TEXT_MESSAGE_CONTENT,
+                    EventType.TEXT_MESSAGE_CHUNK,
+                ):
+                    out.append(str(extra.get("delta") or ""))
         return "".join(out)
 
 
