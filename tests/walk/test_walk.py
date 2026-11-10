@@ -238,7 +238,6 @@ def test_01_project(world: World) -> None:
             "description": None,
             "settings": None,
             "created_by_member_id": "[uuid]",
-            "git_origin": None,
         }
     )
     w.original_description = w.project.description
@@ -274,7 +273,6 @@ def test_01_project(world: World) -> None:
             "description": None,
             "settings": None,
             "created_by_member_id": "[uuid]",
-            "git_origin": None,
         }
     )
     projects.delete(sibling.id)

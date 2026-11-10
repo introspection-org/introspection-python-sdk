@@ -28,11 +28,6 @@ class Project(BaseModel):
     description: str | None = None
     settings: dict[str, Any] | None = None
     created_by_member_id: UUID | None = None
-    git_origin: str | None = None
-    """Where the project's hosted repositories are served:
-    ``{git_origin}/v1/git/{slug}.git`` clones one. Only
-    ``GET /v1/projects/{project}`` fills it, and only when the project's data
-    plane serves hosted Git."""
 
 
 class ProjectCreate(BaseModel):
