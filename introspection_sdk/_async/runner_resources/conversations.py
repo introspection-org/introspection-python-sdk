@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import builtins
-import json
 from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any, Literal, Unpack
@@ -13,6 +12,7 @@ from uuid import UUID
 from pydantic import TypeAdapter
 
 from introspection_sdk._http import RawResponse, _AsyncHttpClient
+from introspection_sdk._jsonl import JSONL_ACCEPT_HEADERS, iter_jsonl_async
 from introspection_sdk._strict_schema import decode, note_response
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -53,7 +53,7 @@ ConversationExportFormat = Literal["jsonl", "json", "trajectory", "arrow"]
 
 
 JSON_EXPORT_HEADERS = {"Accept": "application/json"}
-JSONL_EXPORT_HEADERS = {"Accept": "application/x-ndjson"}
+JSONL_EXPORT_HEADERS = JSONL_ACCEPT_HEADERS
 
 
 #: How many items ``retrieve()`` scans, newest-first, looking for the latest
@@ -675,20 +675,16 @@ class AsyncConversations:
         406, which raises rather than falling back to :meth:`export_json`.
         """
         path = _export_path(conversation_id)
-        buffer = b""
-        async for chunk in self._http.stream_bytes(
-            path,
-            params=build_export_params(**params),
-            headers=JSONL_EXPORT_HEADERS,
-        ):
-            *lines, buffer = (buffer + chunk).split(b"\n")
-            for line in lines:
-                if line.strip():
-                    note_response(path)
-                    yield decode(GenAiSpan, json.loads(line))
-        if buffer.strip():
+        spans = iter_jsonl_async(
+            self._http.stream_bytes(
+                path,
+                params=build_export_params(**params),
+                headers=JSONL_EXPORT_HEADERS,
+            )
+        )
+        async for span in spans:
             note_response(path)
-            yield decode(GenAiSpan, json.loads(buffer))
+            yield decode(GenAiSpan, span)
 
     def export_stream(
         self,

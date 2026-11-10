@@ -42,13 +42,19 @@ class AnnotationState(AnnotationTarget):
 
 class AnnotationFacet(BaseModel):
     """How many current annotations hold one value of one filter dimension
-    (annotator, assignee, label or status)."""
+    (annotator, assignee, label, status or review_queue)."""
 
     model_config = ConfigDict(extra="allow")
 
     dimension: str
     value: str
     count: int
+    #: Set on the ``label`` and ``review_queue`` buckets, which summarize a
+    #: dataset.
+    conversation_count: int | None = None
+    comment_count: int | None = None
+    reviewer_member_ids: list[UUID] | None = None
+    updated_at: datetime | None = None
 
 
 class AnnotationNavigation(BaseModel):

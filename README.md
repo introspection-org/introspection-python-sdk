@@ -286,6 +286,15 @@ for item in client.annotations.list(label="needs-review"):
 A row carries the labels, assignees, reviewers and comment count of a span;
 the comment text is on its `introspection.annotation` events.
 
+`client.annotations.export(...)` takes the same filters and streams every
+matching row as JSON lines, with no paging; `export_stream(...)` yields the
+raw bytes:
+
+```python
+for item in client.annotations.export(label="needs-review", status="reviewed"):
+    print(item.trace_id, item.span_id, item.reviewer_member_ids)
+```
+
 Reusable labels live in `client.project_labels`; their slug and color are
 immutable after creation, while the optional description can be updated.
 

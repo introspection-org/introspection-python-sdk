@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from uuid import UUID
 
 import httpx2 as httpx
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from introspection_sdk._errors import NotFoundError, ValidationError
+from introspection_sdk._errors import (
+    IntrospectionAPIError,
+    NotFoundError,
+    ValidationError,
+)
 from introspection_sdk.resources.annotations import (
     Annotations,
     AsyncAnnotations,
@@ -413,3 +418,180 @@ def test_a_row_names_its_reviewers(fake_api: FakeAPI) -> None:
 
     assert state.reviewer_member_ids == [UUID(MEMBER_ID)]
     assert "reviewer_member_ids" in state.model_dump()
+
+
+EXPORT = "/v1/annotations/export"
+
+
+def jsonl(*rows: dict[str, object]) -> bytes:
+    return b"".join(json.dumps(row).encode() + b"\n" for row in rows)
+
+
+def older_plane_annotation() -> dict[str, object]:
+    row = annotation()
+    row["human_commenter_member_ids"] = row.pop("reviewer_member_ids")
+    row["latest_comment"] = "Looks wrong."
+    return row
+
+
+def test_export_streams_rows_split_across_chunks(fake_api: FakeAPI) -> None:
+    body = jsonl(annotation(), older_plane_annotation()).rstrip(b"\n")
+    chunks = [body[i : i + 7] for i in range(0, len(body), 7)]
+    fake_api.add_handler(
+        "GET",
+        EXPORT,
+        lambda _request: httpx.Response(200, content=iter(chunks)),
+    )
+
+    rows = list(Annotations(fake_api.client(), fake_api.client()).export())
+
+    assert [row.span_id for row in rows] == [SPAN_ID, SPAN_ID]
+    assert [row.reviewer_member_ids for row in rows] == [[UUID(MEMBER_ID)]] * 2
+    assert fake_api.last_request.headers["accept"] == "application/x-ndjson"
+    assert dict(fake_api.last_request.params) == {}
+
+
+def test_export_sends_the_list_filters_and_no_paging(
+    fake_api: FakeAPI,
+) -> None:
+    fake_api.add("GET", EXPORT, content=jsonl(annotation()))
+
+    rows = list(
+        Annotations(fake_api.client(), fake_api.client()).export(
+            annotated_by_member_id=UUID(MEMBER_ID),
+            assignee_member_id=UUID(MEMBER_ID),
+            trace_id=TRACE_ID,
+            span_id=SPAN_ID,
+            conversation_id="conversation-1",
+            label=["needs-review", "flaky"],
+            status="reviewed",
+        )
+    )
+
+    assert len(rows) == 1
+    params = fake_api.last_request.params
+    assert params.get_list("label") == ["needs-review", "flaky"]
+    assert {key: params.get(key) for key in params if key != "label"} == {
+        "annotated_by_member_id": MEMBER_ID,
+        "assignee_member_id": MEMBER_ID,
+        "trace_id": TRACE_ID,
+        "span_id": SPAN_ID,
+        "conversation_id": "conversation-1",
+        "status": "reviewed",
+    }
+
+
+def test_export_resolves_an_email_filter(fake_api: FakeAPI) -> None:
+    fake_api.add(
+        "GET",
+        "/v1/members",
+        json_body={
+            "records": [{"id": MEMBER_ID, "email": "expert@example.com"}],
+            "next": None,
+        },
+    )
+    fake_api.add("GET", EXPORT, content=b"")
+
+    annotations = Annotations(fake_api.client(), fake_api.client())
+    assert (
+        list(annotations.export(assigned_to_email="expert@example.com")) == []
+    )
+
+    params = fake_api.last_request.params
+    assert dict(params) == {"assignee_member_id": MEMBER_ID}
+    with pytest.raises(ValidationError):
+        list(
+            annotations.export(
+                assignee_member_id=UUID(MEMBER_ID),
+                assigned_to_email="expert@example.com",
+            )
+        )
+
+
+def test_export_of_an_empty_body_yields_nothing(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", EXPORT, content=b"")
+
+    annotations = Annotations(fake_api.client(), fake_api.client())
+
+    assert list(annotations.export(label="none")) == []
+    assert fake_api.last_request.params.get_list("label") == ["none"]
+
+
+def test_export_stream_preserves_wire_bytes(fake_api: FakeAPI) -> None:
+    body = jsonl(annotation())
+    fake_api.add("GET", EXPORT, content=body)
+
+    chunks = Annotations(fake_api.client(), fake_api.client()).export_stream(
+        status="backlog"
+    )
+
+    assert b"".join(chunks) == body
+    assert fake_api.last_request.headers["accept"] == "application/x-ndjson"
+    assert dict(fake_api.last_request.params) == {"status": "backlog"}
+
+
+def test_export_surfaces_406_from_an_older_plane(fake_api: FakeAPI) -> None:
+    fake_api.add(
+        "GET", EXPORT, status=406, json_body={"detail": "Not Acceptable"}
+    )
+
+    with pytest.raises(IntrospectionAPIError) as error:
+        list(Annotations(fake_api.client(), fake_api.client()).export())
+
+    assert error.value.status_code == 406
+    assert len(fake_api.requests) == 1
+
+
+async def test_async_export_and_stream(fake_api: FakeAPI) -> None:
+    fake_api.add(
+        "GET",
+        "/v1/members",
+        json_body={
+            "records": [{"id": MEMBER_ID, "email": "expert@example.com"}],
+            "next": None,
+        },
+    )
+    body = jsonl(annotation(), older_plane_annotation())
+    fake_api.add("GET", EXPORT, content=body)
+    annotations = AsyncAnnotations(
+        fake_api.async_client(), fake_api.async_client()
+    )
+
+    rows = [
+        row
+        async for row in annotations.export(
+            annotated_by_email="expert@example.com"
+        )
+    ]
+
+    assert [row.reviewer_member_ids for row in rows] == [[UUID(MEMBER_ID)]] * 2
+    assert dict(fake_api.last_request.params) == {
+        "annotated_by_member_id": MEMBER_ID
+    }
+    chunks = [chunk async for chunk in annotations.export_stream()]
+    assert b"".join(chunks) == body
+
+
+def test_a_dataset_facet_carries_its_summary(fake_api: FakeAPI) -> None:
+    fake_api.add(
+        "GET",
+        "/v1/annotations/facets",
+        json_body=[
+            {
+                "dimension": "review_queue",
+                "value": "needs-review",
+                "count": 2,
+                "conversation_count": 1,
+                "comment_count": 3,
+                "reviewer_member_ids": [MEMBER_ID],
+                "updated_at": "2026-08-25T12:00:00Z",
+            }
+        ],
+    )
+
+    facet = Annotations(fake_api.client(), fake_api.client()).facets()[0]
+
+    assert (facet.dimension, facet.conversation_count) == ("review_queue", 1)
+    assert facet.comment_count == 3
+    assert facet.reviewer_member_ids == [UUID(MEMBER_ID)]
+    assert facet.updated_at is not None
