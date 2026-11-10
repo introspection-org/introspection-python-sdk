@@ -23,7 +23,6 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.schemas.annotations import (
     AnnotationInclude,
-    AnnotationNavigation,
     AnnotationState,
     AnnotationTarget,
 )
@@ -88,27 +87,6 @@ def _labels(label: str | Sequence[str] | None) -> str | list[str] | None:
     if label is None or isinstance(label, str):
         return label
     return list(label)
-
-
-def _navigation_params(
-    trace_id: str,
-    span_id: str,
-    *,
-    annotated_by_member_id: UUID | None,
-    assignee_member_id: UUID | None,
-    labels: Sequence[str] | None,
-    status: AnnotationStatus | None,
-    lookback_days: int | None,
-) -> dict[str, Any]:
-    return {
-        "trace_id": trace_id,
-        "span_id": span_id,
-        "annotated_by_member_id": annotated_by_member_id,
-        "assignee_member_id": assignee_member_id,
-        "label": list(labels) if labels else None,
-        "status": status,
-        "lookback_days": lookback_days,
-    }
 
 
 class Annotations:
@@ -209,34 +187,6 @@ class Annotations:
         self._dp_http.request(
             "POST", "/v1/annotations", json=body, expect="empty"
         )
-
-    def navigation(
-        self,
-        *,
-        trace_id: str,
-        span_id: str,
-        annotated_by_member_id: UUID | None = None,
-        assignee_member_id: UUID | None = None,
-        labels: Sequence[str] | None = None,
-        status: AnnotationStatus | None = None,
-        lookback_days: int | None = None,
-    ) -> AnnotationNavigation:
-        """The previous and next annotated spans around one, in the list the
-        same filters give."""
-        payload = self._dp_http.request(
-            "GET",
-            "/v1/annotations/navigation",
-            params=_navigation_params(
-                trace_id,
-                span_id,
-                annotated_by_member_id=annotated_by_member_id,
-                assignee_member_id=assignee_member_id,
-                labels=labels,
-                status=status,
-                lookback_days=lookback_days,
-            ),
-        )
-        return decode(AnnotationNavigation, payload)
 
     def _resolve_reviewer_ids(
         self, values: Sequence[str]
@@ -396,34 +346,6 @@ class AsyncAnnotations:
         await self._dp_http.request(
             "POST", "/v1/annotations", json=body, expect="empty"
         )
-
-    async def navigation(
-        self,
-        *,
-        trace_id: str,
-        span_id: str,
-        annotated_by_member_id: UUID | None = None,
-        assignee_member_id: UUID | None = None,
-        labels: Sequence[str] | None = None,
-        status: AnnotationStatus | None = None,
-        lookback_days: int | None = None,
-    ) -> AnnotationNavigation:
-        """The previous and next annotated spans around one, in the list the
-        same filters give."""
-        payload = await self._dp_http.request(
-            "GET",
-            "/v1/annotations/navigation",
-            params=_navigation_params(
-                trace_id,
-                span_id,
-                annotated_by_member_id=annotated_by_member_id,
-                assignee_member_id=assignee_member_id,
-                labels=labels,
-                status=status,
-                lookback_days=lookback_days,
-            ),
-        )
-        return decode(AnnotationNavigation, payload)
 
     async def _resolve_reviewer_ids(
         self, values: Sequence[str]

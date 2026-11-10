@@ -59,28 +59,6 @@ def test_annotation_page_keeps_unknown_fields(fake_api: FakeAPI):
     assert state.model_extra == {"priority": "high", "review": {"score": 3}}
 
 
-def test_annotation_navigation_keeps_a_nested_unknown_field(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        "/v1/annotations/navigation",
-        json_body={
-            "current": _annotation(priority="high"),
-            "current_position": 1,
-            "total_count": 1,
-            "window": 5,
-        },
-    )
-
-    navigation = Annotations(fake_api.client(), fake_api.client()).navigation(
-        trace_id=TRACE_ID, span_id=SPAN_ID
-    )
-
-    assert navigation.model_extra == {"window": 5}
-    assert navigation.current is not None
-    assert navigation.current.span_id == SPAN_ID
-    assert navigation.current.model_extra == {"priority": "high"}
-
-
 def test_task_keeps_unknown_fields_beside_known_enum_values(fake_api: FakeAPI):
     fake_api.add(
         "GET",

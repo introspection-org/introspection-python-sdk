@@ -55,23 +55,9 @@ class AnnotationState(AnnotationTarget):
     comments: list[AnnotationComment] | None = None
 
 
-class AnnotationNavigation(BaseModel):
-    """The review window around one annotated span: the rows before and
-    after it in the filtered list, and its 1-based position there."""
-
-    model_config = ConfigDict(extra="allow")
-
-    previous: AnnotationState | None = None
-    current: AnnotationState | None = None
-    next: AnnotationState | None = None
-    current_position: int | None = None
-    total_count: int
-
-
 __all__ = [
     "AnnotationComment",
     "AnnotationInclude",
-    "AnnotationNavigation",
     "AnnotationState",
     "AnnotationTarget",
 ]

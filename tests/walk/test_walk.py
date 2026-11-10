@@ -24,7 +24,6 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 from uuid import UUID
 
 import pytest
@@ -1308,16 +1307,7 @@ def _task_files(client: IntrospectionClient, task_id: str) -> list[File]:
 def exported_spans(
     w: World, conversations: Any, cid: str, *, raw: bool
 ) -> list[Any]:
-    """The spans of one conversation export, typed or as raw lines.
-
-    The recording predates the removal of the JSON-envelope export, and the
-    replay matches on the URL alone, so its two JSON entries are played in
-    place, around the Arrow one. Drop the replay branch at the next
-    re-record.
-    """
-    if w.mode == "replay":
-        path = f"/v1/conversations/{quote(cid, safe='')}/export"
-        return conversations._http.request("GET", path)["data"]
+    """The spans of one conversation export, typed or as raw lines."""
     if raw:
         return b"".join(conversations.export_stream(cid, "jsonl")).splitlines()
     return list(conversations.export_jsonl(cid))
@@ -1651,17 +1641,6 @@ def test_13_telemetry_reads(world: World) -> None:
         "introspection.annotation", conversation_id=cid
     ).read_all()
     assert event_table.num_rows >= len(events)
-    if w.mode == "replay":
-        # The recording predates the removal of the facets route and the SDK
-        # has no method for it any more; this plays its entry so teardown
-        # finds none unplayed. Delete it with the next re-record.
-        w.member.annotations._dp_http.request("GET", "/v1/annotations/facets")
-    assert (
-        w.member.annotations.navigation(
-            trace_id=target.trace_id, span_id=target.span_id
-        )
-        is not None
-    )
 
     # The AAuth surfaces, read empty: no agent has asked for anything, so
     # there is no mission or approval to read or decide.
