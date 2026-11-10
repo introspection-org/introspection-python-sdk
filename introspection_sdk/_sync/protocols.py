@@ -24,7 +24,7 @@ from introspection_sdk.runner_resources.conversations import (
 )
 from introspection_sdk.runner_resources.files import FileLike
 from introspection_sdk.runner_resources.tasks import RunHandle
-from introspection_sdk.schemas.agui import AGUIEvent, ResumeEntry
+from introspection_sdk.schemas.agui import AGUIStreamEvent, ResumeEntry
 from introspection_sdk.schemas.automations import (
     Automation,
     AutomationKind,
@@ -134,7 +134,7 @@ class TaskRunsResource(Protocol):
         max_reconnects: int = 5,
         backoff: float = 0.5,
         timeout: float = 300.0,
-    ) -> Iterator[AGUIEvent]: ...
+    ) -> Iterator[AGUIStreamEvent]: ...
 
 
 @runtime_checkable

@@ -19,6 +19,7 @@ import pytest
 from introspection_sdk import resumable as resumable_mod
 from introspection_sdk._errors import IntrospectionAPIError
 from introspection_sdk.runner_resources.tasks import AsyncTasks, Tasks
+from introspection_sdk.schemas.agui import UnknownEvent
 
 from .conftest import TASK_ID, FakeAPI
 
@@ -165,11 +166,30 @@ def test_429_readiness_backs_off_then_attaches(fake_api: FakeAPI):
     assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 3
 
 
-def test_unknown_event_type_is_not_a_severance(fake_api: FakeAPI):
+def test_unknown_event_type_is_yielded_and_the_run_reads_on(fake_api: FakeAPI):
+    unknown = 'id: 2\nevent: ag_ui\ndata: {"type":"NOT_A_REAL_EVENT"}\n\n'
+    fake_api.add_handler(
+        "GET",
+        STREAM_PATH,
+        _stream_handler([("clean", _content("1", "a") + unknown + _FINISH)]),
+    )
+    tasks = Tasks(fake_api.client())
+
+    events = list(tasks.runs.stream(TASK_ID, RUN_ID, backoff=0.001))
+    assert [e.type for e in events] == [
+        "TEXT_MESSAGE_CONTENT",
+        "NOT_A_REAL_EVENT",
+        "RUN_FINISHED",
+    ]
+    assert isinstance(events[1], UnknownEvent)
+    assert sum(1 for r in fake_api.requests if r.path == STREAM_PATH) == 1
+
+
+def test_a_frame_that_is_no_event_is_not_a_severance(fake_api: FakeAPI):
     # A payload the SDK cannot validate fails again identically on reconnect.
     # Treating it as a dropped connection used to loop until the deadline,
     # re-delivering every event before it on each pass.
-    bad = 'id: 2\nevent: ag_ui\ndata: {"type":"NOT_A_REAL_EVENT"}\n\n'
+    bad = 'id: 2\nevent: ag_ui\ndata: {"type":7}\n\n'
     fake_api.add_handler(
         "GET",
         STREAM_PATH,

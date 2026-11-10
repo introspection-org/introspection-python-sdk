@@ -9,7 +9,10 @@ from introspection_sdk._streaming_common import (
     _SseAccumulator,
     _SseEvent,
 )
-from introspection_sdk.schemas.agui import AGUIEvent, validate_ag_ui_event
+from introspection_sdk.schemas.agui import (
+    AGUIStreamEvent,
+    validate_ag_ui_event,
+)
 
 
 async def _parse_sse_async(
@@ -27,7 +30,7 @@ async def _parse_sse_async(
 
 async def parse_ag_ui_events_async(
     lines: AsyncIterable[str],
-) -> AsyncIterator[AGUIEvent]:
+) -> AsyncIterator[AGUIStreamEvent]:
     """Yield AG-UI events from ``event: ag_ui`` SSE frames.
 
     Non-AG-UI transport frames, such as heartbeats, are ignored.

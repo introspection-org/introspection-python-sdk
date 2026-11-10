@@ -18,7 +18,7 @@ from introspection_sdk.resumable import (
     stream_resumable_async,
 )
 from introspection_sdk.schemas.agui import (
-    AGUIEvent,
+    AGUIStreamEvent,
     AssistantMessage,
     CustomEvent,
     MessagesSnapshotEvent,
@@ -140,7 +140,7 @@ class AsyncRunHandle:
         max_reconnects: int = 5,
         backoff: float = 0.5,
         timeout: float = 300.0,
-    ) -> AsyncIterator[AGUIEvent]:
+    ) -> AsyncIterator[AGUIStreamEvent]:
         """Stream this run's AG-UI events, reconnecting on a dropped
         connection under the recovery contract in
         :mod:`introspection_sdk.resumable`."""
@@ -277,7 +277,7 @@ class AsyncTaskRuns:
         max_reconnects: int = 5,
         backoff: float = 0.5,
         timeout: float = 300.0,
-    ) -> AsyncIterator[AGUIEvent]:
+    ) -> AsyncIterator[AGUIStreamEvent]:
         # unasync: async-only (the sync twin's docstring follows)
         """Stream a run's AG-UI events with transparent resume — async twin of
         :meth:`TaskRuns.stream`."""

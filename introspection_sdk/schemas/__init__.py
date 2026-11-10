@@ -2,6 +2,7 @@
 
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
+    AGUIStreamEvent,
     EventType,
     Interrupt,
     ResumeEntry,
@@ -175,6 +176,7 @@ __all__ = [
     "AnnotationState",
     "AnnotationTarget",
     "AGUIEvent",
+    "AGUIStreamEvent",
     "Automation",
     "AutomationCondition",
     "AutomationConditionType",

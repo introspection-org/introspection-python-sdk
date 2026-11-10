@@ -20,7 +20,7 @@ from introspection_sdk.resumable import (
     stream_resumable,
 )
 from introspection_sdk.schemas.agui import (
-    AGUIEvent,
+    AGUIStreamEvent,
     AssistantMessage,
     CustomEvent,
     MessagesSnapshotEvent,
@@ -131,7 +131,7 @@ class RunHandle:
         max_reconnects: int = 5,
         backoff: float = 0.5,
         timeout: float = 300.0,
-    ) -> Iterator[AGUIEvent]:
+    ) -> Iterator[AGUIStreamEvent]:
         """Stream this run's AG-UI events, reconnecting on a dropped
         connection under the recovery contract in
         :mod:`introspection_sdk.resumable`."""
@@ -268,7 +268,7 @@ class TaskRuns:
         max_reconnects: int = 5,
         backoff: float = 0.5,
         timeout: float = 300.0,
-    ) -> Iterator[AGUIEvent]:
+    ) -> Iterator[AGUIStreamEvent]:
         """Stream a run's AG-UI events, reconnecting on a dropped connection
         under the recovery contract in :mod:`introspection_sdk.resumable`.
         The keyword args bound recovery attempts."""
