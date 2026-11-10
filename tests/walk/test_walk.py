@@ -1632,8 +1632,11 @@ def test_13_telemetry_reads(world: World) -> None:
         "introspection.annotation", conversation_id=cid
     ).read_all()
     assert event_table.num_rows >= len(events)
-    facets = w.member.annotations.facets()
-    assert facets is not None
+    if w.mode == "replay":
+        # The recording predates the removal of the facets route and the SDK
+        # has no method for it any more; this plays its entry so teardown
+        # finds none unplayed. Delete it with the next re-record.
+        w.member.annotations._dp_http.request("GET", "/v1/annotations/facets")
     assert (
         w.member.annotations.navigation(
             trace_id=target.trace_id, span_id=target.span_id

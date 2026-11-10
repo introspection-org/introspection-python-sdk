@@ -7,8 +7,6 @@ from collections.abc import Sequence
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import TypeAdapter
-
 from introspection_sdk._errors import (
     ConflictError,
     NotFoundError,
@@ -24,7 +22,6 @@ from introspection_sdk.pagination import (
     cursor_paginate,
 )
 from introspection_sdk.schemas.annotations import (
-    AnnotationFacet,
     AnnotationInclude,
     AnnotationNavigation,
     AnnotationState,
@@ -65,7 +62,6 @@ def _member_error(
 
 
 AnnotationStatus = Literal["backlog", "assigned", "reviewed"]
-FACETS = TypeAdapter(list[AnnotationFacet])
 
 
 def _reject_conflicting_filters(
@@ -96,6 +92,7 @@ def _navigation_params(
     assignee_member_id: UUID | None,
     labels: Sequence[str] | None,
     status: AnnotationStatus | None,
+    lookback_days: int | None,
 ) -> dict[str, Any]:
     return {
         "trace_id": trace_id,
@@ -104,6 +101,7 @@ def _navigation_params(
         "assignee_member_id": assignee_member_id,
         "label": list(labels) if labels else None,
         "status": status,
+        "lookback_days": lookback_days,
     }
 
 
@@ -127,6 +125,7 @@ class Annotations:
         next: str | None = None,
         include_total: bool | None = None,
         include: Sequence[AnnotationInclude] | None = None,
+        lookback_days: int | None = None,
     ) -> Pager[AnnotationState, Paginated[AnnotationState]]:
         _reject_conflicting_filters(
             annotated_by_member_id,
@@ -158,6 +157,7 @@ class Annotations:
                     "next": cursor,
                     "include_total": include_total,
                     "include": list(include) if include else None,
+                    "lookback_days": lookback_days,
                 },
             )
             return decode(Paginated[AnnotationState], payload)
@@ -202,13 +202,6 @@ class Annotations:
             "POST", "/v1/annotations", json=body, expect="empty"
         )
 
-    def facets(self) -> builtins.list[AnnotationFacet]:
-        """Counts of the current annotations per annotator, assignee, label
-        and status, for filter menus."""
-        return decode(
-            FACETS, self._dp_http.request("GET", "/v1/annotations/facets")
-        )
-
     def navigation(
         self,
         *,
@@ -218,6 +211,7 @@ class Annotations:
         assignee_member_id: UUID | None = None,
         labels: Sequence[str] | None = None,
         status: AnnotationStatus | None = None,
+        lookback_days: int | None = None,
     ) -> AnnotationNavigation:
         """The previous and next annotated spans around one, in the list the
         same filters give."""
@@ -231,6 +225,7 @@ class Annotations:
                 assignee_member_id=assignee_member_id,
                 labels=labels,
                 status=status,
+                lookback_days=lookback_days,
             ),
         )
         return decode(AnnotationNavigation, payload)
@@ -307,6 +302,7 @@ class AsyncAnnotations:
         next: str | None = None,
         include_total: bool | None = None,
         include: Sequence[AnnotationInclude] | None = None,
+        lookback_days: int | None = None,
     ) -> AsyncPager[AnnotationState, Paginated[AnnotationState]]:
         _reject_conflicting_filters(
             annotated_by_member_id,
@@ -344,6 +340,7 @@ class AsyncAnnotations:
                     "next": cursor,
                     "include_total": include_total,
                     "include": list(include) if include else None,
+                    "lookback_days": lookback_days,
                 },
             )
             return decode(Paginated[AnnotationState], payload)
@@ -390,14 +387,6 @@ class AsyncAnnotations:
             "POST", "/v1/annotations", json=body, expect="empty"
         )
 
-    async def facets(self) -> builtins.list[AnnotationFacet]:
-        """Counts of the current annotations per annotator, assignee, label
-        and status, for filter menus."""
-        return decode(
-            FACETS,
-            await self._dp_http.request("GET", "/v1/annotations/facets"),
-        )
-
     async def navigation(
         self,
         *,
@@ -407,6 +396,7 @@ class AsyncAnnotations:
         assignee_member_id: UUID | None = None,
         labels: Sequence[str] | None = None,
         status: AnnotationStatus | None = None,
+        lookback_days: int | None = None,
     ) -> AnnotationNavigation:
         """The previous and next annotated spans around one, in the list the
         same filters give."""
@@ -420,6 +410,7 @@ class AsyncAnnotations:
                 assignee_member_id=assignee_member_id,
                 labels=labels,
                 status=status,
+                lookback_days=lookback_days,
             ),
         )
         return decode(AnnotationNavigation, payload)

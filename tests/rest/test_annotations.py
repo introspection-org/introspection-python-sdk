@@ -295,12 +295,6 @@ async def test_async_list_resolves_email_only_once_across_pages(
     assert annotation_calls == 2
 
 
-FACETS = [
-    {"dimension": "label", "value": "needs-review", "count": 2},
-    {"dimension": "status", "value": "assigned", "count": 1},
-]
-
-
 def navigation() -> dict[str, object]:
     return {
         "previous": None,
@@ -311,15 +305,6 @@ def navigation() -> dict[str, object]:
     }
 
 
-def test_facets(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/annotations/facets", json_body=FACETS)
-    facets = Annotations(fake_api.client(), fake_api.client()).facets()
-    assert [(f.dimension, f.count) for f in facets] == [
-        ("label", 2),
-        ("status", 1),
-    ]
-
-
 def test_navigation_sends_the_target_and_filters(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/annotations/navigation", json_body=navigation())
     window = Annotations(fake_api.client(), fake_api.client()).navigation(
@@ -327,6 +312,7 @@ def test_navigation_sends_the_target_and_filters(fake_api: FakeAPI):
         span_id=SPAN_ID,
         labels=["needs-review", "flaky"],
         status="assigned",
+        lookback_days=30,
     )
     assert window.current is not None
     assert window.current.span_id == SPAN_ID
@@ -338,6 +324,7 @@ def test_navigation_sends_the_target_and_filters(fake_api: FakeAPI):
     )
     assert params.get_list("label") == ["needs-review", "flaky"]
     assert params.get("status") == "assigned"
+    assert params.get("lookback_days") == "30"
     assert "assignee_member_id" not in params
 
 
@@ -354,13 +341,11 @@ def test_navigation_of_a_span_the_plane_rejects(fake_api: FakeAPI):
         )
 
 
-async def test_async_facets_and_navigation(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/annotations/facets", json_body=[])
+async def test_async_navigation(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/annotations/navigation", json_body=navigation())
     annotations = AsyncAnnotations(
         fake_api.async_client(), fake_api.async_client()
     )
-    assert await annotations.facets() == []
     window = await annotations.navigation(
         trace_id=TRACE_ID,
         span_id=SPAN_ID,
@@ -414,31 +399,6 @@ def test_a_row_names_its_reviewers(fake_api: FakeAPI) -> None:
     assert state.reviewer_member_ids == [UUID(MEMBER_ID)]
     assert state.updated_by_member_id == UUID(MEMBER_ID)
     assert "reviewer_member_ids" in state.model_dump()
-
-
-def test_a_dataset_facet_carries_its_summary(fake_api: FakeAPI) -> None:
-    fake_api.add(
-        "GET",
-        "/v1/annotations/facets",
-        json_body=[
-            {
-                "dimension": "review_queue",
-                "value": "needs-review",
-                "count": 2,
-                "conversation_count": 1,
-                "comment_count": 3,
-                "reviewer_member_ids": [MEMBER_ID],
-                "updated_at": "2026-08-25T12:00:00Z",
-            }
-        ],
-    )
-
-    facet = Annotations(fake_api.client(), fake_api.client()).facets()[0]
-
-    assert (facet.dimension, facet.conversation_count) == ("review_queue", 1)
-    assert facet.comment_count == 3
-    assert facet.reviewer_member_ids == [UUID(MEMBER_ID)]
-    assert facet.updated_at is not None
 
 
 def test_include_comments_expands_each_row(fake_api: FakeAPI) -> None:
@@ -523,3 +483,35 @@ async def test_async_include_comments(fake_api: FakeAPI) -> None:
 
     assert fake_api.last_request.params.get_list("include") == ["comments"]
     assert rows[0].comments == []
+
+
+def test_a_dataset_size_is_the_lists_total(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([annotation()]))
+
+    listed = (
+        Annotations(fake_api.client(), fake_api.client())
+        .list(
+            label="needs-review", limit=1, include_total=True, lookback_days=7
+        )
+        .page()
+    )
+
+    assert dict(fake_api.last_request.params) == {
+        "label": "needs-review",
+        "limit": "1",
+        "include_total": "true",
+        "lookback_days": "7",
+    }
+    assert listed.total_count == 1
+    assert listed.records[0].updated_at is not None
+
+
+async def test_async_list_sends_lookback_days(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([]))
+
+    await AsyncAnnotations(
+        fake_api.async_client(), fake_api.async_client()
+    ).list(lookback_days=7)
+
+    assert fake_api.last_request.params.get("lookback_days") == "7"
+    assert "include_total" not in fake_api.last_request.params

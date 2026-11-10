@@ -290,6 +290,10 @@ for item in client.annotations.list(include=["comments"]):
         print(comment.created_at, comment.member_id, comment.comment)
 ```
 
+`list(label=..., limit=1, include_total=True).page().total_count` is the size
+of a dataset, and `lookback_days` (1 to 90, default 90) bounds how far back
+the read reaches.
+
 Reusable labels live in `client.project_labels`; their slug and color are
 immutable after creation, while the optional description can be updated.
 

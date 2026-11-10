@@ -61,23 +61,6 @@ class AnnotationState(AnnotationTarget):
     comments: list[AnnotationComment] | None = None
 
 
-class AnnotationFacet(BaseModel):
-    """How many current annotations hold one value of one filter dimension
-    (annotator, assignee, label, status or review_queue)."""
-
-    model_config = ConfigDict(extra="allow")
-
-    dimension: str
-    value: str
-    count: int
-    #: Set on the ``label`` and ``review_queue`` buckets, which summarize a
-    #: dataset.
-    conversation_count: int | None = None
-    comment_count: int | None = None
-    reviewer_member_ids: list[UUID] | None = None
-    updated_at: datetime | None = None
-
-
 class AnnotationNavigation(BaseModel):
     """The review window around one annotated span: the rows before and
     after it in the filtered list, and its 1-based position there."""
@@ -93,7 +76,6 @@ class AnnotationNavigation(BaseModel):
 
 __all__ = [
     "AnnotationComment",
-    "AnnotationFacet",
     "AnnotationInclude",
     "AnnotationNavigation",
     "AnnotationState",
