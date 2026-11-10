@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.41.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.40.0...v0.41.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop annotations.navigation; GET /v1/annotations/navigation is gone ([#253](https://github.com/introspection-org/introspection-python-sdk/issues/253))
+
+### Bug Fixes
+
+* drop annotations.navigation; GET /v1/annotations/navigation is gone ([#253](https://github.com/introspection-org/introspection-python-sdk/issues/253)) ([e2bf8a7](https://github.com/introspection-org/introspection-python-sdk/commit/e2bf8a7a161a4d138b6e2400b9863e511854fd59))
+
 ## [0.40.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.39.0...v0.40.0) (2026-11-10)
 
 
