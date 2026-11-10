@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from introspection_sdk.schemas._secrets import WireSecret
-from introspection_sdk.schemas.lanes import Environment
+from introspection_sdk.schemas.lanes import Environment, OpenEnvironment
 
 
 class _Scope(BaseModel):
@@ -37,6 +38,7 @@ class _Setting(_Scope):
     updated_at: datetime | None = None
     name: str
     created_by_member_id: UUID
+    environment: OpenEnvironment | None = None
 
 
 class _Request(_Scope):
@@ -72,10 +74,15 @@ class VariableKind(StrEnum):
     """A reference to a credential by name."""
 
 
+OpenVariableKind = Annotated[
+    VariableKind | str, Field(union_mode="left_to_right")
+]
+
+
 class Variable(_Setting):
     """A runtime environment variable."""
 
-    kind: VariableKind = VariableKind.VALUE
+    kind: OpenVariableKind = VariableKind.VALUE
     value: str | None = None
 
 
@@ -100,6 +107,7 @@ __all__ = [
     "Credential",
     "CredentialCreateRequest",
     "CredentialUpdateRequest",
+    "OpenVariableKind",
     "Variable",
     "VariableCreateRequest",
     "VariableKind",

@@ -22,6 +22,11 @@ class TaskCommandKind(StrEnum):
     DOWNLOAD = "download"
 
 
+OpenTaskCommandKind = Annotated[
+    TaskCommandKind | str, Field(union_mode="left_to_right")
+]
+
+
 class TaskCommandStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -32,6 +37,11 @@ class TaskCommandStatus(StrEnum):
     def is_terminal(self) -> bool:
         """Whether the command has finished, either way."""
         return self in (TaskCommandStatus.COMPLETED, TaskCommandStatus.FAILED)
+
+
+OpenTaskCommandStatus = Annotated[
+    TaskCommandStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class ExecCommand(BaseModel):
@@ -86,10 +96,10 @@ class TaskCommand(BaseModel):
 
     id: UUID
     task_id: UUID
-    kind: TaskCommandKind
+    kind: OpenTaskCommandKind
     spec: dict[str, Any]
     """The spec as the API normalized it."""
-    status: TaskCommandStatus
+    status: OpenTaskCommandStatus
     exit_code: int | None = None
     stdout: str | None = None
     stderr: str | None = None
@@ -100,11 +110,22 @@ class TaskCommand(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
+    @property
+    def is_terminal(self) -> bool:
+        """Whether the command has finished. A status this SDK does not
+        know counts as finished, so a wait loop ends rather than spins."""
+        return self.status not in (
+            TaskCommandStatus.QUEUED,
+            TaskCommandStatus.RUNNING,
+        )
+
 
 __all__ = [
     "TASK_COMMAND_SPEC_ADAPTER",
     "DownloadCommand",
     "ExecCommand",
+    "OpenTaskCommandKind",
+    "OpenTaskCommandStatus",
     "TaskCommand",
     "TaskCommandKind",
     "TaskCommandSpec",

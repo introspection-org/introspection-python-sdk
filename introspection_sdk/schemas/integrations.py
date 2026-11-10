@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -27,11 +27,21 @@ class IntegrationType(StrEnum):
     CUSTOM = "custom"
 
 
+OpenIntegrationType = Annotated[
+    IntegrationType | str, Field(union_mode="left_to_right")
+]
+
+
 class IntegrationStatus(StrEnum):
     PENDING = "pending"
     ACTIVE = "active"
     ERROR = "error"
     DISABLED = "disabled"
+
+
+OpenIntegrationStatus = Annotated[
+    IntegrationStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class Integration(BaseModel):
@@ -43,11 +53,11 @@ class Integration(BaseModel):
     org_id: UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    type: IntegrationType
+    type: OpenIntegrationType
     name: str | None = None
     external_id: str | None = None
     """The provider's id for the install, set once it is activated."""
-    status: IntegrationStatus = IntegrationStatus.PENDING
+    status: OpenIntegrationStatus = IntegrationStatus.PENDING
     created_by_member_id: UUID
     token_expires_at: datetime | None = None
     data: dict[str, Any] | None = None
@@ -88,6 +98,11 @@ class IntegrationPermissionLevel(StrEnum):
     WRITE = "write"
 
 
+OpenIntegrationPermissionLevel = Annotated[
+    IntegrationPermissionLevel | str, Field(union_mode="left_to_right")
+]
+
+
 def _github_default_permissions() -> dict[str, IntegrationPermissionLevel]:
     return {"metadata": IntegrationPermissionLevel.READ}
 
@@ -124,8 +139,8 @@ class IntegrationAccessToken(BaseModel):
     token: SecretStr
     """Read the plaintext with ``token.get_secret_value()``."""
     expires_at: datetime
-    type: IntegrationType
-    permissions: dict[str, IntegrationPermissionLevel]
+    type: OpenIntegrationType
+    permissions: dict[str, OpenIntegrationPermissionLevel]
 
 
 class GitHubInstallationRepository(BaseModel):
@@ -177,4 +192,7 @@ __all__ = [
     "IntegrationStatus",
     "IntegrationType",
     "IntegrationUpdateRequest",
+    "OpenIntegrationPermissionLevel",
+    "OpenIntegrationStatus",
+    "OpenIntegrationType",
 ]

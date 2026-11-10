@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,6 +32,11 @@ class RuntimeLlmMode(StrEnum):
     BYOK = "byok"
 
 
+OpenRuntimeLlmMode = Annotated[
+    RuntimeLlmMode | str, Field(union_mode="left_to_right")
+]
+
+
 class RuntimeGroupType(StrEnum):
     """Who a runtime group belongs to.
 
@@ -41,6 +46,11 @@ class RuntimeGroupType(StrEnum):
 
     MANAGED = "managed"
     CUSTOM = "custom"
+
+
+OpenRuntimeGroupType = Annotated[
+    RuntimeGroupType | str, Field(union_mode="left_to_right")
+]
 
 
 class RuntimeInclude(StrEnum):
@@ -84,7 +94,7 @@ class Runtime(ApiModel):
     is_active: bool = False
     description: str | None = None
     metadata: dict[str, Any] | None = None
-    llm_mode: RuntimeLlmMode = RuntimeLlmMode.MANAGED
+    llm_mode: OpenRuntimeLlmMode = RuntimeLlmMode.MANAGED
     created_at: datetime | None = None
     updated_at: datetime | None = None
     # When set, the runtime has been withdrawn and never resolves as the
@@ -96,7 +106,7 @@ class Runtime(ApiModel):
     environment_ref: dict[str, str] | None = None
     # Projected from the runtime group: who owns it and the template it was
     # created from.
-    runtime_group_type: RuntimeGroupType = RuntimeGroupType.CUSTOM
+    runtime_group_type: OpenRuntimeGroupType = RuntimeGroupType.CUSTOM
     template_ref: str | None = None
     # For an image version: the recipe commit its image carries, that
     # commit's subject line, and the recipe's GitHub repository (owner/name).
@@ -140,6 +150,8 @@ class RuntimeUpdate(BaseModel):
 
 
 __all__ = [
+    "OpenRuntimeGroupType",
+    "OpenRuntimeLlmMode",
     "Runtime",
     "RuntimeCreate",
     "RuntimeGroupType",

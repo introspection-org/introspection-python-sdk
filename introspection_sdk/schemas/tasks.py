@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,6 +35,9 @@ class TaskKind(StrEnum):
     PROCESS = "process"
 
 
+OpenTaskKind = Annotated[TaskKind | str, Field(union_mode="left_to_right")]
+
+
 class TaskStatus(StrEnum):
     PENDING = "pending"
     QUEUED = "queued"
@@ -46,6 +49,9 @@ class TaskStatus(StrEnum):
     FAILED = "failed"
     CANCELLING = "cancelling"
     CANCELLED = "cancelled"
+
+
+OpenTaskStatus = Annotated[TaskStatus | str, Field(union_mode="left_to_right")]
 
 
 class AgentInfo(_ApiModel):
@@ -61,8 +67,8 @@ class Task(_ApiModel):
     updated_at: datetime
     title: str | None = None
     display_index: int | None = None
-    kind: TaskKind = TaskKind.AGENT
-    status: TaskStatus = TaskStatus.PENDING
+    kind: OpenTaskKind = TaskKind.AGENT
+    status: OpenTaskStatus = TaskStatus.PENDING
     member_id: UUID | None = None
     automation_id: UUID | None = None
     runtime_id: UUID | None = None
@@ -235,7 +241,7 @@ class TaskRunResumeRequest(_ApiModel):
 class TaskRun(_ApiModel):
     id: str
     task_id: UUID
-    status: TaskStatus
+    status: OpenTaskStatus
     error: str | None = None
     """Why the run failed; set only on a failed run."""
     completion_reason: str | None = None

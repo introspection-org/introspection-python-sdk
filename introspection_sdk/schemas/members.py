@@ -19,7 +19,14 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Tag, TypeAdapter
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Discriminator,
+    Field,
+    Tag,
+    TypeAdapter,
+)
 
 
 class _ApiModel(BaseModel):
@@ -34,6 +41,9 @@ class MemberType(StrEnum):
     CUSTOMER = "customer"
 
 
+OpenMemberType = Annotated[MemberType | str, Field(union_mode="left_to_right")]
+
+
 class Member(_ApiModel):
     id: UUID
     org_id: UUID
@@ -44,7 +54,7 @@ class Member(_ApiModel):
     external_user_id: str | None = None
     image_url: str | None = None
     role: str = "member"
-    member_type: MemberType = MemberType.BUSINESS
+    member_type: OpenMemberType = MemberType.BUSINESS
     is_deactivated: bool = False
     seat_tier: str | None = None
     """The member's Ark seat (``standard`` or ``pro``); ``None`` is a standard
@@ -156,4 +166,5 @@ __all__ = [
     "MemberCreate",
     "MemberType",
     "MemberUpdateRequest",
+    "OpenMemberType",
 ]

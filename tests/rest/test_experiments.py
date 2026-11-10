@@ -8,6 +8,7 @@ from uuid import UUID
 
 from introspection_sdk.resources.experiments import Experiments
 from introspection_sdk.runner import Runner
+from introspection_sdk.schemas.experiments import ExperimentStatus
 
 from .conftest import (
     EXPERIMENT_ID,
@@ -131,13 +132,13 @@ def test_handle_lifecycle_start_end_cancel(fake_api: FakeAPI):
     )
     handle = _experiments(fake_api)(UUID(EXPERIMENT_ID))
 
-    assert handle.start().status.value == "running"
+    assert handle.start().status is ExperimentStatus.RUNNING
 
     ended = handle.end()
-    assert ended.status.value == "ended"
+    assert ended.status is ExperimentStatus.ENDED
     assert fake_api.requests[-1].json() is None
 
-    assert handle.cancel().status.value == "cancelled"
+    assert handle.cancel().status is ExperimentStatus.CANCELLED
 
 
 def test_handle_experiment_id_property(fake_api: FakeAPI):

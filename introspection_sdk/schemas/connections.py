@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ApiModel(BaseModel):
@@ -26,6 +27,11 @@ class ConnectionOwner(StrEnum):
 
     MEMBER = "member"
     PROJECT = "project"
+
+
+OpenConnectionOwner = Annotated[
+    ConnectionOwner | str, Field(union_mode="left_to_right")
+]
 
 
 class ConnectorRef(ApiModel):
@@ -43,7 +49,7 @@ class Connection(ApiModel):
     project's own account on a connector."""
 
     id: UUID
-    owner: ConnectionOwner | str = ConnectionOwner.MEMBER
+    owner: OpenConnectionOwner = ConnectionOwner.MEMBER
     member_id: UUID | None = None
     """The member whose grant this is; ``None`` for the project's own."""
     connector: ConnectorRef | None = None
@@ -91,4 +97,5 @@ __all__ = [
     "ConnectionCreateRequest",
     "ConnectionOwner",
     "ConnectorRef",
+    "OpenConnectionOwner",
 ]

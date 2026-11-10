@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -26,6 +26,11 @@ class EndpointKind(StrEnum):
     LLM = "llm"
     API = "api"
     MCP = "mcp"
+
+
+OpenEndpointKind = Annotated[
+    EndpointKind | str, Field(union_mode="left_to_right")
+]
 
 
 class EndpointMetadata(BaseModel):
@@ -78,7 +83,7 @@ class Endpoint(BaseModel):
     name: str
     host: str
     base_url: str | None = None
-    kind: EndpointKind | str = EndpointKind.LLM
+    kind: OpenEndpointKind = EndpointKind.LLM
     metadata: EndpointMetadata = Field(default_factory=EndpointMetadata)
     assertion_claims: dict[str, Any] | None = None
     runtime_id: UUID | None = None
@@ -143,4 +148,5 @@ __all__ = [
     "EndpointKind",
     "EndpointMetadata",
     "EndpointUpdate",
+    "OpenEndpointKind",
 ]

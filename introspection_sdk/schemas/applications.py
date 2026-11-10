@@ -11,12 +11,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from introspection_sdk.schemas._secrets import WireSecret
-from introspection_sdk.schemas.lanes import Environment
+from introspection_sdk.schemas.lanes import Environment, OpenEnvironment
 
 
 class _ApiModel(BaseModel):
@@ -34,12 +35,22 @@ class ApplicationType(StrEnum):
     SERVICE_ACCOUNT = "service_account"
 
 
+OpenApplicationType = Annotated[
+    ApplicationType | str, Field(union_mode="left_to_right")
+]
+
+
 class ApplicationGrant(StrEnum):
     AUTHORIZATION_CODE = "authorization_code"
     REFRESH_TOKEN = "refresh_token"
     CLIENT_CREDENTIALS = "client_credentials"
     DEVICE_CODE = "device_code"
     EMAIL_CODE = "email_code"
+
+
+OpenApplicationGrant = Annotated[
+    ApplicationGrant | str, Field(union_mode="left_to_right")
+]
 
 
 class Application(_ApiModel):
@@ -51,14 +62,14 @@ class Application(_ApiModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     name: str
-    application_type: ApplicationType
-    environment: Environment = Environment.PRODUCTION
+    application_type: OpenApplicationType
+    environment: OpenEnvironment = Environment.PRODUCTION
     redirect_uris: list[str] = []
     allowed_origins: list[str] = []
     allowed_scopes: list[str] = []
     client_id: str
     agent_member_id: UUID | None = None
-    allowed_grants: list[ApplicationGrant] = []
+    allowed_grants: list[OpenApplicationGrant] = []
     last_used_at: datetime | None = None
     revoked_at: datetime | None = None
     created_by_member_id: UUID
@@ -96,10 +107,20 @@ class ApplicationIdpProvider(StrEnum):
     ZITADEL = "zitadel"
 
 
+OpenApplicationIdpProvider = Annotated[
+    ApplicationIdpProvider | str, Field(union_mode="left_to_right")
+]
+
+
 class ApplicationIdpStatus(StrEnum):
     PENDING = "pending"
     ACTIVE = "active"
     FAILED = "failed"
+
+
+OpenApplicationIdpStatus = Annotated[
+    ApplicationIdpStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class ApplicationIdp(_ApiModel):
@@ -111,14 +132,14 @@ class ApplicationIdp(_ApiModel):
     application_id: UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    idp_provider: ApplicationIdpProvider = ApplicationIdpProvider.GENERIC
+    idp_provider: OpenApplicationIdpProvider = ApplicationIdpProvider.GENERIC
     issuer: str
     client_id: str
     scopes: list[str] = []
     external_org_id: str | None = None
     external_idp_id: str | None = None
     audience_client_id: str | None = None
-    status: ApplicationIdpStatus = ApplicationIdpStatus.PENDING
+    status: OpenApplicationIdpStatus = ApplicationIdpStatus.PENDING
     error_message: str | None = None
     disabled_at: datetime | None = None
     client_secret: SecretStr | None = None
@@ -143,6 +164,11 @@ class ApplicationSecretStatus(StrEnum):
     EXPIRED = "expired"
 
 
+OpenApplicationSecretStatus = Annotated[
+    ApplicationSecretStatus | str, Field(union_mode="left_to_right")
+]
+
+
 class ApplicationSecret(_ApiModel):
     """A client secret of a confidential Application. ``secret`` is set only
     on the create response."""
@@ -160,7 +186,7 @@ class ApplicationSecret(_ApiModel):
     last_used_at: datetime | None = None
     created_by_member_id: UUID
     secret: SecretStr | None = None
-    status: ApplicationSecretStatus
+    status: OpenApplicationSecretStatus
 
 
 class ApplicationSecretCreateRequest(_Request):
@@ -198,4 +224,9 @@ __all__ = [
     "ApplicationSecretStatus",
     "ApplicationType",
     "ApplicationUpdateRequest",
+    "OpenApplicationGrant",
+    "OpenApplicationIdpProvider",
+    "OpenApplicationIdpStatus",
+    "OpenApplicationSecretStatus",
+    "OpenApplicationType",
 ]

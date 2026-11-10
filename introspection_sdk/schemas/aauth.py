@@ -8,6 +8,7 @@ via ``extra="allow"`` so DP additions don't break the SDK.
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -25,10 +26,20 @@ class ApprovalKind(StrEnum):
     COMPLETION = "completion"
 
 
+OpenApprovalKind = Annotated[
+    ApprovalKind | str, Field(union_mode="left_to_right")
+]
+
+
 class ApprovalStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     DENIED = "denied"
+
+
+OpenApprovalStatus = Annotated[
+    ApprovalStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class Budget(ApiModel):
@@ -73,8 +84,8 @@ class Approval(ApiModel):
     id: UUID
     org_id: UUID
     project_id: UUID
-    kind: ApprovalKind | str
-    status: ApprovalStatus | str
+    kind: OpenApprovalKind
+    status: OpenApprovalStatus
     agent_id: str
     member_id: UUID
     mission_id: UUID | None = None
@@ -145,4 +156,6 @@ __all__ = [
     "Budget",
     "Mission",
     "MissionLogEntry",
+    "OpenApprovalKind",
+    "OpenApprovalStatus",
 ]

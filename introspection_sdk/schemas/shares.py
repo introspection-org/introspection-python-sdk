@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 
 class _ApiModel(BaseModel):
@@ -25,6 +25,11 @@ class ShareResourceType(StrEnum):
     read back from ``list`` but never passed to ``create``."""
 
 
+OpenShareResourceType = Annotated[
+    ShareResourceType | str, Field(union_mode="left_to_right")
+]
+
+
 class ResourceShare(_ApiModel):
     """A sharing grant for a file, issue or conversation (`/v1/shares`).
 
@@ -39,7 +44,7 @@ class ResourceShare(_ApiModel):
     project_id: UUID
     created_at: datetime
     updated_at: datetime
-    resource_type: ShareResourceType
+    resource_type: OpenShareResourceType
     resource_id: str
     granted_member_id: UUID | None = None
     granted_tag: str | None = None

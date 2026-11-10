@@ -9,6 +9,7 @@ from introspection_sdk.schemas.tasks import (
     TaskPrompt,
     TaskRepoRequest,
     TaskRunKind,
+    TaskStatus,
 )
 
 from .conftest import (
@@ -311,7 +312,7 @@ def test_runs_get(fake_api: FakeAPI):
         json_body=task_run_payload(status="completed"),
     )
     run = _tasks(fake_api).runs.get(TASK_ID, "run-1")
-    assert run.status.value == "completed"
+    assert run.status is TaskStatus.COMPLETED
 
 
 def test_run_handle_cancel(fake_api: FakeAPI):

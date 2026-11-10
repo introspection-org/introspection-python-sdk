@@ -25,6 +25,9 @@ class ImageKind(StrEnum):
     """A caller's ``POST /v1/images``."""
 
 
+OpenImageKind = Annotated[ImageKind | str, Field(union_mode="left_to_right")]
+
+
 class ImageStatus(StrEnum):
     QUEUED = "queued"
     BUILDING = "building"
@@ -32,6 +35,11 @@ class ImageStatus(StrEnum):
     FAILED = "failed"
     CANCELLED = "cancelled"
     EVICTED = "evicted"
+
+
+OpenImageStatus = Annotated[
+    ImageStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class ImageScanStatus(StrEnum):
@@ -42,10 +50,20 @@ class ImageScanStatus(StrEnum):
     SKIPPED = "skipped"
 
 
+OpenImageScanStatus = Annotated[
+    ImageScanStatus | str, Field(union_mode="left_to_right")
+]
+
+
 class ImageSourceKind(StrEnum):
     CONTEXT = "context"
     MIRROR = "mirror"
     BAKE = "bake"
+
+
+OpenImageSourceKind = Annotated[
+    ImageSourceKind | str, Field(union_mode="left_to_right")
+]
 
 
 class Image(BaseModel):
@@ -54,12 +72,12 @@ class Image(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: UUID
-    kind: ImageKind
+    kind: OpenImageKind
     name: str
     content_id: str
     """What a create dedupes on: a repeat create of the same content returns
     this row."""
-    source_kind: ImageSourceKind
+    source_kind: OpenImageSourceKind
     source: dict[str, Any]
     build_platform: str
     service: str | None = None
@@ -74,13 +92,13 @@ class Image(BaseModel):
     base_image_tag: str | None = None
     external_artifacts: dict[str, str] | None = None
     external_image_name: str | None = None
-    status: ImageStatus
+    status: OpenImageStatus
     image_ref: str | None = None
     image_digest: str | None = None
     size_bytes: int | None = None
     warnings: list[str] = []
     error: str | None = None
-    scan_status: ImageScanStatus | None = None
+    scan_status: OpenImageScanStatus | None = None
     scan_started_at: datetime | None = None
     scanned_at: datetime | None = None
     scan_db_built_at: datetime | None = None
@@ -175,4 +193,8 @@ __all__ = [
     "ImageSourceKind",
     "ImageStatus",
     "MirrorImageSource",
+    "OpenImageKind",
+    "OpenImageScanStatus",
+    "OpenImageSourceKind",
+    "OpenImageStatus",
 ]

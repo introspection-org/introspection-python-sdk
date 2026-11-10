@@ -52,6 +52,8 @@ __all__ = [
     "ObservationLens",
     "ObservationPayload",
     "ObservationSeverity",
+    "OpenObservationLens",
+    "OpenObservationSeverity",
     "PatternAssignmentEvent",
     "PatternAssignmentPayload",
     "PatternEvent",
@@ -115,6 +117,13 @@ ObservationLens = Literal[
 ObservationSeverity = Literal["low", "medium", "high"]
 """Severity of a lens observation."""
 
+OpenObservationLens = Annotated[
+    ObservationLens | str, Field(union_mode="left_to_right")
+]
+OpenObservationSeverity = Annotated[
+    ObservationSeverity | str, Field(union_mode="left_to_right")
+]
+
 
 class _ApiModel(BaseModel):
     # ``extra="allow"`` keeps unknown server fields; ``protected_namespaces=()``
@@ -149,10 +158,10 @@ class ObservationPayload(_ApiModel):
     pattern assignment (the server-side fold)."""
 
     observation_id: UUID
-    lens: ObservationLens
+    lens: OpenObservationLens
     label: str | None = None
     summary: str | None = None
-    severity: ObservationSeverity | None = None
+    severity: OpenObservationSeverity | None = None
     confidence: float | None = None
     segment: int | None = None
     sentiment: str | None = None

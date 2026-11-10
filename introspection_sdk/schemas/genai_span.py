@@ -22,7 +22,7 @@ attribute nobody modelled still arrives and still round-trips.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import (
     BaseModel,
@@ -67,6 +67,8 @@ __all__ = [
     "IntrospectionRun",
     "IntrospectionRuntime",
     "IntrospectionTask",
+    "OpenSpanKind",
+    "OpenSpanStatusCode",
     "SpanAttributes",
     "SpanKind",
     "SpanStatus",
@@ -86,6 +88,11 @@ SpanKind = Literal[
     "CONSUMER",
 ]
 """OpenTelemetry span kind values."""
+
+OpenSpanStatusCode = Annotated[
+    SpanStatusCode | str, Field(union_mode="left_to_right")
+]
+OpenSpanKind = Annotated[SpanKind | str, Field(union_mode="left_to_right")]
 
 
 class SpanModel(BaseModel):
@@ -464,7 +471,7 @@ class SpanAttributes(SpanModel):
 class SpanStatus(SpanModel):
     """OpenTelemetry span status."""
 
-    code: SpanStatusCode | None = None
+    code: OpenSpanStatusCode | None = None
     message: str | None = None
 
 
@@ -478,7 +485,7 @@ class GenAiSpan(SpanModel):
     span_id: str | None = None
     parent_span_id: str | None = None
     name: str | None = None
-    kind: SpanKind | None = None
+    kind: OpenSpanKind | None = None
     start_time: datetime
     end_time: datetime | None = None
     duration_ns: int | None = None

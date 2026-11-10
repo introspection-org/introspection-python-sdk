@@ -38,10 +38,13 @@ class TagKind(StrEnum):
     ANNOTATION = "annotation"
 
 
+OpenTagKind = Annotated[TagKind | str, Field(union_mode="left_to_right")]
+
+
 class Tag(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    kind: TagKind
+    kind: OpenTagKind
     name: str
     #: Set on an ``annotation`` tag; never on an ``access`` tag.
     color: str | None = None
@@ -104,6 +107,7 @@ __all__ = [
     "AccessTagCreate",
     "AnnotationTagCreate",
     "HexColor",
+    "OpenTagKind",
     "Tag",
     "TagCreate",
     "TagKind",

@@ -35,6 +35,8 @@ __all__ = [
     "ToolCallRequestPart",
     "ToolCallResponsePart",
     "MessagePart",
+    "MessageRole",
+    "OpenMessageRole",
     "InputMessage",
     "OutputMessage",
     "InputMessages",
@@ -325,12 +327,20 @@ MessagePart = Annotated[
 """Every message part shape, tagged by `type`, with unknown types preserved."""
 
 
+MessageRole = Literal["system", "user", "assistant", "tool"]
+"""The roles a GenAI message is written with."""
+
+OpenMessageRole = Annotated[
+    MessageRole | str, Field(union_mode="left_to_right")
+]
+
+
 class InputMessage(OmitNoneModel):
     """Input message in OTel Gen AI semantic convention format."""
 
     open_schema: ClassVar[bool] = True
 
-    role: Literal["system", "user", "assistant", "tool"] = Field(
+    role: OpenMessageRole = Field(
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
     )
     parts: list[MessagePart] = Field(
@@ -348,7 +358,7 @@ class OutputMessage(OmitNoneModel):
 
     open_schema: ClassVar[bool] = True
 
-    role: Literal["system", "user", "assistant", "tool"] = Field(
+    role: OpenMessageRole = Field(
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
     )
     parts: list[MessagePart] = Field(

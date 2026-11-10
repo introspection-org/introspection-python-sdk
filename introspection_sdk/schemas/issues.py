@@ -32,7 +32,7 @@ from pydantic import (
 )
 
 from introspection_sdk._uuid import _uuid7
-from introspection_sdk.schemas.tasks import TaskStatus
+from introspection_sdk.schemas.tasks import OpenTaskStatus
 
 
 class ApiModel(BaseModel):
@@ -85,7 +85,6 @@ OpenIssueStatus = Annotated[
 OpenIssuePriority = Annotated[
     IssuePriority | str, Field(union_mode="left_to_right")
 ]
-OpenTaskStatus = Annotated[TaskStatus | str, Field(union_mode="left_to_right")]
 
 IssueMetadataValue = str | int | float | bool | None
 """One value of an issue's ``metadata`` document."""

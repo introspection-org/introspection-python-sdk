@@ -16,7 +16,7 @@ older clients.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -41,6 +41,9 @@ __all__ = [
     "MetricSpec",
     "MetricTimeDimension",
     "MetricView",
+    "OpenAggInterval",
+    "OpenAggOp",
+    "OpenMetricView",
 ]
 
 AggOp = Literal[
@@ -92,6 +95,12 @@ MetricView = Literal[
     "patterns",
 ]
 """The telemetry view a metrics query runs against."""
+
+OpenAggOp = Annotated[AggOp | str, Field(union_mode="left_to_right")]
+OpenAggInterval = Annotated[
+    AggInterval | str, Field(union_mode="left_to_right")
+]
+OpenMetricView = Annotated[MetricView | str, Field(union_mode="left_to_right")]
 
 MetricOrderType = Literal["metric", "dimension", "time"]
 MetricOrderDirection = Literal["asc", "desc"]
@@ -206,7 +215,7 @@ class MetricDimensionValue(_ResponseModel):
 class MetricResultValue(_ResponseModel):
     metric_index: int
     measure: str | None = None
-    aggregation: AggOp
+    aggregation: OpenAggOp
     value: float
 
 
@@ -217,11 +226,11 @@ class MetricResultRow(_ResponseModel):
 
 
 class MetricQueryMeta(_ResponseModel):
-    view: MetricView
+    view: OpenMetricView
     window: EffectiveWindow
     row_count: int
     row_limit: int
-    interval: AggInterval | None = None
+    interval: OpenAggInterval | None = None
     step_seconds: int | None = None
     approximate: bool = False
     truncated: bool = False

@@ -243,7 +243,7 @@ def test_command_create_sends_the_tagged_body(
 
     assert fake_api.last_request.json() == body
     assert created.status is TaskCommandStatus.QUEUED
-    assert not created.status.is_terminal
+    assert not created.is_terminal
 
 
 def test_command_create_refuses_a_shell_string(fake_api: FakeAPI):
@@ -294,7 +294,7 @@ def test_command_get_caps_the_wait(
         TASK_ID, UUID(COMMAND_ID), wait_seconds=asked
     )
 
-    assert command.status.is_terminal
+    assert command.is_terminal
     assert command.exit_code == 0
     assert fake_api.last_request.params.get("wait_seconds") == sent
 

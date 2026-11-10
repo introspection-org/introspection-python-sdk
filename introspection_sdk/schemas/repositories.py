@@ -67,7 +67,10 @@ class RepositoryEntry(ApiModel):
 
     name: str
     path: str
-    type: Literal["file", "dir", "symlink", "submodule"]
+    type: Annotated[
+        Literal["file", "dir", "symlink", "submodule"] | str,
+        Field(union_mode="left_to_right"),
+    ]
     size: int = 0
     sha: str
 
@@ -100,7 +103,9 @@ class RepositoryFile(ApiModel):
     size: int
     sha: str
     commit_sha: str
-    encoding: Literal["utf-8", "base64"]
+    encoding: Annotated[
+        Literal["utf-8", "base64"] | str, Field(union_mode="left_to_right")
+    ]
     content: str
     truncated: bool = False
 
@@ -132,7 +137,10 @@ class RepositoryCommitFile(ApiModel):
     """One file a commit changed."""
 
     filename: str
-    status: Literal["added", "removed", "modified", "renamed"]
+    status: Annotated[
+        Literal["added", "removed", "modified", "renamed"] | str,
+        Field(union_mode="left_to_right"),
+    ]
     additions: int
     deletions: int
     changes: int

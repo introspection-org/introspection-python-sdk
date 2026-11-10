@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,9 +32,19 @@ class ExperimentStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+OpenExperimentStatus = Annotated[
+    ExperimentStatus | str, Field(union_mode="left_to_right")
+]
+
+
 class ExperimentGoalDirection(StrEnum):
     MAXIMIZE = "maximize"
     MINIMIZE = "minimize"
+
+
+OpenExperimentGoalDirection = Annotated[
+    ExperimentGoalDirection | str, Field(union_mode="left_to_right")
+]
 
 
 class ExperimentGoalGuard(_ApiModel):
@@ -80,7 +90,7 @@ class ExperimentGoal(_ApiModel):
     """
 
     kind: Literal["composite"] = "composite"
-    direction: ExperimentGoalDirection = ExperimentGoalDirection.MAXIMIZE
+    direction: OpenExperimentGoalDirection = ExperimentGoalDirection.MAXIMIZE
     components: list[ExperimentGoalComponent] = Field(default_factory=list)
 
 
@@ -102,7 +112,7 @@ class Experiment(_ApiModel):
     name: str
     runtime_group_id: UUID | None = None
     environment: str | None = None
-    status: ExperimentStatus = ExperimentStatus.DRAFT
+    status: OpenExperimentStatus = ExperimentStatus.DRAFT
     routing_strategy: str | None = None
     arms: list[ExperimentArm] = Field(default_factory=list)
     goal_json: ExperimentGoal | None = None
@@ -131,5 +141,7 @@ __all__ = [
     "ExperimentGoalGuard",
     "ExperimentStatus",
     "JudgeGoalComponent",
+    "OpenExperimentGoalDirection",
+    "OpenExperimentStatus",
     "TelemetryGoalComponent",
 ]

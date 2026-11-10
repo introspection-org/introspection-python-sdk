@@ -13,7 +13,6 @@ from uuid import UUID
 
 import httpx2 as httpx
 import pytest
-from pydantic import ValidationError
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError
 from introspection_sdk._http import _HttpClient
@@ -164,12 +163,12 @@ def test_get_defaults_group_and_image_source_fields(
     assert rt.model_extra == {}
 
 
-def test_get_rejects_unknown_runtime_group_type(
+def test_get_keeps_unknown_runtime_group_type(
     local_dp: Callable[[], LocalDP],
 ):
     dp = local_dp()
-    with pytest.raises(ValidationError, match="runtime_group_type"):
-        _get_from(dp, {**WIRE_RUNTIME, "runtime_group_type": "platform"})
+    rt = _get_from(dp, {**WIRE_RUNTIME, "runtime_group_type": "platform"})
+    assert rt.runtime_group_type == "platform"
     _assert_get_request(dp)
 
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -37,12 +37,22 @@ class ConnectorAuthMode(StrEnum):
     AAUTH = "aauth"
 
 
+OpenConnectorAuthMode = Annotated[
+    ConnectorAuthMode | str, Field(union_mode="left_to_right")
+]
+
+
 class ConnectorStatus(StrEnum):
     """Lifecycle status of a connector."""
 
     PENDING = "pending"
     ACTIVE = "active"
     ERROR = "error"
+
+
+OpenConnectorStatus = Annotated[
+    ConnectorStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class ConnectionStatus(StrEnum):
@@ -54,6 +64,11 @@ class ConnectionStatus(StrEnum):
     REVOKED = "revoked"
 
 
+OpenConnectionStatus = Annotated[
+    ConnectionStatus | str, Field(union_mode="left_to_right")
+]
+
+
 class ConnectionSubjectType(StrEnum):
     """Who a connection acts as against the provider."""
 
@@ -62,6 +77,11 @@ class ConnectionSubjectType(StrEnum):
     FEDERATED = "federated"
     PERSON = "person"
     WORKSPACE = "workspace"
+
+
+OpenConnectionSubjectType = Annotated[
+    ConnectionSubjectType | str, Field(union_mode="left_to_right")
+]
 
 
 class ConnectionCreateSubjectType(StrEnum):
@@ -116,7 +136,7 @@ class Connector(ApiModel):
     slug: str
     name: str
     provider: str
-    auth_mode: ConnectorAuthMode
+    auth_mode: OpenConnectorAuthMode
     environment: str
     agent_member_id: UUID | None = None
     authorization_endpoint: str | None = None
@@ -129,7 +149,7 @@ class Connector(ApiModel):
     assertion_audience: str | None = None
     policy_entities: list[PolicyEntity] | None = None
     webhook_url: str | None = None
-    status: ConnectorStatus = ConnectorStatus.PENDING
+    status: OpenConnectorStatus = ConnectorStatus.PENDING
     created_by_member_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     requires_runtime: bool = False
@@ -158,9 +178,9 @@ class Connection(ApiModel):
     column existed."""
     runtime_group_id: UUID | None = None
     """Runtime group answering this connection's channels."""
-    subject_type: ConnectionSubjectType = ConnectionSubjectType.APP
+    subject_type: OpenConnectionSubjectType = ConnectionSubjectType.APP
     scopes_granted: list[str] = []
-    status: ConnectionStatus = ConnectionStatus.ACTIVE
+    status: OpenConnectionStatus = ConnectionStatus.ACTIVE
     token_expires_at: datetime | None = None
     last_verified_at: datetime | None = None
     provider_account_name: str | None = None
@@ -341,6 +361,11 @@ class ConnectorOAuthClientRegistration(StrEnum):
     PRE_REGISTERED = "pre_registered"
 
 
+OpenConnectorOAuthClientRegistration = Annotated[
+    ConnectorOAuthClientRegistration | str, Field(union_mode="left_to_right")
+]
+
+
 class ConnectorOAuthDiscoveryRequest(ApiModel):
     """Resolve OAuth metadata (``POST /v1/connectors/discover-oauth``
     body). ``issuer`` is an authorization-server issuer URL, or an MCP
@@ -372,7 +397,7 @@ class ConnectorOAuthDiscoveryResponse(ApiModel):
     redirect_uri: str
     client_id: str | None = None
     client_secret: str | None = None
-    client_registration: ConnectorOAuthClientRegistration | None = None
+    client_registration: OpenConnectorOAuthClientRegistration | None = None
 
 
 class ConnectionMissionConstraints(ApiModel):
@@ -440,5 +465,10 @@ __all__ = [
     "ConnectorStatus",
     "ConnectorUpdateRequest",
     "EntityUid",
+    "OpenConnectionStatus",
+    "OpenConnectionSubjectType",
+    "OpenConnectorAuthMode",
+    "OpenConnectorOAuthClientRegistration",
+    "OpenConnectorStatus",
     "PolicyEntity",
 ]

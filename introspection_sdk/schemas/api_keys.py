@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
-from introspection_sdk.schemas.lanes import Environment
+from introspection_sdk.schemas.lanes import Environment, OpenEnvironment
 
 
 class ApiKeyCapability(StrEnum):
@@ -22,12 +23,22 @@ class ApiKeyCapability(StrEnum):
     EVALS = "evals"
 
 
+OpenApiKeyCapability = Annotated[
+    ApiKeyCapability | str, Field(union_mode="left_to_right")
+]
+
+
 class ApiKeyStatus(StrEnum):
     ACTIVE = "active"
     ROTATING = "rotating"
     """Deleted with a grace period: still valid until ``expires_at``."""
     EXPIRED = "expired"
     REVOKED = "revoked"
+
+
+OpenApiKeyStatus = Annotated[
+    ApiKeyStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class ApiKey(BaseModel):
@@ -40,15 +51,15 @@ class ApiKey(BaseModel):
     project_id: UUID
     created_at: datetime | None = None
     name: str | None = None
-    environment: Environment = Environment.PRODUCTION
-    allow: list[ApiKeyCapability] = []
+    environment: OpenEnvironment = Environment.PRODUCTION
+    allow: list[OpenApiKeyCapability] = []
     scope: str = "*"
     member_id: UUID | None = None
     """The agent member the key acts as, when it is not the default one."""
     key_prefix: str
     key_suffix: str
     redacted_key: str | None = None
-    status: ApiKeyStatus = ApiKeyStatus.ACTIVE
+    status: OpenApiKeyStatus = ApiKeyStatus.ACTIVE
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
     acknowledged_at: datetime | None = None
@@ -112,4 +123,6 @@ __all__ = [
     "ApiKeyCreated",
     "ApiKeyStatus",
     "ApiKeyUpdateRequest",
+    "OpenApiKeyCapability",
+    "OpenApiKeyStatus",
 ]

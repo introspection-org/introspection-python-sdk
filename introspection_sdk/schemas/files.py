@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -20,6 +20,9 @@ class FileType(StrEnum):
     OTHER = "other"
 
 
+OpenFileType = Annotated[FileType | str, Field(union_mode="left_to_right")]
+
+
 class File(_ApiModel):
     id: UUID
     org_id: UUID
@@ -27,7 +30,7 @@ class File(_ApiModel):
     created_at: datetime
     updated_at: datetime
     name: str = Field(min_length=1, max_length=512)
-    file_type: FileType = FileType.OTHER
+    file_type: OpenFileType = FileType.OTHER
     storage_path: str
     mime_type: str = "application/octet-stream"
     metadata: dict[str, Any] | None = None
