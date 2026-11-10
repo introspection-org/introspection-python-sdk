@@ -419,6 +419,10 @@ class AsyncConversationsResource(Protocol):
         self, conversation_id: str, **params: Unpack[ConversationExportParams]
     ) -> GenAiSpanList: ...
 
+    def export_jsonl(
+        self, conversation_id: str, **params: Unpack[ConversationExportParams]
+    ) -> AsyncIterator[GenAiSpan]: ...
+
     def export_stream(
         self,
         conversation_id: str,

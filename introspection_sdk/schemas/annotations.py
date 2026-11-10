@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class AnnotationTarget(BaseModel):
@@ -16,20 +16,27 @@ class AnnotationTarget(BaseModel):
 
 
 class AnnotationState(AnnotationTarget):
-    """Current state folded from immutable annotation events."""
+    """Current state folded from immutable annotation events.
+
+    Comment text is not on the row: read it from
+    ``events.list("introspection.annotation", trace_id=..., span_id=...)``.
+    """
 
     model_config = ConfigDict(extra="allow")
 
     conversation_id: str | None = None
     labels: list[str] = Field(default_factory=list)
     assignee_member_ids: list[UUID] = Field(default_factory=list)
-    annotator_member_ids: list[UUID] = Field(default_factory=list)
-    has_comment: bool = False
+    #: Members whose comment completed a review. A data plane that predates
+    #: the rename sends it as ``human_commenter_member_ids``.
+    reviewer_member_ids: list[UUID] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices(
+            "reviewer_member_ids", "human_commenter_member_ids"
+        ),
+    )
     comment_count: int = 0
-    latest_comment: str | None = None
-    latest_comment_member_id: UUID | None = None
     updated_at: datetime
-    updated_by_member_id: UUID
     assignment_event_id: UUID | None = None
 
 

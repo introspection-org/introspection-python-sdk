@@ -47,13 +47,9 @@ def annotation() -> dict[str, object]:
         "conversation_id": "conversation-1",
         "labels": ["needs-review"],
         "assignee_member_ids": [MEMBER_ID],
-        "annotator_member_ids": [],
-        "has_comment": False,
+        "reviewer_member_ids": [MEMBER_ID],
         "comment_count": 0,
-        "latest_comment": None,
-        "latest_comment_member_id": None,
         "updated_at": "2026-08-25T12:00:00Z",
-        "updated_by_member_id": MEMBER_ID,
         "assignment_event_id": str(EVENT_ID),
     }
 
@@ -371,3 +367,49 @@ async def test_async_facets_and_navigation(fake_api: FakeAPI):
     )
     assert window.next is None
     assert fake_api.last_request.params.get("assignee_member_id") == MEMBER_ID
+
+
+def test_a_row_from_an_older_plane_still_parses(fake_api: FakeAPI) -> None:
+    """A plane that predates the narrower row sends the removed fields and
+    the reviewers under their old name."""
+    row = annotation()
+    del row["reviewer_member_ids"]
+    row.update(
+        {
+            "human_commenter_member_ids": [MEMBER_ID],
+            "has_human_comment": True,
+            "has_comment": True,
+            "latest_comment": "Looks wrong.",
+            "latest_comment_member_id": MEMBER_ID,
+            "latest_comment_actor_member_id": MEMBER_ID,
+            "latest_comment_actor_type": "member",
+            "annotator_member_ids": [MEMBER_ID],
+            "commenter_member_ids": [MEMBER_ID],
+            "updated_by_member_id": MEMBER_ID,
+        }
+    )
+    fake_api.add("GET", "/v1/annotations", json_body=page([row]))
+
+    state = (
+        Annotations(fake_api.client(), fake_api.client())
+        .list()
+        .page()
+        .records[0]
+    )
+
+    assert state.reviewer_member_ids == [UUID(MEMBER_ID)]
+    assert state.comment_count == 0
+
+
+def test_a_row_names_its_reviewers(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([annotation()]))
+
+    state = (
+        Annotations(fake_api.client(), fake_api.client())
+        .list()
+        .page()
+        .records[0]
+    )
+
+    assert state.reviewer_member_ids == [UUID(MEMBER_ID)]
+    assert "reviewer_member_ids" in state.model_dump()

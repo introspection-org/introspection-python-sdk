@@ -205,7 +205,7 @@ from pathlib import Path
 
 from introspection_sdk.atif import spans_to_atif
 
-spans = client.conversations.export_json(conversation_id).data
+spans = client.conversations.export_jsonl(conversation_id)
 trajectory = spans_to_atif(spans, session_id=conversation_id)
 Path("trajectory.json").write_text(trajectory.model_dump_json(indent=2))
 ```
@@ -273,8 +273,18 @@ client.annotations.create(
 )
 
 for item in client.annotations.list(label="needs-review"):
-    print(item.trace_id, item.span_id, item.latest_comment)
+    print(item.trace_id, item.span_id, item.labels, item.comment_count)
+    for event in client.events.list(
+        "introspection.annotation",
+        trace_id=item.trace_id,
+        span_id=item.span_id,
+    ):
+        if event.payload.comment:
+            print(event.payload.comment)
 ```
+
+A row carries the labels, assignees, reviewers and comment count of a span;
+the comment text is on its `introspection.annotation` events.
 
 Reusable labels live in `client.project_labels`; their slug and color are
 immutable after creation, while the optional description can be updated.

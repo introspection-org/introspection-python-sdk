@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import inspect
 import io
+import json
 from typing import Any
 from uuid import UUID
 
@@ -21,6 +22,7 @@ import pyarrow as pa
 import pytest
 
 from introspection_sdk import ValidationError
+from introspection_sdk._errors import IntrospectionAPIError
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     Conversations,
@@ -1175,9 +1177,78 @@ def test_export_json_negotiates_json_and_types_span_list(fake_api: FakeAPI):
     assert result.data[0].span_id == "span-1"
 
 
+def jsonl_body(*span_ids: str) -> bytes:
+    return b"".join(
+        json.dumps({**make_item(), "span_id": span_id}).encode() + b"\n"
+        for span_id in span_ids
+    )
+
+
+def test_export_jsonl_negotiates_ndjson_and_yields_typed_spans(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        content=jsonl_body("span-1", "span-2"),
+    )
+
+    spans = list(_conversations(fake_api).export_jsonl("conv-1", agent="root"))
+
+    assert [span.span_id for span in spans] == ["span-1", "span-2"]
+    request = fake_api.last_request
+    assert request.headers["accept"] == "application/x-ndjson"
+    assert dict(request.params) == {"agent": "root"}
+
+
+def test_export_jsonl_joins_a_line_split_across_chunks(fake_api: FakeAPI):
+    body = jsonl_body("span-1", "span-2").rstrip(b"\n")
+    chunks = [body[i : i + 7] for i in range(0, len(body), 7)]
+    fake_api.add_handler(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        lambda _request: httpx.Response(200, content=iter(chunks)),
+    )
+
+    spans = list(_conversations(fake_api).export_jsonl("conv-1"))
+
+    assert [span.span_id for span in spans] == ["span-1", "span-2"]
+
+
+def test_export_jsonl_surfaces_406_from_an_older_plane(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        status=406,
+        json_body={"detail": "Not Acceptable"},
+    )
+
+    with pytest.raises(IntrospectionAPIError) as error:
+        list(_conversations(fake_api).export_jsonl("conv-1"))
+
+    assert error.value.status_code == 406
+    assert len(fake_api.requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_async_export_jsonl(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        content=jsonl_body("span-1", "span-2"),
+    )
+    conversations = AsyncConversations(fake_api.async_client())
+
+    spans = [span async for span in conversations.export_jsonl("conv-1")]
+
+    assert [span.span_id for span in spans] == ["span-1", "span-2"]
+    assert fake_api.last_request.headers["accept"] == "application/x-ndjson"
+
+
 @pytest.mark.parametrize(
     ("format", "accept"),
     [
+        ("jsonl", "application/x-ndjson"),
         ("json", "application/json"),
         ("trajectory", "application/vnd.letta.trajectory+json;version=1"),
         ("arrow", ARROW_STREAM_MEDIA_TYPE),

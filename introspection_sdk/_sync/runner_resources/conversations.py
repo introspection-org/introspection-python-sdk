@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import builtins
+import json
 from collections.abc import Iterator
 from datetime import datetime
 from typing import Any, Literal, Unpack
@@ -14,7 +15,7 @@ from uuid import UUID
 from pydantic import TypeAdapter
 
 from introspection_sdk._http import RawResponse, _HttpClient
-from introspection_sdk._strict_schema import decode
+from introspection_sdk._strict_schema import decode, note_response
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -46,11 +47,15 @@ TRAJECTORY_ADAPTER: TypeAdapter[list[TrajectoryRecord]] = TypeAdapter(
     list[TrajectoryRecord]
 )
 
-ConversationExportFormat = Literal["json", "trajectory", "arrow"]
-"""Wire representation accepted by the complete conversation export route."""
+ConversationExportFormat = Literal["jsonl", "json", "trajectory", "arrow"]
+"""Wire representation accepted by the complete conversation export route.
+
+``jsonl`` is the preferred raw form: one GenAI span per line, no envelope.
+"""
 
 
 JSON_EXPORT_HEADERS = {"Accept": "application/json"}
+JSONL_EXPORT_HEADERS = {"Accept": "application/x-ndjson"}
 
 
 #: How many items ``retrieve()`` scans, newest-first, looking for the latest
@@ -110,6 +115,8 @@ def _export_headers(format: ConversationExportFormat) -> dict[str, str]:
         return TRAJECTORY_ACCEPT_HEADERS
     if format == "arrow":
         return ARROW_ACCEPT_HEADERS
+    if format == "jsonl":
+        return JSONL_EXPORT_HEADERS
     return JSON_EXPORT_HEADERS
 
 
@@ -574,7 +581,12 @@ class Conversations:
         conversation_id: str,
         **params: Unpack[ConversationExportParams],
     ) -> GenAiSpanList:
-        """Export one complete conversation as the standard GenAI-span list."""
+        """Export one complete conversation as the standard GenAI-span list.
+
+        .. deprecated::
+            Prefer :meth:`export_jsonl`, which reads the same spans without
+            buffering the whole export.
+        """
         payload = self._http.request(
             "GET",
             _export_path(conversation_id),
@@ -582,6 +594,33 @@ class Conversations:
             headers=JSON_EXPORT_HEADERS,
         )
         return decode(GenAiSpanList, payload)
+
+    def export_jsonl(
+        self,
+        conversation_id: str,
+        **params: Unpack[ConversationExportParams],
+    ) -> Iterator[GenAiSpan]:
+        """Stream one complete conversation as GenAI spans, one per line.
+
+        Each span is decoded as its line arrives, so the export is never
+        held whole. A data plane that predates the JSON-lines form answers
+        406, which raises rather than falling back to :meth:`export_json`.
+        """
+        path = _export_path(conversation_id)
+        buffer = b""
+        for chunk in self._http.stream_bytes(
+            path,
+            params=build_export_params(**params),
+            headers=JSONL_EXPORT_HEADERS,
+        ):
+            *lines, buffer = (buffer + chunk).split(b"\n")
+            for line in lines:
+                if line.strip():
+                    note_response(path)
+                    yield decode(GenAiSpan, json.loads(line))
+        if buffer.strip():
+            note_response(path)
+            yield decode(GenAiSpan, json.loads(buffer))
 
     def export_stream(
         self,

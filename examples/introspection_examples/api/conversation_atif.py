@@ -50,7 +50,7 @@ def read_trajectory(client: IntrospectionClient) -> AtifTrajectory | None:
         ]
     )
     for conversation_id in conversation_ids:
-        spans = client.conversations.export_json(conversation_id).data
+        spans = client.conversations.export_jsonl(conversation_id)
         try:
             return spans_to_atif(spans, session_id=conversation_id)
         except ValueError as error:
