@@ -7,8 +7,6 @@ from collections.abc import Sequence
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import TypeAdapter
-
 from introspection_sdk._errors import (
     ConflictError,
     NotFoundError,
@@ -24,7 +22,7 @@ from introspection_sdk.pagination import (
     cursor_paginate,
 )
 from introspection_sdk.schemas.annotations import (
-    AnnotationFacet,
+    AnnotationInclude,
     AnnotationNavigation,
     AnnotationState,
     AnnotationTarget,
@@ -64,7 +62,32 @@ def _member_error(
 
 
 AnnotationStatus = Literal["backlog", "assigned", "reviewed"]
-FACETS = TypeAdapter(list[AnnotationFacet])
+
+
+def _reject_conflicting_filters(
+    annotated_by_member_id: UUID | None,
+    assignee_member_id: UUID | None,
+    annotated_by_email: str | None,
+    assigned_to_email: str | None,
+) -> None:
+    if annotated_by_member_id is not None and annotated_by_email is not None:
+        raise ValidationError(
+            "Use annotated_by_member_id or annotated_by_email, not both",
+            status_code=422,
+            code="conflicting_annotation_annotator_filters",
+        )
+    if assignee_member_id is not None and assigned_to_email is not None:
+        raise ValidationError(
+            "Use assignee_member_id or assigned_to_email, not both",
+            status_code=422,
+            code="conflicting_annotation_assignee_filters",
+        )
+
+
+def _labels(label: str | Sequence[str] | None) -> str | list[str] | None:
+    if label is None or isinstance(label, str):
+        return label
+    return list(label)
 
 
 def _navigation_params(
@@ -75,6 +98,7 @@ def _navigation_params(
     assignee_member_id: UUID | None,
     labels: Sequence[str] | None,
     status: AnnotationStatus | None,
+    lookback_days: int | None,
 ) -> dict[str, Any]:
     return {
         "trace_id": trace_id,
@@ -83,6 +107,7 @@ def _navigation_params(
         "assignee_member_id": assignee_member_id,
         "label": list(labels) if labels else None,
         "status": status,
+        "lookback_days": lookback_days,
     }
 
 
@@ -101,26 +126,20 @@ class Annotations:
         trace_id: str | None = None,
         span_id: str | None = None,
         conversation_id: str | None = None,
-        label: str | None = None,
+        label: str | Sequence[str] | None = None,
+        status: AnnotationStatus | None = None,
         limit: int | None = None,
         next: str | None = None,
         include_total: bool | None = None,
+        include: Sequence[AnnotationInclude] | None = None,
+        lookback_days: int | None = None,
     ) -> Pager[AnnotationState, Paginated[AnnotationState]]:
-        if (
-            annotated_by_member_id is not None
-            and annotated_by_email is not None
-        ):
-            raise ValidationError(
-                "Use annotated_by_member_id or annotated_by_email, not both",
-                status_code=422,
-                code="conflicting_annotation_annotator_filters",
-            )
-        if assignee_member_id is not None and assigned_to_email is not None:
-            raise ValidationError(
-                "Use assignee_member_id or assigned_to_email, not both",
-                status_code=422,
-                code="conflicting_annotation_assignee_filters",
-            )
+        _reject_conflicting_filters(
+            annotated_by_member_id,
+            assignee_member_id,
+            annotated_by_email,
+            assigned_to_email,
+        )
         if annotated_by_email is not None:
             annotated_by_member_id = self._resolve_reviewer_ids(
                 [annotated_by_email]
@@ -140,10 +159,13 @@ class Annotations:
                     "trace_id": trace_id,
                     "span_id": span_id,
                     "conversation_id": conversation_id,
-                    "label": label,
+                    "label": _labels(label),
+                    "status": status,
                     "limit": limit,
                     "next": cursor,
                     "include_total": include_total,
+                    "include": list(include) if include else None,
+                    "lookback_days": lookback_days,
                 },
             )
             return decode(Paginated[AnnotationState], payload)
@@ -188,13 +210,6 @@ class Annotations:
             "POST", "/v1/annotations", json=body, expect="empty"
         )
 
-    def facets(self) -> builtins.list[AnnotationFacet]:
-        """Counts of the current annotations per annotator, assignee, label
-        and status, for filter menus."""
-        return decode(
-            FACETS, self._dp_http.request("GET", "/v1/annotations/facets")
-        )
-
     def navigation(
         self,
         *,
@@ -204,6 +219,7 @@ class Annotations:
         assignee_member_id: UUID | None = None,
         labels: Sequence[str] | None = None,
         status: AnnotationStatus | None = None,
+        lookback_days: int | None = None,
     ) -> AnnotationNavigation:
         """The previous and next annotated spans around one, in the list the
         same filters give."""
@@ -217,6 +233,7 @@ class Annotations:
                 assignee_member_id=assignee_member_id,
                 labels=labels,
                 status=status,
+                lookback_days=lookback_days,
             ),
         )
         return decode(AnnotationNavigation, payload)
@@ -288,26 +305,20 @@ class AsyncAnnotations:
         trace_id: str | None = None,
         span_id: str | None = None,
         conversation_id: str | None = None,
-        label: str | None = None,
+        label: str | Sequence[str] | None = None,
+        status: AnnotationStatus | None = None,
         limit: int | None = None,
         next: str | None = None,
         include_total: bool | None = None,
+        include: Sequence[AnnotationInclude] | None = None,
+        lookback_days: int | None = None,
     ) -> AsyncPager[AnnotationState, Paginated[AnnotationState]]:
-        if (
-            annotated_by_member_id is not None
-            and annotated_by_email is not None
-        ):
-            raise ValidationError(
-                "Use annotated_by_member_id or annotated_by_email, not both",
-                status_code=422,
-                code="conflicting_annotation_annotator_filters",
-            )
-        if assignee_member_id is not None and assigned_to_email is not None:
-            raise ValidationError(
-                "Use assignee_member_id or assigned_to_email, not both",
-                status_code=422,
-                code="conflicting_annotation_assignee_filters",
-            )
+        _reject_conflicting_filters(
+            annotated_by_member_id,
+            assignee_member_id,
+            annotated_by_email,
+            assigned_to_email,
+        )
         resolved_annotator = annotated_by_member_id
         resolved_assignee = assignee_member_id
         filters_resolved = False
@@ -333,10 +344,13 @@ class AsyncAnnotations:
                     "trace_id": trace_id,
                     "span_id": span_id,
                     "conversation_id": conversation_id,
-                    "label": label,
+                    "label": _labels(label),
+                    "status": status,
                     "limit": limit,
                     "next": cursor,
                     "include_total": include_total,
+                    "include": list(include) if include else None,
+                    "lookback_days": lookback_days,
                 },
             )
             return decode(Paginated[AnnotationState], payload)
@@ -383,14 +397,6 @@ class AsyncAnnotations:
             "POST", "/v1/annotations", json=body, expect="empty"
         )
 
-    async def facets(self) -> builtins.list[AnnotationFacet]:
-        """Counts of the current annotations per annotator, assignee, label
-        and status, for filter menus."""
-        return decode(
-            FACETS,
-            await self._dp_http.request("GET", "/v1/annotations/facets"),
-        )
-
     async def navigation(
         self,
         *,
@@ -400,6 +406,7 @@ class AsyncAnnotations:
         assignee_member_id: UUID | None = None,
         labels: Sequence[str] | None = None,
         status: AnnotationStatus | None = None,
+        lookback_days: int | None = None,
     ) -> AnnotationNavigation:
         """The previous and next annotated spans around one, in the list the
         same filters give."""
@@ -413,6 +420,7 @@ class AsyncAnnotations:
                 assignee_member_id=assignee_member_id,
                 labels=labels,
                 status=status,
+                lookback_days=lookback_days,
             ),
         )
         return decode(AnnotationNavigation, payload)
@@ -468,6 +476,7 @@ class AsyncAnnotations:
 
 
 __all__ = [
+    "AnnotationStatus",
     "Annotations",
     "AsyncAnnotations",
 ]

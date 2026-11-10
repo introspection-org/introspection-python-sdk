@@ -18,12 +18,13 @@ All reads share the standard cursor envelope
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
 from introspection_sdk.schemas.automations import (
     OpenSkipReason,
@@ -45,8 +46,21 @@ __all__ = [
     "FeedbackPayload",
     "IntrospectionEventBase",
     "IntrospectionEventName",
+    "IssueActivityBasePayload",
+    "IssueActivityEvent",
+    "IssueActivityPayload",
+    "IssueCommentedPayload",
+    "IssueCreatedPayload",
+    "IssueDeletedPayload",
+    "IssueEventAction",
+    "IssueFieldChange",
+    "IssueUpdatedPayload",
+    "JudgeType",
+    "JudgementBasePayload",
+    "JudgementEgressPayload",
     "JudgementEvent",
     "JudgementPayload",
+    "JudgementVerdictPayload",
     "KNOWN_EVENT_NAMES",
     "ObservationEvent",
     "ObservationLens",
@@ -59,6 +73,8 @@ __all__ = [
     "TrackEvent",
     "TrackPayload",
     "UnknownEvent",
+    "UnknownIssuePayload",
+    "UnknownJudgementPayload",
 ]
 
 
@@ -74,6 +90,7 @@ class IntrospectionEventName(StrEnum):
     OBSERVATION = "introspection.observation"
     OBSERVATION_CLUSTERING_RUN = "introspection.observation_clustering.run"
     JUDGEMENT = "introspection.judgement"
+    ISSUE = "introspection.issue"
     PATTERN = "introspection.pattern"
     PATTERN_ASSIGNMENT = "introspection.pattern.assignment"
     AUTOMATION_TRIGGERED = "introspection.automation.triggered"
@@ -116,10 +133,37 @@ ObservationSeverity = Literal["low", "medium", "high"]
 """Severity of a lens observation."""
 
 
+class JudgeType(StrEnum):
+    """Where a judge runs: on live traffic, on a dataset, or on a mission."""
+
+    ONLINE = "online"
+    OFFLINE = "offline"
+    MISSION = "mission"
+
+
+# A known value decodes to the member and an unknown one stays a ``str``, so a
+# value the API adds later still decodes.
+OpenJudgeType = Annotated[JudgeType | str, Field(union_mode="left_to_right")]
+
+
 class _ApiModel(BaseModel):
     # ``extra="allow"`` keeps unknown server fields; ``protected_namespaces=()``
     # silences the ``model_`` warning for wire fields like ``model``.
     model_config = ConfigDict(extra="allow", protected_namespaces=())
+
+
+def tag_or_unknown(field: str, known: frozenset[str]) -> Callable[[Any], str]:
+    """A union discriminator on ``field``: a value outside ``known`` selects
+    the union's ``unknown`` member, so a member the API adds later decodes."""
+
+    def tag(payload: Any) -> str:
+        if isinstance(payload, dict):
+            value = payload.get(field)
+        else:
+            value = getattr(payload, field, None)
+        return value if value in known else "unknown"
+
+    return tag
 
 
 class IntrospectionEventBase(_ApiModel):
@@ -240,27 +284,160 @@ class FeedbackPayload(_ApiModel):
     agent_name: str | None = None  #: gen_ai.agent.name
     agent_id: str | None = None  #: gen_ai.agent.id
     properties: dict[str, Any] | None = None
+    #: The authenticated member who authored the feedback.
+    author_member_id: UUID | None = None
 
 
 class AnnotationPayload(_ApiModel):
     """One member-authored annotation mutation."""
 
     member_id: UUID
+    #: The member that ran the request for ``member_id``, e.g. an agent.
+    actor_member_id: UUID | None = None
+    actor_member_type: str | None = None
     labels: list[str] | None = None
     comment: str | None = None
     assignee_member_ids: list[UUID] | None = None
 
 
-class JudgementPayload(_ApiModel):
-    """One judge evaluation result event."""
+class JudgementBasePayload(_ApiModel):
+    """What every judgement carries, whichever kind it is."""
 
     judgement_id: str
     judge_id: str | None = None
+    judge_slug: str | None = None
+    judge_type: OpenJudgeType | None = None
+    runtime_slug: str | None = None
     result: str | None = None
+    #: The execution outcome (``ok`` / ``error``), distinct from ``result``.
+    status: str | None = None
+    error_class: str | None = None
+    error_message: str | None = None
+    source_component: str | None = None
+    judge_model: str | None = None
+    experiment_arm_id: UUID | None = None
+
+
+class JudgementVerdictPayload(JudgementBasePayload):
+    """A recipe judge's verdict on a conversation."""
+
+    kind: Literal["verdict"]
+    reasoning: str | None = None
     definition_hash: str | None = None
+    engine_version: str | None = None
+    judge_provider: str | None = None
     contract_version: str | None = None
     sequence_hash: str | None = None
-    experiment_arm_id: UUID | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+
+
+class JudgementEgressPayload(JudgementBasePayload):
+    """The egress policy gate's decision on one outbound request."""
+
+    kind: Literal["egress"]
+    #: Each answered question's probability of true, 0-100.
+    scores: dict[str, int] | None = None
+    questions: dict[str, str] | None = None
+    policy_id: str | None = None
+    policy_action: str | None = None
+    reason: str | None = None
+    request_host: str | None = None
+    request_method: str | None = None
+    request_path: str | None = None
+
+
+class UnknownJudgementPayload(JudgementBasePayload):
+    """Fallback for a judgement ``kind`` this SDK version predates: the
+    shared fields are typed and the kind's own are kept as extras."""
+
+    kind: str
+
+
+JudgementPayload = Annotated[
+    Annotated[JudgementVerdictPayload, Tag("verdict")]
+    | Annotated[JudgementEgressPayload, Tag("egress")]
+    | Annotated[UnknownJudgementPayload, Tag("unknown")],
+    Discriminator(tag_or_unknown("kind", frozenset({"verdict", "egress"}))),
+]
+"""One judgement, discriminated by its ``kind`` (``verdict`` or ``egress``)."""
+
+
+class IssueEventAction(StrEnum):
+    """What an ``introspection.issue`` event records."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    COMMENTED = "commented"
+    DELETED = "deleted"
+
+
+class IssueFieldChange(_ApiModel):
+    """One authored field's value on either side of an update. A side that
+    was empty is absent."""
+
+    before: Any = None
+    after: Any = None
+
+
+class IssueActivityBasePayload(_ApiModel):
+    """What every issue event carries, whichever action it records."""
+
+    issue_id: UUID
+    #: Revision of the issue the action wrote.
+    revision: int | None = None
+    #: The member who made the change or comment.
+    member_id: UUID | None = None
+    #: The member acting for ``member_id``, when the write was delegated.
+    actor_member_id: UUID | None = None
+    actor_member_type: str | None = None
+
+
+class IssueCreatedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.CREATED]
+    #: The authored fields the issue was created with.
+    data: dict[str, Any]
+
+
+class IssueUpdatedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.UPDATED]
+    #: Each changed field, by name; ``members`` holds the people on the
+    #: issue before and after.
+    changes: dict[str, IssueFieldChange]
+
+
+class IssueCommentedPayload(IssueActivityBasePayload):
+    """A comment. Its author is ``member_id``; its time is the event's."""
+
+    action: Literal[IssueEventAction.COMMENTED]
+    comment: str
+
+
+class IssueDeletedPayload(IssueActivityBasePayload):
+    action: Literal[IssueEventAction.DELETED]
+
+
+class UnknownIssuePayload(IssueActivityBasePayload):
+    """Fallback for an issue ``action`` this SDK version predates: the
+    shared fields are typed and the action's own are kept as extras."""
+
+    action: str
+
+
+IssueActivityPayload = Annotated[
+    Annotated[IssueCreatedPayload, Tag(IssueEventAction.CREATED)]
+    | Annotated[IssueUpdatedPayload, Tag(IssueEventAction.UPDATED)]
+    | Annotated[IssueCommentedPayload, Tag(IssueEventAction.COMMENTED)]
+    | Annotated[IssueDeletedPayload, Tag(IssueEventAction.DELETED)]
+    | Annotated[UnknownIssuePayload, Tag("unknown")],
+    Discriminator(
+        tag_or_unknown(
+            "action", frozenset(action.value for action in IssueEventAction)
+        )
+    ),
+]
+"""One issue event, discriminated by its ``action``."""
 
 
 class AutomationTriggeredPayload(_ApiModel):
@@ -346,6 +523,13 @@ class AnnotationEvent(IntrospectionEventBase):
     payload: AnnotationPayload
 
 
+class IssueActivityEvent(IntrospectionEventBase):
+    """An issue change or comment (``event_name=introspection.issue``)."""
+
+    event_name: Literal[IntrospectionEventName.ISSUE]
+    payload: IssueActivityPayload
+
+
 class JudgementEvent(IntrospectionEventBase):
     """A judge evaluation (``event_name=introspection.judgement``)."""
 
@@ -387,6 +571,7 @@ Event = Annotated[
     | ClusteringRunEvent
     | FeedbackEvent
     | AnnotationEvent
+    | IssueActivityEvent
     | JudgementEvent
     | AutomationTriggeredEvent
     | AutomationSkippedEvent

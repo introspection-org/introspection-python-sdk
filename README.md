@@ -194,6 +194,26 @@ async for summary in runner.conversations.list(
 The runner also exposes `files`, `shares`, `events`, `metrics`,
 `automations`, `issues` and `connections`.
 
+## Export a conversation's spans
+
+`client.conversations.export_jsonl(conversation_id)` reads the whole
+conversation as JSON lines (`application/x-ndjson`): one GenAI span per line,
+each line a complete JSON object. It yields each span as its line arrives, so
+the export is never held in memory whole:
+
+```python
+for span in client.conversations.export_jsonl(conversation_id):
+    print(span.span_id, span.name, span.model)
+```
+
+`export_stream(conversation_id, "jsonl")` yields the same response as raw
+bytes, to write to a `.jsonl` file. The JSON-envelope export, `export_json`,
+was removed; `export_trajectory` and `export_arrow` are unchanged.
+
+`include=["annotations", "comments"]` also sets `span.annotation`, the span's
+row from `client.annotations.list`, on every annotated span, with its
+comments. It needs the annotations read scope.
+
 ## Export a conversation as a Harbor trajectory
 
 `spans_to_atif` projects the GenAI spans of a conversation onto one
@@ -205,7 +225,7 @@ from pathlib import Path
 
 from introspection_sdk.atif import spans_to_atif
 
-spans = client.conversations.export_json(conversation_id).data
+spans = client.conversations.export_jsonl(conversation_id)
 trajectory = spans_to_atif(spans, session_id=conversation_id)
 Path("trajectory.json").write_text(trajectory.model_dump_json(indent=2))
 ```
@@ -273,8 +293,22 @@ client.annotations.create(
 )
 
 for item in client.annotations.list(label="needs-review"):
-    print(item.trace_id, item.span_id, item.latest_comment)
+    print(item.trace_id, item.span_id, item.labels, item.comment_count)
 ```
+
+A listed row carries the labels, assignees, reviewers and comment count of a
+span, with `comments` left `None`. `include=["comments"]` sets it on every
+row, oldest first:
+
+```python
+for item in client.annotations.list(include=["comments"]):
+    for comment in item.comments or []:
+        print(comment.created_at, comment.member_id, comment.comment)
+```
+
+`list(label=..., limit=1, include_total=True).page().total_count` is the size
+of a dataset, and `lookback_days` (1 to 90, default 90) bounds how far back
+the read reaches.
 
 Reusable labels live in `client.project_labels`; their slug and color are
 immutable after creation, while the optional description can be updated.
@@ -551,17 +585,13 @@ The routes need the `automations:read` and `automations:write` scopes, so a `nat
 ## Track issues
 
 `client.issues` / `runner.issues` manage a project's issues on the data
-plane: a brief (title, description, priority, status), the evidence it cites
-(files, links, events, spans) and the human requests open on it. Each issue
-lives on a fixed worker task, which carries its chat.
+plane. An issue is a brief (title, description, priority, status) on a fixed
+worker task, which carries its chat, with the people on it (a creator, an
+assignee, a reviewer and followers), the evidence it cites (files, links,
+events, spans) and its comments.
 
 ```python
-from introspection_sdk.schemas.issues import (
-    IssueMutation,
-    IssueRequestMutation,
-    IssueStatus,
-    IssueUpdate,
-)
+from introspection_sdk.schemas.issues import IssueStatus, IssueUpdate
 
 issue = client.issues.create(
     title="Checkout times out",
@@ -569,41 +599,63 @@ issue = client.issues.create(
     task_id=task_id,
 )
 
-# Ask a member: a new request id (minted when left out) creates the request.
+# Ask a member: assign the issue, move it to waiting, post the question.
 client.issues.update(
     issue.id,
-    IssueMutation(
-        request=IssueRequestMutation(
-            question="Ship the retry?",
-            assignee_id=member_id,
-        )
-    ),
+    IssueUpdate(assignee_member_id=member_id, status=IssueStatus.WAITING),
 )
+client.issues.comments.create(issue.id, comment="Ship the retry?")
 
-# Edit the brief, refused if the issue changed since this read.
-issue = client.issues.get(issue.id)
+# Read the answer: comments come back with the issue, oldest first.
+issue = client.issues.get(issue.id, include=["members", "comments"])
+for comment in issue.comments or []:
+    print(comment.created_at, comment.member_id, comment.comment)
+
+# Unassign and close, refused if the issue changed since this read.
 client.issues.update(
     issue.id,
-    IssueUpdate(status=IssueStatus.CLOSED, tags=[]),
+    IssueUpdate(assignee_member_id=None, status=IssueStatus.CLOSED),
     if_match=issue.etag,
 )
 
-for issue in client.issues.list(status=[IssueStatus.OPEN], assigned_to_me=True):
-    print(issue.display_index, issue.title, len(issue.open_requests))
+# What is waiting on the caller.
+for issue in client.issues.list(relation=["assignee", "reviewer"]):
+    print(issue.display_index, issue.title, issue.assignee_member_id)
 ```
 
-`update` takes an `IssueUpdate`, which edits the brief, or an `IssueMutation`,
-which creates or changes one human request. An `IssueUpdate` sends only the
-fields set on it: an omitted list is left as it is and `[]` clears it (`{}`
-for `metadata`). A brief edit and `delete` take an optional `if_match`, the
-`issue.etag` of the read the write was made against; if the issue changed
-since, the server answers 412 (`IntrospectionAPIError` with
-`status_code == 412`), so read it again before retrying. Without `if_match`
-the write applies regardless. An `IssueMutation` takes no `if_match`: a
-request id the issue does not have yet creates the request, and an existing
-one changes it, last write wins. `status`, `owner`, `task_status` and `metadata`
-filters repeat on the query string. Runnable:
+A read returns the brief, with `created_by_member_id`, `assignee_member_id`
+and `reviewer_member_id`. The related lists come back only when `include`
+names them, and are `None` otherwise: `members`, `attachments` (`links`,
+`files`, `events`, `spans`) and, on `get` only, `comments` (at most 500; page
+the issue's events for more). `list`, `create` and `update` take `members`
+and `attachments`.
+
+`update` takes an `IssueUpdate` and sends only the fields set on it: an
+omitted field is left as it is, `[]` clears a list (`{}` for `metadata`), and
+an explicit `None` for `assignee_member_id` or `reviewer_member_id` clears
+that person. `follower_member_ids` replaces the followers wholesale. `update`
+and `delete` take an optional `if_match`, the `issue.etag` of the read the
+write was made against; if the issue changed since, the server answers 412
+(`IntrospectionAPIError` with `status_code == 412`), so read it again before
+retrying. Without `if_match` the write applies regardless. A comment does not
+change the issue's `etag`.
+
+On `list`, `relation` repeats and ORs: on its own it keeps the issues the
+caller is on in one of those relations, and with `member_id` that member's.
+`status`, `owner`, `task_status` and `metadata` filters repeat on the query
+string too. Runnable:
 [`issues.py`](examples/introspection_examples/api/issues.py).
+
+Each change to an issue, and each comment, is an `introspection.issue` event.
+Its `payload` is a union on `action`: `created` carries `data`, `updated`
+carries `changes` (field name to `before` / `after`), `commented` carries
+`comment`, and `deleted` nothing more. Each names the `member_id` who made
+it. `issue_id` reads one issue's history:
+
+```python
+for event in client.events.list("introspection.issue", issue_id=issue.id):
+    print(event.timestamp, event.payload.action, event.payload.member_id)
+```
 
 ## Connect apps for a member
 

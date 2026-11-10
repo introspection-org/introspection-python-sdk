@@ -14,12 +14,14 @@ from uuid import UUID
 from pydantic import TypeAdapter
 
 from introspection_sdk._http import RawResponse, _HttpClient
-from introspection_sdk._strict_schema import decode
+from introspection_sdk._jsonl import JSONL_ACCEPT_HEADERS, iter_jsonl
+from introspection_sdk._strict_schema import decode, note_response
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
 )
 from introspection_sdk.runner_resources._conversations_common import (
+    ConversationExportInclude,
     ConversationExportParams,
 )
 from introspection_sdk.runner_resources._reads import (
@@ -46,11 +48,14 @@ TRAJECTORY_ADAPTER: TypeAdapter[list[TrajectoryRecord]] = TypeAdapter(
     list[TrajectoryRecord]
 )
 
-ConversationExportFormat = Literal["json", "trajectory", "arrow"]
-"""Wire representation accepted by the complete conversation export route."""
+ConversationExportFormat = Literal["jsonl", "trajectory", "arrow"]
+"""Wire representation accepted by the complete conversation export route.
 
-
-JSON_EXPORT_HEADERS = {"Accept": "application/json"}
+``jsonl`` is the span list as JSON lines (``application/x-ndjson``): one
+GenAI span per line, each line a complete JSON object, so it can be read
+as it streams. The JSON-envelope export (``json``) was removed.
+``trajectory`` and ``arrow`` are the other representations.
+"""
 
 
 #: How many items ``retrieve()`` scans, newest-first, looking for the latest
@@ -73,6 +78,7 @@ def build_export_params(
     lookback_days: int | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
+    include: builtins.list[ConversationExportInclude] | None = None,
 ) -> dict[str, Any]:
     """Query params for the conversation export route.
 
@@ -98,6 +104,8 @@ def build_export_params(
         params["start_date"] = start_date
     if end_date is not None:
         params["end_date"] = end_date
+    if include:
+        params["include"] = include
     return params
 
 
@@ -110,7 +118,7 @@ def _export_headers(format: ConversationExportFormat) -> dict[str, str]:
         return TRAJECTORY_ACCEPT_HEADERS
     if format == "arrow":
         return ARROW_ACCEPT_HEADERS
-    return JSON_EXPORT_HEADERS
+    return JSONL_ACCEPT_HEADERS
 
 
 ConversationResolution = Literal[
@@ -569,19 +577,32 @@ class Conversations:
         )
         return decode(Conversation, payload)
 
-    def export_json(
+    def export_jsonl(
         self,
         conversation_id: str,
         **params: Unpack[ConversationExportParams],
-    ) -> GenAiSpanList:
-        """Export one complete conversation as the standard GenAI-span list."""
-        payload = self._http.request(
-            "GET",
-            _export_path(conversation_id),
-            params=build_export_params(**params),
-            headers=JSON_EXPORT_HEADERS,
+    ) -> Iterator[GenAiSpan]:
+        """Export one complete conversation's spans, read as JSON lines.
+
+        The response is ``application/x-ndjson``: one GenAI span per line,
+        each line a complete JSON object. Each span is decoded and yielded
+        as its line arrives, so the export is never held whole. This is the
+        span-list export; the JSON-envelope ``export_json`` was removed.
+
+        ``include=["annotations"]`` sets ``annotation`` on each annotated
+        span, and ``"comments"`` with it fills that row's ``comments``.
+        """
+        path = _export_path(conversation_id)
+        spans = iter_jsonl(
+            self._http.stream_bytes(
+                path,
+                params=build_export_params(**params),
+                headers=JSONL_ACCEPT_HEADERS,
+            )
         )
-        return decode(GenAiSpanList, payload)
+        for span in spans:
+            note_response(path)
+            yield decode(GenAiSpan, span)
 
     def export_stream(
         self,
@@ -589,7 +610,15 @@ class Conversations:
         format: ConversationExportFormat,
         **params: Unpack[ConversationExportParams],
     ) -> Iterator[bytes]:
-        """Stream raw complete-export bytes without buffering them in the SDK."""
+        """Stream raw complete-export bytes without buffering them in the SDK.
+
+        ``format="jsonl"`` is the span list as JSON lines
+        (``application/x-ndjson``): one GenAI span per line, each line a
+        complete JSON object, so the bytes can be written to a ``.jsonl``
+        file or split on newlines as they arrive. There is no JSON-envelope
+        format any more. ``"trajectory"`` and ``"arrow"`` stream those
+        representations unchanged.
+        """
         return self._http.stream_bytes(
             _export_path(conversation_id),
             params=build_export_params(**params),
@@ -608,6 +637,8 @@ class Conversations:
         end_date: str | datetime | None = None,
     ) -> Trajectory:
         """Export one complete conversation as trajectory-v1.
+
+        For the spans themselves, as JSON lines, use :meth:`export_jsonl`.
 
         This is not :meth:`ConversationItems.list` in another coat. The
         export is assembled server-side over the whole conversation, so it
@@ -646,6 +677,8 @@ class Conversations:
         end_date: str | datetime | None = None,
     ) -> Any:
         """Export one complete conversation as a single ``pyarrow.Table``.
+
+        For the spans themselves, as JSON lines, use :meth:`export_jsonl`.
 
         Unlike :meth:`list_arrow`, this is one table for the whole conversation
         rather than an iterator of pages: the export route assembles the

@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
+
+AnnotationInclude = Literal["comments"]
+"""Optional expansions of a listed row, passed as a repeated ``include``
+query param: ``comments`` sets each row's ``comments``."""
 
 
 class AnnotationTarget(BaseModel):
@@ -15,33 +20,39 @@ class AnnotationTarget(BaseModel):
     span_id: str
 
 
+class AnnotationComment(BaseModel):
+    """One comment on an annotated span, as ``include=comments`` carries it."""
+
+    model_config = ConfigDict(extra="allow")
+
+    event_id: UUID
+    comment: str
+    #: The comment's author.
+    member_id: UUID
+    actor_member_id: UUID | None = None
+    actor_member_type: str | None = None
+    created_at: datetime
+
+
 class AnnotationState(AnnotationTarget):
-    """Current state folded from immutable annotation events."""
+    """Current state folded from immutable annotation events.
+
+    ``comments`` is ``None`` unless the list was read with
+    ``include=["comments"]``, which sets it on every row, oldest first.
+    """
 
     model_config = ConfigDict(extra="allow")
 
     conversation_id: str | None = None
-    labels: list[str] = Field(default_factory=list)
-    assignee_member_ids: list[UUID] = Field(default_factory=list)
-    annotator_member_ids: list[UUID] = Field(default_factory=list)
-    has_comment: bool = False
-    comment_count: int = 0
-    latest_comment: str | None = None
-    latest_comment_member_id: UUID | None = None
+    labels: list[str]
+    assignee_member_ids: list[UUID]
+    #: Members whose comment completed a review.
+    reviewer_member_ids: list[UUID]
+    comment_count: int
     updated_at: datetime
     updated_by_member_id: UUID
     assignment_event_id: UUID | None = None
-
-
-class AnnotationFacet(BaseModel):
-    """How many current annotations hold one value of one filter dimension
-    (annotator, assignee, label or status)."""
-
-    model_config = ConfigDict(extra="allow")
-
-    dimension: str
-    value: str
-    count: int
+    comments: list[AnnotationComment] | None = None
 
 
 class AnnotationNavigation(BaseModel):
@@ -54,11 +65,12 @@ class AnnotationNavigation(BaseModel):
     current: AnnotationState | None = None
     next: AnnotationState | None = None
     current_position: int | None = None
-    total_count: int = 0
+    total_count: int
 
 
 __all__ = [
-    "AnnotationFacet",
+    "AnnotationComment",
+    "AnnotationInclude",
     "AnnotationNavigation",
     "AnnotationState",
     "AnnotationTarget",

@@ -3,6 +3,7 @@ model names fails the read with its JSON path; off, it is tolerated."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
@@ -29,6 +30,10 @@ from .test_project_admin import api_key_payload
 
 def _recipe(**extra: Any) -> dict[str, Any]:
     return {**to_jsonable(recipe_payload()), **extra}
+
+
+def _jsonl(*spans: dict[str, Any]) -> bytes:
+    return b"".join(json.dumps(span).encode() + b"\n" for span in spans)
 
 
 def _span(**introspection: Any) -> dict[str, Any]:
@@ -109,16 +114,13 @@ def test_strict_reports_a_nested_field_and_leaves_open_maps_alone(
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/export",
-        json_body={
-            "object": "list",
-            "data": [_span(), _span(tool_response_ids=["call-1"], novel=1)],
-        },
+        content=_jsonl(_span(), _span(tool_response_ids=["call-1"], novel=1)),
     )
 
     with pytest.raises(SchemaDriftError) as caught:
-        Conversations(fake_api.client()).export_json("conv-1")
+        list(Conversations(fake_api.client()).export_jsonl("conv-1"))
 
-    assert caught.value.fields == ["$.data[1].attributes.introspection.novel"]
+    assert caught.value.fields == ["$.attributes.introspection.novel"]
 
 
 @pytest.mark.usefixtures("strict")
@@ -126,16 +128,13 @@ def test_strict_passes_a_fully_modelled_response(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/export",
-        json_body={
-            "object": "list",
-            "data": [_span(tool_call_ids=["call-1"], byok=False)],
-        },
+        content=_jsonl(_span(tool_call_ids=["call-1"], byok=False)),
     )
 
-    spans = Conversations(fake_api.client()).export_json("conv-1")
+    spans = list(Conversations(fake_api.client()).export_jsonl("conv-1"))
 
-    assert spans.data[0].attributes.introspection is not None
-    assert spans.data[0].attributes.introspection.tool_call_ids == ["call-1"]
+    assert spans[0].attributes.introspection is not None
+    assert spans[0].attributes.introspection.tool_call_ids == ["call-1"]
 
 
 @pytest.mark.usefixtures("strict")

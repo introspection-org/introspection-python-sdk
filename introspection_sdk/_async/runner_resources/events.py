@@ -132,6 +132,7 @@ def build_event_params(
     automation_id: UUID | str | None = None,
     task_id: UUID | str | None = None,
     judge_id: UUID | str | None = None,
+    issue_id: UUID | str | None = None,
 ) -> dict[str, Any]:
     """Fold the shared list/arrow kwargs into the wire query params.
 
@@ -140,8 +141,8 @@ def build_event_params(
     ``conversation_ids`` / ``lens`` / ``pattern_id`` / ``include_superseded``
     / ``severities`` / ``runtime_group_unattributed``; pattern: ``lens`` /
     ``status``; automation triggered/skipped: ``automation_id`` /
-    ``task_id``; judgement: ``judge_id``) are passed through; the server
-    validates them against the requested family's allow-map.
+    ``task_id``; judgement: ``judge_id``; issue: ``issue_id``) are passed
+    through; the server validates them against the requested family's allow-map.
     """
     if not event_name:
         raise ValueError(
@@ -174,6 +175,7 @@ def build_event_params(
         "automation_id": automation_id,
         "task_id": task_id,
         "judge_id": judge_id,
+        "issue_id": issue_id,
     }
 
 
@@ -222,6 +224,7 @@ class AsyncEvents:
         automation_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         judge_id: UUID | str | None = None,
+        issue_id: UUID | str | None = None,
         format: ReadFormat = "json",
     ) -> AsyncPager[Event, Paginated[Event]]:
         # unasync: async-only (the sync twin's docstring follows)
@@ -279,6 +282,7 @@ class AsyncEvents:
                 automation_id=automation_id,
                 task_id=task_id,
                 judge_id=judge_id,
+                issue_id=issue_id,
             )
             if format == "arrow":
                 raw = await self._http.request(
@@ -360,6 +364,7 @@ class AsyncEvents:
         automation_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         judge_id: UUID | str | None = None,
+        issue_id: UUID | str | None = None,
     ) -> AsyncArrowPageIterator:
         # unasync: async-only (the sync twin's docstring follows)
         """Columnar accessor: ``async for`` one ``pyarrow.Table`` per server
@@ -409,6 +414,7 @@ class AsyncEvents:
                 automation_id=automation_id,
                 task_id=task_id,
                 judge_id=judge_id,
+                issue_id=issue_id,
             )
             raw = await self._http.request(
                 "GET",

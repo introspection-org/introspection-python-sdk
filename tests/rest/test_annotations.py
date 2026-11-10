@@ -47,11 +47,8 @@ def annotation() -> dict[str, object]:
         "conversation_id": "conversation-1",
         "labels": ["needs-review"],
         "assignee_member_ids": [MEMBER_ID],
-        "annotator_member_ids": [],
-        "has_comment": False,
+        "reviewer_member_ids": [MEMBER_ID],
         "comment_count": 0,
-        "latest_comment": None,
-        "latest_comment_member_id": None,
         "updated_at": "2026-08-25T12:00:00Z",
         "updated_by_member_id": MEMBER_ID,
         "assignment_event_id": str(EVENT_ID),
@@ -298,12 +295,6 @@ async def test_async_list_resolves_email_only_once_across_pages(
     assert annotation_calls == 2
 
 
-FACETS = [
-    {"dimension": "label", "value": "needs-review", "count": 2},
-    {"dimension": "status", "value": "assigned", "count": 1},
-]
-
-
 def navigation() -> dict[str, object]:
     return {
         "previous": None,
@@ -314,15 +305,6 @@ def navigation() -> dict[str, object]:
     }
 
 
-def test_facets(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/annotations/facets", json_body=FACETS)
-    facets = Annotations(fake_api.client(), fake_api.client()).facets()
-    assert [(f.dimension, f.count) for f in facets] == [
-        ("label", 2),
-        ("status", 1),
-    ]
-
-
 def test_navigation_sends_the_target_and_filters(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/annotations/navigation", json_body=navigation())
     window = Annotations(fake_api.client(), fake_api.client()).navigation(
@@ -330,6 +312,7 @@ def test_navigation_sends_the_target_and_filters(fake_api: FakeAPI):
         span_id=SPAN_ID,
         labels=["needs-review", "flaky"],
         status="assigned",
+        lookback_days=30,
     )
     assert window.current is not None
     assert window.current.span_id == SPAN_ID
@@ -341,6 +324,7 @@ def test_navigation_sends_the_target_and_filters(fake_api: FakeAPI):
     )
     assert params.get_list("label") == ["needs-review", "flaky"]
     assert params.get("status") == "assigned"
+    assert params.get("lookback_days") == "30"
     assert "assignee_member_id" not in params
 
 
@@ -357,13 +341,11 @@ def test_navigation_of_a_span_the_plane_rejects(fake_api: FakeAPI):
         )
 
 
-async def test_async_facets_and_navigation(fake_api: FakeAPI):
-    fake_api.add("GET", "/v1/annotations/facets", json_body=[])
+async def test_async_navigation(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/annotations/navigation", json_body=navigation())
     annotations = AsyncAnnotations(
         fake_api.async_client(), fake_api.async_client()
     )
-    assert await annotations.facets() == []
     window = await annotations.navigation(
         trace_id=TRACE_ID,
         span_id=SPAN_ID,
@@ -371,3 +353,152 @@ async def test_async_facets_and_navigation(fake_api: FakeAPI):
     )
     assert window.next is None
     assert fake_api.last_request.params.get("assignee_member_id") == MEMBER_ID
+
+
+def test_a_row_names_its_reviewers(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([annotation()]))
+
+    state = (
+        Annotations(fake_api.client(), fake_api.client())
+        .list()
+        .page()
+        .records[0]
+    )
+
+    assert state.reviewer_member_ids == [UUID(MEMBER_ID)]
+    assert state.updated_by_member_id == UUID(MEMBER_ID)
+    assert "reviewer_member_ids" in state.model_dump()
+
+
+def test_include_comments_expands_each_row(fake_api: FakeAPI) -> None:
+    comments = [
+        {
+            "event_id": str(EVENT_ID),
+            "comment": "The answer missed the governing exception.",
+            "member_id": MEMBER_ID,
+            "actor_member_id": None,
+            "actor_member_type": None,
+            "created_at": "2026-08-25T11:00:00Z",
+        },
+        {
+            "event_id": str(EVENT_ID),
+            "comment": "Confirmed against the source.",
+            "member_id": MEMBER_ID,
+            "actor_member_id": MEMBER_ID,
+            "actor_member_type": "agent",
+            "created_at": "2026-08-25T12:00:00Z",
+        },
+    ]
+    fake_api.add(
+        "GET",
+        "/v1/annotations",
+        json_body=page(
+            [
+                {**annotation(), "comment_count": 2, "comments": comments},
+                {**annotation(), "comments": []},
+            ]
+        ),
+    )
+
+    commented, bare = (
+        Annotations(fake_api.client(), fake_api.client())
+        .list(include=["comments"])
+        .page()
+        .records
+    )
+
+    assert fake_api.last_request.params.get_list("include") == ["comments"]
+    assert commented.comments is not None
+    first, second = commented.comments
+    assert first.comment == "The answer missed the governing exception."
+    assert (first.event_id, first.member_id) == (EVENT_ID, UUID(MEMBER_ID))
+    assert (first.actor_member_id, first.actor_member_type) == (None, None)
+    assert second.actor_member_id == UUID(MEMBER_ID)
+    assert second.actor_member_type == "agent"
+    assert first.created_at < second.created_at
+    assert bare.comments == []
+
+
+def test_a_row_without_the_expansion_has_no_comments(
+    fake_api: FakeAPI,
+) -> None:
+    fake_api.add(
+        "GET",
+        "/v1/annotations",
+        json_body=page([{**annotation(), "comments": None}, annotation()]),
+    )
+
+    rows = (
+        Annotations(fake_api.client(), fake_api.client()).list().page().records
+    )
+
+    assert "include" not in fake_api.last_request.params
+    assert [row.comments for row in rows] == [None, None]
+
+
+async def test_async_include_comments(fake_api: FakeAPI) -> None:
+    fake_api.add(
+        "GET",
+        "/v1/annotations",
+        json_body=page([{**annotation(), "comments": []}]),
+    )
+
+    rows = [
+        row
+        async for row in AsyncAnnotations(
+            fake_api.async_client(), fake_api.async_client()
+        ).list(include=["comments"])
+    ]
+
+    assert fake_api.last_request.params.get_list("include") == ["comments"]
+    assert rows[0].comments == []
+
+
+def test_a_dataset_size_is_the_lists_total(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([annotation()]))
+
+    listed = (
+        Annotations(fake_api.client(), fake_api.client())
+        .list(
+            label="needs-review",
+            status="reviewed",
+            limit=1,
+            include_total=True,
+            lookback_days=7,
+        )
+        .page()
+    )
+
+    assert dict(fake_api.last_request.params) == {
+        "label": "needs-review",
+        "status": "reviewed",
+        "limit": "1",
+        "include_total": "true",
+        "lookback_days": "7",
+    }
+    assert listed.total_count == 1
+    assert listed.records[0].updated_at is not None
+
+
+async def test_async_list_sends_lookback_days(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([]))
+
+    await AsyncAnnotations(
+        fake_api.async_client(), fake_api.async_client()
+    ).list(lookback_days=7)
+
+    assert fake_api.last_request.params.get("lookback_days") == "7"
+    assert "include_total" not in fake_api.last_request.params
+
+
+def test_list_repeats_the_label_filter(fake_api: FakeAPI) -> None:
+    fake_api.add("GET", "/v1/annotations", json_body=page([]))
+
+    Annotations(fake_api.client(), fake_api.client()).list(
+        label=["needs-review", "flaky"]
+    ).page()
+
+    assert fake_api.last_request.params.get_list("label") == [
+        "needs-review",
+        "flaky",
+    ]

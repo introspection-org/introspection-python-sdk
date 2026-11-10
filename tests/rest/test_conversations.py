@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import inspect
 import io
+import json
 from typing import Any
 from uuid import UUID
 
@@ -21,6 +22,7 @@ import pyarrow as pa
 import pytest
 
 from introspection_sdk import ValidationError
+from introspection_sdk._errors import IntrospectionAPIError
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     Conversations,
@@ -1161,24 +1163,159 @@ def test_export_trajectory_negotiates_v1_and_types_records(fake_api: FakeAPI):
     assert prose_turn.tool_calls is None
 
 
-def test_export_json_negotiates_json_and_types_span_list(fake_api: FakeAPI):
+def jsonl_body(*span_ids: str) -> bytes:
+    return b"".join(
+        json.dumps({**make_item(), "span_id": span_id}).encode() + b"\n"
+        for span_id in span_ids
+    )
+
+
+def test_export_jsonl_negotiates_ndjson_and_yields_typed_spans(
+    fake_api: FakeAPI,
+):
     fake_api.add(
         "GET",
         "/v1/conversations/conv-1/export",
-        json_body=make_page([make_item()], False),
+        content=jsonl_body("span-1", "span-2"),
     )
 
-    result = _conversations(fake_api).export_json("conv-1")
+    spans = list(_conversations(fake_api).export_jsonl("conv-1", agent="root"))
 
-    assert fake_api.last_request.headers["accept"] == "application/json"
-    assert len(result.data) == 1
-    assert result.data[0].span_id == "span-1"
+    assert [span.span_id for span in spans] == ["span-1", "span-2"]
+    request = fake_api.last_request
+    assert request.headers["accept"] == "application/x-ndjson"
+    assert dict(request.params) == {"agent": "root"}
+
+
+def test_export_jsonl_carries_annotations_inline(fake_api: FakeAPI):
+    member_id = "00000000-0000-0000-0000-0000000000cc"
+    comment = {
+        "event_id": "019fc000-0000-7000-8000-000000000001",
+        "comment": "The answer missed the governing exception.",
+        "member_id": member_id,
+        "actor_member_id": None,
+        "actor_member_type": None,
+        "created_at": "2026-08-25T11:00:00Z",
+    }
+    annotated = make_item(
+        annotation={
+            "trace_id": "trace-1",
+            "span_id": "span-1",
+            "conversation_id": "conv-1",
+            "labels": ["needs-review"],
+            "assignee_member_ids": [],
+            "reviewer_member_ids": [member_id],
+            "comment_count": 2,
+            "updated_at": "2026-08-25T12:00:00Z",
+            "updated_by_member_id": member_id,
+            "assignment_event_id": None,
+            "comments": [
+                comment,
+                {
+                    **comment,
+                    "comment": "Confirmed against the source.",
+                    "actor_member_id": member_id,
+                    "actor_member_type": "agent",
+                    "created_at": "2026-08-25T12:00:00Z",
+                },
+            ],
+        }
+    )
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        content=json.dumps(annotated).encode() + b"\n" + jsonl_body("span-2"),
+    )
+
+    first, second = _conversations(fake_api).export_jsonl(
+        "conv-1", include=["annotations", "comments"]
+    )
+
+    assert fake_api.last_request.params.get_list("include") == [
+        "annotations",
+        "comments",
+    ]
+    assert first.annotation is not None
+    assert first.annotation.labels == ["needs-review"]
+    assert first.annotation.comments is not None
+    human, agent = first.annotation.comments
+    assert human.actor_member_type is None
+    assert (agent.comment, agent.actor_member_type) == (
+        "Confirmed against the source.",
+        "agent",
+    )
+    assert second.annotation is None
+    assert "annotation" not in second.model_dump()
+
+
+def test_export_include_reaches_the_raw_export(fake_api: FakeAPI):
+    fake_api.add(
+        "GET", "/v1/conversations/conv-1/export", content=jsonl_body("span-1")
+    )
+
+    b"".join(
+        _conversations(fake_api).export_stream(
+            "conv-1", "jsonl", include=["annotations", "comments"]
+        )
+    )
+
+    assert fake_api.last_request.params.get_list("include") == [
+        "annotations",
+        "comments",
+    ]
+
+
+def test_export_include_refusal_surfaces(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        status=400,
+        json_body={"detail": "comments needs annotations"},
+    )
+
+    with pytest.raises(IntrospectionAPIError) as error:
+        list(
+            _conversations(fake_api).export_jsonl(
+                "conv-1", include=["comments"]
+            )
+        )
+
+    assert error.value.status_code == 400
+
+
+def test_export_jsonl_joins_a_line_split_across_chunks(fake_api: FakeAPI):
+    body = jsonl_body("span-1", "span-2").rstrip(b"\n")
+    chunks = [body[i : i + 7] for i in range(0, len(body), 7)]
+    fake_api.add_handler(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        lambda _request: httpx.Response(200, content=iter(chunks)),
+    )
+
+    spans = list(_conversations(fake_api).export_jsonl("conv-1"))
+
+    assert [span.span_id for span in spans] == ["span-1", "span-2"]
+
+
+@pytest.mark.asyncio
+async def test_async_export_jsonl(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        content=jsonl_body("span-1", "span-2"),
+    )
+    conversations = AsyncConversations(fake_api.async_client())
+
+    spans = [span async for span in conversations.export_jsonl("conv-1")]
+
+    assert [span.span_id for span in spans] == ["span-1", "span-2"]
+    assert fake_api.last_request.headers["accept"] == "application/x-ndjson"
 
 
 @pytest.mark.parametrize(
     ("format", "accept"),
     [
-        ("json", "application/json"),
+        ("jsonl", "application/x-ndjson"),
         ("trajectory", "application/vnd.letta.trajectory+json;version=1"),
         ("arrow", ARROW_STREAM_MEDIA_TYPE),
     ],
@@ -1232,7 +1369,7 @@ def test_export_encodes_conversation_id(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/conversations/conv/one/export", content=b"export")
 
     assert (
-        b"".join(_conversations(fake_api).export_stream("conv/one", "json"))
+        b"".join(_conversations(fake_api).export_stream("conv/one", "jsonl"))
         == b"export"
     )
     assert b"conv%2Fone" in fake_api.last_request.url.raw_path
@@ -1300,13 +1437,8 @@ async def test_async_export_trajectory(fake_api: FakeAPI):
 
 
 @pytest.mark.asyncio
-async def test_async_export_json_and_stream(fake_api: FakeAPI):
-    body = make_page([make_item()], False)
-    fake_api.add("GET", "/v1/conversations/conv-1/export", json_body=body)
+async def test_async_export_stream(fake_api: FakeAPI):
     conversations = AsyncConversations(fake_api.async_client())
-
-    result = await conversations.export_json("conv-1")
-    assert result.data[0].span_id == "span-1"
 
     raw = b'[{"wire":"bytes"}]'
     fake_api.add("GET", "/v1/conversations/conv-1/export", content=raw)

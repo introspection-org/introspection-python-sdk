@@ -15,7 +15,6 @@ reads without naming the share.
 from __future__ import annotations
 
 from introspection_sdk._async.runner_resources.conversations import (
-    JSON_EXPORT_HEADERS,
     LATEST_TURN_SCAN_LIMIT,
     TRAJECTORY_ADAPTER,
     AsyncConversationItems,
@@ -31,6 +30,7 @@ from introspection_sdk._sync.runner_resources.conversations import (
     Conversations,
 )
 from introspection_sdk.runner_resources._conversations_common import (
+    ConversationExportInclude,
     ConversationExportParams,
 )
 
@@ -38,12 +38,12 @@ __all__ = [
     "AsyncConversationItems",
     "AsyncConversations",
     "ConversationExportFormat",
+    "ConversationExportInclude",
     "ConversationExportParams",
     "ConversationItems",
     "ConversationResolution",
     "ConversationSentiment",
     "Conversations",
-    "JSON_EXPORT_HEADERS",
     "LATEST_TURN_SCAN_LIMIT",
     "TRAJECTORY_ADAPTER",
     "build_conversation_params",
