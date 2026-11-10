@@ -21,6 +21,7 @@ from introspection_sdk.pagination import (
     cursor_paginate,
 )
 from introspection_sdk.runner_resources._conversations_common import (
+    ConversationExportInclude,
     ConversationExportParams,
 )
 from introspection_sdk.runner_resources._reads import (
@@ -78,6 +79,7 @@ def build_export_params(
     lookback_days: int | None = None,
     start_date: str | datetime | None = None,
     end_date: str | datetime | None = None,
+    include: builtins.list[ConversationExportInclude] | None = None,
 ) -> dict[str, Any]:
     """Query params for the conversation export route.
 
@@ -103,6 +105,8 @@ def build_export_params(
         params["start_date"] = start_date
     if end_date is not None:
         params["end_date"] = end_date
+    if include:
+        params["include"] = include
     return params
 
 
@@ -603,7 +607,9 @@ class Conversations:
         """Stream one complete conversation as GenAI spans, one per line.
 
         Each span is decoded as its line arrives, so the export is never
-        held whole. A data plane that predates the JSON-lines form answers
+        held whole. ``include=["annotations"]`` sets ``annotation`` on each
+        annotated span, and ``"comments"`` with it fills that row's
+        ``comments``. A data plane that predates the JSON-lines form answers
         406, which raises rather than falling back to :meth:`export_json`.
         """
         path = _export_path(conversation_id)

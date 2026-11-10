@@ -32,6 +32,7 @@ from pydantic import (
     model_serializer,
 )
 
+from introspection_sdk.schemas.annotations import AnnotationState
 from introspection_sdk.schemas.genai import (
     InputMessage,
     OutputMessage,
@@ -485,6 +486,9 @@ class GenAiSpan(SpanModel):
     status: SpanStatus | None = None
     resource: dict[str, Any] | None = None
     attributes: SpanAttributes = Field(default_factory=SpanAttributes)
+    #: The span's current annotation state, on an export read with
+    #: ``include=["annotations"]``; absent on a span nobody annotated.
+    annotation: AnnotationState | None = None
 
     @property
     def conversation_id(self) -> str | None:

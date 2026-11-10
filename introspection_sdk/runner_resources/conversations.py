@@ -32,6 +32,7 @@ from introspection_sdk._sync.runner_resources.conversations import (
     Conversations,
 )
 from introspection_sdk.runner_resources._conversations_common import (
+    ConversationExportInclude,
     ConversationExportParams,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     "AsyncConversationItems",
     "AsyncConversations",
     "ConversationExportFormat",
+    "ConversationExportInclude",
     "ConversationExportParams",
     "ConversationItems",
     "ConversationResolution",

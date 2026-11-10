@@ -217,6 +217,10 @@ reported it. For a streamed read, `AtifProjection` takes one span at a time
 and returns the steps that are final. Runnable:
 [`conversation_atif.py`](examples/introspection_examples/api/conversation_atif.py).
 
+`export_jsonl(conversation_id, include=["annotations", "comments"])` also sets
+`span.annotation`, the span's row from `client.annotations.list`, on every
+annotated span, with its comments. It needs the annotations read scope.
+
 ## One data-plane interface on the client and the Runner
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:

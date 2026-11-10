@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TypedDict
+from typing import Literal, TypedDict
+
+ConversationExportInclude = Literal["annotations", "comments"]
+"""Optional expansions of an exported span, passed as a repeated ``include``
+query param. ``annotations`` sets ``annotation`` on each annotated span;
+``comments``, with it, fills that row's ``comments``. JSON and JSON lines
+only."""
 
 
 class ConversationExportParams(TypedDict, total=False):
@@ -15,3 +21,4 @@ class ConversationExportParams(TypedDict, total=False):
     lookback_days: int
     start_date: str | datetime
     end_date: str | datetime
+    include: list[ConversationExportInclude]
