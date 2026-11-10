@@ -15,10 +15,25 @@ class AnnotationTarget(BaseModel):
     span_id: str
 
 
+class AnnotationComment(BaseModel):
+    """One comment on an annotated span, as the export carries it."""
+
+    model_config = ConfigDict(extra="allow")
+
+    event_id: UUID
+    comment: str
+    #: The comment's author.
+    member_id: UUID
+    actor_member_id: UUID | None = None
+    actor_member_type: str | None = None
+    created_at: datetime
+
+
 class AnnotationState(AnnotationTarget):
     """Current state folded from immutable annotation events.
 
-    Comment text is not on the row: read it from
+    The list leaves ``comments`` as ``None``; the export sets it on every
+    row, oldest first. For one span, the text is also on
     ``events.list("introspection.annotation", trace_id=..., span_id=...)``.
     """
 
@@ -39,6 +54,7 @@ class AnnotationState(AnnotationTarget):
     updated_at: datetime
     updated_by_member_id: UUID
     assignment_event_id: UUID | None = None
+    comments: list[AnnotationComment] | None = None
 
 
 class AnnotationFacet(BaseModel):
@@ -72,6 +88,7 @@ class AnnotationNavigation(BaseModel):
 
 
 __all__ = [
+    "AnnotationComment",
     "AnnotationFacet",
     "AnnotationNavigation",
     "AnnotationState",

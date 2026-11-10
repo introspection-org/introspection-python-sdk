@@ -596,3 +596,54 @@ def test_a_dataset_facet_carries_its_summary(fake_api: FakeAPI) -> None:
     assert facet.comment_count == 3
     assert facet.reviewer_member_ids == [UUID(MEMBER_ID)]
     assert facet.updated_at is not None
+
+
+def test_export_rows_carry_their_comments_and_list_rows_none(
+    fake_api: FakeAPI,
+) -> None:
+    comments = [
+        {
+            "event_id": str(EVENT_ID),
+            "comment": "The answer missed the governing exception.",
+            "member_id": MEMBER_ID,
+            "actor_member_id": None,
+            "actor_member_type": None,
+            "created_at": "2026-08-25T11:00:00Z",
+        },
+        {
+            "event_id": str(EVENT_ID),
+            "comment": "Confirmed against the source.",
+            "member_id": MEMBER_ID,
+            "actor_member_id": MEMBER_ID,
+            "actor_member_type": "agent",
+            "created_at": "2026-08-25T12:00:00Z",
+        },
+    ]
+    fake_api.add(
+        "GET",
+        EXPORT,
+        content=jsonl(
+            {**annotation(), "comment_count": 2, "comments": comments},
+            {**annotation(), "comments": []},
+        ),
+    )
+    fake_api.add(
+        "GET",
+        "/v1/annotations",
+        json_body=page([{**annotation(), "comments": None}, annotation()]),
+    )
+    annotations = Annotations(fake_api.client(), fake_api.client())
+
+    commented, bare = annotations.export()
+    listed = annotations.list().page().records
+
+    assert commented.comments is not None
+    first, second = commented.comments
+    assert first.comment == "The answer missed the governing exception."
+    assert (first.event_id, first.member_id) == (EVENT_ID, UUID(MEMBER_ID))
+    assert (first.actor_member_id, first.actor_member_type) == (None, None)
+    assert second.actor_member_id == UUID(MEMBER_ID)
+    assert second.actor_member_type == "agent"
+    assert first.created_at < second.created_at
+    assert bare.comments == []
+    assert [row.comments for row in listed] == [None, None]
