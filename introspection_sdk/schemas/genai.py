@@ -67,6 +67,8 @@ class OmitNoneModel(BaseModel):
     are the server's and stay closed.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     @model_serializer(mode="wrap")
     def _omit_none(self, handler: SerializerFunctionWrapHandler) -> Any:
         serialized = handler(self)
