@@ -343,9 +343,6 @@ def test_02_application(world: World) -> None:
                 "connections:delete",
                 "automations:read",
                 "automations:write",
-                "issues:read",
-                "issues:write",
-                "issues:delete",
                 "annotations:read",
                 "approvals:read",
                 "approvals:write",
@@ -1482,7 +1479,7 @@ def test_11_evidence(world: World) -> None:
         cid, limit=200, contains=["gen_ai.input.messages.role:user"]
     ).page()
     assert len(user_turns.data) > 0, "a user turn"
-    _issues(w.sa, w.task.id, w.output_file.id)
+    _issues(w.member, w.task.id, w.output_file.id)
 
 
 def _issue_brief(issue: Issue) -> dict[str, Any]:
@@ -1498,10 +1495,10 @@ def _issue_brief(issue: Issue) -> dict[str, Any]:
     }
 
 
-def _issues(sa: IntrospectionClient, task: UUID, output: UUID) -> None:
+def _issues(member: IntrospectionClient, task: UUID, output: UUID) -> None:
     """An issue owned by the walk's task, with its output as evidence:
     open, read, list, edit under its etag, close, delete."""
-    issue = sa.issues.create(
+    issue = member.issues.create(
         title="The walk's issue",
         description="The greeting the walk's task wrote.",
         task_id=task,
@@ -1523,12 +1520,12 @@ def _issues(sa: IntrospectionClient, task: UUID, output: UUID) -> None:
     assert issue.task_id == task
     assert [f.file_id for f in issue.files] == [output]
 
-    read = sa.issues.get(issue.id)
+    read = member.issues.get(issue.id)
     assert read.id == issue.id
-    listed = sa.issues.list(tag=f"suite:{WALK.tag_name}")
+    listed = member.issues.list(tag=f"suite:{WALK.tag_name}")
     assert any(i.id == issue.id for i in listed)
 
-    closed = sa.issues.update(
+    closed = member.issues.update(
         issue.id,
         IssueUpdate(
             status=IssueStatus.CLOSED,
@@ -1540,15 +1537,15 @@ def _issues(sa: IntrospectionClient, task: UUID, output: UUID) -> None:
     assert closed.closed_at is not None
     # The etag it was read under is stale now, so a second edit is refused.
     with pytest.raises(IntrospectionAPIError) as stale:
-        sa.issues.update(
+        member.issues.update(
             issue.id,
             IssueUpdate(priority=IssuePriority.LOW),
             if_match=read.etag,
         )
     assert stale.value.status_code == 412
 
-    sa.issues.delete(issue.id, if_match=closed.etag)
-    expect_not_found(lambda: sa.issues.get(issue.id))
+    member.issues.delete(issue.id, if_match=closed.etag)
+    expect_not_found(lambda: member.issues.get(issue.id))
 
 
 @walk_step(

@@ -120,7 +120,6 @@ APPLICATION_SCOPES = [
     *("shares:read", "shares:write", "shares:delete", "connectors:read"),
     *("connectors:write", "connections:read", "connections:write"),
     *("connections:delete", "automations:read", "automations:write"),
-    *("issues:read", "issues:write", "issues:delete"),
     *("annotations:read", "approvals:read", "approvals:write"),
     *("images:read", "images:write", "api_keys:read", "api_keys:write"),
     *("api_keys:delete", "applications:read", "applications:write"),
