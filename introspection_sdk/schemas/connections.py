@@ -4,8 +4,8 @@ These are a member's app connections on the data plane. A connector's
 connections on the control plane are
 :class:`introspection_sdk.schemas.connectors.Connection`, a different model.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so DP additions don't break the SDK.
+Wire fields are snake_case verbatim. Response models ignore unknown fields
+so DP additions don't break the SDK; the create body passes them through.
 """
 
 from __future__ import annotations
@@ -18,7 +18,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the connection models; a response ignores a field the API
+    adds."""
 
 
 class ConnectionOwner(StrEnum):
@@ -68,6 +69,8 @@ class Connection(ApiModel):
 
 class ConnectionCreateRequest(ApiModel):
     """Body for ``POST /v1/connections``."""
+
+    model_config = ConfigDict(extra="allow")
 
     app: str
     runtime: str

@@ -1,8 +1,9 @@
 """Pydantic mirrors of the DP read-only ``/v1/events`` surface.
 
 Field names are kept on-the-wire (snake_case) to match the DP Pydantic
-models verbatim. Every model sets ``extra="allow"`` so new server fields
-don't break older clients.
+models verbatim. Every model ignores unknown fields, and a payload's
+``lens`` and ``severity`` accept a value this SDK does not know, so new
+server fields and values don't break older clients.
 
 ``GET /v1/events`` is a single cursor-paginated list read over the
 append-only ``otel_logs`` store. Every list read names its family — the
@@ -117,9 +118,9 @@ ObservationSeverity = Literal["low", "medium", "high"]
 
 
 class _ApiModel(BaseModel):
-    # ``extra="allow"`` keeps unknown server fields; ``protected_namespaces=()``
-    # silences the ``model_`` warning for wire fields like ``model``.
-    model_config = ConfigDict(extra="allow", protected_namespaces=())
+    # ``protected_namespaces=()`` silences the ``model_`` warning for wire
+    # fields like ``model``.
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class IntrospectionEventBase(_ApiModel):
@@ -149,10 +150,10 @@ class ObservationPayload(_ApiModel):
     pattern assignment (the server-side fold)."""
 
     observation_id: UUID
-    lens: ObservationLens
+    lens: ObservationLens | str
     label: str | None = None
     summary: str | None = None
-    severity: ObservationSeverity | None = None
+    severity: ObservationSeverity | str | None = None
     confidence: float | None = None
     segment: int | None = None
     sentiment: str | None = None

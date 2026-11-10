@@ -1,8 +1,10 @@
 """Pydantic mirrors of CP ``/v1/repositories`` and DP repository contents,
 commits and merges.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so API additions don't break the SDK.
+Wire fields are snake_case verbatim. Response models ignore unknown fields,
+and a value-carrying ``Literal`` also accepts any other string, so API
+additions don't break the SDK. ``RepositoryContent`` stays discriminated on
+``type``.
 """
 
 from __future__ import annotations
@@ -11,11 +13,11 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class Repository(ApiModel):
@@ -67,7 +69,7 @@ class RepositoryEntry(ApiModel):
 
     name: str
     path: str
-    type: Literal["file", "dir", "symlink", "submodule"]
+    type: Literal["file", "dir", "symlink", "submodule"] | str
     size: int = 0
     sha: str
 
@@ -100,7 +102,7 @@ class RepositoryFile(ApiModel):
     size: int
     sha: str
     commit_sha: str
-    encoding: Literal["utf-8", "base64"]
+    encoding: Literal["utf-8", "base64"] | str
     content: str
     truncated: bool = False
 
@@ -132,7 +134,7 @@ class RepositoryCommitFile(ApiModel):
     """One file a commit changed."""
 
     filename: str
-    status: Literal["added", "removed", "modified", "renamed"]
+    status: Literal["added", "removed", "modified", "renamed"] | str
     additions: int
     deletions: int
     changes: int

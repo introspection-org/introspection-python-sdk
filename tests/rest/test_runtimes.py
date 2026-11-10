@@ -13,7 +13,6 @@ from uuid import UUID
 
 import httpx2 as httpx
 import pytest
-from pydantic import ValidationError
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError
 from introspection_sdk._http import _HttpClient
@@ -144,7 +143,7 @@ def test_get_reads_group_and_image_source_fields(
     assert rt.image_revision == "0123456789abcdef0123456789abcdef01234567"
     assert rt.image_commit_subject == "feat: ark runtime"
     assert rt.image_repository == "introspection-org/recipes"
-    assert rt.model_extra == {}
+    assert set(WIRE_RUNTIME) <= set(Runtime.model_fields)
 
 
 def test_get_defaults_group_and_image_source_fields(
@@ -161,16 +160,16 @@ def test_get_defaults_group_and_image_source_fields(
     assert rt.image_revision is None
     assert rt.image_commit_subject is None
     assert rt.image_repository is None
-    assert rt.model_extra == {}
 
 
-def test_get_rejects_unknown_runtime_group_type(
+def test_get_reads_an_unknown_runtime_group_type_as_a_string(
     local_dp: Callable[[], LocalDP],
 ):
     dp = local_dp()
-    with pytest.raises(ValidationError, match="runtime_group_type"):
-        _get_from(dp, {**WIRE_RUNTIME, "runtime_group_type": "platform"})
+    rt = _get_from(dp, {**WIRE_RUNTIME, "runtime_group_type": "platform"})
     _assert_get_request(dp)
+    assert rt.runtime_group_type == "platform"
+    assert not isinstance(rt.runtime_group_type, RuntimeGroupType)
 
 
 def test_handle_with_uuid_resolves_runtime_group(fake_api: FakeAPI):

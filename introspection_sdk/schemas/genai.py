@@ -330,7 +330,7 @@ class InputMessage(OmitNoneModel):
 
     open_schema: ClassVar[bool] = True
 
-    role: Literal["system", "user", "assistant", "tool"] = Field(
+    role: Literal["system", "user", "assistant", "tool"] | str = Field(
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
     )
     parts: list[MessagePart] = Field(
@@ -348,7 +348,7 @@ class OutputMessage(OmitNoneModel):
 
     open_schema: ClassVar[bool] = True
 
-    role: Literal["system", "user", "assistant", "tool"] = Field(
+    role: Literal["system", "user", "assistant", "tool"] | str = Field(
         description="Message role: ``'system'``, ``'user'``, ``'assistant'``, or ``'tool'``.",
     )
     parts: list[MessagePart] = Field(

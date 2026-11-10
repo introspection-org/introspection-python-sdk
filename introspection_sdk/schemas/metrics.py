@@ -9,8 +9,11 @@ build a typed request and read a typed result.
 Field names are kept on-the-wire (snake_case) to match the DP models.
 Request models set ``extra="forbid"`` — matching the DP — so a misspelled
 option fails locally instead of silently running a different query.
-Response models set ``extra="allow"`` so new server fields don't break
-older clients.
+Response models ignore unknown fields, and their ``Literal`` fields also
+accept a value this SDK does not know, so new server fields and values
+don't break older clients. That is why :attr:`MetricQueryMeta.order_by`
+is a :class:`MetricAppliedOrderBy`, not the request's
+:class:`MetricOrderBy`.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ __all__ = [
     "AggOp",
     "EffectiveWindow",
     "FilterOp",
+    "MetricAppliedOrderBy",
     "MetricDimension",
     "MetricDimensionValue",
     "MetricFilter",
@@ -104,7 +108,7 @@ class _RequestModel(BaseModel):
 
 
 class _ResponseModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class MetricSpec(_RequestModel):
@@ -206,7 +210,7 @@ class MetricDimensionValue(_ResponseModel):
 class MetricResultValue(_ResponseModel):
     metric_index: int
     measure: str | None = None
-    aggregation: AggOp
+    aggregation: AggOp | str
     value: float
 
 
@@ -216,16 +220,26 @@ class MetricResultRow(_ResponseModel):
     metrics: list[MetricResultValue] = Field(default_factory=list)
 
 
+class MetricAppliedOrderBy(_ResponseModel):
+    """One ordering directive as the server applied it, echoed in
+    :attr:`MetricQueryMeta.order_by`."""
+
+    type: MetricOrderType | str
+    direction: MetricOrderDirection | str = "asc"
+    metric_index: int | None = None
+    field: str | None = None
+
+
 class MetricQueryMeta(_ResponseModel):
-    view: MetricView
+    view: MetricView | str
     window: EffectiveWindow
     row_count: int
     row_limit: int
-    interval: AggInterval | None = None
+    interval: AggInterval | str | None = None
     step_seconds: int | None = None
     approximate: bool = False
     truncated: bool = False
-    order_by: list[MetricOrderBy] = Field(default_factory=list)
+    order_by: list[MetricAppliedOrderBy] = Field(default_factory=list)
     owner_scoped: bool = False
     """The read was confined to the caller's own owner key, not the project.
     A project API key reads only its system agent's rows, so expect ``True``

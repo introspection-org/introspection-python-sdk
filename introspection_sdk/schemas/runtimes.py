@@ -1,21 +1,22 @@
 """Pydantic mirrors of CP `/v1/runtimes` request/response models.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so CP additions don't break the SDK.
+Wire fields are snake_case verbatim. :class:`Runtime` ignores unknown
+fields and its enums are open (a value this SDK does not know decodes as a
+plain ``str``), so CP additions don't break the SDK.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class RuntimeLlmMode(StrEnum):
@@ -53,6 +54,14 @@ class RuntimeInclude(StrEnum):
     MCP_REQUIREMENTS = "mcp_requirements"
 
 
+OpenRuntimeLlmMode = Annotated[
+    RuntimeLlmMode | str, Field(union_mode="left_to_right")
+]
+OpenRuntimeGroupType = Annotated[
+    RuntimeGroupType | str, Field(union_mode="left_to_right")
+]
+
+
 class Runtime(ApiModel):
     id: UUID
     org_id: UUID
@@ -84,7 +93,7 @@ class Runtime(ApiModel):
     is_active: bool = False
     description: str | None = None
     metadata: dict[str, Any] | None = None
-    llm_mode: RuntimeLlmMode = RuntimeLlmMode.MANAGED
+    llm_mode: OpenRuntimeLlmMode = RuntimeLlmMode.MANAGED
     created_at: datetime | None = None
     updated_at: datetime | None = None
     # When set, the runtime has been withdrawn and never resolves as the
@@ -96,7 +105,7 @@ class Runtime(ApiModel):
     environment_ref: dict[str, str] | None = None
     # Projected from the runtime group: who owns it and the template it was
     # created from.
-    runtime_group_type: RuntimeGroupType = RuntimeGroupType.CUSTOM
+    runtime_group_type: OpenRuntimeGroupType = RuntimeGroupType.CUSTOM
     template_ref: str | None = None
     # For an image version: the recipe commit its image carries, that
     # commit's subject line, and the recipe's GitHub repository (owner/name).
@@ -140,6 +149,8 @@ class RuntimeUpdate(BaseModel):
 
 
 __all__ = [
+    "OpenRuntimeGroupType",
+    "OpenRuntimeLlmMode",
     "Runtime",
     "RuntimeCreate",
     "RuntimeGroupType",

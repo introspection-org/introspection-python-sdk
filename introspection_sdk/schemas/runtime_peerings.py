@@ -1,7 +1,6 @@
 """Pydantic mirror of the CP ``/v1/projects/{project}/peerings`` read model.
 
-Unknown fields are tolerated via ``extra="allow"`` so CP additions don't
-break the SDK.
+Unknown fields are ignored so CP additions don't break the SDK.
 """
 
 from __future__ import annotations
@@ -9,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class RuntimePeering(BaseModel):
@@ -20,8 +19,6 @@ class RuntimePeering(BaseModel):
     owns the peering. The ``granted_*`` fields name who it admits; they are
     ANDed, and ``None`` matches anything.
     """
-
-    model_config = ConfigDict(extra="allow")
 
     id: UUID
     org_id: UUID

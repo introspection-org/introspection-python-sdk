@@ -4,6 +4,10 @@ A command is ``exec``, ``upload`` or ``download`` against an eval task's live
 sandbox: a row the task's workflow executes and stamps. The create returns it
 ``queued``; a read reports its outcome. ``service`` names a compose service;
 ``None`` (or ``main``) is the agent's own container.
+
+The command specs are request bodies and forbid unknown fields. A
+:class:`TaskCommand` read ignores them, and its ``kind`` and ``status`` are
+open: a value this SDK does not know decodes as a plain ``str``.
 """
 
 from __future__ import annotations
@@ -32,6 +36,14 @@ class TaskCommandStatus(StrEnum):
     def is_terminal(self) -> bool:
         """Whether the command has finished, either way."""
         return self in (TaskCommandStatus.COMPLETED, TaskCommandStatus.FAILED)
+
+
+OpenTaskCommandKind = Annotated[
+    TaskCommandKind | str, Field(union_mode="left_to_right")
+]
+OpenTaskCommandStatus = Annotated[
+    TaskCommandStatus | str, Field(union_mode="left_to_right")
+]
 
 
 class ExecCommand(BaseModel):
@@ -82,14 +94,12 @@ TASK_COMMAND_SPEC_ADAPTER: TypeAdapter[TaskCommandSpec] = TypeAdapter(
 class TaskCommand(BaseModel):
     """A recorded command and, once terminal, its outcome."""
 
-    model_config = ConfigDict(extra="allow")
-
     id: UUID
     task_id: UUID
-    kind: TaskCommandKind
+    kind: OpenTaskCommandKind
     spec: dict[str, Any]
     """The spec as the API normalized it."""
-    status: TaskCommandStatus
+    status: OpenTaskCommandStatus
     exit_code: int | None = None
     stdout: str | None = None
     stderr: str | None = None
@@ -105,6 +115,8 @@ __all__ = [
     "TASK_COMMAND_SPEC_ADAPTER",
     "DownloadCommand",
     "ExecCommand",
+    "OpenTaskCommandKind",
+    "OpenTaskCommandStatus",
     "TaskCommand",
     "TaskCommandKind",
     "TaskCommandSpec",

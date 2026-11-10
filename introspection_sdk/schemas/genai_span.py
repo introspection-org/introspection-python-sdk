@@ -464,7 +464,7 @@ class SpanAttributes(SpanModel):
 class SpanStatus(SpanModel):
     """OpenTelemetry span status."""
 
-    code: SpanStatusCode | None = None
+    code: SpanStatusCode | str | None = None
     message: str | None = None
 
 
@@ -478,7 +478,7 @@ class GenAiSpan(SpanModel):
     span_id: str | None = None
     parent_span_id: str | None = None
     name: str | None = None
-    kind: SpanKind | None = None
+    kind: SpanKind | str | None = None
     start_time: datetime
     end_time: datetime | None = None
     duration_ns: int | None = None

@@ -81,6 +81,29 @@ has no method for gets one (with its tests) before the walk calls it.
 
 Real-API drift elsewhere is caught by the `-m integration` job in `ci.yml`.
 
+## Response and request models
+
+An older SDK must keep decoding a newer API, so:
+
+- **A response model ignores unknown fields.** Leave `extra` unset
+  (pydantic's default, `ignore`); never set `extra="forbid"` or
+  `extra="allow"` on a model that is a response, is nested in one, or is a
+  base of one. A response that subclasses a request model which forbids sets
+  `extra="ignore"` itself (`AnnotationState`). A model used both ways
+  ignores too. Strict mode, above, is what reports an unmodelled field.
+- **A server-valued enum on a response stays open.** Type the field with an
+  `Open*` alias, `Annotated[TheEnum | str, Field(union_mode="left_to_right")]`,
+  or a `Literal` as `Literal[...] | str`: a known value still decodes to the
+  member, a new one to a plain `str`. A union of variants gets a fallback
+  variant (`UnknownEvent`, `UnknownGoalComponent`, `GenericPart`) rather than
+  failing the whole response.
+- **A request body may forbid unknown fields** (`extra="forbid"`), so a
+  misspelled option fails locally.
+- The exceptions keep `extra="allow"` because their keys are caller-defined
+  and must round-trip: the GenAI span and message trees (`SpanModel`,
+  `GenericPart`), `RunCaller`, and `AutomationMetadata`, which is sent back
+  as a whole `metadata`.
+
 ## Coverage expectations per area
 
 | Area | Floor today | Target |

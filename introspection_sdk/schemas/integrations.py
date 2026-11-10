@@ -3,13 +3,17 @@
 An integration is the org's own install of a provider (a GitHub App
 installation, a Slack workspace): org-wide, at most one live per type. The
 wire field naming the provider is ``type``.
+
+Response models ignore unknown fields and keep their enums open (a value
+this SDK does not know decodes as a plain ``str``); request bodies forbid
+unknown fields.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -34,20 +38,26 @@ class IntegrationStatus(StrEnum):
     DISABLED = "disabled"
 
 
+OpenIntegrationType = Annotated[
+    IntegrationType | str, Field(union_mode="left_to_right")
+]
+OpenIntegrationStatus = Annotated[
+    IntegrationStatus | str, Field(union_mode="left_to_right")
+]
+
+
 class Integration(BaseModel):
     """An org-wide provider install."""
-
-    model_config = ConfigDict(extra="allow")
 
     id: UUID
     org_id: UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    type: IntegrationType
+    type: OpenIntegrationType
     name: str | None = None
     external_id: str | None = None
     """The provider's id for the install, set once it is activated."""
-    status: IntegrationStatus = IntegrationStatus.PENDING
+    status: OpenIntegrationStatus = IntegrationStatus.PENDING
     created_by_member_id: UUID
     token_expires_at: datetime | None = None
     data: dict[str, Any] | None = None
@@ -88,6 +98,11 @@ class IntegrationPermissionLevel(StrEnum):
     WRITE = "write"
 
 
+OpenIntegrationPermissionLevel = Annotated[
+    IntegrationPermissionLevel | str, Field(union_mode="left_to_right")
+]
+
+
 def _github_default_permissions() -> dict[str, IntegrationPermissionLevel]:
     return {"metadata": IntegrationPermissionLevel.READ}
 
@@ -119,20 +134,16 @@ class IntegrationAccessToken(BaseModel):
     """A short-lived provider token for an integration, minted on request
     and never stored server-side. Lives at most an hour."""
 
-    model_config = ConfigDict(extra="allow")
-
     token: SecretStr
     """Read the plaintext with ``token.get_secret_value()``."""
     expires_at: datetime
-    type: IntegrationType
-    permissions: dict[str, IntegrationPermissionLevel]
+    type: OpenIntegrationType
+    permissions: dict[str, OpenIntegrationPermissionLevel]
 
 
 class GitHubInstallationRepository(BaseModel):
     """A repository the GitHub App installation can reach, as GitHub
     reports it."""
-
-    model_config = ConfigDict(extra="allow")
 
     id: int
     """GitHub's numeric repository id."""
@@ -149,8 +160,6 @@ class GitHubInstallationRepository(BaseModel):
 class GitHubInstallationRepositories(BaseModel):
     """``GET /v1/integrations/{id}/repositories`` for a GitHub integration:
     every repository the installation can reach, in one response."""
-
-    model_config = ConfigDict(extra="allow")
 
     type: Literal[IntegrationType.GITHUB] = IntegrationType.GITHUB
     records: list[GitHubInstallationRepository]
@@ -177,4 +186,7 @@ __all__ = [
     "IntegrationStatus",
     "IntegrationType",
     "IntegrationUpdateRequest",
+    "OpenIntegrationPermissionLevel",
+    "OpenIntegrationStatus",
+    "OpenIntegrationType",
 ]

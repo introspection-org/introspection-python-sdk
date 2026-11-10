@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 T = TypeVar("T")
 
 
 class Paginated(BaseModel, Generic[T]):
-    model_config = ConfigDict(extra="allow")
+    """One page of a list read; a field the API adds is ignored."""
 
     records: list[T]
     count: int

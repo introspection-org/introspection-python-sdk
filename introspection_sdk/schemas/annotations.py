@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class AnnotationTarget(BaseModel):
+    """The span an annotation write names (a request body)."""
+
     model_config = ConfigDict(extra="forbid")
 
     trace_id: str
@@ -16,9 +18,12 @@ class AnnotationTarget(BaseModel):
 
 
 class AnnotationState(AnnotationTarget):
-    """Current state folded from immutable annotation events."""
+    """Current state folded from immutable annotation events.
 
-    model_config = ConfigDict(extra="allow")
+    A response model: it overrides the ``forbid`` it would inherit from
+    :class:`AnnotationTarget`, so a field the API adds is ignored."""
+
+    model_config = ConfigDict(extra="ignore")
 
     conversation_id: str | None = None
     labels: list[str] = Field(default_factory=list)
@@ -37,8 +42,6 @@ class AnnotationFacet(BaseModel):
     """How many current annotations hold one value of one filter dimension
     (annotator, assignee, label or status)."""
 
-    model_config = ConfigDict(extra="allow")
-
     dimension: str
     value: str
     count: int
@@ -47,8 +50,6 @@ class AnnotationFacet(BaseModel):
 class AnnotationNavigation(BaseModel):
     """The review window around one annotated span: the rows before and
     after it in the filtered list, and its 1-based position there."""
-
-    model_config = ConfigDict(extra="allow")
 
     previous: AnnotationState | None = None
     current: AnnotationState | None = None

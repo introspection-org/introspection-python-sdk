@@ -2,17 +2,21 @@
 
 A key's plaintext is returned once, on create, as :attr:`ApiKeyCreated.api_key`
 (a :class:`~pydantic.SecretStr`, so it never prints); no read returns it again.
+
+Response models ignore unknown fields and keep their enums open; request
+bodies forbid unknown fields.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
-from introspection_sdk.schemas.lanes import Environment
+from introspection_sdk.schemas.lanes import Environment, OpenEnvironment
 
 
 class ApiKeyCapability(StrEnum):
@@ -30,25 +34,31 @@ class ApiKeyStatus(StrEnum):
     REVOKED = "revoked"
 
 
+OpenApiKeyCapability = Annotated[
+    ApiKeyCapability | str, Field(union_mode="left_to_right")
+]
+OpenApiKeyStatus = Annotated[
+    ApiKeyStatus | str, Field(union_mode="left_to_right")
+]
+
+
 class ApiKey(BaseModel):
     """A project API key. The plaintext is never readable after create."""
-
-    model_config = ConfigDict(extra="allow")
 
     id: UUID
     org_id: UUID
     project_id: UUID
     created_at: datetime | None = None
     name: str | None = None
-    environment: Environment = Environment.PRODUCTION
-    allow: list[ApiKeyCapability] = []
+    environment: OpenEnvironment = Environment.PRODUCTION
+    allow: list[OpenApiKeyCapability] = []
     scope: str = "*"
     member_id: UUID | None = None
     """The agent member the key acts as, when it is not the default one."""
     key_prefix: str
     key_suffix: str
     redacted_key: str | None = None
-    status: ApiKeyStatus = ApiKeyStatus.ACTIVE
+    status: OpenApiKeyStatus = ApiKeyStatus.ACTIVE
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
     acknowledged_at: datetime | None = None
@@ -91,15 +101,11 @@ class ApiKeyUpdateRequest(BaseModel):
 class ApiKeyAcknowledgement(BaseModel):
     """Response of ``POST /v1/api-keys/{id}/acknowledge``."""
 
-    model_config = ConfigDict(extra="allow")
-
     acknowledged: bool
 
 
 class ApiKeyList(BaseModel):
     """The ``GET /v1/api-keys`` envelope; the SDK returns its keys."""
-
-    model_config = ConfigDict(extra="allow")
 
     api_keys: list[ApiKey] = []
 
@@ -112,4 +118,6 @@ __all__ = [
     "ApiKeyCreated",
     "ApiKeyStatus",
     "ApiKeyUpdateRequest",
+    "OpenApiKeyCapability",
+    "OpenApiKeyStatus",
 ]

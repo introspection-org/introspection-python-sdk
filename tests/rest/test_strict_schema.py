@@ -73,7 +73,9 @@ def test_off_by_default_tolerates_an_unknown_field(
 
     recipe = Recipes(fake_api.client()).get(UUID(RECIPE_ID))
 
-    assert recipe.model_extra == {"color": "red"}
+    assert recipe.id == UUID(RECIPE_ID)
+    assert recipe.model_extra is None
+    assert "color" not in recipe.model_dump()
 
 
 @pytest.mark.usefixtures("strict")

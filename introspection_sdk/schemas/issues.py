@@ -4,9 +4,8 @@ An issue is a brief (title, description, priority, status) with the
 evidence it cites (files, links, events, spans), the human requests still
 open on it, and a fixed worker Task that carries its chat.
 
-Response models tolerate unknown fields (``extra="allow"``) so a DP
-addition never breaks the SDK; request bodies forbid them, as the server
-does. The status and priority enums are **open** on a response: a value
+Response models ignore unknown fields so a DP addition never breaks the
+SDK; request bodies forbid them, as the server does. The status and priority enums are **open** on a response: a value
 this SDK does not know yet decodes as a plain ``str``.
 
 :class:`IssueUpdate` is dumped with ``exclude_unset=True``: a field left
@@ -32,11 +31,11 @@ from pydantic import (
 )
 
 from introspection_sdk._uuid import _uuid7
-from introspection_sdk.schemas.tasks import TaskStatus
+from introspection_sdk.schemas.tasks import OpenTaskStatus
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class RequestModel(BaseModel):
@@ -85,7 +84,6 @@ OpenIssueStatus = Annotated[
 OpenIssuePriority = Annotated[
     IssuePriority | str, Field(union_mode="left_to_right")
 ]
-OpenTaskStatus = Annotated[TaskStatus | str, Field(union_mode="left_to_right")]
 
 IssueMetadataValue = str | int | float | bool | None
 """One value of an issue's ``metadata`` document."""

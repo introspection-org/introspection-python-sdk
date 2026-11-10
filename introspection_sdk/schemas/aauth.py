@@ -1,8 +1,9 @@
 """Pydantic mirrors of DP ``/v1/aauth``: the missions an agent works under
 and the approvals a person decides (draft-hardt-oauth-aauth-protocol).
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so DP additions don't break the SDK.
+Wire fields are snake_case verbatim. Response models ignore unknown fields
+and keep their enums open, so DP additions don't break the SDK; the
+decision body forbids unknown fields.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class ApprovalKind(StrEnum):

@@ -1,4 +1,9 @@
-"""Pydantic mirrors of DP `/v1/shares` request/response models."""
+"""Pydantic mirrors of DP `/v1/shares` request/response models.
+
+:class:`ResourceShare` ignores unknown fields and its ``resource_type`` is
+open (a type this SDK does not know decodes as a plain ``str``); the request
+bodies pass unknown fields through.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +12,11 @@ from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the share models; a response ignores a field the API adds."""
 
 
 class ShareResourceType(StrEnum):
@@ -23,6 +28,11 @@ class ShareResourceType(StrEnum):
     CHANNEL = "channel"
     """A channel's audience. Written only by the control plane, so it can be
     read back from ``list`` but never passed to ``create``."""
+
+
+OpenShareResourceType = Annotated[
+    ShareResourceType | str, Field(union_mode="left_to_right")
+]
 
 
 class ResourceShare(_ApiModel):
@@ -39,7 +49,7 @@ class ResourceShare(_ApiModel):
     project_id: UUID
     created_at: datetime
     updated_at: datetime
-    resource_type: ShareResourceType
+    resource_type: OpenShareResourceType
     resource_id: str
     granted_member_id: UUID | None = None
     granted_tag: str | None = None
@@ -59,6 +69,8 @@ class ShareCreateRequest(_ApiModel):
     a project-wide grant. A tag share requires the grantor to hold the tag,
     unless they are an admin."""
 
+    model_config = ConfigDict(extra="allow")
+
     resource_type: ShareResourceType
     # A conversation id is not a uuid, so the wire type is a plain string.
     # A file id is one, though, and ``File.id`` hands back a ``UUID`` —
@@ -76,5 +88,7 @@ class ShareUpdateRequest(_ApiModel):
 
     ``visible_from`` is required on the wire: ``None`` clears the cutoff so
     callers the share alone admits see the whole history."""
+
+    model_config = ConfigDict(extra="allow")
 
     visible_from: datetime | None

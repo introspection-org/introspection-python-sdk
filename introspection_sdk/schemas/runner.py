@@ -1,8 +1,10 @@
 """Pydantic mirrors of CP `/v1/runtimes/{id}/run` and
 `/v1/experiments/{id}/run` request/response models.
 
-Wire fields are snake_case verbatim. Unknown fields are tolerated
-via ``extra="allow"``.
+Wire fields are snake_case verbatim. Response models (and
+:class:`RunnerIdentity`, which a response echoes) ignore unknown fields.
+:class:`RunRequest` and the open :class:`RunCaller` payload keep them, so a
+caller field rides along to the API verbatim.
 
 The customer-facing :class:`RunnerSpec` is intentionally narrow —
 the fields it omits are server-internal and are never returned to
@@ -18,7 +20,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the run models; a response ignores a field the API adds."""
 
 
 class RunnerIdentity(_ApiModel):
@@ -45,12 +47,16 @@ class RunnerIdentity(_ApiModel):
 class RunCallerLibrary(_ApiModel):
     """SDK / library identifier on a :class:`RunCaller`."""
 
+    model_config = ConfigDict(extra="allow")
+
     name: str | None = None
     version: str | None = None
 
 
 class RunCallerPage(_ApiModel):
     """Page-context fields on a :class:`RunCaller`."""
+
+    model_config = ConfigDict(extra="allow")
 
     path: str | None = None
     referrer: str | None = None
@@ -68,8 +74,11 @@ class RunCaller(_ApiModel):
     via ``hash_key_fields`` only. Mixing the two would be a privacy
     + stability footgun (e.g. routing on IP).
 
-    Unknown fields ride along verbatim via ``extra="allow"``.
+    Unknown fields ride along verbatim via ``extra="allow"``, including on
+    the copy :attr:`RunnerContext.caller` echoes back.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     ip: str | None = None
     user_agent: str | None = None
@@ -85,6 +94,8 @@ class RunRequest(_ApiModel):
     ``RuntimeContext`` — that's still importable as a deprecation
     alias for one release.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     identity: RunnerIdentity | None = None
     caller: RunCaller | None = None

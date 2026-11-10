@@ -25,10 +25,8 @@ class OAuthToken(BaseModel):
     The machine and federated grants issue no refresh token — re-mint (call
     the helper again) once it expires. ``email_code`` and ``refresh_token``
     return the refresh token plus the ``session_id`` / ``org_id`` that key the
-    next refresh. Additional wire fields are preserved but left unmodelled.
+    next refresh. A field the CP adds is ignored.
     """
-
-    model_config = ConfigDict(extra="allow")
 
     #: Project-scoped RS256 access token (``Authorization: Bearer …``).
     access_token: str

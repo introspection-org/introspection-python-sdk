@@ -294,6 +294,7 @@ def test_command_get_caps_the_wait(
         TASK_ID, UUID(COMMAND_ID), wait_seconds=asked
     )
 
+    assert command.status is TaskCommandStatus.COMPLETED
     assert command.status.is_terminal
     assert command.exit_code == 0
     assert fake_api.last_request.params.get("wait_seconds") == sent

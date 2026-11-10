@@ -136,7 +136,7 @@ def test_get_decodes_every_documented_field(fake_api: FakeAPI):
     issue = Issues(fake_api.client()).get(UUID(ISSUE_ID))
 
     assert fake_api.last_request.method == "GET"
-    assert issue.model_extra == {}
+    assert set(issue_body()) <= set(Issue.model_fields)
     assert issue.id == UUID(ISSUE_ID)
     assert issue.priority is IssuePriority.HIGH
     assert issue.status is IssueStatus.WAITING

@@ -1,7 +1,8 @@
 """Pydantic mirrors of CP `/v1/members` request/response models.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so CP additions don't break the SDK.
+Wire fields are snake_case verbatim. :class:`Member` ignores unknown fields
+and its ``member_type`` is open, so CP additions don't break the SDK. The
+create bodies forbid unknown fields; the update body passes them through.
 
 ``tags`` and ``metadata`` are the two label sets a member carries, and
 they differ in what they grant. A tag is **access-bearing**: a member
@@ -19,11 +20,18 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Tag, TypeAdapter
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Discriminator,
+    Field,
+    Tag,
+    TypeAdapter,
+)
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the member models; a response ignores a field the API adds."""
 
 
 class MemberType(StrEnum):
@@ -32,6 +40,9 @@ class MemberType(StrEnum):
     BUSINESS = "business"
     AGENT = "agent"
     CUSTOMER = "customer"
+
+
+OpenMemberType = Annotated[MemberType | str, Field(union_mode="left_to_right")]
 
 
 class Member(_ApiModel):
@@ -44,7 +55,7 @@ class Member(_ApiModel):
     external_user_id: str | None = None
     image_url: str | None = None
     role: str = "member"
-    member_type: MemberType = MemberType.BUSINESS
+    member_type: OpenMemberType = MemberType.BUSINESS
     is_deactivated: bool = False
     seat_tier: str | None = None
     """The member's Ark seat (``standard`` or ``pro``); ``None`` is a standard
@@ -134,6 +145,8 @@ MEMBER_CREATE_ADAPTER: TypeAdapter[
 class MemberUpdateRequest(_ApiModel):
     """Body of ``PATCH /v1/members/{id}`` (requires ``members:manage``)."""
 
+    model_config = ConfigDict(extra="allow")
+
     name: str | None = None
     image_url: str | None = None
     role: str | None = None
@@ -156,4 +169,5 @@ __all__ = [
     "MemberCreate",
     "MemberType",
     "MemberUpdateRequest",
+    "OpenMemberType",
 ]

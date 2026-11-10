@@ -13,9 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Judge(BaseModel):
-    """A judge a Recipe declares."""
-
-    model_config = ConfigDict(extra="allow")
+    """A judge a Recipe declares. A field the API adds is ignored."""
 
     id: UUID
     org_id: UUID

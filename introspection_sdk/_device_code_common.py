@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import BaseModel, SecretStr
 
 from introspection_sdk._auth_common import OAuthToken
 
@@ -32,9 +32,7 @@ class DeviceCode(BaseModel):
 
     Show ``user_code`` and ``verification_uri`` (or open
     ``verification_uri_complete``), then poll the token endpoint with
-    ``device_code``."""
-
-    model_config = ConfigDict(extra="allow")
+    ``device_code``. A field the CP adds is ignored."""
 
     device_code: SecretStr
     """Whoever holds it receives the tokens once the member approves."""

@@ -1,7 +1,9 @@
 """Pydantic mirrors of CP `/v1/experiments` request/response models.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"``.
+Wire fields are snake_case verbatim and unknown fields are ignored. The
+enums are open (a value this SDK does not know decodes as a plain ``str``),
+and a goal component whose ``source`` this SDK does not know decodes as an
+:class:`UnknownGoalComponent` rather than failing the experiment.
 
 An experiment routes traffic across 2-20 *arms* (runtime versions sharing
 one runtime group) and optimizes a judge-backed *goal*. Prerequisites, in
@@ -15,14 +17,14 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class ExperimentStatus(StrEnum):
@@ -35,6 +37,14 @@ class ExperimentStatus(StrEnum):
 class ExperimentGoalDirection(StrEnum):
     MAXIMIZE = "maximize"
     MINIMIZE = "minimize"
+
+
+OpenExperimentStatus = Annotated[
+    ExperimentStatus | str, Field(union_mode="left_to_right")
+]
+OpenExperimentGoalDirection = Annotated[
+    ExperimentGoalDirection | str, Field(union_mode="left_to_right")
+]
 
 
 class ExperimentGoalGuard(_ApiModel):
@@ -69,7 +79,18 @@ class TelemetryGoalComponent(_ApiModel):
     guard: ExperimentGoalGuard | None = None
 
 
-ExperimentGoalComponent = JudgeGoalComponent | TelemetryGoalComponent
+class UnknownGoalComponent(_ApiModel):
+    """A goal component whose ``source`` this SDK version predates."""
+
+    source: str
+    weight: float = 1.0
+    guard: ExperimentGoalGuard | None = None
+
+
+ExperimentGoalComponent = Annotated[
+    JudgeGoalComponent | TelemetryGoalComponent | UnknownGoalComponent,
+    Field(union_mode="left_to_right"),
+]
 
 
 class ExperimentGoal(_ApiModel):
@@ -79,8 +100,8 @@ class ExperimentGoal(_ApiModel):
     ``weight > 0`` — the v1 scorer only implements judge-backed reward.
     """
 
-    kind: Literal["composite"] = "composite"
-    direction: ExperimentGoalDirection = ExperimentGoalDirection.MAXIMIZE
+    kind: Literal["composite"] | str = "composite"
+    direction: OpenExperimentGoalDirection = ExperimentGoalDirection.MAXIMIZE
     components: list[ExperimentGoalComponent] = Field(default_factory=list)
 
 
@@ -102,7 +123,7 @@ class Experiment(_ApiModel):
     name: str
     runtime_group_id: UUID | None = None
     environment: str | None = None
-    status: ExperimentStatus = ExperimentStatus.DRAFT
+    status: OpenExperimentStatus = ExperimentStatus.DRAFT
     routing_strategy: str | None = None
     arms: list[ExperimentArm] = Field(default_factory=list)
     goal_json: ExperimentGoal | None = None
@@ -131,5 +152,8 @@ __all__ = [
     "ExperimentGoalGuard",
     "ExperimentStatus",
     "JudgeGoalComponent",
+    "OpenExperimentGoalDirection",
+    "OpenExperimentStatus",
     "TelemetryGoalComponent",
+    "UnknownGoalComponent",
 ]

@@ -1,7 +1,6 @@
 """Pydantic mirror of the CP ``/v1/projects`` read model.
 
-Unknown fields are tolerated via ``extra="allow"`` so CP additions don't
-break the SDK.
+Unknown fields are ignored so CP additions don't break the SDK.
 """
 
 from __future__ import annotations
@@ -9,13 +8,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class Project(BaseModel):
     """A project of the credential's organization."""
-
-    model_config = ConfigDict(extra="allow")
 
     id: UUID
     org_id: UUID

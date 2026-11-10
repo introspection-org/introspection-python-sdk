@@ -1,8 +1,8 @@
 """Opt-in strict decoding: report response fields this SDK does not model.
 
-By default a response field the SDK's models do not name is tolerated (kept
-by an ``extra="allow"`` model, dropped by the rest), so a server that adds a
-field never breaks a client. With ``INTROSPECTION_STRICT_SCHEMA=1`` the same
+By default a response field the SDK's models do not name is ignored (only the
+open GenAI models keep it), so a server that adds a field never breaks a
+client. With ``INTROSPECTION_STRICT_SCHEMA=1`` the same
 response raises :class:`~introspection_sdk.SchemaDriftError`, naming the route
 and every unmodelled field by its JSON path::
 

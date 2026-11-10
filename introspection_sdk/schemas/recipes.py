@@ -1,7 +1,7 @@
 """Pydantic mirrors of CP `/v1/recipes` response models.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so CP additions don't break the SDK.
+Wire fields are snake_case verbatim and unknown fields are
+ignored so CP additions don't break the SDK.
 """
 
 from __future__ import annotations
@@ -10,11 +10,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class RecipeValidationDiagnostic(ApiModel):

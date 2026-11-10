@@ -1,7 +1,10 @@
 """Pydantic mirrors of DP ``/v1/automations`` request/response models.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so DP additions don't break the SDK.
+Wire fields are snake_case verbatim. :class:`Automation` and
+:class:`AutomationTriggerResponse` ignore unknown fields so DP additions
+don't break the SDK. :class:`AutomationMetadata` (and its conditions) keep
+them, because it is sent back as a whole ``metadata`` that replaces the
+stored one, and the request bodies pass them through.
 
 The string enums here are **open**: each lists the values this SDK
 knows, but a field typed with one also accepts any other string, which
@@ -30,7 +33,8 @@ from introspection_sdk.schemas.tasks import TaskRepoRequest
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the automation models; a response ignores a field the API
+    adds."""
 
 
 class AutomationTriggerType(StrEnum):
@@ -109,6 +113,8 @@ OpenSkipReason = Annotated[
 class AutomationCondition(_ApiModel):
     """One condition stored in an automation's metadata."""
 
+    model_config = ConfigDict(extra="allow")
+
     type: OpenConditionType
     runtime_group_id: UUID | None = None
 
@@ -121,6 +127,8 @@ class AutomationMetadata(_ApiModel):
     the request, which matters for a member's own automation: the server
     accepts only ``cron_schedules`` and ``timezone`` from a non-admin.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     cron_schedules: list[str] | None = None
     """Several cron expressions; ``cron_schedule`` on the automation is the
@@ -197,6 +205,8 @@ class AutomationCreateRequest(_ApiModel):
     must not send one.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     name: str
     trigger_type: OpenTriggerType
     description: str | None = None
@@ -224,6 +234,8 @@ class AutomationUpdateRequest(_ApiModel):
     can be cleared. ``kind`` and ``trigger_type`` are immutable;
     ``metadata`` replaces wholesale.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     name: str | None = None
     description: str | None = None

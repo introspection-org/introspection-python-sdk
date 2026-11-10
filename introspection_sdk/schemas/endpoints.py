@@ -1,8 +1,8 @@
 """Pydantic mirrors of CP ``/v1/endpoints``: the upstream hosts a project's
 runtimes reach, an MCP server's binding among them.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so CP additions don't break the SDK.
+Wire fields are snake_case verbatim and unknown fields are
+ignored so CP additions don't break the SDK.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class EndpointKind(StrEnum):
@@ -32,8 +32,6 @@ class EndpointMetadata(BaseModel):
     """An endpoint's non-secret metadata; the MCP fields are set only for
     ``kind="mcp"``."""
 
-    model_config = ConfigDict(extra="allow")
-
     mcp_server_id: str | None = None
     connector_id: UUID | None = None
     """The connector whose stored connection authenticates the MCP server."""
@@ -44,8 +42,6 @@ class EndpointMetadata(BaseModel):
 
 class EndpointMcpCheck(BaseModel):
     """The last check of an MCP endpoint: whether its server answers."""
-
-    model_config = ConfigDict(extra="allow")
 
     check_id: UUID
     """Identifies one requested check; a result lands only on its own
@@ -69,8 +65,6 @@ class Endpoint(BaseModel):
     """An upstream host a project's runtimes reach, scoped to a runtime
     group, a runtime and an environment where those are set (``None``
     means every one)."""
-
-    model_config = ConfigDict(extra="allow")
 
     id: UUID
     org_id: UUID

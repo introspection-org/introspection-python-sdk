@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Annotated
+
+from pydantic import Field
 
 
 class Environment(StrEnum):
@@ -14,4 +17,11 @@ class Environment(StrEnum):
     PRODUCTION = "production"
 
 
-__all__ = ["Environment"]
+OpenEnvironment = Annotated[
+    Environment | str, Field(union_mode="left_to_right")
+]
+"""A response's ``environment``: a lane this SDK does not know decodes as a
+plain ``str``."""
+
+
+__all__ = ["Environment", "OpenEnvironment"]

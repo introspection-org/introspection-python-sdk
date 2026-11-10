@@ -3,18 +3,23 @@
 Both are settings a project's runtimes read, scoped to the whole project, a
 runtime group, one runtime and/or one lane. A credential's secret is
 write-only: no read returns it, only whether one is set and a display hint.
+
+The read models ignore unknown fields and keep their enums open (a value
+this SDK does not know decodes as a plain ``str``); request bodies forbid
+unknown fields.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from introspection_sdk.schemas._secrets import WireSecret
-from introspection_sdk.schemas.lanes import Environment
+from introspection_sdk.schemas.lanes import Environment, OpenEnvironment
 
 
 class _Scope(BaseModel):
@@ -28,8 +33,7 @@ class _Scope(BaseModel):
 
 
 class _Setting(_Scope):
-    model_config = ConfigDict(extra="allow")
-
+    environment: OpenEnvironment | None = None
     id: UUID
     org_id: UUID
     project_id: UUID
@@ -72,10 +76,15 @@ class VariableKind(StrEnum):
     """A reference to a credential by name."""
 
 
+OpenVariableKind = Annotated[
+    VariableKind | str, Field(union_mode="left_to_right")
+]
+
+
 class Variable(_Setting):
     """A runtime environment variable."""
 
-    kind: VariableKind = VariableKind.VALUE
+    kind: OpenVariableKind = VariableKind.VALUE
     value: str | None = None
 
 
@@ -100,6 +109,7 @@ __all__ = [
     "Credential",
     "CredentialCreateRequest",
     "CredentialUpdateRequest",
+    "OpenVariableKind",
     "Variable",
     "VariableCreateRequest",
     "VariableKind",

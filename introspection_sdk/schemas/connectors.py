@@ -1,7 +1,9 @@
 """Pydantic mirrors of CP `/v1/connectors` request/response models.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so CP additions don't break the SDK.
+Wire fields are snake_case verbatim. Response models ignore unknown fields
+and keep their enums open (a value this SDK does not know decodes as a
+plain ``str``), so CP additions don't break the SDK; request bodies pass
+unknown fields through.
 
 ``client_secret`` and ``signing_secret`` are **write-only**: the API
 accepts them on create and update and never returns them, so the read
@@ -13,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -22,7 +24,8 @@ from introspection_sdk.schemas.runner import RunnerIdentity
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the connector models; a response ignores a field the API
+    adds."""
 
 
 class ConnectorAuthMode(StrEnum):
@@ -79,6 +82,20 @@ class ConnectionBrokerSubjectType(StrEnum):
     PERSON = "person"
 
 
+OpenConnectorAuthMode = Annotated[
+    ConnectorAuthMode | str, Field(union_mode="left_to_right")
+]
+OpenConnectorStatus = Annotated[
+    ConnectorStatus | str, Field(union_mode="left_to_right")
+]
+OpenConnectionStatus = Annotated[
+    ConnectionStatus | str, Field(union_mode="left_to_right")
+]
+OpenConnectionSubjectType = Annotated[
+    ConnectionSubjectType | str, Field(union_mode="left_to_right")
+]
+
+
 class EntityUid(ApiModel):
     """A Cedar entity reference, ``{"type": "Company", "id": "acme"}``."""
 
@@ -116,7 +133,7 @@ class Connector(ApiModel):
     slug: str
     name: str
     provider: str
-    auth_mode: ConnectorAuthMode
+    auth_mode: OpenConnectorAuthMode
     environment: str
     agent_member_id: UUID | None = None
     authorization_endpoint: str | None = None
@@ -129,7 +146,7 @@ class Connector(ApiModel):
     assertion_audience: str | None = None
     policy_entities: list[PolicyEntity] | None = None
     webhook_url: str | None = None
-    status: ConnectorStatus = ConnectorStatus.PENDING
+    status: OpenConnectorStatus = ConnectorStatus.PENDING
     created_by_member_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     requires_runtime: bool = False
@@ -158,9 +175,9 @@ class Connection(ApiModel):
     column existed."""
     runtime_group_id: UUID | None = None
     """Runtime group answering this connection's channels."""
-    subject_type: ConnectionSubjectType = ConnectionSubjectType.APP
+    subject_type: OpenConnectionSubjectType = ConnectionSubjectType.APP
     scopes_granted: list[str] = []
-    status: ConnectionStatus = ConnectionStatus.ACTIVE
+    status: OpenConnectionStatus = ConnectionStatus.ACTIVE
     token_expires_at: datetime | None = None
     last_verified_at: datetime | None = None
     provider_account_name: str | None = None
@@ -183,6 +200,8 @@ class ConnectorCreateRequest(ApiModel):
     OAuth endpoint discovery (and, where the provider supports it, client
     registration) and is not persisted.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     name: str
     provider: str
@@ -222,6 +241,8 @@ class ConnectorUpdateRequest(ApiModel):
     when provided — omitted means "unchanged", not "clear".
     """
 
+    model_config = ConfigDict(extra="allow")
+
     name: str | None = None
     agent_member_id: UUID | None = None
     scopes: list[str] | None = None
@@ -244,6 +265,8 @@ class ConnectionCreateRequest(ApiModel):
     encrypted server-side and never returned on any read.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     access_token: str
     subject_type: ConnectionCreateSubjectType | None = None
     scopes_granted: list[str] | None = None
@@ -260,6 +283,8 @@ class ConnectorAuthorizeBinding(ApiModel):
     Non-secret: the provider token stays on the connection and is
     injected at the egress, so ``headers`` cannot set ``Authorization``.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     environment: str
     """Runtime environment lane (``development`` / ``staging`` /
@@ -287,6 +312,8 @@ class ConnectorAuthorizeRequest(ApiModel):
     when the connector's ``requires_runtime`` is ``True`` — it names the
     agent that replies.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     connector_id: UUID
     app: str | None = None
@@ -341,10 +368,17 @@ class ConnectorOAuthClientRegistration(StrEnum):
     PRE_REGISTERED = "pre_registered"
 
 
+OpenConnectorOAuthClientRegistration = Annotated[
+    ConnectorOAuthClientRegistration | str, Field(union_mode="left_to_right")
+]
+
+
 class ConnectorOAuthDiscoveryRequest(ApiModel):
     """Resolve OAuth metadata (``POST /v1/connectors/discover-oauth``
     body). ``issuer`` is an authorization-server issuer URL, or an MCP
     server URL whose RFC 9728 metadata names its authorization server."""
+
+    model_config = ConfigDict(extra="allow")
 
     issuer: str = Field(min_length=1)
 
@@ -372,11 +406,13 @@ class ConnectorOAuthDiscoveryResponse(ApiModel):
     redirect_uri: str
     client_id: str | None = None
     client_secret: str | None = None
-    client_registration: ConnectorOAuthClientRegistration | None = None
+    client_registration: OpenConnectorOAuthClientRegistration | None = None
 
 
 class ConnectionMissionConstraints(ApiModel):
     """Deterministic, non-PII envelope for a person-authorized action."""
+
+    model_config = ConfigDict(extra="allow")
 
     host: str | None = None
     resource: str | None = None
@@ -387,6 +423,8 @@ class ConnectionMissionConstraints(ApiModel):
 
 
 class ConnectionTokenRequest(ApiModel):
+    model_config = ConfigDict(extra="allow")
+
     connector_id: UUID
     subject: ConnectionBrokerSubjectType | None = None
     action: str | None = None
@@ -440,5 +478,10 @@ __all__ = [
     "ConnectorStatus",
     "ConnectorUpdateRequest",
     "EntityUid",
+    "OpenConnectionStatus",
+    "OpenConnectionSubjectType",
+    "OpenConnectorAuthMode",
+    "OpenConnectorOAuthClientRegistration",
+    "OpenConnectorStatus",
     "PolicyEntity",
 ]

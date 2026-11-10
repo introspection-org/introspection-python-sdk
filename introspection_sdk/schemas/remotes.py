@@ -1,17 +1,17 @@
 """Pydantic mirrors of DP ``GET /v1/remotes/connect``: the protocol of the
 WebSocket ``introspection dev`` dials out on.
 
-Wire fields are snake_case verbatim and unknown fields are tolerated
-via ``extra="allow"`` so DP additions don't break the SDK.
+Wire fields are snake_case verbatim and unknown fields are
+ignored so DP additions don't break the SDK.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the response models; a field the API adds is ignored."""
 
 
 class WsAuthenticationDocs(ApiModel):

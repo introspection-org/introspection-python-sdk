@@ -1,23 +1,31 @@
-"""Pydantic mirrors of DP `/v1/files` request/response models."""
+"""Pydantic mirrors of DP `/v1/files` request/response models.
+
+:class:`File` ignores unknown fields and its ``file_type`` is open (a type
+this SDK does not know decodes as a plain ``str``); the request bodies pass
+unknown fields through.
+"""
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the file models; a response ignores a field the API adds."""
 
 
 class FileType(StrEnum):
     UPLOAD = "upload"
     FILESYSTEM = "filesystem"
     OTHER = "other"
+
+
+OpenFileType = Annotated[FileType | str, Field(union_mode="left_to_right")]
 
 
 class File(_ApiModel):
@@ -27,7 +35,7 @@ class File(_ApiModel):
     created_at: datetime
     updated_at: datetime
     name: str = Field(min_length=1, max_length=512)
-    file_type: FileType = FileType.OTHER
+    file_type: OpenFileType = FileType.OTHER
     storage_path: str
     mime_type: str = "application/octet-stream"
     metadata: dict[str, Any] | None = None
@@ -49,6 +57,8 @@ class File(_ApiModel):
 
 
 class FileUpdateRequest(_ApiModel):
+    model_config = ConfigDict(extra="allow")
+
     name: str | None = Field(default=None, min_length=1, max_length=512)
     metadata: dict[str, Any] | None = None
     tags: list[str] | None = None
@@ -67,6 +77,8 @@ class FileUpdateRequest(_ApiModel):
 
 
 class FileCreateTextRequest(_ApiModel):
+    model_config = ConfigDict(extra="allow")
+
     name: str = Field(min_length=1, max_length=512)
     content: str
     mime_type: str = "text/markdown"

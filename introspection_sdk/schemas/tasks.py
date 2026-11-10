@@ -1,13 +1,16 @@
 """Pydantic mirrors of DP `/v1/tasks` request/response models.
 
-Extra fields are tolerated so API additions don't break the SDK.
+Response models ignore unknown fields, and their ``kind`` and ``status``
+are open (a value this SDK does not know decodes as a plain ``str``), so API
+additions don't break the SDK. Request models other than
+:class:`TaskCreateRequest` pass unknown fields through to the API.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,7 +19,7 @@ from introspection_sdk.schemas.agui import ResumeEntry
 
 
 class _ApiModel(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    """Base of the task models; a response ignores a field the API adds."""
 
 
 class TaskKind(StrEnum):
@@ -48,6 +51,10 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+OpenTaskKind = Annotated[TaskKind | str, Field(union_mode="left_to_right")]
+OpenTaskStatus = Annotated[TaskStatus | str, Field(union_mode="left_to_right")]
+
+
 class AgentInfo(_ApiModel):
     sandbox_status: str | None = None
     session_id: str | None = None
@@ -61,8 +68,8 @@ class Task(_ApiModel):
     updated_at: datetime
     title: str | None = None
     display_index: int | None = None
-    kind: TaskKind = TaskKind.AGENT
-    status: TaskStatus = TaskStatus.PENDING
+    kind: OpenTaskKind = TaskKind.AGENT
+    status: OpenTaskStatus = TaskStatus.PENDING
     member_id: UUID | None = None
     automation_id: UUID | None = None
     runtime_id: UUID | None = None
@@ -90,6 +97,8 @@ class TaskFileRef(_ApiModel):
     traverse outside the task's files directory.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     id: str
     name: str | None = None
     size_bytes: int | None = None
@@ -102,6 +111,8 @@ class TaskRepoRequest(_ApiModel):
     MAY clone; this decides what a task DOES clone, and at what ref. An entry
     outside the grant is dropped by the server, never a launch failure.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     repo: str = Field(description='Registered repository slug, "owner/name".')
     ref: str | None = Field(
@@ -201,6 +212,8 @@ class TaskCreateRequest(_ApiModel):
 
 
 class TaskPrompt(_ApiModel):
+    model_config = ConfigDict(extra="allow")
+
     text: str = Field(min_length=1)
     images: list[str] | None = None
 
@@ -211,6 +224,8 @@ class TaskRunKind(StrEnum):
 
 
 class TaskRunCreateRequest(_ApiModel):
+    model_config = ConfigDict(extra="allow")
+
     prompt: TaskPrompt | None = None
     kind: TaskRunKind | None = None
     metadata: dict[str, Any] | None = None
@@ -229,13 +244,15 @@ class TaskRunCreateRequest(_ApiModel):
 
 
 class TaskRunResumeRequest(_ApiModel):
+    model_config = ConfigDict(extra="allow")
+
     resume: list[ResumeEntry]
 
 
 class TaskRun(_ApiModel):
     id: str
     task_id: UUID
-    status: TaskStatus
+    status: OpenTaskStatus
     error: str | None = None
     """Why the run failed; set only on a failed run."""
     completion_reason: str | None = None
@@ -262,5 +279,7 @@ class TaskCancelMode(StrEnum):
 
 
 class TaskCancelRequest(_ApiModel):
+    model_config = ConfigDict(extra="allow")
+
     mode: TaskCancelMode = TaskCancelMode.ABORT
     drain_within_seconds: int | None = Field(default=None, ge=0)

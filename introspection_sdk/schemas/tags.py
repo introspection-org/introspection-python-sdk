@@ -5,6 +5,10 @@ are separate catalogues with separate scopes, and their fields differ — an
 ``access`` tag is an opaque value with no colour, an ``annotation`` tag is a
 slug that must have one. ``TagCreate`` is a discriminated union on ``kind`` so
 that rule is unrepresentable rather than validated.
+
+A :class:`Tag` read ignores unknown fields and its ``kind`` is open (a kind
+this SDK does not know decodes as a plain ``str``); the write bodies forbid
+unknown fields.
 """
 
 from __future__ import annotations
@@ -38,10 +42,11 @@ class TagKind(StrEnum):
     ANNOTATION = "annotation"
 
 
-class Tag(BaseModel):
-    model_config = ConfigDict(extra="allow")
+OpenTagKind = Annotated[TagKind | str, Field(union_mode="left_to_right")]
 
-    kind: TagKind
+
+class Tag(BaseModel):
+    kind: OpenTagKind
     name: str
     #: Set on an ``annotation`` tag; never on an ``access`` tag.
     color: str | None = None
@@ -104,6 +109,7 @@ __all__ = [
     "AccessTagCreate",
     "AnnotationTagCreate",
     "HexColor",
+    "OpenTagKind",
     "Tag",
     "TagCreate",
     "TagKind",
