@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from introspection_sdk import RunFailedError
 from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
 from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
@@ -386,6 +389,49 @@ def test_run_handle_stream_and_text(fake_api: FakeAPI):
     ] == ["hel", "lo"]
     # text() re-streams and concatenates AG-UI text deltas.
     assert handle.text() == "hello"
+
+
+def _text_of(fake_api: FakeAPI, frames: list[str]) -> str:
+    sse = "".join(f"event: ag_ui\ndata: {f}\n\n" for f in frames)
+    fake_api.add(
+        "POST",
+        f"/v1/tasks/{TASK_ID}/runs",
+        json_body=task_run_response(),
+    )
+    fake_api.add(
+        "GET",
+        f"/v1/tasks/{TASK_ID}/runs/run-1/stream",
+        content=sse.encode(),
+    )
+    return _tasks(fake_api).runs.create(TASK_ID, prompt={"text": "x"}).text()
+
+
+_DONE = '{"type":"RUN_FINISHED","threadId":"t","runId":"run-1"}'
+
+
+def test_text_reads_a_snapshot_holding_a_role_the_sdk_does_not_model(
+    fake_api: FakeAPI,
+):
+    snapshot = (
+        '{"type":"MESSAGES_SNAPSHOT","messages":['
+        '{"id":"n","role":"narrator","content":"aside"},'
+        '{"id":"a","role":"assistant","content":"complete answer"}]}'
+    )
+    partial = (
+        '{"type":"TEXT_MESSAGE_CONTENT","messageId":"a","delta":"partial"}'
+    )
+    assert _text_of(fake_api, [partial, snapshot, _DONE]) == "complete answer"
+
+
+def test_text_reads_a_delta_the_sdk_could_not_model(fake_api: FakeAPI):
+    delta = '{"type":"TEXT_MESSAGE_CONTENT","messageId":7,"delta":"hi"}'
+    assert _text_of(fake_api, [delta, _DONE]) == "hi"
+
+
+def test_text_raises_on_a_run_error_the_sdk_could_not_model(fake_api: FakeAPI):
+    error = '{"type":"RUN_ERROR","message":"boom","code":7}'
+    with pytest.raises(RunFailedError):
+        _text_of(fake_api, [error])
 
 
 def test_create_forwards_grouping_tags(fake_api: FakeAPI):
