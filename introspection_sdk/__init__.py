@@ -65,9 +65,11 @@ from introspection_sdk.runner import AsyncRunner, Runner
 from introspection_sdk.runner_resources.tasks import AsyncRunHandle, RunHandle
 from introspection_sdk.schemas.agui import (
     AGUIEvent,
+    AGUIStreamEvent,
     EventType,
     Interrupt,
     ResumeEntry,
+    UnknownEvent,
 )
 from introspection_sdk.schemas.annotations import (
     AnnotationState,
@@ -192,6 +194,8 @@ __all__ = [
     "AsyncRunHandle",
     "AsyncRunner",
     "AGUIEvent",
+    "AGUIStreamEvent",
+    "UnknownEvent",
     "AnnotationState",
     "AnnotationTarget",
     "AuthSession",

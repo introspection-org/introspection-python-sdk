@@ -63,7 +63,7 @@ from introspection_sdk._errors import (
 )
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.schemas.agui import (
-    AGUIEvent,
+    AGUIStreamEvent,
     RunFinishedEvent,
     validate_ag_ui_event,
 )
@@ -104,7 +104,7 @@ def stream_resumable(
     max_reconnects: int = _DEFAULT_MAX_RECONNECTS,
     backoff: float = _DEFAULT_BACKOFF,
     timeout: float = _DEFAULT_TIMEOUT,
-) -> Iterator[AGUIEvent]:
+) -> Iterator[AGUIStreamEvent]:
     """Consume a run's SSE stream as a resumable ``AGUIEvent`` sequence
     (sync), reconnecting transparently on a mid-turn disconnect via
     ``Last-Event-ID``. See the module docstring."""
@@ -220,7 +220,7 @@ async def stream_resumable_async(
     max_reconnects: int = _DEFAULT_MAX_RECONNECTS,
     backoff: float = _DEFAULT_BACKOFF,
     timeout: float = _DEFAULT_TIMEOUT,
-) -> AsyncIterator[AGUIEvent]:
+) -> AsyncIterator[AGUIStreamEvent]:
     """Async twin of :func:`stream_resumable`."""
     deadline = time.monotonic() + timeout
     last_event_id = "0"
