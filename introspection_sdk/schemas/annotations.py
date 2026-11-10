@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+AnnotationInclude = Literal["comments"]
+"""Optional expansions of a listed row, passed as a repeated ``include``
+query param: ``comments`` sets each row's ``comments``."""
 
 
 class AnnotationTarget(BaseModel):
@@ -16,7 +21,7 @@ class AnnotationTarget(BaseModel):
 
 
 class AnnotationComment(BaseModel):
-    """One comment on an annotated span, as the export carries it."""
+    """One comment on an annotated span, as ``include=comments`` carries it."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -32,9 +37,8 @@ class AnnotationComment(BaseModel):
 class AnnotationState(AnnotationTarget):
     """Current state folded from immutable annotation events.
 
-    The list leaves ``comments`` as ``None``; the export sets it on every
-    row, oldest first. For one span, the text is also on
-    ``events.list("introspection.annotation", trace_id=..., span_id=...)``.
+    ``comments`` is ``None`` unless the list was read with
+    ``include=["comments"]``, which sets it on every row, oldest first.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -90,6 +94,7 @@ class AnnotationNavigation(BaseModel):
 __all__ = [
     "AnnotationComment",
     "AnnotationFacet",
+    "AnnotationInclude",
     "AnnotationNavigation",
     "AnnotationState",
     "AnnotationTarget",

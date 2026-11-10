@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import builtins
-from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
-from typing import Any, Literal, TypedDict, Unpack
+from collections.abc import Sequence
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import TypeAdapter
@@ -15,12 +15,7 @@ from introspection_sdk._errors import (
     ValidationError,
 )
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
-from introspection_sdk._jsonl import (
-    JSONL_ACCEPT_HEADERS,
-    iter_jsonl,
-    iter_jsonl_async,
-)
-from introspection_sdk._strict_schema import decode, note_response
+from introspection_sdk._strict_schema import decode
 from introspection_sdk._uuid import _uuid7
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -30,6 +25,7 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.schemas.annotations import (
     AnnotationFacet,
+    AnnotationInclude,
     AnnotationNavigation,
     AnnotationState,
     AnnotationTarget,
@@ -70,21 +66,6 @@ def _member_error(
 
 AnnotationStatus = Literal["backlog", "assigned", "reviewed"]
 FACETS = TypeAdapter(list[AnnotationFacet])
-EXPORT_PATH = "/v1/annotations/export"
-
-
-class AnnotationExportFilters(TypedDict, total=False):
-    """The list's filters, which the export shares. ``label`` may repeat."""
-
-    annotated_by_member_id: UUID | None
-    assignee_member_id: UUID | None
-    annotated_by_email: str | None
-    assigned_to_email: str | None
-    trace_id: str | None
-    span_id: str | None
-    conversation_id: str | None
-    label: str | Sequence[str] | None
-    status: AnnotationStatus | None
 
 
 def _reject_conflicting_filters(
@@ -105,34 +86,6 @@ def _reject_conflicting_filters(
             status_code=422,
             code="conflicting_annotation_assignee_filters",
         )
-
-
-def _reject_conflicting_export_filters(filters: Mapping[str, Any]) -> None:
-    _reject_conflicting_filters(
-        filters.get("annotated_by_member_id"),
-        filters.get("assignee_member_id"),
-        filters.get("annotated_by_email"),
-        filters.get("assigned_to_email"),
-    )
-
-
-def _export_params(
-    filters: Mapping[str, Any],
-    annotated_by_member_id: UUID | None,
-    assignee_member_id: UUID | None,
-) -> dict[str, Any]:
-    label = filters.get("label")
-    return {
-        "annotated_by_member_id": annotated_by_member_id,
-        "assignee_member_id": assignee_member_id,
-        "trace_id": filters.get("trace_id"),
-        "span_id": filters.get("span_id"),
-        "conversation_id": filters.get("conversation_id"),
-        "label": [label]
-        if isinstance(label, str)
-        else list(label or []) or None,
-        "status": filters.get("status"),
-    }
 
 
 def _navigation_params(
@@ -173,6 +126,7 @@ class Annotations:
         limit: int | None = None,
         next: str | None = None,
         include_total: bool | None = None,
+        include: Sequence[AnnotationInclude] | None = None,
     ) -> Pager[AnnotationState, Paginated[AnnotationState]]:
         _reject_conflicting_filters(
             annotated_by_member_id,
@@ -203,37 +157,12 @@ class Annotations:
                     "limit": limit,
                     "next": cursor,
                     "include_total": include_total,
+                    "include": list(include) if include else None,
                 },
             )
             return decode(Paginated[AnnotationState], payload)
 
         return cursor_paginate(fetch, start=next)
-
-    def export(
-        self, **filters: Unpack[AnnotationExportFilters]
-    ) -> Iterator[AnnotationState]:
-        """Stream every row :meth:`list` returns for these filters,
-        unpaginated, decoded one JSON line at a time."""
-        for row in iter_jsonl(self.export_stream(**filters)):
-            note_response(EXPORT_PATH)
-            yield decode(AnnotationState, row)
-
-    def export_stream(
-        self, **filters: Unpack[AnnotationExportFilters]
-    ) -> Iterator[bytes]:
-        """Stream the raw JSON-lines export bytes without buffering them."""
-        _reject_conflicting_export_filters(filters)
-        annotator = filters.get("annotated_by_member_id")
-        assignee = filters.get("assignee_member_id")
-        if (email := filters.get("annotated_by_email")) is not None:
-            annotator = self._resolve_reviewer_ids([email])[0]
-        if (email := filters.get("assigned_to_email")) is not None:
-            assignee = self._resolve_reviewer_ids([email])[0]
-        return self._dp_http.stream_bytes(
-            EXPORT_PATH,
-            params=_export_params(filters, annotator, assignee),
-            headers=JSONL_ACCEPT_HEADERS,
-        )
 
     def create(
         self,
@@ -377,6 +306,7 @@ class AsyncAnnotations:
         limit: int | None = None,
         next: str | None = None,
         include_total: bool | None = None,
+        include: Sequence[AnnotationInclude] | None = None,
     ) -> AsyncPager[AnnotationState, Paginated[AnnotationState]]:
         _reject_conflicting_filters(
             annotated_by_member_id,
@@ -413,38 +343,12 @@ class AsyncAnnotations:
                     "limit": limit,
                     "next": cursor,
                     "include_total": include_total,
+                    "include": list(include) if include else None,
                 },
             )
             return decode(Paginated[AnnotationState], payload)
 
         return async_cursor_paginate(fetch, start=next)
-
-    async def export(
-        self, **filters: Unpack[AnnotationExportFilters]
-    ) -> AsyncIterator[AnnotationState]:
-        """Stream every row :meth:`list` returns for these filters,
-        unpaginated, decoded one JSON line at a time."""
-        async for row in iter_jsonl_async(self.export_stream(**filters)):
-            note_response(EXPORT_PATH)
-            yield decode(AnnotationState, row)
-
-    async def export_stream(
-        self, **filters: Unpack[AnnotationExportFilters]
-    ) -> AsyncIterator[bytes]:
-        """Stream the raw JSON-lines export bytes without buffering them."""
-        _reject_conflicting_export_filters(filters)
-        annotator = filters.get("annotated_by_member_id")
-        assignee = filters.get("assignee_member_id")
-        if (email := filters.get("annotated_by_email")) is not None:
-            annotator = (await self._resolve_reviewer_ids([email]))[0]
-        if (email := filters.get("assigned_to_email")) is not None:
-            assignee = (await self._resolve_reviewer_ids([email]))[0]
-        async for chunk in self._dp_http.stream_bytes(
-            EXPORT_PATH,
-            params=_export_params(filters, annotator, assignee),
-            headers=JSONL_ACCEPT_HEADERS,
-        ):
-            yield chunk
 
     async def create(
         self,
@@ -571,7 +475,6 @@ class AsyncAnnotations:
 
 
 __all__ = [
-    "AnnotationExportFilters",
     "AnnotationStatus",
     "Annotations",
     "AsyncAnnotations",

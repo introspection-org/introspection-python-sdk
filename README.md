@@ -274,26 +274,14 @@ client.annotations.create(
 
 for item in client.annotations.list(label="needs-review"):
     print(item.trace_id, item.span_id, item.labels, item.comment_count)
-    for event in client.events.list(
-        "introspection.annotation",
-        trace_id=item.trace_id,
-        span_id=item.span_id,
-    ):
-        if event.payload.comment:
-            print(event.payload.comment)
 ```
 
 A listed row carries the labels, assignees, reviewers and comment count of a
-span, with `comments` left `None`; the text is on the span's
-`introspection.annotation` events, or on the export.
-
-`client.annotations.export(...)` takes the same filters and streams every
-matching row as JSON lines, with no paging, each with its `comments`, oldest
-first; `export_stream(...)` yields the raw bytes:
+span, with `comments` left `None`. `include=["comments"]` sets it on every
+row, oldest first:
 
 ```python
-for item in client.annotations.export(label="needs-review", status="reviewed"):
-    print(item.trace_id, item.span_id, item.reviewer_member_ids)
+for item in client.annotations.list(include=["comments"]):
     for comment in item.comments or []:
         print(comment.created_at, comment.member_id, comment.comment)
 ```
