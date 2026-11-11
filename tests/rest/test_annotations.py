@@ -17,6 +17,7 @@ from introspection_sdk.resources.tags import Tags
 from introspection_sdk.schemas.tags import (
     AccessTagCreate,
     AnnotationTagCreate,
+    TagInclude,
     TagKind,
     TagUpdate,
 )
@@ -238,7 +239,61 @@ def test_a_tag_update_is_refused_locally_when_the_api_would_refuse_it(
     # An update must name a field.
     with pytest.raises(ValidationError):
         tags.update(TagKind.ANNOTATION, "needs-review", TagUpdate())
+    # Only an annotation tag can be renamed.
+    with pytest.raises(ValidationError):
+        tags.update(TagKind.ACCESS, "acme/eu", TagUpdate(name="acme/us"))
     assert fake_api.requests == []
+
+
+def test_a_rename_archives_the_old_tag_and_returns_its_replacement(
+    fake_api: FakeAPI,
+) -> None:
+    replacement = {
+        **label(),
+        "name": "expert-review",
+        "archived_at": None,
+        "replaced_by": None,
+        "archived_names": ["needs-review"],
+    }
+    fake_api.add(
+        "PATCH", "/v1/tags/annotation/needs-review", json_body=replacement
+    )
+    tags = Tags(fake_api.client())
+    renamed = tags.update(
+        TagKind.ANNOTATION, "needs-review", TagUpdate(name="expert-review")
+    )
+    assert fake_api.last_request.json() == {"name": "expert-review"}
+    assert renamed.name == "expert-review"
+    assert renamed.archived_at is None
+    assert renamed.archived_names == ["needs-review"]
+
+
+def test_a_tag_list_asks_for_archived_tags_and_reads_them(
+    fake_api: FakeAPI,
+) -> None:
+    archived = {
+        **label(),
+        "archived_at": "2026-11-10T12:00:00Z",
+        "replaced_by": "expert-review",
+        "archived_names": [],
+    }
+    fake_api.add("GET", "/v1/tags", json_body=page([archived]))
+    tags = Tags(fake_api.client())
+    [tag] = list(tags.list(TagKind.ANNOTATION, include=[TagInclude.ARCHIVED]))
+    assert fake_api.last_request.url.params.get_list("include") == ["archived"]
+    assert tag.archived_at is not None
+    assert tag.replaced_by == "expert-review"
+    assert tag.archived_names == []
+
+
+def test_a_tag_without_the_archive_fields_still_decodes(
+    fake_api: FakeAPI,
+) -> None:
+    fake_api.add("GET", "/v1/tags/annotation/needs-review", json_body=label())
+    tag = Tags(fake_api.client()).get(TagKind.ANNOTATION, "needs-review")
+    assert tag.archived_at is None
+    assert tag.replaced_by is None
+    assert tag.archived_names == []
 
 
 async def test_async_create_comment(fake_api: FakeAPI) -> None:

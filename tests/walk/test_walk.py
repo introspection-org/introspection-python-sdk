@@ -1534,6 +1534,9 @@ def test_13_telemetry_reads(world: World) -> None:
             "name": "walk",
             "color": None,
             "description": "the walk's tag",
+            "archived_at": None,
+            "replaced_by": None,
+            "archived_names": [],
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
         }
