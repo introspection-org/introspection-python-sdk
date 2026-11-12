@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from urllib.parse import quote
 
 from pydantic import TypeAdapter
@@ -17,6 +18,7 @@ from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.tags import (
     Tag,
     TagCreate,
+    TagInclude,
     TagKind,
     TagUpdate,
 )
@@ -39,7 +41,7 @@ def _update_body(kind: TagKind, patch: TagUpdate) -> dict[str, object]:
     fields = patch.model_fields_set
     if not fields:
         raise ValidationError(
-            "A tag update must name a color or a description",
+            "A tag update must name a new name, a color or a description",
             status_code=422,
             code="invalid_tag_update",
         )
@@ -48,6 +50,12 @@ def _update_body(kind: TagKind, patch: TagUpdate) -> dict[str, object]:
             "An access tag has no color",
             status_code=422,
             code="invalid_tag_color",
+        )
+    if kind is TagKind.ACCESS and patch.name is not None:
+        raise ValidationError(
+            "An access tag cannot be renamed",
+            status_code=422,
+            code="invalid_tag_rename",
         )
     # `exclude_unset` so an omitted description stays omitted: the API reads a
     # null as "clear it" and an absent key as "leave it".
@@ -63,10 +71,15 @@ class AsyncTags:
         kind: TagKind,
         *,
         search: str | None = None,
+        include: builtins.list[TagInclude | str] | None = None,
         limit: int | None = None,
         next: str | None = None,
     ) -> AsyncPager[Tag, Paginated[Tag]]:
-        """List one catalogue. `kind` is required: no listing spans both."""
+        """List one catalogue. `kind` is required: no listing spans both.
+
+        Tags a rename archived are left out unless `include` names
+        :attr:`TagInclude.ARCHIVED`.
+        """
 
         async def fetch(cursor: str | None) -> Paginated[Tag]:
             payload = await self._http.request(
@@ -75,6 +88,7 @@ class AsyncTags:
                 params={
                     "kind": kind.value,
                     "search": search,
+                    "include": [str(i) for i in include] if include else None,
                     "limit": limit,
                     "next": cursor,
                 },
@@ -96,6 +110,7 @@ class AsyncTags:
         return decode(Tag, await self._http.request("GET", _path(kind, name)))
 
     async def update(self, kind: TagKind, name: str, patch: TagUpdate) -> Tag:
+        """Change a tag. A new ``name`` archives this one and returns the tag that replaces it."""
         return decode(
             Tag,
             await self._http.request(

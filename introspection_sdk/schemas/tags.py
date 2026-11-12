@@ -46,8 +46,20 @@ class Tag(BaseModel):
     #: Set on an ``annotation`` tag; never on an ``access`` tag.
     color: str | None = None
     description: str | None = None
+    #: When a rename archived this tag; ``None`` on a live tag.
+    archived_at: datetime | None = None
+    #: The tag an archived one was renamed to.
+    replaced_by: str | None = None
+    #: The archived names renamed to this tag, which its dataset also covers.
+    archived_names: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+
+class TagInclude(StrEnum):
+    """Rows a tag list leaves out unless asked for."""
+
+    ARCHIVED = "archived"
 
 
 class AccessTagCreate(BaseModel):
@@ -91,6 +103,9 @@ class TagUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    #: Rename an ``annotation`` tag: this one is archived and the tag that
+    #: replaces it comes back.
+    name: TagName | None = None
     color: HexColor | None = None
     description: str | None = Field(default=None, max_length=2000)
 
@@ -106,6 +121,7 @@ __all__ = [
     "HexColor",
     "Tag",
     "TagCreate",
+    "TagInclude",
     "TagKind",
     "TagName",
     "TagUpdate",

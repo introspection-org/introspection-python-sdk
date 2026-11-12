@@ -102,6 +102,7 @@ from introspection_sdk.schemas.tags import (
     AnnotationTagCreate,
     Tag,
     TagCreate,
+    TagInclude,
     TagKind,
     TagUpdate,
 )
@@ -220,6 +221,7 @@ __all__ = [
     "AnnotationTagCreate",
     "Tag",
     "TagCreate",
+    "TagInclude",
     "TagKind",
     "TagUpdate",
     "RateLimitError",
