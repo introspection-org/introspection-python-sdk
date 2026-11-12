@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.41.0...v0.42.0) (2026-11-12)
+
+
+### Features
+
+* **tags:** model a tag's archived_at, replaced_by and archived_names; rename and list archived tags ([#255](https://github.com/introspection-org/introspection-python-sdk/issues/255)) ([49e036c](https://github.com/introspection-org/introspection-python-sdk/commit/49e036c6f99eb3a2fedbd490af498e8453dcc9fa))
+
 ## [0.41.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.40.0...v0.41.0) (2026-11-10)
 
 
