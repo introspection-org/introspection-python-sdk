@@ -27,7 +27,14 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from dirty_equals import IsInt, IsList, IsOneOf, IsPositiveInt, IsUUID
+from dirty_equals import (
+    IsInstance,
+    IsInt,
+    IsOneOf,
+    IsPartialDict,
+    IsPositiveInt,
+    IsUUID,
+)
 from inline_snapshot import snapshot
 from vcr.cassette import Cassette
 
@@ -628,8 +635,8 @@ def test_04_recipe(world: World) -> None:
             "created_by_member_id": "[uuid]",
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
-            "agents": IsOneOf(None, IsList()),
-            "issue_providers": IsOneOf(None, IsList()),
+            "agents": IsOneOf(None, IsInstance(list)),
+            "issue_providers": IsOneOf(None, IsInstance(list)),
             "git_commit_subject": None,
             "mcp_servers": [
                 {
@@ -928,13 +935,17 @@ def test_07_runtime(world: World) -> None:
             "environments": ["staging", "production"],
             "image_build_status": "ready",
             "image_build_error_message": None,
-            "image_build_metadata": {
-                "image_tag": "[redacted]",
-                "built_at": "[timestamp]",
-                "size_bytes": "[number]",
-                "external_image_name": "[redacted]",
-                "verdict_by": "[timestamp]",
-            },
+            # Members beyond these five are the data plane's image metadata
+            # (`cli_version`, ...), returned as reported.
+            "image_build_metadata": IsPartialDict(
+                {
+                    "image_tag": "[redacted]",
+                    "built_at": "[timestamp]",
+                    "size_bytes": "[number]",
+                    "external_image_name": "[redacted]",
+                    "verdict_by": "[timestamp]",
+                }
+            ),
             "image_version": None,
             "peering_id": None,
             "created_by_member_id": "[uuid]",
