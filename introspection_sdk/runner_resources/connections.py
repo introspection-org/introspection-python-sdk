@@ -1,10 +1,10 @@
 """``client.connections`` / ``runner.connections`` — DP namespace for
 ``/v1/connections``: the apps (Gmail, Slack, ...) members connected for
-themselves, which the agent then acts with in that member's sessions.
-
-These are distinct from a connector's connections
-(``client.connectors.connections``, CP ``/v1/connectors/{id}/connections``),
-which an integrator administers for the project.
+themselves, which the agent then acts with in that member's sessions, the
+accounts members connected through an organization integration (Google
+Workspace, Microsoft 365), and the project's own connections on its
+connectors. It is the SDK's one connections namespace; the control plane
+has none.
 
 The routes take the ``connections:read``, ``connections:write`` and
 ``connections:delete`` scopes. A caller who is not a project administrator

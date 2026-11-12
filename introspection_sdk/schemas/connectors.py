@@ -64,13 +64,6 @@ class ConnectionSubjectType(StrEnum):
     WORKSPACE = "workspace"
 
 
-class ConnectionCreateSubjectType(StrEnum):
-    """Subjects accepted by registered connection creation."""
-
-    APP = "app"
-    USER = "user"
-
-
 class ConnectionBrokerSubjectType(StrEnum):
     """Subjects accepted by authorize and token-broker operations."""
 
@@ -133,42 +126,6 @@ class Connector(ApiModel):
     created_by_member_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     requires_runtime: bool = False
-
-
-class Connection(ApiModel):
-    """A connection — one authorized subject under a connector.
-
-    Access/refresh tokens are never serialized by the API and are not
-    modeled here.
-    """
-
-    id: UUID
-    org_id: UUID
-    created_at: datetime
-    updated_at: datetime
-    connector_id: UUID
-    project_id: UUID | None = None
-    member_id: UUID | None = None
-    """``None`` = org-owned (app subject); for a Slack workspace install
-    this points at the workspace customer member."""
-    created_by_member_id: UUID | None = None
-    """The member who performed the grant, as distinct from ``member_id``
-    (whose credential this is). For ``app`` and ``workspace`` subjects those
-    are never the same principal. ``None`` for grants made before the
-    column existed."""
-    runtime_group_id: UUID | None = None
-    """Runtime group answering this connection's channels."""
-    subject_type: ConnectionSubjectType = ConnectionSubjectType.APP
-    scopes_granted: list[str] = []
-    status: ConnectionStatus = ConnectionStatus.ACTIVE
-    token_expires_at: datetime | None = None
-    last_verified_at: datetime | None = None
-    provider_account_name: str | None = None
-    provider_app: str | None = None
-    """Application slug within a multi-application provider (Pipedream);
-    ``None`` otherwise."""
-    provider_account_id: str | None = None
-    """The provider's own identifier for the connected account."""
 
 
 class ConnectorCreateRequest(ApiModel):
@@ -236,21 +193,6 @@ class ConnectorUpdateRequest(ApiModel):
     signing_secret: str | None = None
 
 
-class ConnectionCreateRequest(ApiModel):
-    """Register a connection with a caller-supplied token
-    (``POST /v1/connectors/{connector_id}/connections`` body).
-
-    ``access_token`` / ``refresh_token`` are write-only: stored
-    encrypted server-side and never returned on any read.
-    """
-
-    access_token: str
-    subject_type: ConnectionCreateSubjectType | None = None
-    scopes_granted: list[str] | None = None
-    refresh_token: str | None = None
-    token_expires_at: datetime | None = None
-
-
 class ConnectorAuthorizeBinding(ApiModel):
     """The MCP endpoint binding an authorize completes into.
 
@@ -288,7 +230,10 @@ class ConnectorAuthorizeRequest(ApiModel):
     agent that replies.
     """
 
-    connector_id: UUID
+    connector_id: UUID | None = None
+    integration_id: UUID | None = None
+    """An organization integration to install (Google Workspace,
+    Microsoft 365) instead of a connector; needs ``integrations:write``."""
     app: str | None = None
     allow_progressive_scopes: bool = False
     runtime: str | None = None
@@ -373,6 +318,9 @@ class ConnectorOAuthDiscoveryResponse(ApiModel):
     client_id: str | None = None
     client_secret: str | None = None
     client_registration: ConnectorOAuthClientRegistration | None = None
+    revocation_endpoint: str | None = None
+    """RFC 7009 token revocation endpoint, if the provider advertises
+    one."""
 
 
 class ConnectionMissionConstraints(ApiModel):
@@ -416,11 +364,8 @@ class ConnectorAppList(ApiModel):
 
 
 __all__ = [
-    "Connection",
     "ConnectionAuthorizationPending",
     "ConnectionBrokerSubjectType",
-    "ConnectionCreateRequest",
-    "ConnectionCreateSubjectType",
     "ConnectionMissionConstraints",
     "ConnectionStatus",
     "ConnectionSubjectType",

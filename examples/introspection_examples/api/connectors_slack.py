@@ -15,7 +15,7 @@ Run with:
 
 Optional env:
     INTROSPECTION_BASE_API_URL  - CP REST API host (default https://api.introspection.dev)
-    REVOKE_FIRST_CONNECTION=1   - revoke the first listed connection (destructive)
+    REVOKE_FIRST_CONNECTION=1   - delete the first listed connection (destructive)
 
 Connectors sit behind a server-side feature flag. If every call 404s with
 "Connectors are not enabled", the deployment has not opted in yet.
@@ -109,8 +109,10 @@ def main() -> None:
         # 3) List what connected. For Slack each connection is one
         #    workspace that completed the install; `member_id` is the
         #    workspace's customer member and `runtime_group_id` is the
-        #    agent answering it. Tokens are never serialized.
-        connections = list(client.connectors.connections.list(connector.id))
+        #    agent answering it. Tokens are never serialized. Connections
+        #    live on the data plane, so they are read through
+        #    `client.connections` filtered by the connector.
+        connections = list(client.connections.list(connector_id=connector.id))
         for connection in connections:
             print(
                 f"  connection {connection.id}: "
@@ -121,14 +123,12 @@ def main() -> None:
         if not connections:
             print("  (none yet — open the install link above to connect one)")
 
-        # 4) Disconnect one. Revoking destroys the provider token behind
+        # 4) Disconnect one. Deleting destroys the provider token behind
         #    that one connection; the connector and its other connections
         #    are untouched, and the customer must re-consent through a
         #    fresh install link.
         if os.getenv("REVOKE_FIRST_CONNECTION") == "1" and connections:
-            client.connectors.connections.revoke(
-                connector.id, connections[0].id
-            )
+            client.connections.delete(connections[0].id)
             print(f"revoked connection {connections[0].id}")
     finally:
         client.shutdown()

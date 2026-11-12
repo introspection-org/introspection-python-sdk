@@ -86,7 +86,6 @@ class Walk:
     admin_name: str = "Drew"
     persona_file_name: str = "walk-avery-notes.txt"
     idp_issuer: str = "https://idp.walk.example.com"
-    registered_token: str = "walk-registered-token-0001"
     api_endpoint_name: str = "walk-api"
     api_endpoint_host: str = "walk-api.example.com"
     image_name: str = "walk/busybox"

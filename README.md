@@ -661,8 +661,10 @@ for event in client.events.list("introspection.issue", issue_id=issue.id):
 
 `client.connections` / `runner.connections` manage the apps (Gmail, Slack, …)
 members connected for themselves, which the agent then acts with in that
-member's sessions. These are not a connector's connections, which are
-`client.connectors.connections` on the control plane.
+member's sessions. They are the SDK's one connections namespace: a member's
+own account through an organization integration (Google Workspace,
+Microsoft 365) and a connector's project connection are read and deleted
+here too.
 
 ```python
 page = runner.connections.create(app="gmail")  # runtime: the runner's group
@@ -676,7 +678,12 @@ runner.connections.delete(connection.id)
 
 On the client, `create` takes the runtime explicitly:
 `client.connections.create(app="gmail", runtime="support-agent")`, a runtime
-slug or runtime group id. `list` takes `member_id` and `app` filters; a
+slug or runtime group id. `create(integration_id=...)` connects the caller's
+own account through an organization integration instead, and takes no
+runtime; a project lets its agents use those accounts by naming the
+integration types in `connection_integrations` on `client.projects.create` /
+`update`. `list` takes `member_id`, `app`, `connector_id`, `integration_id`
+and `search` (an account name such as an email contains it) filters; a
 caller who is not a project administrator only ever gets their own
 connections. The routes need `connections:read`, `connections:write` and
 `connections:delete`.

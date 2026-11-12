@@ -18,6 +18,7 @@ from introspection_sdk.resources import (
     Projects,
     Tokens,
 )
+from introspection_sdk.schemas.integrations import IntegrationType
 
 from .conftest import MEMBER_ID, ORG_ID, PROJECT_ID, FakeAPI
 
@@ -173,3 +174,73 @@ async def test_async_organization_me(fake_api: FakeAPI):
     fake_api.add("GET", "/v1/organizations/me", json_body=ORGANIZATION)
     org = await AsyncOrganizations(fake_api.async_client()).me()
     assert org.external_org_id == "org_123"
+
+
+def test_connection_integrations_round_trip(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/projects",
+        status=201,
+        json_body=project(
+            connection_integrations=["google_workspace", "teams_next"]
+        ),
+    )
+    fake_api.add(
+        "PATCH",
+        "/v1/projects/support",
+        json_body=project(connection_integrations=[]),
+    )
+    projects = Projects(fake_api.client())
+
+    created = projects.create(
+        name="Support",
+        deployment_id=UUID(DEPLOYMENT_ID),
+        connection_integrations=[IntegrationType.GOOGLE_WORKSPACE],
+    )
+    # A known type decodes to the member, one the API adds to the raw string.
+    assert created.connection_integrations == [
+        IntegrationType.GOOGLE_WORKSPACE,
+        "teams_next",
+    ]
+    assert fake_api.last_request.json()["connection_integrations"] == [
+        "google_workspace"
+    ]
+
+    updated = projects.update("support", connection_integrations=[])
+    assert updated.connection_integrations == []
+    assert fake_api.last_request.json() == {"connection_integrations": []}
+
+
+def test_an_older_server_omits_connection_integrations(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/projects/support", json_body=project())
+    assert (
+        Projects(fake_api.client()).get("support").connection_integrations
+        == []
+    )
+
+
+async def test_async_connection_integrations(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        "/v1/projects/support",
+        json_body=project(connection_integrations=["microsoft_365"]),
+    )
+    updated = await AsyncProjects(fake_api.async_client()).update(
+        "support", connection_integrations=["microsoft_365"]
+    )
+    assert updated.connection_integrations == [IntegrationType.MICROSOFT_365]
+    assert fake_api.last_request.json() == {
+        "connection_integrations": ["microsoft_365"]
+    }
+
+
+def test_organization_subscription_live(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/organizations/me",
+        json_body={**ORGANIZATION, "subscription_live": True},
+    )
+    assert Organizations(fake_api.client()).me().subscription_live is True
+    fake_api.add("GET", "/v1/organizations/me", json_body=ORGANIZATION)
+    # An older server omits it; the SDK does not guess.
+    assert Organizations(fake_api.client()).me().subscription_live is None

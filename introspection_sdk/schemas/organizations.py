@@ -50,6 +50,9 @@ class Organization(BaseModel):
     """Whether the organization's projects get hosted repositories."""
     sign_in: SignInSettings | None = None
     """Present only where the organization has Enterprise sign-in."""
+    subscription_live: bool | None = None
+    """Whether the subscription is paid and grants the organization's roles
+    their full scopes; ``None`` from a server that does not say."""
 
 
 __all__ = [

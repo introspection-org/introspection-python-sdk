@@ -31,6 +31,8 @@ def _list_params(
     member_id: UUID | str | None,
     app: str | None,
     connector_id: UUID | str | None,
+    integration_id: UUID | str | None,
+    search: str | None,
     subject_type: str | None,
     peering: str | None,
     limit: int | None,
@@ -40,6 +42,8 @@ def _list_params(
         "member_id": str(member_id) if member_id else None,
         "app": app,
         "connector_id": str(connector_id) if connector_id else None,
+        "integration_id": str(integration_id) if integration_id else None,
+        "search": search,
         "subject_type": subject_type,
         "peering": peering,
         "limit": limit,
@@ -48,17 +52,30 @@ def _list_params(
 
 
 def _create_body(
-    app: str, runtime: str | UUID, return_url: str | None
+    app: str | None,
+    runtime: str | UUID | None,
+    integration_id: UUID | None,
+    return_url: str | None,
 ) -> dict[str, Any]:
+    if app is not None and runtime is None:
+        raise ValueError(
+            "connections.create(app=...) needs runtime=, the runtime slug or "
+            "runtime group id whose sessions use the connection."
+        )
     return ConnectionCreateRequest(
-        app=app, runtime=str(runtime), return_url=return_url
+        integration_id=integration_id,
+        app=app,
+        runtime=str(runtime) if runtime is not None else None,
+        return_url=return_url,
     ).model_dump(mode="json", exclude_none=True)
 
 
 def _runner_runtime(
-    runtime: str | UUID | None, runtime_group_id: UUID | None
-) -> str | UUID:
-    if runtime is not None:
+    app: str | None,
+    runtime: str | UUID | None,
+    runtime_group_id: UUID | None,
+) -> str | UUID | None:
+    if runtime is not None or app is None:
         return runtime
     if runtime_group_id is None:
         raise ValueError(
@@ -86,6 +103,8 @@ class AsyncAppConnections:
         peering: str | None = None,
         limit: int | None = None,
         next: str | None = None,
+        integration_id: UUID | str | None = None,
+        search: str | None = None,
     ) -> AsyncPager[Connection, Paginated[Connection]]:
         """List connections. Iterate the returned :class:`Pager` to stream
         every connection across pages, or call ``.page()`` for the first
@@ -95,7 +114,10 @@ class AsyncAppConnections:
         not a project administrator always gets only their own. ``app``
         narrows to one provider application slug, ``connector_id`` to one
         connector, ``subject_type`` to one subject and ``peering`` to the
-        connectors reached through that peering. An administrator's list
+        connectors reached through that peering. ``integration_id`` narrows
+        to members' own connections through one organization integration,
+        and ``search`` (1 to 128 characters, case-insensitive) to accounts
+        whose name, such as an email, contains it. An administrator's list
         includes the project's own connections, whose ``member_id`` is
         ``None``."""
 
@@ -104,6 +126,8 @@ class AsyncAppConnections:
                 member_id=member_id,
                 app=app,
                 connector_id=connector_id,
+                integration_id=integration_id,
+                search=search,
                 subject_type=subject_type,
                 peering=peering,
                 limit=limit,
@@ -117,14 +141,23 @@ class AsyncAppConnections:
         return async_cursor_paginate(fetch, start=next)
 
     async def create(
-        self, *, app: str, runtime: str | UUID, return_url: str | None = None
+        self,
+        *,
+        app: str | None = None,
+        runtime: str | UUID | None = None,
+        return_url: str | None = None,
+        integration_id: UUID | None = None,
     ) -> ConnectPage:
-        """A connect page for one app, for the caller themself.
+        """A connect page for the caller themself: one app, or their own
+        account through an organization integration.
 
         ``app`` is the provider application slug, such as ``gmail``
-        (lowercase letters, digits, ``_`` and ``-``). ``runtime`` is the
-        runtime slug or runtime group id whose sessions use the connection.
-        Hand the member :attr:`ConnectPage.authorize_url`; it ends on a page
+        (lowercase letters, digits, ``_`` and ``-``), and requires
+        ``runtime``, the runtime slug or runtime group id whose sessions use
+        the connection. ``integration_id`` instead connects the caller's own
+        account through that organization integration (Google Workspace,
+        Microsoft 365), once for every project that allows its type; it is
+        exclusive with ``app``. Hand the member :attr:`ConnectPage.authorize_url`; it ends on a page
         saying the app is connected, or on ``return_url``, the app's own
         link, when the Control Plane admits its scheme (any other is a
         ``ValidationError``).
@@ -132,7 +165,7 @@ class AsyncAppConnections:
         payload = await self._http.request(
             "POST",
             CONNECTIONS_PATH,
-            json=_create_body(app, runtime, return_url),
+            json=_create_body(app, runtime, integration_id, return_url),
         )
         return decode(ConnectPage, payload)
 
@@ -162,15 +195,18 @@ class AsyncRunnerAppConnections(AsyncAppConnections):
     async def create(
         self,
         *,
-        app: str,
+        app: str | None = None,
         runtime: str | UUID | None = None,
         return_url: str | None = None,
+        integration_id: UUID | None = None,
     ) -> ConnectPage:
         """A connect page for one app, used by this runner's runtime group
-        unless ``runtime`` names another. Raises :class:`ValueError` when
-        neither is known."""
+        unless ``runtime`` names another, or for ``integration_id``, which
+        takes no runtime. Raises :class:`ValueError` when an app's runtime
+        is not known."""
         return await super().create(
             app=app,
-            runtime=_runner_runtime(runtime, self._runtime_group_id),
+            runtime=_runner_runtime(app, runtime, self._runtime_group_id),
             return_url=return_url,
+            integration_id=integration_id,
         )

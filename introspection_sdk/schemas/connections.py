@@ -1,8 +1,8 @@
 """Pydantic mirrors of DP ``/v1/connections`` request/response models.
 
-These are a member's app connections on the data plane. A connector's
-connections on the control plane are
-:class:`introspection_sdk.schemas.connectors.Connection`, a different model.
+These are the connections on the data plane: an app a member connected,
+a member's own account through an organization integration, or the
+project's own account on a connector.
 
 Wire fields are snake_case verbatim and unknown fields are tolerated
 via ``extra="allow"`` so DP additions don't break the SDK.
@@ -39,18 +39,25 @@ class ConnectorRef(ApiModel):
 
 
 class Connection(ApiModel):
-    """One connection: an app a member connected for themself, or the
-    project's own account on a connector."""
+    """One connection: an app a member connected for themself, a member's
+    own account through an organization integration, or the project's own
+    account on a connector."""
 
     id: UUID
     owner: ConnectionOwner | str = ConnectionOwner.MEMBER
     member_id: UUID | None = None
     """The member whose grant this is; ``None`` for the project's own."""
     connector: ConnectorRef | None = None
+    """The connector it is on; ``None`` for an integration's."""
+    integration_id: UUID | None = None
+    """The organization integration it is through; ``None`` for a
+    connector's."""
+    runtime_group_id: UUID | None = None
+    """The runtime group whose channels it answers, if any."""
     subject_type: str | None = None
     app: str
-    """Provider application slug, such as ``gmail``, or the connector's
-    slug."""
+    """Provider application slug, such as ``gmail``, the connector's slug,
+    or the integration's type."""
     provider_account_id: str | None = None
     """The provider's id for the account, such as ``apn_...``."""
     account_name: str | None = None
@@ -60,6 +67,8 @@ class Connection(ApiModel):
     """False when the provider no longer accepts the connection; connect
     the app again."""
     status: str | None = None
+    token_expires_at: datetime | None = None
+    """When the access token expires, if it does."""
     last_verified_at: datetime | None = None
     created_by_member_id: UUID | None = None
     created_at: datetime
@@ -67,10 +76,12 @@ class Connection(ApiModel):
 
 
 class ConnectionCreateRequest(ApiModel):
-    """Body for ``POST /v1/connections``."""
+    """Body for ``POST /v1/connections``: ``app`` with ``runtime``, or
+    ``integration_id``."""
 
-    app: str
-    runtime: str
+    integration_id: UUID | None = None
+    app: str | None = None
+    runtime: str | None = None
     return_url: str | None = None
 
 

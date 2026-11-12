@@ -39,7 +39,6 @@ from pydantic import BaseModel
 
 from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.schemas.connectors import (
-    Connection,
     Connector,
     ConnectorAuthorization,
 )
@@ -76,9 +75,7 @@ REPOSITORY_ID = "44444444-4444-4444-4444-444444444444"
 TASK_ID = "55555555-5555-5555-5555-555555555555"
 FILE_ID = "66666666-6666-6666-6666-666666666666"
 CONNECTOR_ID = "77777777-7777-7777-7777-777777777777"
-CONNECTION_ID = "88888888-8888-8888-8888-888888888888"
 RUNTIME_GROUP_ID = "99999999-9999-9999-9999-999999999999"
-INSTALLER_MEMBER_ID = "00000000-0000-0000-0000-0000000000dd"
 
 
 # --- In-process transport -------------------------------------------
@@ -400,24 +397,6 @@ def connector_payload(**over: Any) -> Connector:
     }
     defaults.update(over)
     return Connector(**defaults)
-
-
-def connection_payload(**over: Any) -> Connection:
-    defaults: dict[str, Any] = {
-        "id": CONNECTION_ID,
-        "org_id": ORG_ID,
-        "created_at": _NOW_DT,
-        "updated_at": _NOW_DT,
-        "connector_id": CONNECTOR_ID,
-        "member_id": MEMBER_ID,
-        "created_by_member_id": INSTALLER_MEMBER_ID,
-        "runtime_group_id": RUNTIME_GROUP_ID,
-        "subject_type": "workspace",
-        "scopes_granted": ["chat:write"],
-        "status": "active",
-    }
-    defaults.update(over)
-    return Connection(**defaults)
 
 
 def connector_authorization_payload(**over: Any) -> ConnectorAuthorization:

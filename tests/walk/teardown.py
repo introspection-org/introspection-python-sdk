@@ -85,8 +85,7 @@ def _remove_control_plane(
     for connector in owner.connectors.list(project=project.id).page().records:
         if connector.slug != WALK.connector_name:
             continue
-        for connection in owner.connectors.connections.list(connector.id):
-            owner.connectors.connections.revoke(connector.id, connection.id)
+        # Deleting a connector revokes its connections with it.
         owner.connectors.delete(connector.id, project=project.id)
     for variable in owner.variables.list(project=project.id):
         if variable.name == WALK.variable_name:

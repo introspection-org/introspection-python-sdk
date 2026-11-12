@@ -29,6 +29,7 @@ from introspection_sdk import NotFoundError
 from .settings import Mode
 
 __all__ = [
+    "RETIRED_ROUTES",
     "QuietTransport",
     "WalkReport",
     "follow_authorization",
@@ -41,6 +42,14 @@ __all__ = [
 ]
 
 T = TypeVar("T")
+
+#: Routes the API has removed, which a recording made before their removal
+#: still holds and the walk no longer calls: introspection-cloud#3855 dropped
+#: the Control Plane's connector connections. Replay leaves their entries
+#: unplayed; a re-record drops them, and then this can be emptied.
+RETIRED_ROUTES: tuple[re.Pattern[str], ...] = (
+    re.compile(r"/v1/connectors/[^/?]+/connections(/[^/?]+)?(\?|$)"),
+)
 
 
 class QuietTransport(httpx.HTTPTransport):
