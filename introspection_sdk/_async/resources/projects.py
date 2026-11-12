@@ -15,6 +15,8 @@ from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.projects import (
+    DisplayIdPrefixes,
+    DisplayIdPrefixesUpdate,
     Project,
     ProjectCreate,
     ProjectUpdate,
@@ -121,6 +123,7 @@ class AsyncProjects(_AsyncResource):
         deployment_id: UUID | str,
         slug: str | None = None,
         description: str | None = None,
+        display_id_prefixes: DisplayIdPrefixes | None = None,
         settings: dict[str, Any] | None = None,
         include_ark: bool | None = None,
     ) -> Project:
@@ -134,6 +137,7 @@ class AsyncProjects(_AsyncResource):
                 "deployment_id": deployment_id,
                 "slug": slug,
                 "description": description,
+                "display_id_prefixes": display_id_prefixes,
                 "settings": settings,
                 "include_ark": include_ark,
             },
@@ -146,13 +150,19 @@ class AsyncProjects(_AsyncResource):
         *,
         name: str | None = None,
         description: str | None = None,
+        display_id_prefixes: DisplayIdPrefixesUpdate | None = None,
         settings: dict[str, Any] | None = None,
     ) -> Project:
         """Update a project by slug or id; only the fields given are sent,
         and a call with none is a 400 (no fields to update)."""
         body = _body(
             ProjectUpdate,
-            {"name": name, "description": description, "settings": settings},
+            {
+                "name": name,
+                "description": description,
+                "display_id_prefixes": display_id_prefixes,
+                "settings": settings,
+            },
         )
         return await self._call(
             "PATCH", _project_path(project), Project, json=body

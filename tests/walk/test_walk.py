@@ -236,6 +236,12 @@ def test_01_project(world: World) -> None:
             "name": None,
             "slug": None,
             "description": None,
+            "display_id_prefixes": {
+                "issue": "I",
+                "report": "R",
+                "observation": "F",
+                "task": "T",
+            },
             "settings": None,
             "created_by_member_id": "[uuid]",
         }
@@ -271,6 +277,12 @@ def test_01_project(world: World) -> None:
             "name": None,
             "slug": None,
             "description": None,
+            "display_id_prefixes": {
+                "issue": "I",
+                "report": "R",
+                "observation": "F",
+                "task": "T",
+            },
             "settings": None,
             "created_by_member_id": "[uuid]",
         }
@@ -616,6 +628,8 @@ def test_04_recipe(world: World) -> None:
             "created_by_member_id": "[uuid]",
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
+            "agents": None,
+            "issue_providers": None,
             "git_commit_subject": None,
             "mcp_servers": [
                 {

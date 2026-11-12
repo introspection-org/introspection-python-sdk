@@ -91,6 +91,7 @@ class AsyncIssues:
         task_status: builtins.list[TaskStatus | str] | None = None,
         exclude_task_status: builtins.list[TaskStatus | str] | None = None,
         display_index: int | None = None,
+        display_key: str | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
         include: Sequence[IssueStoredInclude] | None = None,
@@ -112,7 +113,8 @@ class AsyncIssues:
         repeated param per value and OR together; the filters AND with each
         other. ``owner`` is ``project`` for project-owned issues and ``me``
         for the caller's own private ones. ``exclude_task_status`` keeps an
-        issue without a live Task. ``tag`` is one ``key:value`` tag;
+        issue without a live Task. ``display_key`` names one issue by its
+        prefixed display ID, e.g. ``I-7``. ``tag`` is one ``key:value`` tag;
         ``metadata`` is sent as one ``metadata=key:value`` param per entry
         (at most 16). ``limit`` is the page size (1-200, server default
         50).
@@ -136,6 +138,7 @@ class AsyncIssues:
                 "task_status": _values(task_status),
                 "exclude_task_status": _values(exclude_task_status),
                 "display_index": display_index,
+                "display_key": display_key,
                 "tag": tag,
                 "metadata": (
                     [f"{key}:{value}" for key, value in metadata.items()]
