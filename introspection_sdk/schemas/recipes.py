@@ -58,6 +58,10 @@ class Recipe(ApiModel):
     """MCP servers the recipe declares (``id``, ``required``, ``tools``)."""
     policies: dict[str, Any] | None = None
     """The recipe's Cedar policies (``schema``, ``policies``, ``routes``)."""
+    agents: list[str] | None = None
+    """The agents this version defines, from ``agents/<name>.yaml``, the
+    default first. ``None`` until checked."""
+    issue_providers: list[str] | None = None
     validation: RecipeValidation | None = None
     created_by_member_id: UUID
     created_at: datetime

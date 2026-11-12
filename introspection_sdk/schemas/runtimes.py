@@ -70,6 +70,9 @@ class Runtime(ApiModel):
     # `preview` or `production`, and the ref the recipe is read at.
     recipe_kind: str = "production"
     recipe_ref: str = "main"
+    git_commit_sha: str | None = None
+    """Immutable commit this version was built from; ``None`` when it has
+    no recipe."""
     # The environments this version serves.
     environments: list[str] = Field(default_factory=list)
     # The image bake: `pending`, `queued`, `building`, `ready`, `failed` or

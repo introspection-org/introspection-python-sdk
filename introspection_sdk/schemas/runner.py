@@ -74,6 +74,9 @@ class RunCaller(_ApiModel):
     ip: str | None = None
     user_agent: str | None = None
     locale: str | None = None
+    timezone: str | None = None
+    """IANA time zone, e.g. ``America/Los_Angeles``; the agent reads its
+    current date in it."""
     library: RunCallerLibrary | None = None
     page: RunCallerPage | None = None
 

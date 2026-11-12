@@ -719,6 +719,7 @@ class IssuesResource(Protocol):
         task_status: builtins.list[TaskStatus | str] | None = None,
         exclude_task_status: builtins.list[TaskStatus | str] | None = None,
         display_index: int | None = None,
+        display_key: str | None = None,
         tag: str | None = None,
         metadata: dict[str, str] | None = None,
         include: Sequence[IssueStoredInclude] | None = None,

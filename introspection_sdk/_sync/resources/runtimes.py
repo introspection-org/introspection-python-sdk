@@ -85,6 +85,8 @@ class Runtimes:
         project: str | None = None,
         runtime: str | None = None,
         recipe_id: UUID | None = None,
+        recipe_ref: str | None = None,
+        git_commit_sha: str | None = None,
         environment: str | None = None,
         limit: int = 100,
         next: str | None = None,
@@ -94,13 +96,17 @@ class Runtimes:
         only.
 
         Pass ``environment`` to restrict to runtimes serving that lane. An
-        API key already selects its environment, so passing both is a 400."""
+        API key already selects its environment, so passing both is a 400.
+        ``recipe_ref`` and ``git_commit_sha`` keep the versions built from
+        that ref or commit."""
 
         def fetch(cursor: str | None) -> Paginated[Runtime]:
             params: dict[str, Any] = {
                 "project": project,
                 "runtime": runtime,
                 "recipe_id": recipe_id,
+                "recipe_ref": recipe_ref,
+                "git_commit_sha": git_commit_sha,
                 "environment": environment,
                 "limit": limit,
                 "next": cursor,

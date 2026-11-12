@@ -177,6 +177,12 @@ class Issue(ApiModel):
     metadata: dict[str, IssueMetadataValue]
     display_index: int | None = None
     """Project-scoped display ID."""
+    display_key: str | None = None
+    """The display ID with the project's issue prefix, e.g. ``I-7``;
+    ``None`` without a display index."""
+    warnings: list[str] = Field(default_factory=list)
+    """What this read left out, such as the comments beyond the include's
+    cap."""
     task_id: UUID | None = None
     """The fixed worker Task that carries the issue's chat."""
     task_status: OpenTaskStatus | None = None
