@@ -1,7 +1,7 @@
 """Contract tests for the fields the v0.84.0 server added: project display
 ID prefixes, an issue's display key and warnings, a recipe's agents and
 issue providers, a tag's rename archive, a runtime's commit and an
-organization's sign-in settings.
+organization's sign-in settings and a run caller's timezone.
 
 Each response is decoded strict, so a field the SDK does not model fails
 here before it fails the walk."""
@@ -34,8 +34,10 @@ from introspection_sdk.schemas.tags import TagInclude, TagKind
 
 from .conftest import (
     RECIPE_ID,
+    RUNTIME_ID,
     FakeAPI,
     recipe_payload,
+    runner_spec_payload,
     runtime_payload,
     to_jsonable,
 )
@@ -328,3 +330,26 @@ def test_an_issue_reads_the_warnings_of_a_capped_read(fake_api: FakeAPI):
     )
     [issue] = list(Issues(fake_api.client()).list())
     assert issue.warnings == ["comments beyond 50 left out"]
+
+
+def test_a_run_reads_the_callers_timezone_back(fake_api: FakeAPI):
+    spec = to_jsonable(runner_spec_payload())
+    spec["runtime_context"]["caller"] = {"timezone": "Europe/London"}
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body={
+            "records": [to_jsonable(runtime_payload())],
+            "count": 1,
+            "next": None,
+        },
+    )
+    fake_api.add("POST", f"/v1/runtimes/{RUNTIME_ID}/run", json_body=spec)
+    runner = Runtimes(fake_api.client())(UUID(RUNTIME_ID)).run(
+        caller={"timezone": "Europe/London"}
+    )
+    assert fake_api.last_request.json()["caller"] == {
+        "timezone": "Europe/London"
+    }
+    assert runner.context.caller is not None
+    assert runner.context.caller.timezone == "Europe/London"
