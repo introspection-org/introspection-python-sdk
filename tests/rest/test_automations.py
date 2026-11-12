@@ -491,6 +491,39 @@ def test_hand_trigger_skip_carries_its_reason(fake_api: FakeAPI):
     assert skipped.reason == "Target task is archived"
 
 
+def test_hand_trigger_reports_what_synthesis_queued(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"{AUTOMATION_PATH}/trigger",
+        status=202,
+        json_body={
+            "status": "triggered",
+            "automation_id": AUTOMATION_ID,
+            "task_id": None,
+            "reason": None,
+            "run_id": None,
+            "enqueued": 1,
+            "conversations": [
+                {
+                    "conversation_id": "conv-1",
+                    "completed_at": "2026-11-12T09:00:00Z",
+                }
+            ],
+        },
+    )
+
+    queued = Automations(fake_api.client()).trigger(AUTOMATION_ID)
+
+    assert queued.status is AutomationExecutionStatus.TRIGGERED
+    assert queued.run_id is None
+    assert queued.enqueued == 1
+    assert queued.conversations is not None
+    assert [c.conversation_id for c in queued.conversations] == ["conv-1"]
+    assert queued.conversations[0].completed_at == datetime(
+        2026, 11, 12, 9, tzinfo=UTC
+    )
+
+
 async def test_async_crud_and_trigger(fake_api: FakeAPI):
     fake_api.add_handler(
         "GET",

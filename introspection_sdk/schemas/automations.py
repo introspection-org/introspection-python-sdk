@@ -240,6 +240,16 @@ class AutomationUpdateRequest(_ApiModel):
     """``False`` pauses and keeps the slot."""
 
 
+class EnqueuedConversation(_ApiModel):
+    """A conversation a synthesis trigger queued, and the end it queued it at."""
+
+    conversation_id: str
+    completed_at: AwareDatetime
+    """Its ``introspection.observation_synthesis.completed`` event answers
+    this trigger once that event's ``conversation_completed_at`` is at or
+    after this."""
+
+
 class AutomationTriggerResponse(_ApiModel):
     """Response of a hand trigger (``202``). A ``skipped`` status carries
     its ``reason`` and records no event."""
@@ -249,6 +259,15 @@ class AutomationTriggerResponse(_ApiModel):
     task_id: UUID | None = None
     """The task created, or posted into."""
     reason: str | None = None
+    run_id: UUID | None = None
+    """``observation_clustering`` only: the run its
+    ``introspection.observation_clustering.run`` events carry."""
+    enqueued: int | None = None
+    """``observation_synthesis`` only: conversations sent to the synthesis
+    queue."""
+    conversations: list[EnqueuedConversation] | None = None
+    """``observation_synthesis`` with named conversations only: what was
+    queued, per conversation."""
 
 
 __all__ = [
@@ -263,6 +282,7 @@ __all__ = [
     "AutomationTriggerResponse",
     "AutomationTriggerType",
     "AutomationUpdateRequest",
+    "EnqueuedConversation",
     "OpenConditionType",
     "OpenExecutionStatus",
     "OpenKind",

@@ -36,6 +36,7 @@ from introspection_sdk.schemas.automations import (
     AutomationTriggerResponse,
     AutomationTriggerType,
     AutomationUpdateRequest,
+    EnqueuedConversation,
 )
 from introspection_sdk.schemas.conversations import (
     Conversation,
@@ -219,6 +220,7 @@ __all__ = [
     "ConversationRuntime",
     "ConversationSortField",
     "ConversationUsage",
+    "EnqueuedConversation",
     "Event",
     "EventSortField",
     "EventType",

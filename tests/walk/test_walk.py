@@ -2043,6 +2043,9 @@ def test_16_automations(world: World) -> None:
             "automation_id": "[uuid]",
             "task_id": "[uuid]",
             "reason": None,
+            "run_id": None,
+            "enqueued": None,
+            "conversations": None,
         }
     )
     automations.get(automation.id)
