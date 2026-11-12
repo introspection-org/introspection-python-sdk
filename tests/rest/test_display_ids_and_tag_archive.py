@@ -1,5 +1,7 @@
-"""Contract tests for project display ID prefixes, an issue's display key,
-a recipe's agents and issue providers, and a tag's rename archive.
+"""Contract tests for the fields the v0.84.0 server added: project display
+ID prefixes, an issue's display key and warnings, a recipe's agents and
+issue providers, a tag's rename archive, a runtime's commit and an
+organization's sign-in settings.
 
 Each response is decoded strict, so a field the SDK does not model fails
 here before it fails the walk."""
@@ -12,19 +14,34 @@ from uuid import UUID
 import pytest
 
 from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
-from introspection_sdk.resources import Projects, Recipes
+from introspection_sdk.resources import (
+    Organizations,
+    Projects,
+    Recipes,
+    Runtimes,
+)
 from introspection_sdk.resources.tags import AsyncTags, Tags
 from introspection_sdk.runner_resources.issues import Issues
+from introspection_sdk.schemas.organizations import (
+    PasskeyRequirement,
+    SignInSettings,
+)
 from introspection_sdk.schemas.projects import (
     DisplayIdPrefixes,
     DisplayIdPrefixesUpdate,
 )
 from introspection_sdk.schemas.tags import TagInclude, TagKind
 
-from .conftest import RECIPE_ID, FakeAPI, recipe_payload, to_jsonable
+from .conftest import (
+    RECIPE_ID,
+    FakeAPI,
+    recipe_payload,
+    runtime_payload,
+    to_jsonable,
+)
 from .test_annotations import label
 from .test_issues import issue_body
-from .test_project_writes import DEPLOYMENT_ID, project
+from .test_project_writes import DEPLOYMENT_ID, ORGANIZATION, project
 
 PREFIXES = {"issue": "BUG", "report": "R", "observation": "F", "task": "T"}
 
@@ -218,3 +235,96 @@ async def test_async_tag_list_sends_include(fake_api: FakeAPI):
     )
     assert page.records[0].replaced_by == "needs-review"
     assert fake_api.last_request.params.get_list("include") == ["archived"]
+
+
+def test_a_runtime_reads_its_commit_and_filters_by_ref_and_commit(
+    fake_api: FakeAPI,
+):
+    sha = "0123456789abcdef0123456789abcdef01234567"
+    body = to_jsonable(runtime_payload())
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body={
+            "records": [{**body, "git_commit_sha": sha}],
+            "count": 1,
+            "next": None,
+        },
+    )
+    [runtime] = list(
+        Runtimes(fake_api.client()).list(recipe_ref="main", git_commit_sha=sha)
+    )
+    assert runtime.git_commit_sha == sha
+    params = fake_api.last_request.params
+    assert (params["recipe_ref"], params["git_commit_sha"]) == ("main", sha)
+
+
+def test_a_runtime_without_a_recipe_has_no_commit(fake_api: FakeAPI):
+    body = to_jsonable(runtime_payload())
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body={
+            "records": [{**body, "git_commit_sha": None}],
+            "count": 1,
+            "next": None,
+        },
+    )
+    [runtime] = list(Runtimes(fake_api.client()).list())
+    assert runtime.git_commit_sha is None
+    assert "git_commit_sha" not in fake_api.last_request.params
+
+
+def test_an_organization_reads_its_sign_in_settings(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/organizations/me",
+        json_body={
+            **ORGANIZATION,
+            "sign_in": {
+                "passkey_requirement": "except_sso",
+                "restrict_invites_to_domains": True,
+            },
+        },
+    )
+    org = Organizations(fake_api.client()).me()
+    assert org.sign_in == SignInSettings(
+        passkey_requirement=PasskeyRequirement.EXCEPT_SSO,
+        restrict_invites_to_domains=True,
+    )
+
+
+def test_a_new_passkey_requirement_reads_as_its_string(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/organizations/me",
+        json_body={
+            **ORGANIZATION,
+            "sign_in": {
+                "passkey_requirement": "hardware_key",
+                "restrict_invites_to_domains": False,
+            },
+        },
+    )
+    org = Organizations(fake_api.client()).me()
+    assert org.sign_in is not None
+    assert org.sign_in.passkey_requirement == "hardware_key"
+
+
+def test_an_organization_without_enterprise_sign_in(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/organizations/me", json_body=ORGANIZATION)
+    assert Organizations(fake_api.client()).me().sign_in is None
+
+
+def test_an_issue_reads_the_warnings_of_a_capped_read(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/issues",
+        json_body={
+            "records": [issue_body(warnings=["comments beyond 50 left out"])],
+            "count": 1,
+            "next": None,
+        },
+    )
+    [issue] = list(Issues(fake_api.client()).list())
+    assert issue.warnings == ["comments beyond 50 left out"]

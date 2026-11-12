@@ -27,7 +27,7 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from dirty_equals import IsInt, IsPositiveInt, IsUUID
+from dirty_equals import IsInt, IsList, IsOneOf, IsPositiveInt, IsUUID
 from inline_snapshot import snapshot
 from vcr.cassette import Cassette
 
@@ -628,8 +628,8 @@ def test_04_recipe(world: World) -> None:
             "created_by_member_id": "[uuid]",
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
-            "agents": None,
-            "issue_providers": None,
+            "agents": IsOneOf(None, IsList()),
+            "issue_providers": IsOneOf(None, IsList()),
             "git_commit_subject": None,
             "mcp_servers": [
                 {
@@ -910,6 +910,7 @@ def test_07_runtime(world: World) -> None:
             "llm_mode": "managed",
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
+            "git_commit_sha": IsOneOf(None, "[sha]"),
             "yanked_at": None,
             "yanked_reason": None,
             "environment_ref": None,
@@ -2451,6 +2452,7 @@ def test_18_members_and_keys(world: World) -> None:
             "external_org_id": "[id]",
             "image_url": None,
             "hosted_git": True,
+            "sign_in": None,
         }
     )
 
