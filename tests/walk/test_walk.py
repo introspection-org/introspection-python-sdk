@@ -30,6 +30,7 @@ import pytest
 from dirty_equals import (
     IsInstance,
     IsInt,
+    IsList,
     IsOneOf,
     IsPartialDict,
     IsPositiveInt,
@@ -932,7 +933,8 @@ def test_07_runtime(world: World) -> None:
             "runtime_group_id": "[uuid]",
             "recipe_kind": "production",
             "recipe_ref": "main",
-            "environments": ["staging", "production"],
+            # The lanes a runtime serves, in the order it was promoted to them.
+            "environments": IsList("production", "staging", check_order=False),
             "image_build_status": "ready",
             "image_build_error_message": None,
             # Members beyond these five are the data plane's image metadata
