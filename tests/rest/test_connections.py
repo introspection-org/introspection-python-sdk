@@ -496,3 +496,131 @@ def test_create_refuses_a_return_url_scheme(fake_api: FakeAPI):
         AppConnections(fake_api.client()).create(
             app="gmail", runtime="support", return_url="evil://connected"
         )
+
+
+INTEGRATION_ID = "0199a1b2-0000-7000-8000-0000000000e1"
+
+
+def test_an_integration_connection_decodes_its_new_fields(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        CONNECTION_PATH,
+        json_body=connection_body(
+            app="google_workspace",
+            connector=None,
+            integration_id=INTEGRATION_ID,
+            runtime_group_id=RUNTIME_GROUP_ID,
+            token_expires_at="2026-11-01T10:00:00Z",
+        ),
+    )
+
+    connection = AppConnections(fake_api.client()).get(CONNECTION_ID)
+
+    assert connection.connector is None
+    assert connection.integration_id == UUID(INTEGRATION_ID)
+    assert connection.runtime_group_id == UUID(RUNTIME_GROUP_ID)
+    assert connection.token_expires_at == datetime(2026, 11, 1, 10, tzinfo=UTC)
+
+
+def test_an_older_server_omits_the_integration_fields(fake_api: FakeAPI):
+    fake_api.add("GET", CONNECTION_PATH, json_body=connection_body())
+
+    connection = AppConnections(fake_api.client()).get(CONNECTION_ID)
+
+    assert connection.integration_id is None
+    assert connection.runtime_group_id is None
+    assert connection.token_expires_at is None
+
+
+def test_list_sends_the_integration_and_search_filters(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/connections",
+        json_body=page_of([connection_body(integration_id=INTEGRATION_ID)]),
+    )
+
+    page = (
+        AppConnections(fake_api.client())
+        .list(integration_id=UUID(INTEGRATION_ID), search="ada@")
+        .page()
+    )
+
+    assert page.records[0].integration_id == UUID(INTEGRATION_ID)
+    assert dict(fake_api.last_request.params) == {
+        "integration_id": INTEGRATION_ID,
+        "search": "ada@",
+    }
+
+
+def test_create_connects_through_an_integration(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/connections", status=201, json_body=PAGE)
+
+    page = AppConnections(fake_api.client()).create(
+        integration_id=UUID(INTEGRATION_ID), return_url="ark://connected"
+    )
+
+    assert page.authorize_url == PAGE["authorize_url"]
+    assert fake_api.last_request.json() == {
+        "integration_id": INTEGRATION_ID,
+        "return_url": "ark://connected",
+    }
+
+
+def test_runner_create_through_an_integration_takes_no_runtime(
+    fake_api: FakeAPI,
+):
+    fake_api.add("POST", "/v1/connections", json_body=PAGE)
+
+    RunnerAppConnections(fake_api.client(), None).create(
+        integration_id=UUID(INTEGRATION_ID)
+    )
+
+    assert fake_api.last_request.json() == {"integration_id": INTEGRATION_ID}
+
+
+def test_create_through_an_integration_surfaces_the_422(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/connections",
+        status=422,
+        json_body={"detail": "integration_id and app are exclusive"},
+    )
+
+    with pytest.raises(ValidationError):
+        AppConnections(fake_api.client()).create(
+            app="gmail",
+            runtime="support",
+            integration_id=UUID(INTEGRATION_ID),
+        )
+
+
+async def test_async_list_and_create_through_an_integration(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET",
+        "/v1/connections",
+        json_body=page_of([connection_body(integration_id=INTEGRATION_ID)]),
+    )
+    fake_api.add("POST", "/v1/connections", json_body=PAGE)
+    connections = AsyncRunnerAppConnections(fake_api.async_client(), None)
+
+    page = await connections.list(
+        integration_id=INTEGRATION_ID, search="ada"
+    ).page()
+    assert page.records[0].integration_id == UUID(INTEGRATION_ID)
+    assert dict(fake_api.requests[0].params) == {
+        "integration_id": INTEGRATION_ID,
+        "search": "ada",
+    }
+
+    await connections.create(integration_id=UUID(INTEGRATION_ID))
+    assert fake_api.last_request.json() == {"integration_id": INTEGRATION_ID}
+
+
+def test_client_create_of_an_app_without_a_runtime_raises_before_sending(
+    fake_api: FakeAPI,
+):
+    with pytest.raises(ValueError, match="runtime"):
+        AppConnections(fake_api.client()).create(app="gmail")
+    assert fake_api.requests == []

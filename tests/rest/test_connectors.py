@@ -1,4 +1,4 @@
-"""Contract tests for connectors, connections, and the consent URL."""
+"""Contract tests for connectors, the token broker, and the consent URL."""
 
 from __future__ import annotations
 
@@ -11,9 +11,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from introspection_sdk._errors import NotFoundError, ValidationError
 from introspection_sdk.resources.connectors import (
-    AsyncConnections,
     AsyncConnectors,
-    Connections,
     Connectors,
 )
 from introspection_sdk.schemas.connectors import (
@@ -30,10 +28,8 @@ from introspection_sdk.schemas.connectors import (
 )
 
 from .conftest import (
-    CONNECTION_ID,
     CONNECTOR_ID,
     FakeAPI,
-    connection_payload,
     connector_authorization_payload,
     connector_payload,
     paginated,
@@ -41,8 +37,6 @@ from .conftest import (
 )
 
 CONNECTOR_PATH = f"/v1/connectors/{CONNECTOR_ID}"
-CONNECTIONS_PATH = f"{CONNECTOR_PATH}/connections"
-CONNECTION_PATH = f"{CONNECTIONS_PATH}/{CONNECTION_ID}"
 AUTHORIZE_PATH = "/v1/oauth/connections/authorize"
 APPS_PATH = f"{CONNECTOR_PATH}/apps"
 TOKEN_PATH = "/v1/oauth/connections/token"
@@ -76,6 +70,7 @@ def discovery_payload(**over: object) -> dict[str, object]:
         "client_id": "dyn-client",
         "client_secret": "dyn-secret",
         "client_registration": "dynamic",
+        "revocation_endpoint": "https://mcp.linear.app/revoke",
     }
     payload.update(over)
     return payload
@@ -83,7 +78,6 @@ def discovery_payload(**over: object) -> dict[str, object]:
 
 # The wire ids are strings (paths, bodies); the methods take UUIDs.
 CONNECTOR_UUID = UUID(CONNECTOR_ID)
-CONNECTION_UUID = UUID(CONNECTION_ID)
 
 
 # --- connectors CRUD ------------------------------------------------
@@ -353,6 +347,40 @@ def test_authorize_sends_only_the_connector_when_told_nothing_else(
     assert fake_api.last_request.json() == {"connector_id": CONNECTOR_ID}
 
 
+def test_authorize_installs_an_organization_integration(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", AUTHORIZE_PATH, json_body=connector_authorization_payload()
+    )
+    integration_id = UUID("44444444-4444-4444-4444-444444444444")
+
+    minted = Connectors(fake_api.client()).authorize(
+        None, integration_id=integration_id, return_url="ark://connected"
+    )
+
+    assert minted.authorize_url
+    assert fake_api.last_request.json() == {
+        "integration_id": str(integration_id),
+        "return_url": "ark://connected",
+    }
+
+
+async def test_async_authorize_installs_an_organization_integration(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST", AUTHORIZE_PATH, json_body=connector_authorization_payload()
+    )
+    integration_id = UUID("44444444-4444-4444-4444-444444444444")
+
+    await AsyncConnectors(fake_api.async_client()).authorize(
+        None, integration_id=integration_id
+    )
+
+    assert fake_api.last_request.json() == {
+        "integration_id": str(integration_id)
+    }
+
+
 def test_pipedream_apps_and_progressive_scope_authorization(fake_api: FakeAPI):
     fake_api.add(
         "GET",
@@ -468,6 +496,7 @@ def test_discover_oauth_returns_a_registered_client(fake_api: FakeAPI):
     assert discovered.client_secret == "dyn-secret"
     assert discovered.scopes_supported == ["read", "write"]
     assert discovered.resource == LINEAR_MCP
+    assert discovered.revocation_endpoint == "https://mcp.linear.app/revoke"
 
 
 def test_discover_oauth_without_automatic_registration(fake_api: FakeAPI):
@@ -488,6 +517,7 @@ def test_discover_oauth_without_automatic_registration(fake_api: FakeAPI):
 
     assert discovered.client_registration is None
     assert discovered.client_id is None
+    assert discovered.revocation_endpoint is None
     assert discovered.code_challenge_methods_supported == []
     assert discovered.client_id_metadata_document_supported is False
 
@@ -610,92 +640,10 @@ def test_disabled_deployment_404_keeps_the_servers_wording(
     assert "Connectors are not enabled" in str(excinfo.value)
 
 
-# --- connections ----------------------------------------------------
+# --- token broker ---------------------------------------------------
 
 
-def test_connections_list_targets_the_nested_path(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        CONNECTIONS_PATH,
-        json_body=paginated([connection_payload()]),
-    )
-    connections = Connections(fake_api.client())
-
-    page = connections.list(CONNECTOR_UUID, limit=25).page()
-
-    assert page.records[0].subject_type == "workspace"
-    assert page.records[0].runtime_group_id is not None
-    # The installer is recorded apart from the subject: for a workspace
-    # install they are never the same principal.
-    assert page.records[0].created_by_member_id is not None
-    assert page.records[0].created_by_member_id != page.records[0].member_id
-    assert fake_api.last_request.path == CONNECTIONS_PATH
-    assert fake_api.last_request.params["limit"] == "25"
-
-
-def test_connection_carries_the_provider_account(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        CONNECTION_PATH,
-        json_body=connection_payload(
-            provider_app="google_sheets", provider_account_id="apn_123"
-        ),
-    )
-
-    connection = Connections(fake_api.client()).get(
-        CONNECTOR_UUID, CONNECTION_UUID
-    )
-
-    assert connection.provider_app == "google_sheets"
-    assert connection.provider_account_id == "apn_123"
-
-
-def test_connection_provider_fields_default_to_none(fake_api: FakeAPI):
-    fake_api.add("GET", CONNECTION_PATH, json_body=connection_payload())
-
-    connection = Connections(fake_api.client()).get(
-        CONNECTOR_UUID, CONNECTION_UUID
-    )
-
-    assert connection.provider_app is None
-    assert connection.provider_account_id is None
-
-
-def test_connections_create_registers_an_existing_token(fake_api: FakeAPI):
-    fake_api.add("POST", CONNECTIONS_PATH, json_body=connection_payload())
-    connections = Connections(fake_api.client())
-
-    created = connections.create(
-        CONNECTOR_UUID,
-        access_token="xoxb-token",
-        subject_type="app",
-        scopes_granted=["chat:write"],
-    )
-
-    assert str(created.connector_id) == CONNECTOR_ID
-    # The token is accepted but never serialized back.
-    assert not hasattr(created, "access_token")
-    assert fake_api.last_request.json() == {
-        "access_token": "xoxb-token",
-        "subject_type": "app",
-        "scopes_granted": ["chat:write"],
-    }
-
-
-def test_connections_get_and_revoke(fake_api: FakeAPI):
-    fake_api.add("GET", CONNECTION_PATH, json_body=connection_payload())
-    fake_api.add("DELETE", CONNECTION_PATH, status=204)
-    connections = Connections(fake_api.client())
-
-    assert str(connections.get(CONNECTOR_UUID, CONNECTION_UUID).id) == (
-        CONNECTION_ID
-    )
-    assert connections.revoke(CONNECTOR_UUID, CONNECTION_UUID) is None
-    assert fake_api.last_request.method == "DELETE"
-    assert fake_api.last_request.path == CONNECTION_PATH
-
-
-def test_connections_get_token_returns_provider_token(fake_api: FakeAPI):
+def test_get_token_returns_provider_token(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         TOKEN_PATH,
@@ -706,7 +654,7 @@ def test_connections_get_token_returns_provider_token(fake_api: FakeAPI):
             "scopes": ["calendar.read"],
         },
     )
-    result = Connections(fake_api.client()).get_token(
+    result = Connectors(fake_api.client()).get_token(
         CONNECTOR_UUID,
         subject="user",
         action="calendar.list",
@@ -723,7 +671,7 @@ def test_connections_get_token_returns_provider_token(fake_api: FakeAPI):
     }
 
 
-def test_connections_get_token_preserves_pending_mission(fake_api: FakeAPI):
+def test_get_token_preserves_pending_mission(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         TOKEN_PATH,
@@ -734,7 +682,7 @@ def test_connections_get_token_preserves_pending_mission(fake_api: FakeAPI):
             "approval_url": "https://consent.example/m/333?cap=secret",
         },
     )
-    result = Connections(fake_api.client()).get_token(
+    result = Connectors(fake_api.client()).get_token(
         CONNECTOR_UUID,
         subject="person",
         action="booking.reserve",
@@ -812,36 +760,7 @@ async def test_async_aauth_create_and_policy_update(fake_api: FakeAPI):
     assert fake_api.last_request.json() == {"policy_entities": []}
 
 
-async def test_async_connections_list_and_revoke(fake_api: FakeAPI):
-    fake_api.add(
-        "GET", CONNECTIONS_PATH, json_body=paginated([connection_payload()])
-    )
-    fake_api.add("GET", CONNECTION_PATH, json_body=connection_payload())
-    fake_api.add("DELETE", CONNECTION_PATH, status=204)
-    connections = AsyncConnections(fake_api.async_client())
-
-    page = await connections.list(CONNECTOR_UUID)
-    assert str(page.records[0].id) == CONNECTION_ID
-
-    assert str(
-        (await connections.get(CONNECTOR_UUID, CONNECTION_UUID)).id
-    ) == (CONNECTION_ID)
-    assert await connections.revoke(CONNECTOR_UUID, CONNECTION_UUID) is None
-    assert fake_api.last_request.path == CONNECTION_PATH
-
-
-async def test_async_connections_create(fake_api: FakeAPI):
-    fake_api.add("POST", CONNECTIONS_PATH, json_body=connection_payload())
-
-    created = await AsyncConnections(fake_api.async_client()).create(
-        CONNECTOR_UUID, access_token="xoxb-token"
-    )
-
-    assert str(created.connector_id) == CONNECTOR_ID
-    assert fake_api.last_request.json() == {"access_token": "xoxb-token"}
-
-
-async def test_async_connections_get_token(fake_api: FakeAPI):
+async def test_async_get_token(fake_api: FakeAPI):
     fake_api.add(
         "POST",
         TOKEN_PATH,
@@ -851,7 +770,7 @@ async def test_async_connections_get_token(fake_api: FakeAPI):
             "scopes": [],
         },
     )
-    result = await AsyncConnections(fake_api.async_client()).get_token(
+    result = await AsyncConnectors(fake_api.async_client()).get_token(
         CONNECTOR_UUID
     )
 

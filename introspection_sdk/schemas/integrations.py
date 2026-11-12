@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -24,7 +24,14 @@ class IntegrationType(StrEnum):
     JIRA = "jira"
     NOTION = "notion"
     VERCEL = "vercel"
+    GOOGLE_WORKSPACE = "google_workspace"
+    MICROSOFT_365 = "microsoft_365"
     CUSTOM = "custom"
+
+
+OpenIntegrationType = Annotated[
+    IntegrationType | str, Field(union_mode="left_to_right")
+]
 
 
 class IntegrationStatus(StrEnum):
@@ -177,4 +184,5 @@ __all__ = [
     "IntegrationStatus",
     "IntegrationType",
     "IntegrationUpdateRequest",
+    "OpenIntegrationType",
 ]

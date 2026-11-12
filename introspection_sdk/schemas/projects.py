@@ -11,6 +11,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from introspection_sdk.schemas.integrations import (
+    IntegrationType,
+    OpenIntegrationType,
+)
+
 
 class DisplayIdPrefixes(BaseModel):
     """The prefix each entity's display ID carries within one project, e.g.
@@ -51,6 +56,11 @@ class Project(BaseModel):
         default_factory=DisplayIdPrefixes
     )
     """Prefix of each entity's display ID within the project."""
+    connection_integrations: list[OpenIntegrationType] = Field(
+        default_factory=list
+    )
+    """Integration types whose members' own connections this project's
+    agents may use."""
     settings: dict[str, Any] | None = None
     created_by_member_id: UUID | None = None
 
@@ -64,6 +74,9 @@ class ProjectCreate(BaseModel):
     slug: str | None = None
     description: str | None = None
     display_id_prefixes: DisplayIdPrefixes | None = None
+    connection_integrations: list[IntegrationType | str] | None = None
+    """Integration types whose members' own connections this project's
+    agents may use; none by default."""
     settings: dict[str, Any] | None = None
     include_ark: bool | None = None
     """Seed the Ark runtime. Unset, an organization's first project takes it
@@ -77,6 +90,9 @@ class ProjectUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     display_id_prefixes: DisplayIdPrefixesUpdate | None = None
+    connection_integrations: list[IntegrationType | str] | None = None
+    """Replaces the integration types whose members' own connections this
+    project's agents may use; ``[]`` allows none."""
     settings: dict[str, Any] | None = None
 
 

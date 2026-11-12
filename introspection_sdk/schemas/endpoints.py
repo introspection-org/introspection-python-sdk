@@ -37,6 +37,10 @@ class EndpointMetadata(BaseModel):
     mcp_server_id: str | None = None
     connector_id: UUID | None = None
     """The connector whose stored connection authenticates the MCP server."""
+    integration_id: UUID | None = None
+    """The organization integration whose task member's own connection
+    authenticates the endpoint, in a project that allows its type; exclusive
+    with ``connector_id``."""
     provider_app: str | None = None
     extra_hosts: list[str] = Field(default_factory=list)
     auth_audience: str | None = None

@@ -14,7 +14,6 @@ from introspection_sdk.client import (
     IntrospectionClient,
 )
 from introspection_sdk.resources import (
-    Connections,
     Connectors,
     Experiments,
     Recipes,
@@ -48,7 +47,7 @@ def test_explicit_args_wire_up_namespaces():
     assert isinstance(client.experiments, Experiments)
     assert isinstance(client.recipes, Recipes)
     assert isinstance(client.connectors, Connectors)
-    assert isinstance(client.connectors.connections, Connections)
+    assert not hasattr(client.connectors, "connections")
     assert isinstance(client.events, Events)
     assert client._token == "tok"
     assert client._base_api_url == "https://api.example.test"

@@ -14,11 +14,8 @@ from introspection_sdk.pagination import (
     async_cursor_paginate,
 )
 from introspection_sdk.schemas.connectors import (
-    Connection,
     ConnectionAuthorizationPending,
     ConnectionBrokerSubjectType,
-    ConnectionCreateRequest,
-    ConnectionCreateSubjectType,
     ConnectionMissionConstraints,
     ConnectionToken,
     ConnectionTokenRequest,
@@ -126,7 +123,8 @@ def _update_body(
 
 def _authorize_body(
     *,
-    connector_id: UUID,
+    connector_id: UUID | None,
+    integration_id: UUID | None,
     runtime: str | UUID | None,
     subject: ConnectionBrokerSubjectType | str | None,
     return_url: str | None,
@@ -139,6 +137,7 @@ def _authorize_body(
     return ConnectorAuthorizeRequest.model_validate(
         {
             "connector_id": connector_id,
+            "integration_id": integration_id,
             "runtime": str(runtime) if runtime is not None else None,
             "subject": subject,
             "return_url": return_url,
@@ -149,25 +148,6 @@ def _authorize_body(
             "binding": binding,
         }
     ).model_dump(mode="json", exclude_none=True, exclude_defaults=True)
-
-
-def _connection_create_body(
-    *,
-    access_token: str,
-    subject_type: ConnectionCreateSubjectType | str | None,
-    scopes_granted: list[str] | None,
-    refresh_token: str | None,
-    token_expires_at: Any,
-) -> dict[str, Any]:
-    return ConnectionCreateRequest.model_validate(
-        {
-            "access_token": access_token,
-            "subject_type": subject_type,
-            "scopes_granted": scopes_granted,
-            "refresh_token": refresh_token,
-            "token_expires_at": token_expires_at,
-        }
-    ).model_dump(mode="json", exclude_none=True)
 
 
 def _token_body(
@@ -198,125 +178,19 @@ def _token_result(payload: Any) -> ConnectionTokenResult:
     return decode(ConnectionToken, payload)
 
 
-class AsyncConnections:
-    # unasync: async-only (the sync twin's docstring follows)
-    """Async twin of :class:`Connections`
-    (CP ``/v1/connectors/{connector_id}/connections``)."""
-
-    # unasync: end
-    """CP ``/v1/connectors/{connector_id}/connections`` namespace.
-
-    Connections are addressed by connector id and take no ``project``
-    parameter. ``revoke`` (not ``delete``) destroys the provider token.
-    """
-
-    def __init__(self, http: _AsyncHttpClient) -> None:
-        self._http = http
-
-    def list(
-        self,
-        connector_id: UUID,
-        *,
-        limit: int | None = None,
-        next: str | None = None,
-    ) -> AsyncPager[Connection, Paginated[Connection]]:
-        # unasync: async-only (the sync twin's docstring follows)
-        """List a connector's connections. ``await`` the returned
-        :class:`AsyncPager` for the first page, or ``async for`` it to
-        stream every connection across pages."""
-        # unasync: end
-        """List a connector's connections. Iterate the returned
-        :class:`Pager` to stream every connection across pages, or call
-        ``.page()`` for the first page only."""
-
-        async def fetch(cursor: str | None) -> Paginated[Connection]:
-            params: dict[str, Any] = {"limit": limit, "next": cursor}
-            payload = await self._http.request(
-                "GET",
-                f"/v1/connectors/{connector_id}/connections",
-                params=params,
-            )
-            return decode(Paginated[Connection], payload)
-
-        return async_cursor_paginate(fetch, start=next)
-
-    async def create(
-        self,
-        connector_id: UUID,
-        *,
-        access_token: str,
-        subject_type: ConnectionCreateSubjectType | str | None = None,
-        scopes_granted: builtins.list[str] | None = None,
-        refresh_token: str | None = None,
-        token_expires_at: Any = None,
-    ) -> Connection:
-        """Register a connection with a caller-supplied provider token
-        (registered mode). Tokens are write-only — stored encrypted,
-        never returned."""
-        payload = await self._http.request(
-            "POST",
-            f"/v1/connectors/{connector_id}/connections",
-            json=_connection_create_body(
-                access_token=access_token,
-                subject_type=subject_type,
-                scopes_granted=scopes_granted,
-                refresh_token=refresh_token,
-                token_expires_at=token_expires_at,
-            ),
-        )
-        return decode(Connection, payload)
-
-    async def get_token(
-        self,
-        connector_id: UUID,
-        *,
-        subject: ConnectionBrokerSubjectType | str | None = None,
-        action: str | None = None,
-        requested_permissions: ConnectionMissionConstraints
-        | dict[str, Any]
-        | None = None,
-    ) -> ConnectionTokenResult:
-        """Resolve a provider token, or a pending human-approval mission."""
-        payload = await self._http.request(
-            "POST",
-            "/v1/oauth/connections/token",
-            json=_token_body(
-                connector_id=connector_id,
-                subject=subject,
-                action=action,
-                requested_permissions=requested_permissions,
-            ),
-        )
-        return _token_result(payload)
-
-    async def get(self, connector_id: UUID, connection_id: UUID) -> Connection:
-        payload = await self._http.request(
-            "GET",
-            f"/v1/connectors/{connector_id}/connections/{connection_id}",
-        )
-        return decode(Connection, payload)
-
-    async def revoke(self, connector_id: UUID, connection_id: UUID) -> None:
-        """Revoke a connection — destroys the stored provider token."""
-        await self._http.request(
-            "DELETE",
-            f"/v1/connectors/{connector_id}/connections/{connection_id}",
-            expect="empty",
-        )
-
-
 class AsyncConnectors:
     """CP ``/v1/connectors`` namespace.
 
     Connector CRUD uses the project carried by the authenticated
     credential; :meth:`list` and :meth:`delete` take ``project`` for a
-    credential that names none (an owner's session). Nested ``connections`` and ``authorize`` are addressed
-    by connector id alone.
+    credential that names none (an owner's session). ``authorize`` and
+    ``get_token`` are addressed by connector id alone. A connector's
+    connections are read and deleted through the data plane's
+    ``connections`` namespace (``client.connections``).
     """
 
     def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
-        self.connections = AsyncConnections(http)
 
     def list(
         self,
@@ -531,8 +405,9 @@ class AsyncConnectors:
 
     async def authorize(
         self,
-        connector_id: UUID,
+        connector_id: UUID | None,
         *,
+        integration_id: UUID | None = None,
         runtime: str | UUID | None = None,
         subject: ConnectionBrokerSubjectType | str | None = None,
         return_url: str | None = None,
@@ -567,12 +442,17 @@ class AsyncConnectors:
         ``runtime``; on a successful grant the control plane writes the
         endpoint binding in the same transaction as the connection, so
         the runtime is never authorized-but-unbound.
+
+        ``integration_id`` installs an organization integration (Google
+        Workspace, Microsoft 365) instead of a connector: pass ``None`` as
+        ``connector_id``. It needs the ``integrations:write`` scope.
         """
         payload = await self._http.request(
             "POST",
             "/v1/oauth/connections/authorize",
             json=_authorize_body(
                 connector_id=connector_id,
+                integration_id=integration_id,
                 runtime=runtime,
                 subject=subject,
                 return_url=return_url,
@@ -584,3 +464,27 @@ class AsyncConnectors:
             ),
         )
         return decode(ConnectorAuthorization, payload)
+
+    async def get_token(
+        self,
+        connector_id: UUID,
+        *,
+        subject: ConnectionBrokerSubjectType | str | None = None,
+        action: str | None = None,
+        requested_permissions: ConnectionMissionConstraints
+        | dict[str, Any]
+        | None = None,
+    ) -> ConnectionTokenResult:
+        """Resolve a provider token, or a pending human-approval mission
+        (``POST /v1/oauth/connections/token``)."""
+        payload = await self._http.request(
+            "POST",
+            "/v1/oauth/connections/token",
+            json=_token_body(
+                connector_id=connector_id,
+                subject=subject,
+                action=action,
+                requested_permissions=requested_permissions,
+            ),
+        )
+        return _token_result(payload)

@@ -193,3 +193,26 @@ async def test_async_create(fake_api: FakeAPI):
     )
     assert made.kind == EndpointKind.MCP
     assert fake_api.last_request.json()["runtime_group_id"] == RUNTIME_GROUP_ID
+
+
+def test_an_integration_backed_binding_names_its_integration(
+    fake_api: FakeAPI,
+):
+    integration_id = "0199a1b2-0000-7000-8000-0000000000f1"
+    fake_api.add(
+        "GET",
+        PATH,
+        json_body=endpoint(
+            metadata={
+                "mcp_server_id": "gmail",
+                "connector_id": None,
+                "integration_id": integration_id,
+                "extra_hosts": [],
+            }
+        ),
+    )
+    metadata = Endpoints(fake_api.client()).get(ENDPOINT_ID).metadata
+    assert metadata.integration_id == UUID(integration_id)
+    assert metadata.connector_id is None
+    # A server that predates integrations omits the field.
+    assert EndpointMetadata().integration_id is None

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
@@ -15,6 +16,7 @@ from introspection_sdk._sync.resources._crud import (
     _Resource,
 )
 from introspection_sdk.pagination import Pager
+from introspection_sdk.schemas.integrations import IntegrationType
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.projects import (
     DisplayIdPrefixes,
@@ -115,10 +117,14 @@ class Projects(_Resource):
         display_id_prefixes: DisplayIdPrefixes | None = None,
         settings: dict[str, Any] | None = None,
         include_ark: bool | None = None,
+        connection_integrations: builtins.list[IntegrationType | str]
+        | None = None,
     ) -> Project:
         """Create a project on the Data Plane ``deployment_id`` names (an
         existing project's :attr:`~Project.deployment_id`). ``slug`` is the
-        stable identifier the CLI and dashboard URLs use."""
+        stable identifier the CLI and dashboard URLs use.
+        ``connection_integrations`` names the integration types whose
+        members' own connections the project's agents may use."""
         body = _body(
             ProjectCreate,
             {
@@ -129,6 +135,7 @@ class Projects(_Resource):
                 "display_id_prefixes": display_id_prefixes,
                 "settings": settings,
                 "include_ark": include_ark,
+                "connection_integrations": connection_integrations,
             },
         )
         return self._call("POST", "/v1/projects", Project, json=body)
@@ -141,9 +148,13 @@ class Projects(_Resource):
         description: str | None = None,
         display_id_prefixes: DisplayIdPrefixesUpdate | None = None,
         settings: dict[str, Any] | None = None,
+        connection_integrations: builtins.list[IntegrationType | str]
+        | None = None,
     ) -> Project:
         """Update a project by slug or id; only the fields given are sent,
-        and a call with none is a 400 (no fields to update)."""
+        and a call with none is a 400 (no fields to update).
+        ``connection_integrations`` replaces the project's list; ``[]``
+        allows none."""
         body = _body(
             ProjectUpdate,
             {
@@ -151,6 +162,7 @@ class Projects(_Resource):
                 "description": description,
                 "display_id_prefixes": display_id_prefixes,
                 "settings": settings,
+                "connection_integrations": connection_integrations,
             },
         )
         return self._call("PATCH", _project_path(project), Project, json=body)

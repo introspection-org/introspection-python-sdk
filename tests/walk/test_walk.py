@@ -250,6 +250,7 @@ def test_01_project(world: World) -> None:
                 "observation": "F",
                 "task": "T",
             },
+            "connection_integrations": [],
             "settings": None,
             "created_by_member_id": "[uuid]",
         }
@@ -291,6 +292,7 @@ def test_01_project(world: World) -> None:
                 "observation": "F",
                 "task": "T",
             },
+            "connection_integrations": [],
             "settings": None,
             "created_by_member_id": "[uuid]",
         }
@@ -834,38 +836,6 @@ def test_06_connector(world: World) -> None:
     with pytest.raises(ValidationError):
         w.sa.connectors.list_apps(w.connector.id, query="mcp")
 
-    # A connection registered with a caller-supplied token, read and
-    # revoked before the OAuth grant makes the runtime's own.
-    connections = w.sa.connectors.connections
-    registered = connections.create(
-        w.connector.id, access_token=WALK.registered_token
-    )
-    assert stable(registered) == snapshot(
-        {
-            "id": "[uuid]",
-            "org_id": "[uuid]",
-            "created_at": "[timestamp]",
-            "updated_at": "[timestamp]",
-            "connector_id": "[uuid]",
-            "project_id": "[uuid]",
-            "member_id": None,
-            "created_by_member_id": None,
-            "runtime_group_id": None,
-            "subject_type": "app",
-            "scopes_granted": [],
-            "status": "active",
-            "token_expires_at": None,
-            "last_verified_at": None,
-            "provider_account_name": None,
-            "provider_app": None,
-            "provider_account_id": None,
-        }
-    )
-    assert connections.get(w.connector.id, registered.id).id == registered.id
-    # `connectors:delete` is the owner's.
-    w.owner.connectors.connections.revoke(w.connector.id, registered.id)
-    expect_not_found(lambda: connections.get(w.connector.id, registered.id))
-
 
 def _versioned(client: IntrospectionClient, w: World) -> Runtime | None:
     return next(
@@ -1015,33 +985,39 @@ def test_08_connection_and_endpoint(world: World) -> None:
     assert landed.params.get("status") == "active"
     connection_id = landed.params["connection_id"]
     assert connection_id == IsUUID
-    connection = w.sa.connectors.connections.get(
-        w.connector.id, UUID(connection_id)
-    )
+    # The grant is the project's own, read on the Data Plane's one
+    # connections resource; the Control Plane has none.
+    connection = w.member.connections.get(connection_id)
     assert stable(connection) == snapshot(
         {
             "id": "[uuid]",
-            "org_id": "[uuid]",
-            "created_at": "[timestamp]",
-            "updated_at": "[timestamp]",
-            "connector_id": "[uuid]",
-            "project_id": "[uuid]",
+            "owner": "project",
             "member_id": None,
-            "created_by_member_id": "[uuid]",
+            "connector": {
+                "id": "[uuid]",
+                "slug": "hello-mcp",
+                "provider": "hello-mcp",
+                "peering": None,
+            },
+            "integration_id": None,
             "runtime_group_id": "[uuid]",
             "subject_type": "app",
-            "scopes_granted": [],
+            "app": "hello-mcp",
+            "provider_account_id": None,
+            "account_name": None,
+            "healthy": True,
             "status": "active",
             "token_expires_at": "[timestamp]",
             "last_verified_at": "[timestamp]",
-            "provider_account_name": None,
-            "provider_app": None,
-            "provider_account_id": None,
+            "created_by_member_id": "[uuid]",
+            "created_at": "[timestamp]",
+            "updated_at": "[timestamp]",
         }
     )
+    assert str(connection.runtime_group_id) == w.group_id
     assert any(
         str(c.id) == connection_id
-        for c in w.sa.connectors.connections.list(w.connector.id)
+        for c in w.member.connections.list(connector_id=w.connector.id)
     )
 
     endpoints = w.sa.endpoints
@@ -1070,6 +1046,7 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "metadata": {
                 "mcp_server_id": "hello-mcp",
                 "connector_id": "[uuid]",
+                "integration_id": None,
                 "provider_app": None,
                 "extra_hosts": [],
                 "auth_audience": None,
@@ -1118,6 +1095,7 @@ def test_08_connection_and_endpoint(world: World) -> None:
             "metadata": {
                 "mcp_server_id": None,
                 "connector_id": None,
+                "integration_id": None,
                 "provider_app": None,
                 "extra_hosts": [],
                 "auth_audience": None,
@@ -1143,7 +1121,7 @@ def test_08_connection_and_endpoint(world: World) -> None:
 
     # The app connection is the runtime group's; the broker resolves it
     # from the connector and the service account's project.
-    token = w.sa.connectors.connections.get_token(w.connector.id)
+    token = w.sa.connectors.get_token(w.connector.id)
     assert stable(token) == snapshot(
         {
             "token": "[redacted]",
@@ -1705,12 +1683,16 @@ def test_13_telemetry_reads(world: World) -> None:
                 "provider": "hello-mcp",
                 "peering": None,
             },
+            "integration_id": None,
+            # Absent from a recording made before introspection-cloud#3855.
+            "runtime_group_id": IsOneOf(None, "[uuid]"),
             "subject_type": "app",
             "app": "hello-mcp",
             "provider_account_id": None,
             "account_name": None,
             "healthy": True,
             "status": "active",
+            "token_expires_at": IsOneOf(None, "[timestamp]"),
             "last_verified_at": "[timestamp]",
             "created_by_member_id": "[uuid]",
             "created_at": "[timestamp]",
@@ -1726,9 +1708,10 @@ def test_13_telemetry_reads(world: World) -> None:
             app="gmail", runtime=WALK.runtime_slug
         )
     )
-    # A client with no runtime of its own cannot omit one: the Python SDK
-    # makes `runtime` required on the client (the runner defaults it), so
-    # the JS walk's "refuses before any request" is a signature here.
+    # A client with no runtime of its own cannot omit one for an app: it
+    # refuses before any request (the runner defaults it to its group).
+    with pytest.raises(ValueError, match="runtime"):
+        w.member.connections.create(app="gmail")
 
 
 @walk_step(
