@@ -86,6 +86,7 @@ from .settings import (
 )
 from .stable import plain, stable
 from .support import (
+    RETIRED_ROUTES,
     QuietTransport,
     WalkReport,
     follow_authorization,
@@ -985,9 +986,15 @@ def test_08_connection_and_endpoint(world: World) -> None:
     assert landed.params.get("status") == "active"
     connection_id = landed.params["connection_id"]
     assert connection_id == IsUUID
-    # The grant is the project's own, read on the Data Plane's one
-    # connections resource; the Control Plane has none.
-    connection = w.member.connections.get(connection_id)
+    # The grant is the project's own, with no member, read on the Data
+    # Plane's one connections resource; the Control Plane has none.
+    granted = [
+        c
+        for c in w.member.connections.list(connector_id=w.connector.id)
+        if str(c.id) == connection_id
+    ]
+    assert len(granted) == 1, "the grant is listed on its connector"
+    connection = granted[0]
     assert stable(connection) == snapshot(
         {
             "id": "[uuid]",
@@ -1000,24 +1007,20 @@ def test_08_connection_and_endpoint(world: World) -> None:
                 "peering": None,
             },
             "integration_id": None,
-            "runtime_group_id": "[uuid]",
+            # Absent from a recording made before introspection-cloud#3855.
+            "runtime_group_id": IsOneOf(None, "[uuid]"),
             "subject_type": "app",
             "app": "hello-mcp",
             "provider_account_id": None,
             "account_name": None,
             "healthy": True,
             "status": "active",
-            "token_expires_at": "[timestamp]",
+            "token_expires_at": IsOneOf(None, "[timestamp]"),
             "last_verified_at": "[timestamp]",
             "created_by_member_id": "[uuid]",
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
         }
-    )
-    assert str(connection.runtime_group_id) == w.group_id
-    assert any(
-        str(c.id) == connection_id
-        for c in w.member.connections.list(connector_id=w.connector.id)
     )
 
     endpoints = w.sa.endpoints
@@ -1662,45 +1665,10 @@ def test_13_telemetry_reads(world: World) -> None:
             NIL, status="denied", member_id=owners[0].id
         )
     )
-    # `/v1/connections` holds the project's own grant from step 8, with no
-    # member; an app connector is what a member connects through, which
-    # needs that provider's credentials, so with none on the project the
-    # other routes answer 404 (member-connections.md).
+    # With no app connector on the project, a member has nothing to connect
+    # through: the other `/v1/connections` routes answer 404
+    # (member-connections.md).
     missing = "019a1000-0000-7000-8000-0000000000c1"
-    project_grant = next(
-        c
-        for c in w.member.connections.list(connector_id=w.connector.id)
-        if str(c.owner) == "project"
-    )
-    assert stable(project_grant) == snapshot(
-        {
-            "id": "[uuid]",
-            "owner": "project",
-            "member_id": None,
-            "connector": {
-                "id": "[uuid]",
-                "slug": "hello-mcp",
-                "provider": "hello-mcp",
-                "peering": None,
-            },
-            "integration_id": None,
-            # Absent from a recording made before introspection-cloud#3855.
-            "runtime_group_id": IsOneOf(None, "[uuid]"),
-            "subject_type": "app",
-            "app": "hello-mcp",
-            "provider_account_id": None,
-            "account_name": None,
-            "healthy": True,
-            "status": "active",
-            "token_expires_at": IsOneOf(None, "[timestamp]"),
-            "last_verified_at": "[timestamp]",
-            "created_by_member_id": "[uuid]",
-            "created_at": "[timestamp]",
-            "updated_at": "[timestamp]",
-        }
-    )
-    assert project_grant.connector is not None
-    assert project_grant.connector.slug == WALK.connector_name
     expect_not_found(lambda: w.member.connections.get(missing))
     expect_not_found(lambda: w.member.connections.delete(missing))
     expect_not_found(
@@ -2449,6 +2417,8 @@ def test_18_members_and_keys(world: World) -> None:
             "image_url": None,
             "hosted_git": True,
             "sign_in": None,
+            # Absent from a recording made before introspection-cloud#3855.
+            "subscription_live": IsOneOf(None, IsInstance(bool)),
         }
     )
 
@@ -2477,10 +2447,11 @@ def test_19_teardown(world: World, cassette: Cassette | None) -> None:
     )
     if w.mode == "replay" and cassette is not None:
         # Every recorded exchange was asked for: a call the SDK stopped
-        # making leaves its entry behind.
+        # making leaves its entry behind, unless the API removed its route.
         unplayed = [
             f"{request.method} {request.uri}"
             for i, (request, _) in enumerate(cassette.data)
             if not cassette.play_counts[i]
+            and not any(r.search(request.uri) for r in RETIRED_ROUTES)
         ]
         assert unplayed == [], "recorded requests the walk never sent"

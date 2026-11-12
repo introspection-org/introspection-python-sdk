@@ -30,7 +30,7 @@ def remove_walk_resources(
     project's agent member (``dp``, the service account) where it exists: a
     member's own token lists only the tasks it owns."""
     _remove_data_plane(owner, member, dp or member, project)
-    _remove_control_plane(owner, member, project)
+    _remove_control_plane(owner, project)
 
 
 def _remove_data_plane(
@@ -65,7 +65,7 @@ def _remove_data_plane(
 
 
 def _remove_control_plane(
-    owner: IntrospectionClient, member: IntrospectionClient, project: Project
+    owner: IntrospectionClient, project: Project
 ) -> None:
     for experiment in owner.experiments.list(project=str(project.id)):
         if experiment.name in WALK.experiment_names:
@@ -85,9 +85,7 @@ def _remove_control_plane(
     for connector in owner.connectors.list(project=project.id).page().records:
         if connector.slug != WALK.connector_name:
             continue
-        # A connector's connections are the Data Plane's to delete.
-        for connection in member.connections.list(connector_id=connector.id):
-            member.connections.delete(connection.id)
+        # Deleting a connector revokes its connections with it.
         owner.connectors.delete(connector.id, project=project.id)
     for variable in owner.variables.list(project=project.id):
         if variable.name == WALK.variable_name:
