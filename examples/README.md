@@ -15,6 +15,7 @@ uv run python -m introspection_examples.api.runtimes                 # Runner: t
 uv run python -m introspection_examples.api.async_runtimes           # AsyncRunner: same flow on asyncio
 uv run python -m introspection_examples.api.repositories             # Repositories: list, browse contents, read a file, page commits
 uv run python -m introspection_examples.api.conversation_atif        # Conversations: project one onto a Harbor ATIF trajectory, write trajectory.json
+uv run python -m introspection_examples.api.conversation_export_resume # Conversations: export oldest-first, then resume after the X-Next-Cursor cursor
 uv run python -m introspection_examples.api.members                  # Members: label one with metadata, list members by metadata
 uv run python -m introspection_examples.api.automations              # Automations: list, schedule a one-off reminder, read trigger events
 uv run python -m introspection_examples.api.connections              # Connections: list a member's connected apps, start connecting one

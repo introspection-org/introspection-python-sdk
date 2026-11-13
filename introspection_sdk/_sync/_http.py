@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterator, Mapping
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
@@ -40,6 +41,37 @@ if TYPE_CHECKING:
 DEFAULT_MAX_RETRIES = 2
 #: Default base step (seconds) of the capped-exponential retry backoff.
 DEFAULT_RETRY_BASE = 0.5
+
+
+class StreamedResponse:
+    """An open streamed ``GET``: its status and headers before its body.
+
+    Yielded by :meth:`_AsyncHttpClient.open_stream` once the status line and
+    headers have arrived and the status is not an error, so a caller can read
+    a header the server sends ahead of the body and then stream the body.
+    Keeps ``httpx`` off the resource layer's surface, as
+    :class:`~introspection_sdk._http.RawResponse` does for a buffered read.
+    """
+
+    def __init__(self, response: httpx.Response) -> None:
+        self._response = response
+
+    @property
+    def status_code(self) -> int:
+        return self._response.status_code
+
+    @property
+    def headers(self) -> Mapping[str, str]:
+        """The response headers, looked up case-insensitively."""
+        return self._response.headers
+
+    def iter_bytes(self) -> Iterator[bytes]:
+        """The body's bytes as they arrive."""
+        try:
+            for chunk in self._response.iter_bytes():
+                yield chunk
+        except httpx.HTTPError as exc:
+            raise NetworkError(str(exc)) from exc
 
 
 class _HttpClient:
@@ -184,13 +216,20 @@ class _HttpClient:
             note_response(path)
             return res.json()
 
-    def stream_bytes(
+    @contextlib.contextmanager
+    def open_stream(
         self,
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
-    ) -> Iterator[bytes]:
+    ) -> Iterator[StreamedResponse]:
+        """Open a streamed ``GET`` and yield it once its headers arrive.
+
+        An error status raises its typed error on entry, after reading the
+        error body. The response is closed when the block exits.
+        """
+        self._check_open()
         req_headers = self._request_headers(headers)
         try:
             with self._client.stream(
@@ -202,10 +241,20 @@ class _HttpClient:
                 if res.status_code >= 400:
                     res.read()
                     raise error_from_response(res)
-                for chunk in res.iter_bytes():
-                    yield chunk
+                yield StreamedResponse(res)
         except httpx.HTTPError as exc:
             raise NetworkError(str(exc)) from exc
+
+    def stream_bytes(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> Iterator[bytes]:
+        with self.open_stream(path, params=params, headers=headers) as res:
+            for chunk in res.iter_bytes():
+                yield chunk
 
     def stream_sse_lines(
         self,
