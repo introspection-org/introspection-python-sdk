@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.43.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.42.0...v0.43.0) (2026-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* `connectors.connections` (`Connections`, `AsyncConnections`) is removed, with `schemas.connectors.Connection`, `ConnectionCreateRequest` and `ConnectionCreateSubjectType`. Read and delete connections with `client.connections` (`get`, `list(connector_id=...)`, `delete`); registering a caller-supplied token has no replacement. `connectors.connections.get_token(...)` moves to `connectors.get_token(...)`.
+
+### Features
+
+* drop connectors.connections and model introspection-cloud's connection integrations ([#260](https://github.com/introspection-org/introspection-python-sdk/issues/260)) ([c96450c](https://github.com/introspection-org/introspection-python-sdk/commit/c96450cf10079a353c612f42bc8d686ebf6ff9d4))
+
+
+### Bug Fixes
+
+* model the automation trigger's new fields and hold an API key's requested scopes ([#263](https://github.com/introspection-org/introspection-python-sdk/issues/263)) ([636f6a2](https://github.com/introspection-org/introspection-python-sdk/commit/636f6a2a769256d1ff293498d7c9d7494581a55e))
+
 ## [0.42.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.41.0...v0.42.0) (2026-11-12)
 
 
