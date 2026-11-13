@@ -118,6 +118,7 @@ jobs:
           uv run -m introspection_examples.api.author_runtime
           uv run -m introspection_examples.api.project_admin
           uv run -m introspection_examples.api.conversation_atif
+          uv run -m introspection_examples.api.conversation_export_resume
           uv run -m introspection_examples.api.issues
           uv run -m introspection_examples.otel.log_event
           uv run -m introspection_examples.reference.auth_api_key

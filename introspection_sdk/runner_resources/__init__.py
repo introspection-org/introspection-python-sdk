@@ -19,8 +19,10 @@ from introspection_sdk.runner_resources.connections import (
     RunnerAppConnections,
 )
 from introspection_sdk.runner_resources.conversations import (
+    AsyncConversationExport,
     AsyncConversationItems,
     AsyncConversations,
+    ConversationExport,
     ConversationExportFormat,
     ConversationExportParams,
     ConversationItems,
@@ -78,6 +80,7 @@ __all__ = [
     "AppConnections",
     "AsyncAppConnections",
     "AsyncAutomations",
+    "AsyncConversationExport",
     "AsyncConversationItems",
     "AsyncConversations",
     "AsyncEvents",
@@ -91,6 +94,7 @@ __all__ = [
     "AsyncTasks",
     "Automations",
     "ConversationItems",
+    "ConversationExport",
     "ConversationExportFormat",
     "ConversationExportParams",
     "Conversations",
