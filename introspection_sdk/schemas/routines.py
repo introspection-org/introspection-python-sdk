@@ -1,4 +1,4 @@
-"""Pydantic mirrors of DP ``/v1/automations`` request/response models.
+"""Pydantic mirrors of DP ``/v1/routines`` request/response models.
 
 Wire fields are snake_case verbatim and unknown fields are tolerated
 via ``extra="allow"`` so DP additions don't break the SDK.
@@ -6,7 +6,7 @@ via ``extra="allow"`` so DP additions don't break the SDK.
 The string enums here are **open**: each lists the values this SDK
 knows, but a field typed with one also accepts any other string, which
 decodes as a plain ``str`` instead of failing. A server that adds a new
-automation kind, skip reason or condition therefore never breaks an
+routine kind, skip reason or condition therefore never breaks an
 older client. Known values still decode as the enum member, and every
 member compares equal to its wire string.
 """
@@ -33,8 +33,8 @@ class _ApiModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class AutomationTriggerType(StrEnum):
-    """How an automation is triggered."""
+class RoutineTriggerType(StrEnum):
+    """How a routine is triggered."""
 
     CRON = "cron"
     MANUAL = "manual"
@@ -42,8 +42,8 @@ class AutomationTriggerType(StrEnum):
     reminder)."""
 
 
-class AutomationKind(StrEnum):
-    """A platform automation kind. An automation a person created has no
+class RoutineKind(StrEnum):
+    """A platform routine kind. A routine a person created has no
     kind (``None``)."""
 
     OBSERVATION_SYNTHESIS = "observation_synthesis"
@@ -54,16 +54,16 @@ class AutomationKind(StrEnum):
     a ``prompt``."""
 
 
-class AutomationConditionType(StrEnum):
-    """A built-in condition evaluated before an automation runs."""
+class RoutineConditionType(StrEnum):
+    """A built-in condition evaluated before a routine runs."""
 
     HAS_NEW_TASKS_SINCE_LAST_RUN = "has_new_tasks_since_last_run"
     LAST_RUN_ISSUES_RESOLVED = "last_run_issues_resolved"
-    NO_LIVE_TASK_FOR_AUTOMATION = "no_live_task_for_automation"
+    NO_LIVE_TASK_FOR_ROUTINE = "no_live_task_for_routine"
 
 
-class AutomationExecutionStatus(StrEnum):
-    """Outcome of one automation execution attempt."""
+class RoutineExecutionStatus(StrEnum):
+    """Outcome of one routine execution attempt."""
 
     TRIGGERED = "triggered"
     CANCELLED = "cancelled"
@@ -71,11 +71,11 @@ class AutomationExecutionStatus(StrEnum):
     SKIPPED = "skipped"
 
 
-class AutomationSkipReason(StrEnum):
+class RoutineSkipReason(StrEnum):
     """Why a scheduled trigger ran nothing
-    (``introspection.automation.skipped``)."""
+    (``introspection.routines.skipped``)."""
 
-    AUTOMATION_DELETED = "automation_deleted"
+    ROUTINE_DELETED = "routine_deleted"
     EXECUTION_BLOCKED = "execution_blocked"
     CONDITIONS_NOT_MET = "conditions_not_met"
     NO_PRODUCTION_RUNTIME = "no_production_runtime"
@@ -92,51 +92,51 @@ class AutomationSkipReason(StrEnum):
 # a known value is the member and an unknown one still decodes. Pydantic's
 # default "smart" union would pick ``str`` for every input from a dict.
 OpenTriggerType = Annotated[
-    AutomationTriggerType | str, Field(union_mode="left_to_right")
+    RoutineTriggerType | str, Field(union_mode="left_to_right")
 ]
-OpenKind = Annotated[AutomationKind | str, Field(union_mode="left_to_right")]
+OpenKind = Annotated[RoutineKind | str, Field(union_mode="left_to_right")]
 OpenConditionType = Annotated[
-    AutomationConditionType | str, Field(union_mode="left_to_right")
+    RoutineConditionType | str, Field(union_mode="left_to_right")
 ]
 OpenExecutionStatus = Annotated[
-    AutomationExecutionStatus | str, Field(union_mode="left_to_right")
+    RoutineExecutionStatus | str, Field(union_mode="left_to_right")
 ]
 OpenSkipReason = Annotated[
-    AutomationSkipReason | str, Field(union_mode="left_to_right")
+    RoutineSkipReason | str, Field(union_mode="left_to_right")
 ]
 
 
-class AutomationCondition(_ApiModel):
-    """One condition stored in an automation's metadata."""
+class RoutineCondition(_ApiModel):
+    """One condition stored in a routine's metadata."""
 
     type: OpenConditionType
     runtime_group_id: UUID | None = None
 
 
-class AutomationMetadata(_ApiModel):
-    """The typed shape of an automation's ``metadata`` object.
+class RoutineMetadata(_ApiModel):
+    """The typed shape of a routine's ``metadata`` object.
 
-    The runtime group is the automation's top-level ``runtime_group_id``;
+    The runtime group is the routine's top-level ``runtime_group_id``;
     the server rejects one inside metadata. Unset fields are left out of
-    the request, which matters for a member's own automation: the server
+    the request, which matters for a member's own routine: the server
     accepts only ``cron_schedules`` and ``timezone`` from a non-admin.
     """
 
     cron_schedules: list[str] | None = None
-    """Several cron expressions; ``cron_schedule`` on the automation is the
+    """Several cron expressions; ``cron_schedule`` on the routine is the
     single-schedule form."""
     timezone: str | None = None
     """IANA time zone the cron schedules are evaluated in."""
     repositories: list[TaskRepoRequest] | None = None
-    """Repositories a task-backed automation clones."""
-    conditions: list[AutomationCondition] | None = None
+    """Repositories a task-backed routine clones."""
+    conditions: list[RoutineCondition] | None = None
     operator_default: str | None = None
-    """Set by the platform on a project's default automation
+    """Set by the platform on a project's default routine
     (``project_check_in``)."""
 
 
-class Automation(_ApiModel):
-    """A stored automation: scheduled agent work, or platform work when
+class Routine(_ApiModel):
+    """A stored routine: scheduled agent work, or platform work when
     ``kind`` is set."""
 
     id: UUID
@@ -148,7 +148,7 @@ class Automation(_ApiModel):
     enabled: bool = True
     cron_schedule: str | None = None
     kind: OpenKind | None = None
-    """``None`` for an automation a person created."""
+    """``None`` for a routine a person created."""
     prompt: str | None = None
     metadata: dict[str, Any] | None = None
     """Open-ended; read the known fields with :attr:`typed_metadata`."""
@@ -156,7 +156,7 @@ class Automation(_ApiModel):
     last_triggered_at: datetime | None = None
     next_trigger_at: datetime | None = None
     """The next slot: derived from the schedule for ``cron``, client-set for
-    a one-off ``manual`` automation and cleared once that slot fires."""
+    a one-off ``manual`` routine and cleared once that slot fires."""
     runtime_group_id: UUID | None = None
     """The runtime group it runs on (or clusters); ``None`` for
     ``observation_synthesis``."""
@@ -166,34 +166,34 @@ class Automation(_ApiModel):
     agent_member_id: UUID | None = None
     created_by_member_id: UUID | None = None
     execution_blocked_reason: str | None = None
-    """Why the scheduler will not run this automation, when it will not."""
+    """Why the scheduler will not run this routine, when it will not."""
     can_manage: bool = False
     """Whether the caller may edit it."""
     owner_role: str | None = None
-    """``operator`` for one that runs as a task (a prompt automation or
+    """``operator`` for one that runs as a task (a prompt routine or
     ``project_check_in``), ``None`` otherwise."""
     created_at: datetime | None = None
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
-    """Set on a soft-deleted automation, which ``get`` still returns."""
+    """Set on a soft-deleted routine, which ``get`` still returns."""
 
     @property
-    def typed_metadata(self) -> AutomationMetadata | None:
-        """``metadata`` parsed into :class:`AutomationMetadata`, or ``None``
+    def typed_metadata(self) -> RoutineMetadata | None:
+        """``metadata`` parsed into :class:`RoutineMetadata`, or ``None``
         when it is absent or does not fit."""
         if self.metadata is None:
             return None
         try:
-            return AutomationMetadata.model_validate(self.metadata)
+            return RoutineMetadata.model_validate(self.metadata)
         except ValidationError:
             return None
 
 
-class AutomationCreateRequest(_ApiModel):
-    """Body of ``POST /v1/automations``.
+class RoutineCreateRequest(_ApiModel):
+    """Body of ``POST /v1/routines``.
 
-    A one-off reminder is a ``manual`` automation with a future
-    ``next_trigger_at``; a ``cron`` automation derives its own slots and
+    A one-off reminder is a ``manual`` routine with a future
+    ``next_trigger_at``; a ``cron`` routine derives its own slots and
     must not send one.
     """
 
@@ -202,23 +202,23 @@ class AutomationCreateRequest(_ApiModel):
     description: str | None = None
     cron_schedule: str | None = None
     kind: OpenKind | None = None
-    """Omit for a prompt automation, which then needs ``prompt``."""
+    """Omit for a prompt routine, which then needs ``prompt``."""
     prompt: str | None = None
     runtime_group_id: UUID | None = None
     """Required unless ``kind`` is ``observation_synthesis``, which must
     omit it."""
     task_id: UUID | None = None
     """An existing task each firing posts the prompt into (prompt
-    automations only)."""
+    routines only)."""
     next_trigger_at: AwareDatetime | None = None
-    """A one-off slot for a ``manual`` automation; must be in the future
+    """A one-off slot for a ``manual`` routine; must be in the future
     and timezone-aware."""
     metadata: dict[str, Any] | None = None
     enabled: bool | None = None
 
 
-class AutomationUpdateRequest(_ApiModel):
-    """Body of ``PATCH /v1/automations/{id}``.
+class RoutineUpdateRequest(_ApiModel):
+    """Body of ``PATCH /v1/routines/{id}``.
 
     Only set fields are sent: ``None`` leaves a field as it is, so nothing
     can be cleared. ``kind`` and ``trigger_type`` are immutable;
@@ -230,10 +230,10 @@ class AutomationUpdateRequest(_ApiModel):
     cron_schedule: str | None = None
     prompt: str | None = None
     runtime_group_id: UUID | None = None
-    """Moves a prompt automation to another runtime group."""
+    """Moves a prompt routine to another runtime group."""
     task_id: UUID | None = None
     next_trigger_at: AwareDatetime | None = None
-    """Schedules, moves or re-arms a ``manual`` automation's one-off slot;
+    """Schedules, moves or re-arms a ``manual`` routine's one-off slot;
     must be in the future and timezone-aware."""
     metadata: dict[str, Any] | None = None
     enabled: bool | None = None
@@ -250,12 +250,12 @@ class EnqueuedConversation(_ApiModel):
     after this."""
 
 
-class AutomationTriggerResponse(_ApiModel):
+class RoutineTriggerResponse(_ApiModel):
     """Response of a hand trigger (``202``). A ``skipped`` status carries
     its ``reason`` and records no event."""
 
     status: OpenExecutionStatus
-    automation_id: UUID | None = None
+    routine_id: UUID | None = None
     task_id: UUID | None = None
     """The task created, or posted into."""
     reason: str | None = None
@@ -271,17 +271,17 @@ class AutomationTriggerResponse(_ApiModel):
 
 
 __all__ = [
-    "Automation",
-    "AutomationCondition",
-    "AutomationConditionType",
-    "AutomationCreateRequest",
-    "AutomationExecutionStatus",
-    "AutomationKind",
-    "AutomationMetadata",
-    "AutomationSkipReason",
-    "AutomationTriggerResponse",
-    "AutomationTriggerType",
-    "AutomationUpdateRequest",
+    "Routine",
+    "RoutineCondition",
+    "RoutineConditionType",
+    "RoutineCreateRequest",
+    "RoutineExecutionStatus",
+    "RoutineKind",
+    "RoutineMetadata",
+    "RoutineSkipReason",
+    "RoutineTriggerResponse",
+    "RoutineTriggerType",
+    "RoutineUpdateRequest",
     "EnqueuedConversation",
     "OpenConditionType",
     "OpenExecutionStatus",

@@ -4,7 +4,7 @@
 The Runner is an agent-session with a runtime context attached. It
 owns the DP endpoint + session-locator JWT minted by the CP
 ``/run`` call and exposes ``runner.tasks``, ``runner.files``,
-``runner.automations``, ``runner.connections`` and
+``runner.routines``, ``runner.connections`` and
 the read-only ``runner.conversations`` namespaces that target that
 endpoint. The
 DP-side agent-session machinery materializes the real access token

@@ -192,7 +192,7 @@ async for summary in runner.conversations.list(
 ```
 
 The runner also exposes `files`, `shares`, `events`, `metrics`,
-`automations`, `issues` and `connections`.
+`routines`, `issues` and `connections`.
 
 ## Export a conversation's spans
 
@@ -241,7 +241,7 @@ and returns the steps that are final. Runnable:
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:
 `tasks` (with `tasks.runs`), `files`, `conversations`, `events`, `metrics`,
-`shares`, `automations`, `issues` and `connections`. The contract is
+`shares`, `routines`, `issues` and `connections`. The contract is
 `introspection_sdk.protocols.DataPlaneResources` (and
 `AsyncDataPlaneResources` for `AsyncIntrospectionClient` / `AsyncRunner`),
 so code written against it runs with either handle:
@@ -262,8 +262,8 @@ The two differ only in the credential they send: the client sends its own
 token (an API key, a service account or a member's token) against
 `dp_url`, and a Runner sends the session token minted for it. A route the
 credential lacks the scope for answers 403 either way. A runner a member
-opens for themself is being given `automations:read` and
-`automations:write`, so it manages that member's automations.
+opens for themself is being given `routines:read` and
+`routines:write`, so it manages that member's routines.
 
 ## Curate traces with human review
 
@@ -512,20 +512,20 @@ Control Plane namespaces such as `client.runtimes` reject it. `AsyncEmailCodeAut
 `revoke_session` are the one-shot calls underneath. See
 [`examples/introspection_examples/api/native_email_code.py`](examples/introspection_examples/api/native_email_code.py).
 
-## Schedule automations
+## Schedule routines
 
-`client.automations` manages a project's automations on the data plane: a
+`client.routines` manages a project's routines on the data plane: a
 prompt on a schedule (`kind=None`), or platform work (`observation_synthesis`,
-`observation_clustering`, `project_check_in`). A prompt automation creates a
+`observation_clustering`, `project_check_in`). A prompt routine creates a
 task per firing, or posts into an existing task when it names `task_id`. A
-one-off reminder is a `manual` automation with a future `next_trigger_at`:
+one-off reminder is a `manual` routine with a future `next_trigger_at`:
 
 ```python
 from datetime import UTC, datetime
 
-from introspection_sdk.schemas.automations import AutomationMetadata
+from introspection_sdk.schemas.routines import RoutineMetadata
 
-reminder = client.automations.create(
+reminder = client.routines.create(
     name="Friday check-in",
     trigger_type="manual",
     prompt="How did the week go?",
@@ -534,20 +534,20 @@ reminder = client.automations.create(
     next_trigger_at=datetime(2026, 10, 9, 16, tzinfo=UTC),
 )
 
-weekly = client.automations.create(
+weekly = client.routines.create(
     name="Weekly digest",
     trigger_type="cron",
     cron_schedule="0 9 * * 1",
     prompt="Summarize my week",
     runtime_group_id=runtime_group_id,
-    metadata=AutomationMetadata(timezone="Europe/London"),
+    metadata=RoutineMetadata(timezone="Europe/London"),
 )
 
-for automation in client.automations.list(enabled=True, scheduled=True):
-    print(automation.name, automation.kind, automation.next_trigger_at)
+for routine in client.routines.list(enabled=True, scheduled=True):
+    print(routine.name, routine.kind, routine.next_trigger_at)
 
-client.automations.update(weekly.id, enabled=False)  # pause, keep the slot
-result = client.automations.trigger(weekly.id)       # run it now
+client.routines.update(weekly.id, enabled=False)  # pause, keep the slot
+result = client.routines.trigger(weekly.id)       # run it now
 print(result.status, result.task_id, result.reason)
 ```
 
@@ -562,24 +562,24 @@ Each firing is recorded as an event, read like any other family:
 
 ```python
 for event in client.events.list(
-    "introspection.automation.triggered", automation_id=weekly.id
+    "introspection.routines.triggered", routine_id=weekly.id
 ):
     print(event.payload.slot, event.payload.task_id, event.payload.posted)
 ```
 
-`introspection.automation.skipped` records a scheduled slot that ran nothing,
+`introspection.routines.skipped` records a scheduled slot that ran nothing,
 with its `reason`; it is project-owned, so only callers with project-wide
-telemetry access read it. Both families take the `automation_id` and
+telemetry access read it. Both families take the `routine_id` and
 `task_id` filters.
 
-Today the server serves `/v1/automations` to project administrators only and
+Today the server serves `/v1/routines` to project administrators only and
 answers anyone else with a 403. introspection-cloud#3137 (not yet shipped)
-opens the routes to members for their own automations that post into one of
+opens the routes to members for their own routines that post into one of
 their own tasks, and adds the `task_id` list filter, which this SDK already
 sends.
 
-The routes need the `automations:read` and `automations:write` scopes, so a `native` sign-in cannot use them yet.
-`can_manage` says whether the caller may change an automation, and
+The routes need the `routines:read` and `routines:write` scopes, so a `native` sign-in cannot use them yet.
+`can_manage` says whether the caller may change a routine, and
 `created_by_member_id` who created it.
 
 ## Track issues

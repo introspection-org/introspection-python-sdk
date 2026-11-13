@@ -16,7 +16,6 @@ from introspection_sdk.resources import (
     AsyncAnnotations,
     AsyncApiKeys,
     AsyncApplications,
-    AsyncAutomations,
     AsyncConnectors,
     AsyncCredentials,
     AsyncEndpoints,
@@ -29,6 +28,7 @@ from introspection_sdk.resources import (
     AsyncProjects,
     AsyncRecipes,
     AsyncRepositories,
+    AsyncRoutines,
     AsyncRuntimes,
     AsyncTags,
     AsyncTokens,
@@ -95,7 +95,7 @@ class AsyncIntrospectionClient:
     members: AsyncMembers
     annotations: AsyncAnnotations
     tags: AsyncTags
-    automations: AsyncAutomations
+    routines: AsyncRoutines
     events: AsyncEvents
     tasks: AsyncTasks
     files: AsyncFiles
@@ -169,7 +169,7 @@ class AsyncIntrospectionClient:
         self.members = AsyncMembers(self._http)
         self.annotations = AsyncAnnotations(self._http, self._dp_http)
         self.tags = AsyncTags(self._dp_http)
-        self.automations = AsyncAutomations(self._dp_http)
+        self.routines = AsyncRoutines(self._dp_http)
         self.events = AsyncEvents(self._dp_http)
         self.tasks = AsyncTasks(self._dp_http)
         self.files = AsyncFiles(self._dp_http)

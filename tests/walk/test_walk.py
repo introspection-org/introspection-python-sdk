@@ -358,8 +358,8 @@ def test_02_application(world: World) -> None:
                 "connections:read",
                 "connections:write",
                 "connections:delete",
-                "automations:read",
-                "automations:write",
+                "routines:read",
+                "routines:write",
                 "annotations:read",
                 "approvals:read",
                 "approvals:write",
@@ -1261,7 +1261,7 @@ def test_10_task(world: World) -> None:
             "kind": "agent",
             "status": "idle",
             "member_id": "[uuid]",
-            "automation_id": None,
+            "routine_id": None,
             "runtime_id": "[uuid]",
             "is_archived": False,
             "started_at": "[timestamp]",
@@ -1737,7 +1737,7 @@ def test_14_eval(world: World) -> None:
             "kind": "eval",
             "status": "pending",
             "member_id": "[uuid]",
-            "automation_id": None,
+            "routine_id": None,
             "runtime_id": "[uuid]",
             "is_archived": False,
             "started_at": None,
@@ -1994,24 +1994,24 @@ def test_15_commands(world: World) -> None:
         assert len(rows) > 0, "the recipe's judge graded the trial"
 
 
-@walk_step(16, "automations — a manual automation, triggered")
-def test_16_automations(world: World) -> None:
+@walk_step(16, "routines — a manual routine, triggered")
+def test_16_routines(world: World) -> None:
     w = world
-    automations = w.sa.automations
-    automation = automations.create(
-        name=WALK.automation_name,
+    routines = w.sa.routines
+    routine = routines.create(
+        name=WALK.routine_name,
         trigger_type="manual",
         prompt=second_turn(w.settings),
         runtime_group_id=UUID(w.group_id),
-        # An automation its owner creates posts into that owner's own task;
+        # A routine its owner creates posts into that owner's own task;
         # the first task was archived and unarchived, which the trigger
         # still refuses, so the trial is the one it posts into.
         task_id=w.eval_task.id,
     )
-    assert stable(automation) == snapshot(
+    assert stable(routine) == snapshot(
         {
             "id": "[uuid]",
-            "name": "The walk's automation",
+            "name": "The walk's routine",
             "trigger_type": "manual",
             "org_id": "[uuid]",
             "project_id": "[uuid]",
@@ -2036,11 +2036,11 @@ def test_16_automations(world: World) -> None:
             "deleted_at": None,
         }
     )
-    triggered = automations.trigger(automation.id)
+    triggered = routines.trigger(routine.id)
     assert stable(triggered) == snapshot(
         {
             "status": "triggered",
-            "automation_id": "[uuid]",
+            "routine_id": "[uuid]",
             "task_id": "[uuid]",
             "reason": None,
             "run_id": None,
@@ -2048,9 +2048,9 @@ def test_16_automations(world: World) -> None:
             "conversations": None,
         }
     )
-    automations.get(automation.id)
-    automations.update(automation.id, description="triggered once by the walk")
-    assert any(a.id == automation.id for a in automations.list())
+    routines.get(routine.id)
+    routines.update(routine.id, description="triggered once by the walk")
+    assert any(a.id == routine.id for a in routines.list())
 
 
 @dataclass
