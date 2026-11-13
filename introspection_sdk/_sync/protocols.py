@@ -22,7 +22,10 @@ from introspection_sdk.runner_resources.conversations import (
     ConversationSentiment,
 )
 from introspection_sdk.runner_resources.files import FileLike
-from introspection_sdk.runner_resources.routines import MetadataInput
+from introspection_sdk.runner_resources.routines import (
+    MetadataInput,
+    TriggerInput,
+)
 from introspection_sdk.runner_resources.tasks import RunHandle
 from introspection_sdk.schemas.agui import AGUIStreamEvent, ResumeEntry
 from introspection_sdk.schemas.connections import Connection, ConnectPage
@@ -621,6 +624,7 @@ class RoutinesResource(Protocol):
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine: ...
 
     def update(
@@ -636,11 +640,17 @@ class RoutinesResource(Protocol):
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine: ...
 
     def delete(self, routine_id: UUID | str) -> None: ...
 
-    def trigger(self, routine_id: UUID | str) -> RoutineTriggerResponse: ...
+    def trigger(
+        self,
+        routine_id: UUID | str,
+        *,
+        parameters: dict[str, Any] | None = None,
+    ) -> RoutineTriggerResponse: ...
 
 
 @runtime_checkable

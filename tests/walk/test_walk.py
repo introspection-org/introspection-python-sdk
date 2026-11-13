@@ -822,6 +822,9 @@ def test_06_connector(world: World) -> None:
                 "issuer": "[url]",
             },
             "requires_runtime": False,
+            "webhook_auth": None,
+            "previous_signing_secret_expires_at": None,
+            "signing_secret": None,
         }
     )
     assert w.sa.connectors.get(w.connector.id).slug == WALK.connector_name
@@ -2034,6 +2037,7 @@ def test_16_routines(world: World) -> None:
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
             "deleted_at": None,
+            "triggers": [],
         }
     )
     triggered = routines.trigger(routine.id)
@@ -2042,10 +2046,9 @@ def test_16_routines(world: World) -> None:
             "status": "triggered",
             "routine_id": "[uuid]",
             "task_id": "[uuid]",
-            "reason": None,
             "run_id": None,
-            "enqueued": None,
-            "conversations": None,
+            "reason": None,
+            "result": None,
         }
     )
     routines.get(routine.id)

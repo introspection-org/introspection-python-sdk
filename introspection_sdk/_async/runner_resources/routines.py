@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
@@ -19,12 +20,15 @@ from introspection_sdk.schemas.routines import (
     RoutineCreateRequest,
     RoutineKind,
     RoutineMetadata,
+    RoutineTriggerRequest,
     RoutineTriggerResponse,
+    RoutineTriggerSpec,
     RoutineTriggerType,
     RoutineUpdateRequest,
 )
 
 MetadataInput = RoutineMetadata | dict[str, Any]
+TriggerInput = RoutineTriggerSpec | dict[str, Any]
 
 
 def _path(routine_id: UUID | str) -> str:
@@ -60,6 +64,14 @@ def _metadata(metadata: MetadataInput | None) -> dict[str, Any] | None:
     return metadata
 
 
+def _triggers(
+    triggers: list[TriggerInput] | None,
+) -> list[RoutineTriggerSpec] | None:
+    if triggers is None:
+        return None
+    return [RoutineTriggerSpec.model_validate(trigger) for trigger in triggers]
+
+
 def _create_body(
     *,
     name: str,
@@ -73,6 +85,7 @@ def _create_body(
     next_trigger_at: datetime | None,
     metadata: MetadataInput | None,
     enabled: bool | None,
+    triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
     return RoutineCreateRequest(
         name=name,
@@ -86,6 +99,7 @@ def _create_body(
         next_trigger_at=next_trigger_at,
         metadata=_metadata(metadata),
         enabled=enabled,
+        triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
 
 
@@ -100,6 +114,7 @@ def _update_body(
     next_trigger_at: datetime | None,
     metadata: MetadataInput | None,
     enabled: bool | None,
+    triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
     # `exclude_none` is the whole PATCH contract: an unset field is absent,
     # and the server leaves an absent field as it is.
@@ -113,7 +128,14 @@ def _update_body(
         next_trigger_at=next_trigger_at,
         metadata=_metadata(metadata),
         enabled=enabled,
+        triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
+
+
+def _trigger_body(parameters: dict[str, Any] | None) -> dict[str, Any] | None:
+    if parameters is None:
+        return None
+    return RoutineTriggerRequest(parameters=parameters).model_dump(mode="json")
 
 
 class AsyncRoutines:
@@ -184,6 +206,7 @@ class AsyncRoutines:
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine:
         """Create a routine.
 
@@ -194,6 +217,12 @@ class AsyncRoutines:
         ``next_trigger_at``; a ``cron`` routine needs ``cron_schedule``
         (or ``metadata.cron_schedules``) and must not send a slot.
         ``metadata`` takes an :class:`RoutineMetadata` or a plain dict.
+
+        ``triggers`` are events that start a run (at most 20), each a
+        :class:`RoutineTriggerSpec` or a plain dict, for a prompt routine
+        that starts a task per run. A trigger's ``parameters`` read values
+        from the event's body by JSON pointer for ``@parameters.<name>``
+        in the prompt. Only an administrator can add triggers.
         """
         payload = await self._http.request(
             "POST",
@@ -210,6 +239,7 @@ class AsyncRoutines:
                 next_trigger_at=next_trigger_at,
                 metadata=metadata,
                 enabled=enabled,
+                triggers=triggers,
             ),
         )
         return decode(Routine, payload)
@@ -227,11 +257,17 @@ class AsyncRoutines:
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine:
         """Update a routine. Only the fields you pass are sent; ``None``
         leaves a field as it is, so nothing can be cleared. ``kind`` and
         ``trigger_type`` are immutable and ``metadata`` replaces wholesale.
-        ``enabled=False`` pauses and keeps the slot."""
+        ``enabled=False`` pauses and keeps the slot.
+
+        ``triggers`` replaces the routine's event triggers: an entry with
+        the ``id`` of an existing trigger keeps it (with the fields given),
+        one without is new, and every trigger not listed is removed, so
+        ``[]`` removes them all."""
         payload = await self._http.request(
             "PATCH",
             _path(routine_id),
@@ -245,6 +281,7 @@ class AsyncRoutines:
                 next_trigger_at=next_trigger_at,
                 metadata=metadata,
                 enabled=enabled,
+                triggers=triggers,
             ),
         )
         return decode(Routine, payload)
@@ -255,13 +292,30 @@ class AsyncRoutines:
         and answers 409; disable it instead."""
         await self._http.request("DELETE", _path(routine_id), expect="empty")
 
-    async def trigger(self, routine_id: UUID | str) -> RoutineTriggerResponse:
+    async def trigger(
+        self,
+        routine_id: UUID | str,
+        *,
+        parameters: dict[str, Any] | None = None,
+    ) -> RoutineTriggerResponse:
         """Run a routine now (``POST /v1/routines/{id}/trigger``).
 
-        Returns the task it created or posted into. A ``skipped`` status
-        carries its ``reason``. Neither reads nor clears a scheduled slot.
+        ``parameters`` is the run's JSON object (at most 16 KiB serialized
+        and 8 levels deep, else 422). A prompt routine's run receives it as
+        ``parameters.json`` and each ``@parameters.<name>`` in its prompt
+        is replaced by that value as JSON (``null`` when absent). A
+        platform routine reads its kind's keys: ``observation_synthesis``
+        takes ``{"conversation_ids": [...]}`` (1-100).
+
+        Returns the task it created or posted into, and the kind's
+        ``result`` (``observation_synthesis``: ``enqueued`` and
+        ``conversations``). A ``skipped`` status carries its ``reason``.
+        Neither reads nor clears a scheduled slot.
         """
+        # No parameters sends no body, which the server reads as none.
         payload = await self._http.request(
-            "POST", f"{_path(routine_id)}/trigger"
+            "POST",
+            f"{_path(routine_id)}/trigger",
+            json=_trigger_body(parameters),
         )
         return decode(RoutineTriggerResponse, payload)

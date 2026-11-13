@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 from introspection_sdk.schemas.routines import (
     OpenSkipReason,
     OpenTriggerType,
+    RoutineTriggerEventRef,
 )
 
 __all__ = [
@@ -447,7 +448,8 @@ class RoutineTriggeredPayload(_ApiModel):
     (``None`` for a hand trigger). ``posted`` says whether the prompt went
     into an existing task rather than a new one. ``member_id`` is the
     task's member, who owns the event; ``triggered_by_member_id`` is the
-    person who triggered it by hand.
+    person who triggered it by hand. ``event`` names the event trigger and
+    delivery that started it, for a run an event trigger started.
     """
 
     routine_id: UUID
@@ -461,13 +463,15 @@ class RoutineTriggeredPayload(_ApiModel):
     slot: datetime | None = None
     runtime_group_id: UUID | None = None
     triggered_by_member_id: UUID | None = None
+    event: RoutineTriggerEventRef | None = None
 
 
 class RoutineSkippedPayload(_ApiModel):
-    """One scheduled routine trigger that ran nothing.
+    """One scheduled slot, or one event delivery, that ran nothing.
 
     Project-owned, so it names no member. ``task_id`` is set only when the
-    routine targets an existing task.
+    routine targets an existing task. ``event`` names the event trigger and
+    delivery skipped (reason ``trigger_busy``); ``slot`` the scheduled slot.
     """
 
     routine_id: UUID
@@ -475,6 +479,7 @@ class RoutineSkippedPayload(_ApiModel):
     reason: OpenSkipReason
     slot: datetime | None = None
     task_id: UUID | None = None
+    event: RoutineTriggerEventRef | None = None
 
 
 # --- whole-event models: envelope + typed payload, Literal tag -------

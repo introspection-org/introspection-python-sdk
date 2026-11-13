@@ -9,6 +9,12 @@ recorded as an ``introspection.routines.triggered`` or
 ``introspection.routines.skipped`` event, readable through
 ``client.events`` with the ``routine_id`` / ``task_id`` filters.
 
+A prompt routine that starts a task per run can also be started by
+events: ``triggers`` lists them (a Slack or GitHub integration's events,
+or a ``webhook`` connector's calls), and ``trigger(parameters=...)``
+runs it by hand with a JSON object the prompt reads as
+``@parameters.<name>``.
+
 The server serves these routes to project administrators only today and
 answers anyone else with a 403. introspection-cloud#3137 (not yet
 shipped) opens them to members for their own routines that post into
@@ -24,6 +30,7 @@ from __future__ import annotations
 from introspection_sdk._async.runner_resources.routines import (
     AsyncRoutines,
     MetadataInput,
+    TriggerInput,
 )
 from introspection_sdk._sync.runner_resources.routines import (
     Routines,
@@ -33,4 +40,5 @@ __all__ = [
     "AsyncRoutines",
     "Routines",
     "MetadataInput",
+    "TriggerInput",
 ]

@@ -27,11 +27,17 @@ from introspection_sdk.schemas.events import (
     RoutineTriggeredEvent,
 )
 from introspection_sdk.schemas.routines import (
+    EnqueuedConversation,
     RoutineConditionType,
     RoutineExecutionStatus,
     RoutineKind,
     RoutineMetadata,
+    RoutineRunSource,
     RoutineSkipReason,
+    RoutineTriggerFilter,
+    RoutineTriggerProvider,
+    RoutineTriggerSource,
+    RoutineTriggerSpec,
     RoutineTriggerType,
 )
 from introspection_sdk.schemas.tasks import TaskRepoRequest
@@ -490,28 +496,249 @@ def test_hand_trigger_reports_what_synthesis_queued(fake_api: FakeAPI):
             "status": "triggered",
             "routine_id": ROUTINE_ID,
             "task_id": None,
-            "reason": None,
             "run_id": None,
-            "enqueued": 1,
-            "conversations": [
-                {
-                    "conversation_id": "conv-1",
-                    "completed_at": "2026-11-12T09:00:00Z",
-                }
-            ],
+            "reason": None,
+            "result": {
+                "enqueued": 1,
+                "conversations": [
+                    {
+                        "conversation_id": "conv-1",
+                        "completed_at": "2026-11-12T09:00:00Z",
+                    }
+                ],
+            },
         },
     )
 
-    queued = Routines(fake_api.client()).trigger(ROUTINE_ID)
+    queued = Routines(fake_api.client()).trigger(
+        ROUTINE_ID, parameters={"conversation_ids": ["conv-1"]}
+    )
 
+    assert fake_api.last_request.json() == {
+        "parameters": {"conversation_ids": ["conv-1"]}
+    }
     assert queued.status is RoutineExecutionStatus.TRIGGERED
     assert queued.run_id is None
-    assert queued.enqueued == 1
-    assert queued.conversations is not None
-    assert [c.conversation_id for c in queued.conversations] == ["conv-1"]
-    assert queued.conversations[0].completed_at == datetime(
-        2026, 11, 12, 9, tzinfo=UTC
+    assert queued.result is not None
+    assert queued.result["enqueued"] == 1
+    (conversation,) = [
+        EnqueuedConversation.model_validate(c)
+        for c in queued.result["conversations"]
+    ]
+    assert conversation.conversation_id == "conv-1"
+    assert conversation.completed_at == datetime(2026, 11, 12, 9, tzinfo=UTC)
+    assert not hasattr(queued, "enqueued")
+
+
+def test_hand_trigger_sends_parameters_and_nothing_else(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"{ROUTINE_PATH}/trigger",
+        status=202,
+        json_body={
+            "status": "triggered",
+            "routine_id": ROUTINE_ID,
+            "task_id": TASK_ID,
+            "run_id": None,
+            "reason": None,
+            "result": None,
+        },
     )
+    api = Routines(fake_api.client())
+
+    parameters = {"order_id": "o-1", "lines": [{"sku": "a", "qty": 2}]}
+    triggered = api.trigger(ROUTINE_ID, parameters=parameters)
+    assert fake_api.last_request.json() == {"parameters": parameters}
+    assert triggered.task_id == UUID(TASK_ID)
+    assert triggered.result is None
+
+    # An empty object is a run with parameters, not a run without.
+    api.trigger(ROUTINE_ID, parameters={})
+    assert fake_api.last_request.json() == {"parameters": {}}
+
+    api.trigger(ROUTINE_ID)
+    assert fake_api.last_request.content == b""
+
+
+def test_hand_trigger_surfaces_oversized_parameters_422(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        f"{ROUTINE_PATH}/trigger",
+        status=422,
+        json_body={
+            "detail": [
+                {
+                    "type": "value_error",
+                    "loc": ["body", "parameters"],
+                    "msg": "parameters nest at most 8 levels deep",
+                }
+            ]
+        },
+    )
+
+    with pytest.raises(IntrospectionAPIError) as exc:
+        Routines(fake_api.client()).trigger(
+            ROUTINE_ID, parameters={"a": {"b": {"c": {}}}}
+        )
+    assert exc.value.status_code == 422
+
+
+# --- event triggers ----------------------------------------------------
+
+TRIGGER_ID = "0199a1b2-0000-7000-8000-0000000000e1"
+
+WEBHOOK_TRIGGER: dict[str, Any] = {
+    "id": TRIGGER_ID,
+    "routine_id": ROUTINE_ID,
+    "org_id": ORG_ID,
+    "project_id": PROJECT_ID,
+    "source": "connector",
+    "provider": "webhook",
+    "connector_slug": "orders",
+    "event_types": ["order.created"],
+    "filter": {
+        "channel_ids": None,
+        "emoji": None,
+        "team_ids": None,
+        "to_states": None,
+        "repository_ids": None,
+        "branches": None,
+        "payload_fields": {"region": ["eu"]},
+    },
+    "parameters": {"order_id": "/data/id"},
+    "enabled": True,
+    "created_at": "2026-11-01T10:00:00Z",
+    "updated_at": "2026-11-01T10:00:00Z",
+    "deleted_at": None,
+}
+
+
+def test_create_sends_triggers_and_decodes_them(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/routines",
+        status=201,
+        json_body=routine_body(
+            trigger_type="manual", triggers=[WEBHOOK_TRIGGER]
+        ),
+    )
+
+    created = Routines(fake_api.client()).create(
+        name="Order follow-up",
+        trigger_type="manual",
+        prompt="Follow up on order @parameters.order_id",
+        runtime_group_id=UUID(RUNTIME_GROUP_ID),
+        triggers=[
+            RoutineTriggerSpec(
+                source=RoutineTriggerSource.CONNECTOR,
+                provider=RoutineTriggerProvider.WEBHOOK,
+                connector_slug="orders",
+                event_types=["order.created"],
+                filter=RoutineTriggerFilter(payload_fields={"region": ["eu"]}),
+                parameters={"order_id": "/data/id"},
+            ),
+            {
+                "provider": "github",
+                "event_types": ["github.push"],
+                "filter": {"branches": ["main"]},
+            },
+        ],
+    )
+
+    assert fake_api.last_request.json() == {
+        "name": "Order follow-up",
+        "trigger_type": "manual",
+        "prompt": "Follow up on order @parameters.order_id",
+        "runtime_group_id": RUNTIME_GROUP_ID,
+        "triggers": [
+            {
+                "source": "connector",
+                "provider": "webhook",
+                "connector_slug": "orders",
+                "event_types": ["order.created"],
+                "filter": {"payload_fields": {"region": ["eu"]}},
+                "parameters": {"order_id": "/data/id"},
+            },
+            {
+                "provider": "github",
+                "event_types": ["github.push"],
+                "filter": {"branches": ["main"]},
+            },
+        ],
+    }
+    (trigger,) = created.triggers
+    assert trigger.id == UUID(TRIGGER_ID)
+    assert trigger.source is RoutineTriggerSource.CONNECTOR
+    assert trigger.provider is RoutineTriggerProvider.WEBHOOK
+    assert trigger.connector_slug == "orders"
+    assert trigger.filter.payload_fields == {"region": ["eu"]}
+    assert trigger.filter.channel_ids is None
+    assert trigger.parameters == {"order_id": "/data/id"}
+    assert trigger.enabled is True
+
+
+def test_a_routine_without_triggers_reads_an_empty_list(fake_api: FakeAPI):
+    fake_api.add("GET", ROUTINE_PATH, json_body=routine_body())
+
+    assert Routines(fake_api.client()).get(ROUTINE_ID).triggers == []
+
+
+def test_trigger_decodes_an_unknown_source_and_provider(fake_api: FakeAPI):
+    future = {
+        **WEBHOOK_TRIGGER,
+        "source": "schedule_from_the_future",
+        "provider": "jira",
+        "filter": {},
+    }
+    fake_api.add(
+        "GET", ROUTINE_PATH, json_body=routine_body(triggers=[future])
+    )
+
+    (trigger,) = Routines(fake_api.client()).get(ROUTINE_ID).triggers
+
+    assert trigger.source == "schedule_from_the_future"
+    assert trigger.provider == "jira"
+    assert trigger.filter == RoutineTriggerFilter()
+
+
+@pytest.mark.parametrize(
+    ("triggers", "body"),
+    [
+        # A listed id keeps that trigger; the rest are removed.
+        (
+            [
+                {
+                    "id": TRIGGER_ID,
+                    "provider": "webhook",
+                    "source": "connector",
+                    "connector_slug": "orders",
+                    "event_types": ["*"],
+                    "enabled": False,
+                }
+            ],
+            [
+                {
+                    "id": TRIGGER_ID,
+                    "provider": "webhook",
+                    "source": "connector",
+                    "connector_slug": "orders",
+                    "event_types": ["*"],
+                    "enabled": False,
+                }
+            ],
+        ),
+        # An empty list removes every trigger, so it is sent.
+        ([], []),
+    ],
+)
+def test_update_replaces_the_trigger_list(
+    fake_api: FakeAPI, triggers: list[Any], body: list[Any]
+):
+    fake_api.add("PATCH", ROUTINE_PATH, json_body=routine_body())
+
+    Routines(fake_api.client()).update(ROUTINE_ID, triggers=triggers)
+
+    assert fake_api.last_request.json() == {"triggers": body}
 
 
 async def test_async_crud_and_trigger(fake_api: FakeAPI):
@@ -569,6 +796,30 @@ async def test_async_crud_and_trigger(fake_api: FakeAPI):
 
     result = await api.trigger(ROUTINE_ID)
     assert result.status is RoutineExecutionStatus.CANCELLED
+    assert fake_api.last_request.content == b""
+
+    await api.trigger(ROUTINE_ID, parameters={"ticket": 42})
+    assert fake_api.last_request.json() == {"parameters": {"ticket": 42}}
+
+    await api.update(
+        ROUTINE_ID,
+        triggers=[
+            RoutineTriggerSpec(
+                provider="slack",
+                event_types=["slack.message.posted"],
+                filter=RoutineTriggerFilter(channel_ids=["C1"]),
+            )
+        ],
+    )
+    assert fake_api.last_request.json() == {
+        "triggers": [
+            {
+                "provider": "slack",
+                "event_types": ["slack.message.posted"],
+                "filter": {"channel_ids": ["C1"]},
+            }
+        ]
+    }
 
 
 # --- routine events ----------------------------------------------------
@@ -667,6 +918,71 @@ def test_events_read_skipped_rows_including_an_unknown_reason(
     assert isinstance(future, RoutineSkippedEvent)
     assert future.payload.reason == "reason_from_the_future"
     assert future.payload.task_id is None
+
+
+EVENT_REF: dict[str, Any] = {
+    "trigger_id": TRIGGER_ID,
+    "event_type": "order.created",
+    "delivery_id": "webhook:msg_2a",
+}
+
+
+def test_events_carry_the_trigger_that_started_or_skipped_a_run(
+    fake_api: FakeAPI,
+):
+    started = {
+        **TRIGGERED_ROW,
+        "payload": {
+            **TRIGGERED_ROW["payload"],
+            "trigger_type": "manual",
+            "slot": None,
+            "posted": False,
+            "event": EVENT_REF,
+        },
+    }
+    busy = {
+        **SKIPPED_ROW,
+        "payload": {
+            **SKIPPED_ROW["payload"],
+            "slot": None,
+            "task_id": None,
+            "reason": "trigger_busy",
+            "event": EVENT_REF,
+        },
+    }
+    fake_api.add_handler(
+        "GET",
+        "/v1/events",
+        paged_handler([page([started]), page([busy, SKIPPED_ROW])]),
+    )
+    events = Events(fake_api.client())
+
+    (run,) = (
+        events.list(IntrospectionEventName.ROUTINE_TRIGGERED).page().records
+    )
+    assert isinstance(run, RoutineTriggeredEvent)
+    assert run.payload.event is not None
+    assert run.payload.event.trigger_id == UUID(TRIGGER_ID)
+    assert run.payload.event.event_type == "order.created"
+    assert run.payload.event.delivery_id == "webhook:msg_2a"
+
+    skipped, scheduled = (
+        events.list(IntrospectionEventName.ROUTINE_SKIPPED).page().records
+    )
+    assert isinstance(skipped, RoutineSkippedEvent)
+    assert skipped.payload.reason is RoutineSkipReason.TRIGGER_BUSY
+    assert skipped.payload.event is not None
+    assert skipped.payload.event.trigger_id == UUID(TRIGGER_ID)
+    assert isinstance(scheduled, RoutineSkippedEvent)
+    assert scheduled.payload.event is None
+
+
+def test_run_source_names_the_trigger_source_values():
+    assert [source.value for source in RoutineRunSource] == [
+        "scheduled",
+        "manual",
+        "trigger",
+    ]
 
 
 def test_event_get_resolves_an_routine_family(fake_api: FakeAPI):

@@ -6,7 +6,9 @@ via ``extra="allow"`` so CP additions don't break the SDK.
 ``client_secret`` and ``signing_secret`` are **write-only**: the API
 accepts them on create and update and never returns them, so the read
 models here deliberately have no such fields. Omitting them on update
-means "unchanged", not "clear".
+means "unchanged", not "clear". The one exception is a ``webhook``
+connector's platform-generated ``signing_secret``, returned once in
+:class:`ConnectorSecretResponse` on its create and on a rotation.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from introspection_sdk.schemas.runner import RunnerIdentity
 
@@ -35,6 +37,23 @@ class ConnectorAuthMode(StrEnum):
     FEDERATED_EXCHANGE = "federated_exchange"
     PERSON_AUTHORIZED = "person_authorized"
     AAUTH = "aauth"
+
+
+class WebhookAuth(StrEnum):
+    """How a ``webhook`` connector's callers prove themselves."""
+
+    STANDARD_WEBHOOKS = "standard_webhooks"
+    """A Standard Webhooks signature (``webhook-id``,
+    ``webhook-timestamp``, ``webhook-signature``) over the body, keyed by
+    the connector's secret. The default."""
+    BEARER = "bearer"
+    """``Authorization: Bearer <secret>``."""
+
+
+WEBHOOK_PROVIDER = "webhook"
+"""The ``provider`` of an inbound-only connector the customer's own
+systems call, at the control plane's ``/v1/webhooks/connectors/{id}``.
+Its events start routines through a ``connector`` trigger."""
 
 
 class ConnectorStatus(StrEnum):
@@ -126,6 +145,26 @@ class Connector(ApiModel):
     created_by_member_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     requires_runtime: bool = False
+    webhook_auth: WebhookAuth | str | None = Field(
+        default=None, union_mode="left_to_right"
+    )
+    """How a ``webhook`` connector's callers authenticate; ``None`` for
+    every other provider. An auth mode this SDK does not know decodes as a
+    plain string."""
+    previous_signing_secret_expires_at: datetime | None = None
+    """For a rotated ``webhook`` connector: until when its previous secret
+    is still accepted (24 hours after the rotation)."""
+
+
+class ConnectorSecretResponse(Connector):
+    """A create or update response: a :class:`Connector`, plus a
+    ``webhook`` connector's secret the one time it is issued."""
+
+    signing_secret: SecretStr | None = None
+    """A ``webhook`` connector's new secret, on its create or on
+    ``rotate_signing_secret`` only. Shown once: no read returns it. A
+    :class:`~pydantic.SecretStr`, so it never prints; read it with
+    ``.get_secret_value()``."""
 
 
 class ConnectorCreateRequest(ApiModel):
@@ -169,6 +208,10 @@ class ConnectorCreateRequest(ApiModel):
     """Cedar entities the egress policy gate adds to this connector's
     requests."""
     webhook_url: str | None = None
+    webhook_auth: WebhookAuth | None = None
+    """For a ``webhook`` connector only: how callers authenticate;
+    ``standard_webhooks`` when omitted. Such a connector takes
+    ``auth_mode=static`` and no secret, hosts, scopes or endpoints."""
 
 
 class ConnectorUpdateRequest(ApiModel):
@@ -191,6 +234,13 @@ class ConnectorUpdateRequest(ApiModel):
     untouched."""
     client_secret: str | None = None
     signing_secret: str | None = None
+    """Not for a ``webhook`` connector, whose secret the platform
+    generates: rotate it with ``rotate_signing_secret``."""
+    webhook_auth: WebhookAuth | None = None
+    """For a ``webhook`` connector only."""
+    rotate_signing_secret: bool | None = None
+    """For a ``webhook`` connector only: issue a new secret, returned once
+    in the response; the previous one stays valid for 24 hours."""
 
 
 class ConnectorAuthorizeBinding(ApiModel):
@@ -382,8 +432,11 @@ __all__ = [
     "ConnectorOAuthClientRegistration",
     "ConnectorOAuthDiscoveryRequest",
     "ConnectorOAuthDiscoveryResponse",
+    "ConnectorSecretResponse",
     "ConnectorStatus",
     "ConnectorUpdateRequest",
     "EntityUid",
     "PolicyEntity",
+    "WEBHOOK_PROVIDER",
+    "WebhookAuth",
 ]

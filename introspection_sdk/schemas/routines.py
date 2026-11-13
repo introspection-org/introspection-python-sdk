@@ -86,6 +86,39 @@ class RoutineSkipReason(StrEnum):
     TARGET_TASK_REFUSED = "target_task_refused"
     TARGET_BUSY = "target_busy"
     """The target task stayed mid-turn through every retry."""
+    TRIGGER_BUSY = "trigger_busy"
+    """An event arrived while the run its trigger last started was still in
+    flight; the payload's ``event`` names the delivery."""
+
+
+class RoutineRunSource(StrEnum):
+    """What started a routine's run, stamped on its task's metadata as
+    ``trigger_source``."""
+
+    SCHEDULED = "scheduled"
+    MANUAL = "manual"
+    TRIGGER = "trigger"
+    """An event trigger; the task's metadata ``routine_trigger`` holds its
+    :class:`RoutineTriggerEventRef`."""
+
+
+class RoutineTriggerSource(StrEnum):
+    """What an event trigger listens to."""
+
+    INTEGRATION = "integration"
+    """An org integration bound to the project (Slack, GitHub)."""
+    CONNECTOR = "connector"
+    """A project connector, named by ``connector_slug`` (a ``webhook``
+    connector)."""
+
+
+class RoutineTriggerProvider(StrEnum):
+    """The provider whose events a trigger matches."""
+
+    SLACK = "slack"
+    LINEAR = "linear"
+    GITHUB = "github"
+    WEBHOOK = "webhook"
 
 
 # Left-to-right tries the enum first and falls back to the raw string, so
@@ -104,6 +137,19 @@ OpenExecutionStatus = Annotated[
 OpenSkipReason = Annotated[
     RoutineSkipReason | str, Field(union_mode="left_to_right")
 ]
+OpenTriggerSource = Annotated[
+    RoutineTriggerSource | str, Field(union_mode="left_to_right")
+]
+OpenTriggerProvider = Annotated[
+    RoutineTriggerProvider | str, Field(union_mode="left_to_right")
+]
+
+MAX_TRIGGER_PARAMETERS_BYTES = 16 * 1024
+"""A manual trigger's ``parameters`` serialize to at most this many bytes
+of JSON; the server answers 422 past it."""
+MAX_TRIGGER_PARAMETERS_DEPTH = 8
+"""Objects and arrays in a manual trigger's ``parameters`` nest at most
+this deep; the server answers 422 past it."""
 
 
 class RoutineCondition(_ApiModel):
@@ -133,6 +179,82 @@ class RoutineMetadata(_ApiModel):
     operator_default: str | None = None
     """Set by the platform on a project's default routine
     (``project_check_in``)."""
+
+
+class RoutineTriggerFilter(_ApiModel):
+    """An event trigger's filter: every key set must contain the event's
+    value for it. Which keys a provider takes is the server's catalogue:
+    Slack ``channel_ids`` / ``emoji`` (``slack.message.posted`` requires
+    ``channel_ids``), GitHub ``repository_ids`` / ``branches``, Linear
+    ``team_ids`` / ``to_states``, and a webhook ``payload_fields``."""
+
+    channel_ids: list[str] | None = None
+    emoji: list[str] | None = None
+    team_ids: list[str] | None = None
+    to_states: list[str] | None = None
+    repository_ids: list[str] | None = None
+    branches: list[str] | None = None
+    payload_fields: dict[str, list[str]] | None = None
+    """A webhook body's top-level scalars, by key: a string matches as
+    given, a number, boolean or ``null`` as its JSON text."""
+
+
+class RoutineTriggerSpec(_ApiModel):
+    """One entry of ``triggers`` on a routine create or update.
+
+    With ``id`` it keeps that existing trigger, applying the fields given;
+    without one it is a new trigger. ``parameters`` names values read from
+    the event's JSON body by RFC 6901 pointer (``{"order_id":
+    "/data/order/id"}``), which the prompt references as
+    ``@parameters.<name>`` and the run receives as ``parameters.json``.
+    """
+
+    provider: OpenTriggerProvider
+    event_types: list[str]
+    """``{provider}.{object}.{action}`` names (``github.push``); a webhook
+    connector takes the sender's own type names, or ``*`` alone for
+    every one (a body with no string ``type`` arrives as
+    ``webhook.received``)."""
+    id: UUID | None = None
+    source: OpenTriggerSource | None = None
+    """``integration`` when omitted."""
+    connector_slug: str | None = None
+    """The project connector, set for a ``connector`` source only."""
+    filter: RoutineTriggerFilter | None = None
+    parameters: dict[str, str] | None = None
+    enabled: bool | None = None
+
+
+class RoutineTrigger(_ApiModel):
+    """A stored event trigger on a routine."""
+
+    id: UUID
+    routine_id: UUID
+    source: OpenTriggerSource
+    provider: OpenTriggerProvider
+    event_types: list[str]
+    connector_slug: str | None = None
+    filter: RoutineTriggerFilter = Field(default_factory=RoutineTriggerFilter)
+    parameters: dict[str, str] = Field(default_factory=dict)
+    """``{name: JSON pointer}`` into the event's body."""
+    enabled: bool = True
+    org_id: UUID | None = None
+    project_id: UUID | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    deleted_at: datetime | None = None
+
+
+class RoutineTriggerEventRef(_ApiModel):
+    """The event trigger a run or skip answered. Carried as ``event`` on
+    ``introspection.routines.triggered`` / ``.skipped`` payloads and as
+    ``routine_trigger`` in a trigger-started task's metadata."""
+
+    trigger_id: UUID
+    event_type: str
+    delivery_id: str
+    """The provider event's identity within its source; a redelivery
+    repeats it."""
 
 
 class Routine(_ApiModel):
@@ -176,6 +298,8 @@ class Routine(_ApiModel):
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
     """Set on a soft-deleted routine, which ``get`` still returns."""
+    triggers: list[RoutineTrigger] = []
+    """Events that start a run, beside the schedule and a manual trigger."""
 
     @property
     def typed_metadata(self) -> RoutineMetadata | None:
@@ -215,6 +339,9 @@ class RoutineCreateRequest(_ApiModel):
     and timezone-aware."""
     metadata: dict[str, Any] | None = None
     enabled: bool | None = None
+    triggers: list[RoutineTriggerSpec] | None = None
+    """Event triggers (at most 20), for a prompt routine that starts a
+    task per run; a new routine's triggers carry no ``id``."""
 
 
 class RoutineUpdateRequest(_ApiModel):
@@ -238,10 +365,29 @@ class RoutineUpdateRequest(_ApiModel):
     metadata: dict[str, Any] | None = None
     enabled: bool | None = None
     """``False`` pauses and keeps the slot."""
+    triggers: list[RoutineTriggerSpec] | None = None
+    """Replaces the routine's triggers: an entry with an ``id`` keeps that
+    trigger, the rest are removed; ``[]`` removes them all."""
+
+
+class RoutineTriggerRequest(_ApiModel):
+    """Body of ``POST /v1/routines/{id}/trigger``.
+
+    ``parameters`` is one JSON object, at most
+    :data:`MAX_TRIGGER_PARAMETERS_BYTES` serialized and
+    :data:`MAX_TRIGGER_PARAMETERS_DEPTH` levels deep. A prompt routine's
+    run receives it as ``parameters.json`` and ``@parameters.<name>`` in
+    its prompt; a platform routine reads the keys its kind defines
+    (``observation_synthesis``: ``conversation_ids``, 1-100).
+    """
+
+    parameters: dict[str, Any] | None = None
 
 
 class EnqueuedConversation(_ApiModel):
-    """A conversation a synthesis trigger queued, and the end it queued it at."""
+    """One entry of an ``observation_synthesis`` trigger's
+    ``result["conversations"]``: a conversation it queued, and the end it
+    queued it at."""
 
     conversation_id: str
     completed_at: AwareDatetime
@@ -251,23 +397,23 @@ class EnqueuedConversation(_ApiModel):
 
 
 class RoutineTriggerResponse(_ApiModel):
-    """Response of a hand trigger (``202``). A ``skipped`` status carries
+    """Response of a manual trigger (``202``). A ``skipped`` status carries
     its ``reason`` and records no event."""
 
     status: OpenExecutionStatus
     routine_id: UUID | None = None
     task_id: UUID | None = None
     """The task created, or posted into."""
-    reason: str | None = None
     run_id: UUID | None = None
-    """``observation_clustering`` only: the run its
+    """The run this trigger started, when it has one, such as the run an
+    ``observation_clustering`` routine's
     ``introspection.observation_clustering.run`` events carry."""
-    enqueued: int | None = None
-    """``observation_synthesis`` only: conversations sent to the synthesis
-    queue."""
-    conversations: list[EnqueuedConversation] | None = None
-    """``observation_synthesis`` with named conversations only: what was
-    queued, per conversation."""
+    reason: str | None = None
+    result: dict[str, Any] | None = None
+    """What the run reports, by kind. ``observation_synthesis``:
+    ``enqueued``, the number of conversations sent to the synthesis
+    queue, and, for named ``conversation_ids``, ``conversations``: a list
+    shaped as :class:`EnqueuedConversation`."""
 
 
 __all__ = [
@@ -279,13 +425,25 @@ __all__ = [
     "RoutineKind",
     "RoutineMetadata",
     "RoutineSkipReason",
+    "RoutineRunSource",
+    "RoutineTrigger",
+    "RoutineTriggerEventRef",
+    "RoutineTriggerFilter",
+    "RoutineTriggerProvider",
+    "RoutineTriggerRequest",
     "RoutineTriggerResponse",
+    "RoutineTriggerSource",
+    "RoutineTriggerSpec",
     "RoutineTriggerType",
     "RoutineUpdateRequest",
     "EnqueuedConversation",
+    "MAX_TRIGGER_PARAMETERS_BYTES",
+    "MAX_TRIGGER_PARAMETERS_DEPTH",
     "OpenConditionType",
     "OpenExecutionStatus",
     "OpenKind",
     "OpenSkipReason",
+    "OpenTriggerProvider",
+    "OpenTriggerSource",
     "OpenTriggerType",
 ]
