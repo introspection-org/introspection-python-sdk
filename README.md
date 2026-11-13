@@ -216,8 +216,9 @@ comments. It needs the annotations read scope.
 
 ### Resume an export oldest-first
 
-`open_export` opens the same export and hands back the `Introspection-Next`
-cursor before the body streams. `direction="asc"` reads from the conversation
+`open_export` opens the same export and hands back the `X-Next-Cursor`
+cursor (the header the Arrow list responses use too) before the body
+streams. `direction="asc"` reads from the conversation
 start; pass the saved cursor as `next` to read only what is newer. With
 nothing newer the server answers `204`: `export.nothing_newer` is `True` and
 `export.next` echoes the cursor sent. The cursor is opaque, so store it as the

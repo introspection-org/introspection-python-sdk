@@ -15,11 +15,13 @@ if TYPE_CHECKING:
         ConversationExportFormat,
     )
 
-__all__ = ["INTROSPECTION_NEXT_HEADER", "AsyncConversationExport"]
+__all__ = ["NEXT_CURSOR_HEADER", "AsyncConversationExport"]
 
 #: The response header an oldest-first export answers with: the opaque
 #: cursor to pass back as ``next`` to resume after the last exported item.
-INTROSPECTION_NEXT_HEADER = "Introspection-Next"
+#: It is the same header the Arrow list responses carry their next-page
+#: token in.
+NEXT_CURSOR_HEADER = "X-Next-Cursor"
 
 
 class AsyncConversationExport:
@@ -54,14 +56,14 @@ class AsyncConversationExport:
 
     @property
     def next(self) -> str | None:
-        """The ``Introspection-Next`` cursor, or ``None`` when not sent.
+        """The ``X-Next-Cursor`` cursor, or ``None`` when not sent.
 
         An oldest-first export (``direction="asc"``) and any resumed one
         (``next=...``) carry it: pass it as ``next`` to the following
         :meth:`open_export` to read only what is newer. It is an opaque
         string; store it as is, never parse it or turn it into a number.
         """
-        return self._response.headers.get(INTROSPECTION_NEXT_HEADER) or None
+        return self._response.headers.get(NEXT_CURSOR_HEADER) or None
 
     @property
     def nothing_newer(self) -> bool:
