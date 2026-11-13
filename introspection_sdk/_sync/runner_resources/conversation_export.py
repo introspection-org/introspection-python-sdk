@@ -28,7 +28,7 @@ NEXT_CURSOR_HEADER = "X-Next-Cursor"
 
 class ConversationExport:
     """An open conversation export, yielded by
-    :meth:`Conversations.open_export`.
+    :meth:`Conversations.export_resumable`.
 
     :attr:`next` and :attr:`nothing_newer` are known on entry, before the
     body streams; iterate :meth:`iter_bytes` or :meth:`iter_spans` to read
@@ -52,7 +52,7 @@ class ConversationExport:
 
         An oldest-first export (``direction="asc"``) and any resumed one
         (``next=...``) carry it: pass it as ``next`` to the following
-        :meth:`open_export` to read only what is newer. It is an opaque
+        :meth:`export_resumable` to read only what is newer. It is an opaque
         string; store it as is, never parse it or turn it into a number.
         """
         return self._response.headers.get(NEXT_CURSOR_HEADER) or None

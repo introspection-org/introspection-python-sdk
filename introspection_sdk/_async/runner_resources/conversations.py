@@ -704,7 +704,7 @@ class AsyncConversations:
         )
 
     @contextlib.asynccontextmanager
-    async def open_export(
+    async def export_resumable(
         self,
         conversation_id: str,
         format: ConversationExportFormat = "jsonl",
@@ -717,7 +717,7 @@ class AsyncConversations:
         """Open a conversation export: ``async with`` it to read the
         ``X-Next-Cursor`` cursor before the body, then ``async for``
         ``export.iter_spans()`` or ``export.iter_bytes()``. See
-        :meth:`Conversations.open_export` for the semantics.
+        :meth:`Conversations.export_resumable` for the semantics.
         """
         # unasync: end
         """Open a conversation export: ``with`` it to read the
