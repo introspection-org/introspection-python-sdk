@@ -34,6 +34,7 @@ from dirty_equals import (
     IsOneOf,
     IsPartialDict,
     IsPositiveInt,
+    IsStr,
     IsUUID,
 )
 from inline_snapshot import snapshot
@@ -2042,6 +2043,9 @@ def test_16_automations(world: World) -> None:
             "automation_id": "[uuid]",
             "task_id": "[uuid]",
             "reason": None,
+            "run_id": None,
+            "enqueued": None,
+            "conversations": None,
         }
     )
     automations.get(automation.id)
@@ -2376,6 +2380,8 @@ def test_18_members_and_keys(world: World) -> None:
         allow=["runtimes"],
     )
     assert api_key.api_key, "the plaintext key is returned once"
+    # The platform adds default scopes over time, so hold only what `allow` asks.
+    assert {"runtimes:read", "runtimes:write"} <= set(api_key.scope.split())
     assert stable({**plain(api_key), "api_key": None}) == snapshot(
         {
             "id": "[uuid]",
@@ -2385,7 +2391,7 @@ def test_18_members_and_keys(world: World) -> None:
             "name": "walk",
             "environment": "development",
             "allow": ["runtimes"],
-            "scope": "telemetry:write projects:read repositories:read recipes:read recipes:write runtimes:read runtimes:write experiments:read experiments:write tasks:read tasks:write tasks:delete files:read files:write conversations:read events:read metrics:read shares:read shares:write shares:delete connectors:read connectors:write annotations:read approvals:read approvals:write",
+            "scope": IsStr,
             "member_id": "[uuid]",
             "key_prefix": "[redacted]",
             "key_suffix": "[redacted]",
