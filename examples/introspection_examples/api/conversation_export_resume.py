@@ -1,7 +1,7 @@
 """Export a conversation oldest-first, then resume after the saved cursor.
 
 The first export reads the conversation from its start with
-``direction="asc"`` and keeps the ``Introspection-Next`` cursor the response
+``direction="asc"`` and keeps the ``X-Next-Cursor`` cursor the response
 answers with. The second passes that cursor as ``next`` and reads only what
 arrived since; with nothing newer, the server answers ``204`` and
 ``export.nothing_newer`` is ``True``. Without ``INTROSPECTION_CONVERSATION``
@@ -61,7 +61,7 @@ def main() -> None:
         print(f"exporting {conversation_id} oldest-first")
         cursor = export_since(client, conversation_id, None)
         if cursor is None:
-            sys.exit("the export answered no Introspection-Next cursor")
+            sys.exit("the export answered no X-Next-Cursor cursor")
         print(f"resuming after {cursor}")
         export_since(client, conversation_id, cursor)
     finally:

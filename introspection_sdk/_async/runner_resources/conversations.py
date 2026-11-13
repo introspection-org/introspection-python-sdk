@@ -715,13 +715,13 @@ class AsyncConversations:
     ) -> AsyncIterator[AsyncConversationExport]:
         # unasync: async-only (the sync twin's docstring follows)
         """Open a conversation export: ``async with`` it to read the
-        ``Introspection-Next`` cursor before the body, then ``async for``
+        ``X-Next-Cursor`` cursor before the body, then ``async for``
         ``export.iter_spans()`` or ``export.iter_bytes()``. See
         :meth:`Conversations.open_export` for the semantics.
         """
         # unasync: end
         """Open a conversation export: ``with`` it to read the
-        ``Introspection-Next`` cursor before the body, then iterate
+        ``X-Next-Cursor`` cursor before the body, then iterate
         ``export.iter_spans()`` (``jsonl``) or ``export.iter_bytes()``.
 
         ``direction="asc"`` exports oldest-first, from the conversation

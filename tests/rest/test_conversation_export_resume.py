@@ -1,7 +1,7 @@
 """Oldest-first conversation reads: the resumable export and ``items`` order.
 
 ``open_export`` sends ``direction`` / ``next``, surfaces the
-``Introspection-Next`` response header before the body streams, and reports
+``X-Next-Cursor`` response header before the body streams, and reports
 the ``204`` "nothing newer" answer as ``nothing_newer`` with the cursor kept.
 ``items.list`` sends ``direction=asc|desc``.
 """
@@ -21,7 +21,7 @@ from introspection_sdk.runner_resources import (
     Conversations,
 )
 from introspection_sdk.runner_resources.conversations import (
-    INTROSPECTION_NEXT_HEADER,
+    NEXT_CURSOR_HEADER,
 )
 
 from .conftest import FakeAPI
@@ -47,7 +47,7 @@ def test_open_export_asc_sends_direction_and_surfaces_the_cursor(
         "GET",
         EXPORT,
         content=jsonl_body("span-1", "span-2"),
-        headers={INTROSPECTION_NEXT_HEADER: CURSOR},
+        headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
     with _conversations(fake_api).open_export(
@@ -77,7 +77,7 @@ def test_open_export_reads_the_cursor_before_the_body(fake_api: FakeAPI):
         "GET",
         EXPORT,
         lambda _request: httpx.Response(
-            200, headers={INTROSPECTION_NEXT_HEADER: CURSOR}, content=body()
+            200, headers={NEXT_CURSOR_HEADER: CURSOR}, content=body()
         ),
     )
 
@@ -97,7 +97,7 @@ def test_open_export_passes_the_cursor_back_verbatim(fake_api: FakeAPI):
         assert request.url.params["next"] == CURSOR
         return httpx.Response(
             200,
-            headers={INTROSPECTION_NEXT_HEADER: NEWER_CURSOR},
+            headers={NEXT_CURSOR_HEADER: NEWER_CURSOR},
             content=jsonl_body("span-3"),
         )
 
@@ -120,7 +120,7 @@ def test_open_export_reports_nothing_newer_and_keeps_the_cursor(
         "GET",
         EXPORT,
         status=204,
-        headers={INTROSPECTION_NEXT_HEADER: CURSOR},
+        headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
     with _conversations(fake_api).open_export("conv-1", next=CURSOR) as export:
@@ -135,7 +135,7 @@ def test_open_export_reports_nothing_newer_and_keeps_the_cursor(
 
 
 def test_open_export_without_the_header_has_no_cursor(fake_api: FakeAPI):
-    """A newest-first export answers no `Introspection-Next`."""
+    """A newest-first export answers no `X-Next-Cursor`."""
     fake_api.add("GET", EXPORT, content=jsonl_body("span-1"))
 
     with _conversations(fake_api).open_export("conv-1") as export:
@@ -153,7 +153,7 @@ def test_open_export_streams_other_formats_as_bytes(fake_api: FakeAPI):
         "GET",
         EXPORT,
         content=body,
-        headers={INTROSPECTION_NEXT_HEADER: CURSOR},
+        headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
     with _conversations(fake_api).open_export(
@@ -201,7 +201,7 @@ async def test_async_open_export_resumes_and_reports_nothing_newer(
         "GET",
         EXPORT,
         content=jsonl_body("span-1"),
-        headers={INTROSPECTION_NEXT_HEADER: CURSOR},
+        headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
     async with conversations.open_export("conv-1", direction="asc") as export:
@@ -216,7 +216,7 @@ async def test_async_open_export_resumes_and_reports_nothing_newer(
         "GET",
         EXPORT,
         status=204,
-        headers={INTROSPECTION_NEXT_HEADER: export.next},
+        headers={NEXT_CURSOR_HEADER: export.next},
     )
     async with conversations.open_export("conv-1", next=export.next) as again:
         chunks = [chunk async for chunk in again.iter_bytes()]
