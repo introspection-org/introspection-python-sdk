@@ -214,6 +214,29 @@ was removed; `export_trajectory` and `export_arrow` are unchanged.
 row from `client.annotations.list`, on every annotated span, with its
 comments. It needs the annotations read scope.
 
+### Resume an export oldest-first
+
+`open_export` opens the same export and hands back the `Introspection-Next`
+cursor before the body streams. `direction="asc"` reads from the conversation
+start; pass the saved cursor as `next` to read only what is newer. With
+nothing newer the server answers `204`: `export.nothing_newer` is `True` and
+`export.next` echoes the cursor sent. The cursor is opaque, so store it as the
+string it is:
+
+```python
+with client.conversations.open_export(
+    conversation_id, direction="asc", next=saved_cursor
+) as export:
+    for span in export.iter_spans():
+        print(span.span_id, span.name)
+saved_cursor = export.next
+```
+
+`iter_bytes()` reads any format raw. `items.list(conversation_id,
+direction="asc")` pages the items oldest-first as well; the default is
+newest-first. Runnable:
+[`conversation_export_resume.py`](examples/introspection_examples/api/conversation_export_resume.py).
+
 ## Export a conversation as a Harbor trajectory
 
 `spans_to_atif` projects the GenAI spans of a conversation onto one
