@@ -1,6 +1,6 @@
 """Oldest-first conversation reads: the resumable export and ``items`` order.
 
-``open_export`` sends ``direction`` / ``next``, surfaces the
+``export_resumable`` sends ``direction`` / ``next``, surfaces the
 ``X-Next-Cursor`` response header before the body streams, and reports
 the ``204`` "nothing newer" answer as ``nothing_newer`` with the cursor kept.
 ``items.list`` sends ``direction=asc|desc``.
@@ -40,7 +40,7 @@ def _conversations(fake_api: FakeAPI) -> Conversations:
     return Conversations(fake_api.client())
 
 
-def test_open_export_asc_sends_direction_and_surfaces_the_cursor(
+def test_export_resumable_asc_sends_direction_and_surfaces_the_cursor(
     fake_api: FakeAPI,
 ):
     fake_api.add(
@@ -50,7 +50,7 @@ def test_open_export_asc_sends_direction_and_surfaces_the_cursor(
         headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
-    with _conversations(fake_api).open_export(
+    with _conversations(fake_api).export_resumable(
         "conv-1", direction="asc", agent="root"
     ) as export:
         assert isinstance(export, ConversationExport)
@@ -65,7 +65,7 @@ def test_open_export_asc_sends_direction_and_surfaces_the_cursor(
     assert dict(request.params) == {"agent": "root", "direction": "asc"}
 
 
-def test_open_export_reads_the_cursor_before_the_body(fake_api: FakeAPI):
+def test_export_resumable_reads_the_cursor_before_the_body(fake_api: FakeAPI):
     pulled: list[bytes] = []
 
     def body() -> Iterator[bytes]:
@@ -81,7 +81,7 @@ def test_open_export_reads_the_cursor_before_the_body(fake_api: FakeAPI):
         ),
     )
 
-    with _conversations(fake_api).open_export(
+    with _conversations(fake_api).export_resumable(
         "conv-1", direction="asc"
     ) as export:
         # The header is the resume point; it is known with nothing read yet.
@@ -92,7 +92,7 @@ def test_open_export_reads_the_cursor_before_the_body(fake_api: FakeAPI):
     assert [span.span_id for span in spans] == ["span-1", "span-2"]
 
 
-def test_open_export_passes_the_cursor_back_verbatim(fake_api: FakeAPI):
+def test_export_resumable_passes_the_cursor_back_verbatim(fake_api: FakeAPI):
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.params["next"] == CURSOR
         return httpx.Response(
@@ -103,7 +103,9 @@ def test_open_export_passes_the_cursor_back_verbatim(fake_api: FakeAPI):
 
     fake_api.add_handler("GET", EXPORT, handler)
 
-    with _conversations(fake_api).open_export("conv-1", next=CURSOR) as export:
+    with _conversations(fake_api).export_resumable(
+        "conv-1", next=CURSOR
+    ) as export:
         spans = list(export.iter_spans())
 
     # `next` implies oldest-first; the SDK sends no direction of its own.
@@ -113,7 +115,7 @@ def test_open_export_passes_the_cursor_back_verbatim(fake_api: FakeAPI):
     assert isinstance(export.next, str)
 
 
-def test_open_export_reports_nothing_newer_and_keeps_the_cursor(
+def test_export_resumable_reports_nothing_newer_and_keeps_the_cursor(
     fake_api: FakeAPI,
 ):
     fake_api.add(
@@ -123,7 +125,9 @@ def test_open_export_reports_nothing_newer_and_keeps_the_cursor(
         headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
-    with _conversations(fake_api).open_export("conv-1", next=CURSOR) as export:
+    with _conversations(fake_api).export_resumable(
+        "conv-1", next=CURSOR
+    ) as export:
         spans = list(export.iter_spans())
         raw = b"".join(export.iter_bytes())
 
@@ -134,11 +138,11 @@ def test_open_export_reports_nothing_newer_and_keeps_the_cursor(
     assert raw == b""
 
 
-def test_open_export_without_the_header_has_no_cursor(fake_api: FakeAPI):
+def test_export_resumable_without_the_header_has_no_cursor(fake_api: FakeAPI):
     """A newest-first export answers no `X-Next-Cursor`."""
     fake_api.add("GET", EXPORT, content=jsonl_body("span-1"))
 
-    with _conversations(fake_api).open_export("conv-1") as export:
+    with _conversations(fake_api).export_resumable("conv-1") as export:
         assert export.next is None
         assert export.nothing_newer is False
         assert len(list(export.iter_spans())) == 1
@@ -147,7 +151,7 @@ def test_open_export_without_the_header_has_no_cursor(fake_api: FakeAPI):
     assert "next" not in fake_api.last_request.params
 
 
-def test_open_export_streams_other_formats_as_bytes(fake_api: FakeAPI):
+def test_export_resumable_streams_other_formats_as_bytes(fake_api: FakeAPI):
     body = b'[{"role": "meta"}]'
     fake_api.add(
         "GET",
@@ -156,7 +160,7 @@ def test_open_export_streams_other_formats_as_bytes(fake_api: FakeAPI):
         headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
-    with _conversations(fake_api).open_export(
+    with _conversations(fake_api).export_resumable(
         "conv-1", "trajectory", next=CURSOR
     ) as export:
         assert b"".join(export.iter_bytes()) == body
@@ -169,7 +173,7 @@ def test_open_export_streams_other_formats_as_bytes(fake_api: FakeAPI):
     )
 
 
-def test_open_export_refusal_raises_on_entry(fake_api: FakeAPI):
+def test_export_resumable_refusal_raises_on_entry(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         EXPORT,
@@ -179,7 +183,7 @@ def test_open_export_refusal_raises_on_entry(fake_api: FakeAPI):
 
     with (
         pytest.raises(IntrospectionAPIError) as error,
-        _conversations(fake_api).open_export(
+        _conversations(fake_api).export_resumable(
             "conv-1", direction="desc", next=CURSOR
         ),
     ):
@@ -193,7 +197,7 @@ def test_open_export_refusal_raises_on_entry(fake_api: FakeAPI):
 
 
 @pytest.mark.asyncio
-async def test_async_open_export_resumes_and_reports_nothing_newer(
+async def test_async_export_resumable_resumes_and_reports_nothing_newer(
     fake_api: FakeAPI,
 ):
     conversations = AsyncConversations(fake_api.async_client())
@@ -204,7 +208,9 @@ async def test_async_open_export_resumes_and_reports_nothing_newer(
         headers={NEXT_CURSOR_HEADER: CURSOR},
     )
 
-    async with conversations.open_export("conv-1", direction="asc") as export:
+    async with conversations.export_resumable(
+        "conv-1", direction="asc"
+    ) as export:
         assert isinstance(export, AsyncConversationExport)
         assert export.next == CURSOR
         spans = [span async for span in export.iter_spans()]
@@ -218,7 +224,9 @@ async def test_async_open_export_resumes_and_reports_nothing_newer(
         status=204,
         headers={NEXT_CURSOR_HEADER: export.next},
     )
-    async with conversations.open_export("conv-1", next=export.next) as again:
+    async with conversations.export_resumable(
+        "conv-1", next=export.next
+    ) as again:
         chunks = [chunk async for chunk in again.iter_bytes()]
 
     assert again.nothing_newer is True

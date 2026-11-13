@@ -216,7 +216,7 @@ comments. It needs the annotations read scope.
 
 ### Resume an export oldest-first
 
-`open_export` opens the same export and hands back the `X-Next-Cursor`
+`export_resumable` opens the same export and hands back the `X-Next-Cursor`
 cursor (the header the Arrow list responses use too) before the body
 streams. `direction="asc"` reads from the conversation
 start; pass the saved cursor as `next` to read only what is newer. With
@@ -225,7 +225,7 @@ nothing newer the server answers `204`: `export.nothing_newer` is `True` and
 string it is:
 
 ```python
-with client.conversations.open_export(
+with client.conversations.export_resumable(
     conversation_id, direction="asc", next=saved_cursor
 ) as export:
     for span in export.iter_spans():

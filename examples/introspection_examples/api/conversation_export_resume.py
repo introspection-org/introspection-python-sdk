@@ -35,7 +35,7 @@ def export_since(
     client: IntrospectionClient, conversation_id: str, cursor: str | None
 ) -> str | None:
     """Print the spans after ``cursor`` and return the cursor to save."""
-    with client.conversations.open_export(
+    with client.conversations.export_resumable(
         conversation_id, direction="asc", next=cursor
     ) as export:
         if export.nothing_newer:

@@ -634,7 +634,7 @@ class Conversations:
         )
 
     @contextlib.contextmanager
-    def open_export(
+    def export_resumable(
         self,
         conversation_id: str,
         format: ConversationExportFormat = "jsonl",
