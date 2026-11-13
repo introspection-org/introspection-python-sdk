@@ -16,7 +16,8 @@ uv run python -m introspection_examples.api.async_runtimes           # AsyncRunn
 uv run python -m introspection_examples.api.repositories             # Repositories: list, browse contents, read a file, page commits
 uv run python -m introspection_examples.api.conversation_atif        # Conversations: project one onto a Harbor ATIF trajectory, write trajectory.json
 uv run python -m introspection_examples.api.members                  # Members: label one with metadata, list members by metadata
-uv run python -m introspection_examples.api.automations              # Automations: list, schedule a one-off reminder, read trigger events
+uv run python -m introspection_examples.api.routines              # Routines: list, schedule a one-off reminder, read trigger events
+uv run python -m introspection_examples.api.routine_triggers      # Routines: a webhook connector trigger with @parameters, a manual run with parameters
 uv run python -m introspection_examples.api.connections              # Connections: list a member's connected apps, start connecting one
 uv run python -m introspection_examples.api.connectors_slack         # Create a Slack connector and authorize a workspace
 uv run python -m introspection_examples.api.connectors_pipedream     # Create a Pipedream connector and authorize one app

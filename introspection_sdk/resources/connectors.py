@@ -8,7 +8,9 @@ connector operation even though the route lives under ``/v1/oauth/``.
 
 ``client_secret`` / ``signing_secret`` are write-only: accepted on
 create and update, absent from every response, and omitting them on
-update means "unchanged". Project scope comes from the authenticated
+update means "unchanged". A ``webhook`` connector is the exception:
+the platform generates its secret and returns it once, on create and on
+``update(rotate_signing_secret=True)``. Project scope comes from the authenticated
 credential; connector calls do not take a separate project selector.
 """
 

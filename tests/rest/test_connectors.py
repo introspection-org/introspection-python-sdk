@@ -22,9 +22,11 @@ from introspection_sdk.schemas.connectors import (
     ConnectorAuthorizeBinding,
     ConnectorCreateRequest,
     ConnectorOAuthClientRegistration,
+    ConnectorSecretResponse,
     ConnectorUpdateRequest,
     EntityUid,
     PolicyEntity,
+    WebhookAuth,
 )
 
 from .conftest import (
@@ -306,6 +308,156 @@ def test_update_rotates_a_secret_without_touching_anything_else(
     )
 
     assert fake_api.last_request.json() == {"client_secret": "rotated-secret"}
+
+
+# --- webhook connectors -------------------------------------------
+
+
+def webhook_payload(**over: object) -> Connector:
+    fields: dict[str, object] = {
+        "slug": "orders",
+        "name": "Orders",
+        "provider": "webhook",
+        "auth_mode": "static",
+        "scopes": [],
+        "api_hosts": [],
+        "requires_runtime": False,
+        "webhook_auth": "standard_webhooks",
+        "previous_signing_secret_expires_at": None,
+    }
+    fields.update(over)
+    return connector_payload(**fields)
+
+
+def test_create_webhook_connector_returns_its_secret_once(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/connectors",
+        status=201,
+        json_body=webhook_payload(signing_secret="whsec_new"),
+    )
+
+    created = Connectors(fake_api.client()).create(
+        name="Orders",
+        provider="webhook",
+        auth_mode="static",
+        slug="orders",
+        webhook_auth=WebhookAuth.BEARER,
+    )
+
+    assert fake_api.last_request.json() == {
+        "name": "Orders",
+        "provider": "webhook",
+        "auth_mode": "static",
+        "slug": "orders",
+        "webhook_auth": "bearer",
+    }
+    assert isinstance(created, ConnectorSecretResponse)
+    assert created.signing_secret is not None
+    assert created.signing_secret.get_secret_value() == "whsec_new"
+    assert "whsec_new" not in repr(created)
+    assert created.webhook_auth is WebhookAuth.STANDARD_WEBHOOKS
+    assert created.previous_signing_secret_expires_at is None
+
+
+def test_rotate_webhook_secret_reports_the_grace_window(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        CONNECTOR_PATH,
+        json_body=webhook_payload(
+            signing_secret="whsec_rotated",
+            previous_signing_secret_expires_at="2026-11-14T10:00:00Z",
+        ),
+    )
+
+    rotated = Connectors(fake_api.client()).update(
+        CONNECTOR_UUID, rotate_signing_secret=True
+    )
+
+    assert fake_api.last_request.json() == {"rotate_signing_secret": True}
+    assert rotated.signing_secret is not None
+    assert rotated.signing_secret.get_secret_value() == "whsec_rotated"
+    assert (
+        rotated.previous_signing_secret_expires_at
+        == datetime.fromisoformat("2026-11-14T10:00:00+00:00")
+    )
+
+
+def test_a_read_carries_no_secret_and_tolerates_a_new_auth_mode(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "GET", CONNECTOR_PATH, json_body=webhook_payload(webhook_auth="mtls")
+    )
+
+    connector = Connectors(fake_api.client()).get(CONNECTOR_UUID)
+
+    assert type(connector) is Connector
+    assert not hasattr(connector, "signing_secret")
+    assert connector.webhook_auth == "mtls"
+
+
+def test_update_webhook_auth_without_rotating(fake_api: FakeAPI):
+    fake_api.add("PATCH", CONNECTOR_PATH, json_body=webhook_payload())
+
+    updated = Connectors(fake_api.client()).update(
+        CONNECTOR_UUID, webhook_auth="standard_webhooks"
+    )
+
+    # Not rotating sends no flag, so the response carries no secret.
+    assert fake_api.last_request.json() == {
+        "webhook_auth": "standard_webhooks"
+    }
+    assert updated.signing_secret is None
+
+
+def test_rotating_a_non_webhook_connector_surfaces_the_422(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        CONNECTOR_PATH,
+        status=422,
+        json_body={
+            "detail": "rotate_signing_secret and webhook_auth apply to a "
+            "webhook connector only"
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        Connectors(fake_api.client()).update(
+            CONNECTOR_UUID, rotate_signing_secret=True
+        )
+
+
+async def test_async_webhook_create_and_rotate(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/connectors",
+        status=201,
+        json_body=webhook_payload(signing_secret="whsec_a"),
+    )
+    fake_api.add(
+        "PATCH",
+        CONNECTOR_PATH,
+        json_body=webhook_payload(signing_secret="whsec_b"),
+    )
+    connectors = AsyncConnectors(fake_api.async_client())
+
+    created = await connectors.create(
+        name="Orders", provider="webhook", auth_mode="static"
+    )
+    assert created.signing_secret is not None
+    assert created.signing_secret.get_secret_value() == "whsec_a"
+    assert fake_api.last_request.json() == {
+        "name": "Orders",
+        "provider": "webhook",
+        "auth_mode": "static",
+    }
+
+    rotated = await connectors.update(
+        CONNECTOR_UUID, rotate_signing_secret=True
+    )
+    assert rotated.signing_secret is not None
+    assert rotated.signing_secret.get_secret_value() == "whsec_b"
 
 
 # --- authorize ------------------------------------------------------

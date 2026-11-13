@@ -131,7 +131,7 @@ def build_event_params(
     severities: builtins.list[str] | None = None,
     runtime_group_unattributed: bool | None = None,
     status: str | None = None,
-    automation_id: UUID | str | None = None,
+    routine_id: UUID | str | None = None,
     task_id: UUID | str | None = None,
     judge_id: UUID | str | None = None,
     issue_id: UUID | str | None = None,
@@ -142,7 +142,7 @@ def build_event_params(
     source of heterogeneity. Family-scoped filters (observation:
     ``conversation_ids`` / ``lens`` / ``pattern_id`` / ``include_superseded``
     / ``severities`` / ``runtime_group_unattributed``; pattern: ``lens`` /
-    ``status``; automation triggered/skipped: ``automation_id`` /
+    ``status``; routine triggered/skipped: ``routine_id`` /
     ``task_id``; judgement: ``judge_id``; issue: ``issue_id``) are passed
     through; the server validates them against the requested family's allow-map.
     """
@@ -174,7 +174,7 @@ def build_event_params(
         "severities": severities,
         "runtime_group_unattributed": runtime_group_unattributed,
         "status": status,
-        "automation_id": automation_id,
+        "routine_id": routine_id,
         "task_id": task_id,
         "judge_id": judge_id,
         "issue_id": issue_id,
@@ -223,7 +223,7 @@ class Events:
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
-        automation_id: UUID | str | None = None,
+        routine_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         judge_id: UUID | str | None = None,
         issue_id: UUID | str | None = None,
@@ -275,7 +275,7 @@ class Events:
                 severities=severities,
                 runtime_group_unattributed=runtime_group_unattributed,
                 status=status,
-                automation_id=automation_id,
+                routine_id=routine_id,
                 task_id=task_id,
                 judge_id=judge_id,
                 issue_id=issue_id,
@@ -355,7 +355,7 @@ class Events:
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
-        automation_id: UUID | str | None = None,
+        routine_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         judge_id: UUID | str | None = None,
         issue_id: UUID | str | None = None,
@@ -399,7 +399,7 @@ class Events:
                 severities=severities,
                 runtime_group_unattributed=runtime_group_unattributed,
                 status=status,
-                automation_id=automation_id,
+                routine_id=routine_id,
                 task_id=task_id,
                 judge_id=judge_id,
                 issue_id=issue_id,

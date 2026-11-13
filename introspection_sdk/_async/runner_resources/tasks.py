@@ -419,7 +419,7 @@ class AsyncTasks:
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        require_automation_id: bool | None = None,
+        require_routine_id: bool | None = None,
         tag: str | None = None,
     ) -> AsyncPager[Task, Paginated[Task]]:
         # unasync: async-only (the sync twin's docstring follows)
@@ -438,8 +438,8 @@ class AsyncTasks:
             }
             if statuses:
                 params["statuses"] = statuses
-            if require_automation_id is not None:
-                params["require_automation_id"] = require_automation_id
+            if require_routine_id is not None:
+                params["require_routine_id"] = require_routine_id
             payload = await self._http.request(
                 "GET", "/v1/tasks", params=params
             )

@@ -1,7 +1,8 @@
-"""Re-exported by :mod:`introspection_sdk.runner_resources.automations`."""
+"""Re-exported by :mod:`introspection_sdk.runner_resources.routines`."""
 
 from __future__ import annotations
 
+import builtins
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
@@ -13,27 +14,30 @@ from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
 )
-from introspection_sdk.schemas.automations import (
-    Automation,
-    AutomationCreateRequest,
-    AutomationKind,
-    AutomationMetadata,
-    AutomationTriggerResponse,
-    AutomationTriggerType,
-    AutomationUpdateRequest,
-)
 from introspection_sdk.schemas.pagination import Paginated
+from introspection_sdk.schemas.routines import (
+    Routine,
+    RoutineCreateRequest,
+    RoutineKind,
+    RoutineMetadata,
+    RoutineTriggerRequest,
+    RoutineTriggerResponse,
+    RoutineTriggerSpec,
+    RoutineTriggerType,
+    RoutineUpdateRequest,
+)
 
-MetadataInput = AutomationMetadata | dict[str, Any]
+MetadataInput = RoutineMetadata | dict[str, Any]
+TriggerInput = RoutineTriggerSpec | dict[str, Any]
 
 
-def _path(automation_id: UUID | str) -> str:
-    return f"/v1/automations/{quote(str(automation_id), safe='')}"
+def _path(routine_id: UUID | str) -> str:
+    return f"/v1/routines/{quote(str(routine_id), safe='')}"
 
 
 def _list_params(
     *,
-    kind: AutomationKind | str | None,
+    kind: RoutineKind | str | None,
     enabled: bool | None,
     scheduled: bool | None,
     task_id: UUID | str | None,
@@ -55,26 +59,35 @@ def _uuid(value: UUID | str | None) -> UUID | None:
 
 
 def _metadata(metadata: MetadataInput | None) -> dict[str, Any] | None:
-    if isinstance(metadata, AutomationMetadata):
+    if isinstance(metadata, RoutineMetadata):
         return metadata.model_dump(mode="json", exclude_none=True)
     return metadata
+
+
+def _triggers(
+    triggers: list[TriggerInput] | None,
+) -> list[RoutineTriggerSpec] | None:
+    if triggers is None:
+        return None
+    return [RoutineTriggerSpec.model_validate(trigger) for trigger in triggers]
 
 
 def _create_body(
     *,
     name: str,
-    trigger_type: AutomationTriggerType | str,
+    trigger_type: RoutineTriggerType | str,
     description: str | None,
     cron_schedule: str | None,
-    kind: AutomationKind | str | None,
+    kind: RoutineKind | str | None,
     prompt: str | None,
     runtime_group_id: UUID | str | None,
     task_id: UUID | str | None,
     next_trigger_at: datetime | None,
     metadata: MetadataInput | None,
     enabled: bool | None,
+    triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
-    return AutomationCreateRequest(
+    return RoutineCreateRequest(
         name=name,
         trigger_type=trigger_type,
         description=description,
@@ -86,6 +99,7 @@ def _create_body(
         next_trigger_at=next_trigger_at,
         metadata=_metadata(metadata),
         enabled=enabled,
+        triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
 
 
@@ -100,10 +114,11 @@ def _update_body(
     next_trigger_at: datetime | None,
     metadata: MetadataInput | None,
     enabled: bool | None,
+    triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
     # `exclude_none` is the whole PATCH contract: an unset field is absent,
     # and the server leaves an absent field as it is.
-    return AutomationUpdateRequest(
+    return RoutineUpdateRequest(
         name=name,
         description=description,
         cron_schedule=cron_schedule,
@@ -113,11 +128,18 @@ def _update_body(
         next_trigger_at=next_trigger_at,
         metadata=_metadata(metadata),
         enabled=enabled,
+        triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
 
 
-class AsyncAutomations:
-    """DP ``/v1/automations`` namespace."""
+def _trigger_body(parameters: dict[str, Any] | None) -> dict[str, Any] | None:
+    if parameters is None:
+        return None
+    return RoutineTriggerRequest(parameters=parameters).model_dump(mode="json")
+
+
+class AsyncRoutines:
+    """DP ``/v1/routines`` namespace."""
 
     def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
@@ -125,30 +147,30 @@ class AsyncAutomations:
     def list(
         self,
         *,
-        kind: AutomationKind | str | None = None,
+        kind: RoutineKind | str | None = None,
         enabled: bool | None = None,
         scheduled: bool | None = None,
         task_id: UUID | str | None = None,
         limit: int | None = None,
         next: str | None = None,
-    ) -> AsyncPager[Automation, Paginated[Automation]]:
+    ) -> AsyncPager[Routine, Paginated[Routine]]:
         # unasync: async-only (the sync twin's docstring follows)
-        """List the project's automations. ``await`` the returned
+        """List the project's routines. ``await`` the returned
         :class:`AsyncPager` for the first page, or ``async for`` it to
-        stream every automation across pages. See :meth:`Automations.list`
+        stream every routine across pages. See :meth:`Routines.list`
         for the filters."""
         # unasync: end
-        """List the project's automations. Iterate the returned
-        :class:`Pager` to stream every automation across pages, or call
+        """List the project's routines. Iterate the returned
+        :class:`Pager` to stream every routine across pages, or call
         ``.page()`` for the first page only.
 
-        Filters AND together. ``scheduled=True`` keeps only automations with
+        Filters AND together. ``scheduled=True`` keeps only routines with
         a next slot, ``False`` only those without. ``task_id`` keeps those
         that post into one task; the server accepts it only once
         introspection-cloud#3137 ships. ``limit`` is the page size (1-1000,
         server default 100)."""
 
-        async def fetch(cursor: str | None) -> Paginated[Automation]:
+        async def fetch(cursor: str | None) -> Paginated[Routine]:
             params = _list_params(
                 kind=kind,
                 enabled=enabled,
@@ -158,46 +180,53 @@ class AsyncAutomations:
                 cursor=cursor,
             )
             payload = await self._http.request(
-                "GET", "/v1/automations", params=params
+                "GET", "/v1/routines", params=params
             )
-            return decode(Paginated[Automation], payload)
+            return decode(Paginated[Routine], payload)
 
         return async_cursor_paginate(fetch, start=next)
 
-    async def get(self, automation_id: UUID | str) -> Automation:
-        """Read one automation, soft-deleted ones included."""
+    async def get(self, routine_id: UUID | str) -> Routine:
+        """Read one routine, soft-deleted ones included."""
         return decode(
-            Automation, await self._http.request("GET", _path(automation_id))
+            Routine, await self._http.request("GET", _path(routine_id))
         )
 
     async def create(
         self,
         *,
         name: str,
-        trigger_type: AutomationTriggerType | str,
+        trigger_type: RoutineTriggerType | str,
         description: str | None = None,
         cron_schedule: str | None = None,
-        kind: AutomationKind | str | None = None,
+        kind: RoutineKind | str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
-    ) -> Automation:
-        """Create an automation.
+        triggers: builtins.list[TriggerInput] | None = None,
+    ) -> Routine:
+        """Create a routine.
 
-        Omit ``kind`` for a prompt automation, which then needs ``prompt``
+        Omit ``kind`` for a prompt routine, which then needs ``prompt``
         and a ``runtime_group_id``. ``task_id`` posts each firing into that
         existing task instead of creating one. A one-off reminder is
         ``trigger_type="manual"`` with a future, timezone-aware
-        ``next_trigger_at``; a ``cron`` automation needs ``cron_schedule``
+        ``next_trigger_at``; a ``cron`` routine needs ``cron_schedule``
         (or ``metadata.cron_schedules``) and must not send a slot.
-        ``metadata`` takes an :class:`AutomationMetadata` or a plain dict.
+        ``metadata`` takes an :class:`RoutineMetadata` or a plain dict.
+
+        ``triggers`` are events that start a run (at most 20), each a
+        :class:`RoutineTriggerSpec` or a plain dict, for a prompt routine
+        that starts a task per run. A trigger's ``parameters`` read values
+        from the event's body by JSON pointer for ``@parameters.<name>``
+        in the prompt. Only an administrator can add triggers.
         """
         payload = await self._http.request(
             "POST",
-            "/v1/automations",
+            "/v1/routines",
             json=_create_body(
                 name=name,
                 trigger_type=trigger_type,
@@ -210,13 +239,14 @@ class AsyncAutomations:
                 next_trigger_at=next_trigger_at,
                 metadata=metadata,
                 enabled=enabled,
+                triggers=triggers,
             ),
         )
-        return decode(Automation, payload)
+        return decode(Routine, payload)
 
     async def update(
         self,
-        automation_id: UUID | str,
+        routine_id: UUID | str,
         *,
         name: str | None = None,
         description: str | None = None,
@@ -227,14 +257,20 @@ class AsyncAutomations:
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
-    ) -> Automation:
-        """Update an automation. Only the fields you pass are sent; ``None``
+        triggers: builtins.list[TriggerInput] | None = None,
+    ) -> Routine:
+        """Update a routine. Only the fields you pass are sent; ``None``
         leaves a field as it is, so nothing can be cleared. ``kind`` and
         ``trigger_type`` are immutable and ``metadata`` replaces wholesale.
-        ``enabled=False`` pauses and keeps the slot."""
+        ``enabled=False`` pauses and keeps the slot.
+
+        ``triggers`` replaces the routine's event triggers: an entry with
+        the ``id`` of an existing trigger keeps it (with the fields given),
+        one without is new, and every trigger not listed is removed, so
+        ``[]`` removes them all."""
         payload = await self._http.request(
             "PATCH",
-            _path(automation_id),
+            _path(routine_id),
             json=_update_body(
                 name=name,
                 description=description,
@@ -245,27 +281,41 @@ class AsyncAutomations:
                 next_trigger_at=next_trigger_at,
                 metadata=metadata,
                 enabled=enabled,
+                triggers=triggers,
             ),
         )
-        return decode(Automation, payload)
+        return decode(Routine, payload)
 
-    async def delete(self, automation_id: UUID | str) -> None:
-        """Soft-delete an automation. A project default
+    async def delete(self, routine_id: UUID | str) -> None:
+        """Soft-delete a routine. A project default
         (``observation_synthesis``, ``project_check_in``) cannot be deleted
         and answers 409; disable it instead."""
-        await self._http.request(
-            "DELETE", _path(automation_id), expect="empty"
-        )
+        await self._http.request("DELETE", _path(routine_id), expect="empty")
 
     async def trigger(
-        self, automation_id: UUID | str
-    ) -> AutomationTriggerResponse:
-        """Run an automation now (``POST /v1/automations/{id}/trigger``).
+        self,
+        routine_id: UUID | str,
+        *,
+        parameters: dict[str, Any] | None = None,
+    ) -> RoutineTriggerResponse:
+        """Run a routine now (``POST /v1/routines/{id}/trigger``).
 
-        Returns the task it created or posted into. A ``skipped`` status
-        carries its ``reason``. Neither reads nor clears a scheduled slot.
+        ``parameters`` is the run's JSON object (at most 16 KiB serialized
+        and 8 levels deep, else 422). A prompt routine's run receives it as
+        ``parameters.json`` and each ``@parameters.<name>`` in its prompt
+        is replaced by that value as JSON (``null`` when absent). A
+        platform routine reads its kind's keys: ``observation_synthesis``
+        takes ``{"conversation_ids": [...]}`` (1-100).
+
+        Returns the task it created or posted into, and the kind's
+        ``result`` (``observation_synthesis``: ``enqueued`` and
+        ``conversations``). A ``skipped`` status carries its ``reason``.
+        Neither reads nor clears a scheduled slot.
         """
+        # No parameters sends no body, which the server reads as none.
         payload = await self._http.request(
-            "POST", f"{_path(automation_id)}/trigger"
+            "POST",
+            f"{_path(routine_id)}/trigger",
+            json=_trigger_body(parameters),
         )
-        return decode(AutomationTriggerResponse, payload)
+        return decode(RoutineTriggerResponse, payload)

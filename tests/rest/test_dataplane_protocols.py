@@ -71,7 +71,7 @@ def _member_session(dp: LocalDP) -> AuthSession:
     return AuthSession(access_token="member-token", dp_url=dp.endpoint)
 
 
-AUTOMATION = {
+ROUTINE = {
     "id": "0199a1b2-0000-7000-8000-000000000001",
     "org_id": "00000000-0000-0000-0000-0000000000aa",
     "project_id": "00000000-0000-0000-0000-0000000000bb",
@@ -107,7 +107,7 @@ EXPECTED_PATHS = [
     ("GET", "/v1/events"),
     ("POST", "/v1/metrics"),
     ("GET", "/v1/shares"),
-    ("GET", "/v1/automations"),
+    ("GET", "/v1/routines"),
     ("GET", "/v1/connections"),
     ("POST", "/v1/connections"),
     ("GET", "/v1/issues"),
@@ -124,8 +124,8 @@ def _seed(dp: LocalDP) -> None:
     dp.add("GET", "/v1/shares", paginated([]))
     dp.add(
         "GET",
-        "/v1/automations",
-        {"records": [AUTOMATION], "count": 1, "next": None},
+        "/v1/routines",
+        {"records": [ROUTINE], "count": 1, "next": None},
     )
     dp.add("GET", "/v1/connections", {"records": [], "count": 0})
     dp.add(
@@ -153,7 +153,7 @@ def _drive(dp: DataPlaneResources) -> None:
     assert dp.events.list("identify").page().count == 0
     assert dp.metrics.query(METRIC_QUERY).meta.row_count == 0
     assert dp.shares.list().page().count == 0
-    assert dp.automations.list().page().count == 1
+    assert dp.routines.list().page().count == 1
     assert dp.connections.list().page().count == 0
     assert (
         dp.connections.create(app="gmail", runtime="support").expires_in == 60
@@ -169,7 +169,7 @@ async def _adrive(dp: AsyncDataPlaneResources) -> None:
     assert (await dp.events.list("identify").page()).count == 0
     assert (await dp.metrics.query(METRIC_QUERY)).meta.row_count == 0
     assert (await dp.shares.list().page()).count == 0
-    assert (await dp.automations.list().page()).count == 1
+    assert (await dp.routines.list().page()).count == 1
     assert (await dp.connections.list().page()).count == 0
     page = await dp.connections.create(app="gmail", runtime="support")
     assert page.expires_in == 60

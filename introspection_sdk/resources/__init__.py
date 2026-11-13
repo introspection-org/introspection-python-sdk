@@ -65,9 +65,9 @@ from introspection_sdk.resources.runtimes import (
 from introspection_sdk.resources.tags import AsyncTags, Tags
 from introspection_sdk.resources.tokens import AsyncTokens, Tokens
 from introspection_sdk.resources.variables import AsyncVariables, Variables
-from introspection_sdk.runner_resources.automations import (
-    AsyncAutomations,
-    Automations,
+from introspection_sdk.runner_resources.routines import (
+    AsyncRoutines,
+    Routines,
 )
 
 __all__ = [
@@ -102,9 +102,9 @@ __all__ = [
     "AsyncVariables",
     "Variables",
     "Annotations",
-    "Automations",
+    "Routines",
     "AsyncAnnotations",
-    "AsyncAutomations",
+    "AsyncRoutines",
     "AsyncConnectors",
     "AsyncExperimentHandle",
     "AsyncExperiments",

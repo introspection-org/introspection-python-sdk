@@ -32,9 +32,11 @@ from introspection_sdk.schemas.connectors import (
     ConnectorCreateRequest,
     ConnectorOAuthDiscoveryRequest,
     ConnectorOAuthDiscoveryResponse,
+    ConnectorSecretResponse,
     ConnectorStatus,
     ConnectorUpdateRequest,
     PolicyEntity,
+    WebhookAuth,
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.runner import RunnerIdentity
@@ -62,6 +64,7 @@ def _create_body(
     assertion_audience: str | None,
     policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     webhook_url: str | None,
+    webhook_auth: WebhookAuth | str | None,
 ) -> dict[str, Any]:
     # Loose public inputs (plain str) are coerced by validation:
     # str -> ConnectorAuthMode. Secrets ride the body as-is; the API
@@ -88,6 +91,7 @@ def _create_body(
             "assertion_audience": assertion_audience,
             "policy_entities": policy_entities,
             "webhook_url": webhook_url,
+            "webhook_auth": webhook_auth,
         }
     ).model_dump(mode="json", exclude_none=True)
 
@@ -104,6 +108,8 @@ def _update_body(
     policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     client_secret: str | None,
     signing_secret: str | None,
+    webhook_auth: WebhookAuth | str | None,
+    rotate_signing_secret: bool,
 ) -> dict[str, Any]:
     # `exclude_none` is the "omitted = unchanged" contract: a secret
     # left as None never reaches the wire, so it cannot be cleared.
@@ -119,6 +125,8 @@ def _update_body(
             "policy_entities": policy_entities,
             "client_secret": client_secret,
             "signing_secret": signing_secret,
+            "webhook_auth": webhook_auth,
+            "rotate_signing_secret": rotate_signing_secret or None,
         }
     ).model_dump(mode="json", exclude_none=True)
 
@@ -242,7 +250,8 @@ class Connectors:
         policy_entities: builtins.list[PolicyEntity | dict[str, Any]]
         | None = None,
         webhook_url: str | None = None,
-    ) -> Connector:
+        webhook_auth: WebhookAuth | str | None = None,
+    ) -> ConnectorSecretResponse:
         """Create a connector, or replace one with the same ``slug``.
 
         ``slug`` is unique per project. A repeat create with a live slug
@@ -260,6 +269,15 @@ class Connectors:
         connector requires ``person_server_url`` and ``application_id``;
         ``policy_entities`` are the Cedar entities the egress policy gate
         adds to its requests.
+
+        A ``webhook`` connector (``provider="webhook"``,
+        ``auth_mode="static"``) is inbound only: the customer's systems
+        call the control plane's ``/v1/webhooks/connectors/{id}``, and a
+        routine's ``connector`` trigger runs on those calls.
+        ``webhook_auth`` picks how callers authenticate
+        (``standard_webhooks``, the default, or ``bearer``). The platform
+        generates its secret and returns it once, as ``signing_secret``
+        on the response; send no secret.
         """
         payload = self._http.request(
             "POST",
@@ -285,9 +303,10 @@ class Connectors:
                 assertion_audience=assertion_audience,
                 policy_entities=policy_entities,
                 webhook_url=webhook_url,
+                webhook_auth=webhook_auth,
             ),
         )
-        return decode(Connector, payload)
+        return decode(ConnectorSecretResponse, payload)
 
     def list_apps(
         self,
@@ -369,11 +388,21 @@ class Connectors:
         | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
-    ) -> Connector:
+        webhook_auth: WebhookAuth | str | None = None,
+        rotate_signing_secret: bool = False,
+    ) -> ConnectorSecretResponse:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
         rotation, never a clear). ``policy_entities`` replaces the
-        connector's Cedar entities."""
+        connector's Cedar entities.
+
+        For a ``webhook`` connector, ``webhook_auth`` changes how callers
+        authenticate and ``rotate_signing_secret=True`` issues a new
+        secret, returned once as ``signing_secret`` on the response; the
+        previous one is accepted until
+        ``previous_signing_secret_expires_at`` (24 hours). Either on any
+        other connector, or a ``client_secret`` / ``signing_secret`` on a
+        webhook connector, is a 422."""
         payload = self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
@@ -388,9 +417,11 @@ class Connectors:
                 policy_entities=policy_entities,
                 client_secret=client_secret,
                 signing_secret=signing_secret,
+                webhook_auth=webhook_auth,
+                rotate_signing_secret=rotate_signing_secret,
             ),
         )
-        return decode(Connector, payload)
+        return decode(ConnectorSecretResponse, payload)
 
     def delete(
         self, connector_id: UUID, *, project: str | UUID | None = None

@@ -75,12 +75,6 @@ from introspection_sdk.schemas.annotations import (
     AnnotationState,
     AnnotationTarget,
 )
-from introspection_sdk.schemas.automations import (
-    Automation,
-    AutomationMetadata,
-    AutomationTriggerResponse,
-    AutomationTriggerType,
-)
 from introspection_sdk.schemas.issues import (
     Issue,
     IssueComment,
@@ -96,6 +90,12 @@ from introspection_sdk.schemas.repositories import (
     RepositoryEntry,
     RepositoryFile,
     RepositoryMerge,
+)
+from introspection_sdk.schemas.routines import (
+    Routine,
+    RoutineMetadata,
+    RoutineTriggerResponse,
+    RoutineTriggerType,
 )
 from introspection_sdk.schemas.tags import (
     AccessTagCreate,
@@ -200,10 +200,10 @@ __all__ = [
     "AnnotationTarget",
     "AuthSession",
     "AuthenticationError",
-    "Automation",
-    "AutomationMetadata",
-    "AutomationTriggerResponse",
-    "AutomationTriggerType",
+    "Routine",
+    "RoutineMetadata",
+    "RoutineTriggerResponse",
+    "RoutineTriggerType",
     "Issue",
     "IssueComment",
     "IssueUpdate",
