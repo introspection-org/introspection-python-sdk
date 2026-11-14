@@ -605,7 +605,6 @@ WEBHOOK_TRIGGER: dict[str, Any] = {
         "branches": None,
         "payload_fields": {"region": ["eu"]},
     },
-    "parameters": {"order_id": "/data/id"},
     "enabled": True,
     "created_at": "2026-11-01T10:00:00Z",
     "updated_at": "2026-11-01T10:00:00Z",
@@ -635,7 +634,6 @@ def test_create_sends_triggers_and_decodes_them(fake_api: FakeAPI):
                 connector_slug="orders",
                 event_types=["order.created"],
                 filter=RoutineTriggerFilter(payload_fields={"region": ["eu"]}),
-                parameters={"order_id": "/data/id"},
             ),
             {
                 "provider": "github",
@@ -657,7 +655,6 @@ def test_create_sends_triggers_and_decodes_them(fake_api: FakeAPI):
                 "connector_slug": "orders",
                 "event_types": ["order.created"],
                 "filter": {"payload_fields": {"region": ["eu"]}},
-                "parameters": {"order_id": "/data/id"},
             },
             {
                 "provider": "github",
@@ -673,7 +670,6 @@ def test_create_sends_triggers_and_decodes_them(fake_api: FakeAPI):
     assert trigger.connector_slug == "orders"
     assert trigger.filter.payload_fields == {"region": ["eu"]}
     assert trigger.filter.channel_ids is None
-    assert trigger.parameters == {"order_id": "/data/id"}
     assert trigger.enabled is True
 
 

@@ -26,6 +26,7 @@ from introspection_sdk.schemas.connectors import (
     ConnectorUpdateRequest,
     EntityUid,
     PolicyEntity,
+    SigningSecretStatus,
     WebhookAuth,
 )
 
@@ -323,7 +324,13 @@ def webhook_payload(**over: object) -> Connector:
         "api_hosts": [],
         "requires_runtime": False,
         "webhook_auth": "standard_webhooks",
-        "previous_signing_secret_expires_at": None,
+        "signing_secrets": [
+            {
+                "id": "1a2b3c4d",
+                "created_at": "2026-11-13T10:00:00Z",
+                "status": "current",
+            }
+        ],
     }
     fields.update(over)
     return connector_payload(**fields)
@@ -357,16 +364,30 @@ def test_create_webhook_connector_returns_its_secret_once(fake_api: FakeAPI):
     assert created.signing_secret.get_secret_value() == "whsec_new"
     assert "whsec_new" not in repr(created)
     assert created.webhook_auth is WebhookAuth.STANDARD_WEBHOOKS
-    assert created.previous_signing_secret_expires_at is None
+    assert created.signing_secrets is not None
+    (current,) = created.signing_secrets
+    assert current.id == "1a2b3c4d"
+    assert current.status is SigningSecretStatus.CURRENT
 
 
-def test_rotate_webhook_secret_reports_the_grace_window(fake_api: FakeAPI):
+def test_rotate_webhook_secret_lists_current_and_previous(fake_api: FakeAPI):
     fake_api.add(
         "PATCH",
         CONNECTOR_PATH,
         json_body=webhook_payload(
             signing_secret="whsec_rotated",
-            previous_signing_secret_expires_at="2026-11-14T10:00:00Z",
+            signing_secrets=[
+                {
+                    "id": "5e6f7a8b",
+                    "created_at": "2026-11-14T10:00:00Z",
+                    "status": "current",
+                },
+                {
+                    "id": "1a2b3c4d",
+                    "created_at": "2026-11-13T10:00:00Z",
+                    "status": "previous",
+                },
+            ],
         ),
     )
 
@@ -377,9 +398,67 @@ def test_rotate_webhook_secret_reports_the_grace_window(fake_api: FakeAPI):
     assert fake_api.last_request.json() == {"rotate_signing_secret": True}
     assert rotated.signing_secret is not None
     assert rotated.signing_secret.get_secret_value() == "whsec_rotated"
+    assert rotated.signing_secrets is not None
+    current, previous = rotated.signing_secrets
+    assert current.status is SigningSecretStatus.CURRENT
+    assert current.created_at == datetime.fromisoformat(
+        "2026-11-14T10:00:00+00:00"
+    )
+    assert previous.id == "1a2b3c4d"
+    assert previous.status is SigningSecretStatus.PREVIOUS
+
+
+def test_revoke_previous_webhook_secret(fake_api: FakeAPI):
+    fake_api.add("PATCH", CONNECTOR_PATH, json_body=webhook_payload())
+
+    updated = Connectors(fake_api.client()).update(
+        CONNECTOR_UUID, revoke_previous_signing_secret=True
+    )
+
+    assert fake_api.last_request.json() == {
+        "revoke_previous_signing_secret": True
+    }
+    # A revoke issues nothing, so the response carries no secret.
+    assert updated.signing_secret is None
+    assert updated.signing_secrets is not None
+    assert [s.status for s in updated.signing_secrets] == [
+        SigningSecretStatus.CURRENT
+    ]
+
+
+def test_rotate_and_revoke_together_surface_the_422(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        CONNECTOR_PATH,
+        status=422,
+        json_body={
+            "detail": "Send rotate_signing_secret or "
+            "revoke_previous_signing_secret, not both"
+        },
+    )
+
+    with pytest.raises(ValidationError):
+        Connectors(fake_api.client()).update(
+            CONNECTOR_UUID,
+            rotate_signing_secret=True,
+            revoke_previous_signing_secret=True,
+        )
+    assert fake_api.last_request.json() == {
+        "rotate_signing_secret": True,
+        "revoke_previous_signing_secret": True,
+    }
+
+
+def test_a_non_webhook_connector_lists_no_secrets(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        CONNECTOR_PATH,
+        json_body=connector_payload(signing_secrets=None),
+    )
+
     assert (
-        rotated.previous_signing_secret_expires_at
-        == datetime.fromisoformat("2026-11-14T10:00:00+00:00")
+        Connectors(fake_api.client()).get(CONNECTOR_UUID).signing_secrets
+        is None
     )
 
 

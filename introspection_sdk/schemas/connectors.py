@@ -109,6 +109,23 @@ class PolicyEntity(ApiModel):
     parents: list[EntityUid] = Field(default_factory=list)
 
 
+class SigningSecretStatus(StrEnum):
+    """Which of a ``webhook`` connector's two secret slots a secret is in."""
+
+    CURRENT = "current"
+    PREVIOUS = "previous"
+
+
+class SigningSecret(ApiModel):
+    """One secret a ``webhook`` connector accepts, without its material."""
+
+    id: str
+    """A fingerprint of the secret: the first 8 hex digits of its SHA-256."""
+    created_at: datetime | None = None
+    status: SigningSecretStatus | str = Field(union_mode="left_to_right")
+    """A status this SDK does not know decodes as a plain string."""
+
+
 class Connector(ApiModel):
     """A connector (`/v1/connectors`) — a provider integration owned by a
     project.
@@ -151,9 +168,10 @@ class Connector(ApiModel):
     """How a ``webhook`` connector's callers authenticate; ``None`` for
     every other provider. An auth mode this SDK does not know decodes as a
     plain string."""
-    previous_signing_secret_expires_at: datetime | None = None
-    """For a rotated ``webhook`` connector: until when its previous secret
-    is still accepted (24 hours after the rotation)."""
+    signing_secrets: list[SigningSecret] | None = None
+    """A ``webhook`` connector's accepted secrets (at most two), current
+    first, described without their material; ``None`` for every other
+    provider."""
 
 
 class ConnectorSecretResponse(Connector):
@@ -240,7 +258,12 @@ class ConnectorUpdateRequest(ApiModel):
     """For a ``webhook`` connector only."""
     rotate_signing_secret: bool | None = None
     """For a ``webhook`` connector only: issue a new secret, returned once
-    in the response; the previous one stays valid for 24 hours."""
+    in the response. The current one stays valid as the previous secret
+    until the next rotation or a revoke; at most two are ever valid."""
+    revoke_previous_signing_secret: bool | None = None
+    """For a ``webhook`` connector only: stop accepting its previous
+    secret now. Not with ``rotate_signing_secret`` (the server answers
+    422)."""
 
 
 class ConnectorAuthorizeBinding(ApiModel):
@@ -437,6 +460,8 @@ __all__ = [
     "ConnectorUpdateRequest",
     "EntityUid",
     "PolicyEntity",
+    "SigningSecret",
+    "SigningSecretStatus",
     "WEBHOOK_PROVIDER",
     "WebhookAuth",
 ]

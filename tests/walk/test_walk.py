@@ -823,7 +823,7 @@ def test_06_connector(world: World) -> None:
             },
             "requires_runtime": False,
             "webhook_auth": None,
-            "previous_signing_secret_expires_at": None,
+            "signing_secrets": None,
             "signing_secret": None,
         }
     )

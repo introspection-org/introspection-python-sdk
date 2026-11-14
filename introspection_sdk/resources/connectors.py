@@ -10,8 +10,10 @@ connector operation even though the route lives under ``/v1/oauth/``.
 create and update, absent from every response, and omitting them on
 update means "unchanged". A ``webhook`` connector is the exception:
 the platform generates its secret and returns it once, on create and on
-``update(rotate_signing_secret=True)``. Project scope comes from the authenticated
-credential; connector calls do not take a separate project selector.
+``update(rotate_signing_secret=True)``; the secret it replaces stays valid
+until the next rotation or ``update(revoke_previous_signing_secret=True)``.
+Project scope comes from the authenticated credential; connector calls do not
+take a separate project selector.
 """
 
 from __future__ import annotations

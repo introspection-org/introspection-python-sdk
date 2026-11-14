@@ -587,7 +587,7 @@ save(orders.signing_secret.get_secret_value())  # shown once
 follow_up = client.routines.create(
     name="Order follow-up",
     trigger_type="manual",
-    prompt="Order @parameters.order_id was placed; check stock for it.",
+    prompt="An order was placed: @parameters.data. Check stock for it.",
     runtime_group_id=runtime_group_id,
     triggers=[
         RoutineTriggerSpec(
@@ -596,24 +596,44 @@ follow_up = client.routines.create(
             connector_slug="orders",
             event_types=["order.created"],  # the body's `type`; "*" for any
             filter={"payload_fields": {"region": ["eu"]}},
-            parameters={"order_id": "/data/id"},  # JSON pointer into the body
         )
     ],
 )
 ```
 
-A trigger's `parameters` read scalars from the event's JSON body by JSON
-pointer, under the same contract as a manual run's: the run gets them as
-`parameters.json` and in `@parameters.<name>`, and a name that resolved to
-nothing is listed in the task's `unresolved_parameters` metadata. The task's
+Your system signs each call with the
+[`standardwebhooks`](https://pypi.org/project/standardwebhooks/) package:
+
+```python
+from datetime import datetime, timezone
+
+from standardwebhooks import Webhook
+
+body = '{"type": "order.created", "region": "eu", "data": {"id": "ord_1"}}'
+msg_id = "msg_1"
+signature = Webhook(secret).sign(msg_id, datetime.now(timezone.utc), body)
+# POST body with webhook-id: msg_1, webhook-timestamp, webhook-signature
+```
+
+A trigger declares no parameters: the run it starts receives the event's body
+as `parameters.json` (any JSON; a non-JSON body arrives as a JSON string), and
+`@parameters.<key>` reads its top-level keys, the same as a manual run's
+`parameters`. A key with no value is listed in the task's
+`unresolved_parameters` metadata; the event itself stays in
+`trigger/event.json`. The task's
 `trigger_source` metadata is `trigger` and its `routine_trigger` names the
 trigger, event type and delivery. `update(triggers=[...])` replaces the list:
 an entry with an existing trigger's `id` keeps it, and `[]` removes them all.
 A trigger runs one task at a time; an event that arrives while its run is in
 flight is recorded as `introspection.routines.skipped` with reason
-`trigger_busy`. `update(rotate_signing_secret=True)` issues a new secret once;
-the previous one is accepted until `previous_signing_secret_expires_at` (24
-hours). This needs a platform with introspection-cloud#4052 deployed.
+`trigger_busy`.
+
+`update(rotate_signing_secret=True)` issues a new secret, returned once. The
+secret it replaces keeps working as the previous one until the next rotation or
+`update(revoke_previous_signing_secret=True)`, so at most two are ever valid
+(sending both flags is a 422). A webhook connector's `signing_secrets` lists
+them, current first, as `{id, created_at, status}` without their material.
+This needs a platform with introspection-cloud#4052 deployed.
 
 `update` sends only the fields you pass, so `None` never clears anything;
 `metadata` replaces wholesale, and `kind` / `trigger_type` are immutable.

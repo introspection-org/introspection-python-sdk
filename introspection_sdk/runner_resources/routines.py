@@ -12,8 +12,9 @@ recorded as an ``introspection.routines.triggered`` or
 A prompt routine that starts a task per run can also be started by
 events: ``triggers`` lists them (a Slack or GitHub integration's events,
 or a ``webhook`` connector's calls), and ``trigger(parameters=...)``
-runs it by hand with a JSON object the prompt reads as
-``@parameters.<name>``.
+runs it by hand with a JSON object. Either way the run's parameters
+(the manual object, or the event's body) arrive as ``parameters.json``
+and the prompt reads their top-level keys as ``@parameters.<name>``.
 
 The server serves these routes to project administrators only today and
 answers anyone else with a 403. introspection-cloud#3137 (not yet

@@ -203,10 +203,11 @@ class RoutineTriggerSpec(_ApiModel):
     """One entry of ``triggers`` on a routine create or update.
 
     With ``id`` it keeps that existing trigger, applying the fields given;
-    without one it is a new trigger. ``parameters`` names values read from
-    the event's JSON body by RFC 6901 pointer (``{"order_id":
-    "/data/order/id"}``), which the prompt references as
-    ``@parameters.<name>`` and the run receives as ``parameters.json``.
+    without one it is a new trigger. A trigger declares no parameters:
+    the run it starts receives the event's body as ``parameters.json``
+    (any JSON; a non-JSON body arrives as a JSON string) and
+    ``@parameters.<key>`` reads its top-level keys, as a manual run's
+    ``parameters`` do.
     """
 
     provider: OpenTriggerProvider
@@ -221,7 +222,6 @@ class RoutineTriggerSpec(_ApiModel):
     connector_slug: str | None = None
     """The project connector, set for a ``connector`` source only."""
     filter: RoutineTriggerFilter | None = None
-    parameters: dict[str, str] | None = None
     enabled: bool | None = None
 
 
@@ -235,8 +235,6 @@ class RoutineTrigger(_ApiModel):
     event_types: list[str]
     connector_slug: str | None = None
     filter: RoutineTriggerFilter = Field(default_factory=RoutineTriggerFilter)
-    parameters: dict[str, str] = Field(default_factory=dict)
-    """``{name: JSON pointer}`` into the event's body."""
     enabled: bool = True
     org_id: UUID | None = None
     project_id: UUID | None = None

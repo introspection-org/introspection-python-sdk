@@ -1,14 +1,15 @@
 """Start a routine from a webhook, and by hand with parameters.
 
 Creates a ``webhook`` connector (its secret is shown once), a prompt routine
-with a ``connector`` trigger that reads ``order_id`` from the call's JSON body
-into ``@parameters.order_id``, then runs the routine by hand with the same
-parameter. Cleans both up at the end.
+with a ``connector`` trigger, then runs the routine by hand with the same
+parameters. Cleans both up at the end.
 
 Your own system then calls the control plane's
-``/v1/webhooks/connectors/{id}`` with a Standard Webhooks signature, e.g.
-``{"type": "order.created", "data": {"id": "o-123"}}``, and the routine runs
-with ``order_id = "o-123"``.
+``/v1/webhooks/connectors/{id}`` with a Standard Webhooks signature (the
+``standardwebhooks`` package's ``Webhook(secret).sign(msg_id, timestamp,
+data)``), e.g. ``{"type": "order.created", "order_id": "o-123"}``. The run
+receives that body as ``parameters.json``, and ``@parameters.order_id`` reads
+its top-level ``order_id`` -- the same as the manual run below.
 
 Needs a platform with introspection-cloud#4052 deployed, and an
 administrator's credential.
@@ -66,7 +67,6 @@ def main() -> None:
                     provider="webhook",
                     connector_slug="orders-example",
                     event_types=["order.created"],
-                    parameters={"order_id": "/data/id"},
                 )
             ],
         )

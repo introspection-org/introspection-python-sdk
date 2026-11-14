@@ -110,6 +110,7 @@ def _update_body(
     signing_secret: str | None,
     webhook_auth: WebhookAuth | str | None,
     rotate_signing_secret: bool,
+    revoke_previous_signing_secret: bool,
 ) -> dict[str, Any]:
     # `exclude_none` is the "omitted = unchanged" contract: a secret
     # left as None never reaches the wire, so it cannot be cleared.
@@ -127,6 +128,8 @@ def _update_body(
             "signing_secret": signing_secret,
             "webhook_auth": webhook_auth,
             "rotate_signing_secret": rotate_signing_secret or None,
+            "revoke_previous_signing_secret": revoke_previous_signing_secret
+            or None,
         }
     ).model_dump(mode="json", exclude_none=True)
 
@@ -390,6 +393,7 @@ class Connectors:
         signing_secret: str | None = None,
         webhook_auth: WebhookAuth | str | None = None,
         rotate_signing_secret: bool = False,
+        revoke_previous_signing_secret: bool = False,
     ) -> ConnectorSecretResponse:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
@@ -398,9 +402,11 @@ class Connectors:
 
         For a ``webhook`` connector, ``webhook_auth`` changes how callers
         authenticate and ``rotate_signing_secret=True`` issues a new
-        secret, returned once as ``signing_secret`` on the response; the
-        previous one is accepted until
-        ``previous_signing_secret_expires_at`` (24 hours). Either on any
+        secret, returned once as ``signing_secret`` on the response. The
+        one it replaces stays valid as the previous secret until the next
+        rotation or ``revoke_previous_signing_secret=True``, which stops
+        accepting it now; at most two are valid, listed in
+        ``signing_secrets``. Rotate and revoke together, either on any
         other connector, or a ``client_secret`` / ``signing_secret`` on a
         webhook connector, is a 422."""
         payload = self._http.request(
@@ -419,6 +425,7 @@ class Connectors:
                 signing_secret=signing_secret,
                 webhook_auth=webhook_auth,
                 rotate_signing_secret=rotate_signing_secret,
+                revoke_previous_signing_secret=revoke_previous_signing_secret,
             ),
         )
         return decode(ConnectorSecretResponse, payload)

@@ -212,9 +212,10 @@ class Routines:
 
         ``triggers`` are events that start a run (at most 20), each a
         :class:`RoutineTriggerSpec` or a plain dict, for a prompt routine
-        that starts a task per run. A trigger's ``parameters`` read values
-        from the event's body by JSON pointer for ``@parameters.<name>``
-        in the prompt. Only an administrator can add triggers.
+        that starts a task per run. An event-started run receives the
+        event's body as ``parameters.json`` and ``@parameters.<key>`` in
+        the prompt reads its top-level keys, as a manual run's
+        ``parameters`` do. Only an administrator can add triggers.
         """
         payload = self._http.request(
             "POST",
