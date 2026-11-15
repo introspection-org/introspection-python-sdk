@@ -6,9 +6,9 @@ via ``extra="allow"`` so CP additions don't break the SDK.
 ``client_secret`` and ``signing_secret`` are **write-only**: the API
 accepts them on create and update and never returns them, so the read
 models here deliberately have no such fields. Omitting them on update
-means "unchanged", not "clear". The one exception is a ``webhook``
-connector's platform-generated ``signing_secret``, returned once in
-:class:`ConnectorSecretResponse` on the update that issues it.
+means "unchanged", not "clear". A ``webhook`` connector's secrets are
+platform-generated and live under ``/v1/connectors/{id}/secrets``: each
+plaintext is returned once, in :class:`WebhookSecretCreated`.
 """
 
 from __future__ import annotations
@@ -114,23 +114,43 @@ class PolicyEntity(ApiModel):
     parents: list[EntityUid] = Field(default_factory=list)
 
 
-class SigningSecretStatus(StrEnum):
+class WebhookSecretStatus(StrEnum):
     """Which of a ``webhook`` connector's two secret slots a secret is in."""
 
     CURRENT = "current"
     PREVIOUS = "previous"
 
 
-class SigningSecret(ApiModel):
-    """One secret a ``webhook`` connector accepts, without its material."""
+class WebhookSecret(ApiModel):
+    """One secret a ``webhook`` connector accepts, without its material
+    (``/v1/connectors/{id}/secrets``)."""
 
     id: str
     """A fingerprint of the secret (its kid): the first 8 hex digits of
-    its SHA-256. Revoke it with ``update(revoke_signing_secret=id)``."""
+    its SHA-256. Delete it with ``connectors.secrets.delete``."""
     type: OpenWebhookSecretType
-    created_at: datetime | None = None
-    status: SigningSecretStatus | str = Field(union_mode="left_to_right")
-    """A status this SDK does not know decodes as a plain string."""
+    status: WebhookSecretStatus | str = Field(union_mode="left_to_right")
+    """``current`` for the newest live secret, else ``previous``, which
+    still verifies. A status this SDK does not know decodes as a plain
+    string."""
+    created_at: datetime
+
+
+class WebhookSecretCreated(WebhookSecret):
+    """A newly issued ``webhook`` connector secret, with its plaintext."""
+
+    secret: SecretStr
+    """``whsec_...`` or ``whtok_...``, returned on this response only. A
+    :class:`~pydantic.SecretStr`, so it never prints; read it with
+    ``.get_secret_value()``."""
+
+
+class WebhookSecretCreateRequest(ApiModel):
+    """Body of ``POST /v1/connectors/{id}/secrets``."""
+
+    type: WebhookSecretType | None = None
+    """Needed for the first secret only; omitted, the new secret keeps the
+    live secret's type (a rotation)."""
 
 
 class Connector(ApiModel):
@@ -169,22 +189,6 @@ class Connector(ApiModel):
     created_by_member_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     requires_runtime: bool = False
-    signing_secrets: list[SigningSecret] | None = None
-    """A ``webhook`` connector's accepted secrets (at most two), current
-    first, described without their material; ``None`` for every other
-    provider."""
-
-
-class ConnectorSecretResponse(Connector):
-    """An update response: a :class:`Connector`, plus a ``webhook``
-    connector's secret the one time it is issued."""
-
-    signing_secret: SecretStr | None = None
-    """A ``webhook`` connector's new secret (``whsec_...`` or
-    ``whtok_...``), on the ``rotate_signing_secret`` update only. Shown
-    once: no read returns it. A
-    :class:`~pydantic.SecretStr`, so it never prints; read it with
-    ``.get_secret_value()``."""
 
 
 class ConnectorCreateRequest(ApiModel):
@@ -230,13 +234,6 @@ class ConnectorCreateRequest(ApiModel):
     webhook_url: str | None = None
 
 
-class SigningSecretRotation(ApiModel):
-    """``rotate_signing_secret`` naming the type of the secret it issues:
-    how a ``webhook`` connector's first secret is issued."""
-
-    type: WebhookSecretType
-
-
 class ConnectorUpdateRequest(ApiModel):
     """Update a connector (``PATCH /v1/connectors/{id}`` body).
 
@@ -258,17 +255,7 @@ class ConnectorUpdateRequest(ApiModel):
     client_secret: str | None = None
     signing_secret: str | None = None
     """Not for a ``webhook`` connector, whose secrets the platform
-    generates: issue one with ``rotate_signing_secret``."""
-    rotate_signing_secret: bool | SigningSecretRotation | None = None
-    """For a ``webhook`` connector only: issue a new secret, returned once
-    in the response. The first names its type
-    (:class:`SigningSecretRotation`); ``True`` rotates, keeping the
-    current secret's type, and the old one stays valid as the previous
-    secret until it is revoked. With two live, the server answers 409."""
-    revoke_signing_secret: str | None = None
-    """For a ``webhook`` connector only: the id (kid) of a live secret to
-    stop accepting now. The current one only once no previous one is live
-    (409). Not with ``rotate_signing_secret`` (422)."""
+    generates (``connectors.secrets.create``)."""
 
 
 class ConnectorAuthorizeBinding(ApiModel):
@@ -460,15 +447,15 @@ __all__ = [
     "ConnectorOAuthClientRegistration",
     "ConnectorOAuthDiscoveryRequest",
     "ConnectorOAuthDiscoveryResponse",
-    "ConnectorSecretResponse",
     "ConnectorStatus",
     "ConnectorUpdateRequest",
     "EntityUid",
     "PolicyEntity",
     "OpenWebhookSecretType",
-    "SigningSecret",
-    "SigningSecretRotation",
-    "SigningSecretStatus",
     "WEBHOOK_PROVIDER",
+    "WebhookSecret",
+    "WebhookSecretCreateRequest",
+    "WebhookSecretCreated",
+    "WebhookSecretStatus",
     "WebhookSecretType",
 ]

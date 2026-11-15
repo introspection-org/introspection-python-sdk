@@ -822,7 +822,6 @@ def test_06_connector(world: World) -> None:
                 "issuer": "[url]",
             },
             "requires_runtime": False,
-            "signing_secrets": None,
         }
     )
     assert w.sa.connectors.get(w.connector.id).slug == WALK.connector_name

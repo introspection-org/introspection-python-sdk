@@ -17,7 +17,9 @@ from introspection_sdk.resources.applications import (
 )
 from introspection_sdk.resources.connectors import (
     AsyncConnectors,
+    AsyncConnectorSecrets,
     Connectors,
+    ConnectorSecrets,
 )
 from introspection_sdk.resources.credentials import (
     AsyncCredentials,
@@ -105,6 +107,7 @@ __all__ = [
     "Routines",
     "AsyncAnnotations",
     "AsyncRoutines",
+    "AsyncConnectorSecrets",
     "AsyncConnectors",
     "AsyncExperimentHandle",
     "AsyncExperiments",
@@ -116,6 +119,7 @@ __all__ = [
     "AsyncRepositoryMerges",
     "AsyncRuntimeHandle",
     "AsyncRuntimes",
+    "ConnectorSecrets",
     "Connectors",
     "ExperimentHandle",
     "Experiments",

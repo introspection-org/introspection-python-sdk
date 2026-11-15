@@ -26,11 +26,12 @@ from introspection_sdk.schemas.connectors import (
     ConnectorAuthorizeBinding,
     ConnectorCreateRequest,
     ConnectorOAuthClientRegistration,
-    ConnectorSecretResponse,
     ConnectorUpdateRequest,
     EntityUid,
     PolicyEntity,
-    SigningSecretStatus,
+    WebhookSecret,
+    WebhookSecretCreated,
+    WebhookSecretStatus,
     WebhookSecretType,
 )
 
@@ -317,16 +318,22 @@ def test_update_rotates_a_secret_without_touching_anything_else(
 
 # --- webhook connectors -------------------------------------------
 
+SECRETS_PATH = f"{CONNECTOR_PATH}/secrets"
+
 
 def secret(kid: str, status: str, **over: object) -> dict[str, object]:
     fields: dict[str, object] = {
         "id": kid,
         "type": "standard_webhooks",
-        "created_at": "2026-11-13T10:00:00Z",
         "status": status,
+        "created_at": "2026-11-13T10:00:00Z",
     }
     fields.update(over)
     return fields
+
+
+def secret_page(*records: dict[str, object], next: str | None = None):
+    return {"records": list(records), "count": len(records), "next": next}
 
 
 def webhook_payload(**over: object) -> Connector:
@@ -338,7 +345,6 @@ def webhook_payload(**over: object) -> Connector:
         "scopes": [],
         "api_hosts": [],
         "requires_runtime": False,
-        "signing_secrets": [secret("1a2b3c4d", "current")],
     }
     fields.update(over)
     return connector_payload(**fields)
@@ -346,10 +352,7 @@ def webhook_payload(**over: object) -> Connector:
 
 def test_create_webhook_connector_issues_no_secret(fake_api: FakeAPI):
     fake_api.add(
-        "POST",
-        "/v1/connectors",
-        status=201,
-        json_body=webhook_payload(signing_secrets=[]),
+        "POST", "/v1/connectors", status=201, json_body=webhook_payload()
     )
 
     created = Connectors(fake_api.client()).create(
@@ -363,8 +366,66 @@ def test_create_webhook_connector_issues_no_secret(fake_api: FakeAPI):
         "slug": "orders",
     }
     assert type(created) is Connector
-    assert not hasattr(created, "signing_secret")
-    assert created.signing_secrets == []
+    assert "signing_secrets" not in Connector.model_fields
+    assert "signing_secret" not in Connector.model_fields
+
+
+def test_list_webhook_secrets_pages_through_the_cursor(fake_api: FakeAPI):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.params.get("next") == "c2":
+            body = secret_page(secret("1a2b3c4d", "previous"))
+        else:
+            body = secret_page(
+                secret(
+                    "5e6f7a8b", "current", created_at="2026-11-14T10:00:00Z"
+                ),
+                next="c2",
+            )
+        return httpx.Response(200, json=body)
+
+    fake_api.add_handler("GET", SECRETS_PATH, handler)
+
+    listed = list(
+        Connectors(fake_api.client()).secrets.list(CONNECTOR_UUID, limit=1)
+    )
+
+    current, previous = listed
+    assert all(type(s) is WebhookSecret for s in listed)
+    assert current.status is WebhookSecretStatus.CURRENT
+    assert current.created_at == datetime.fromisoformat(
+        "2026-11-14T10:00:00+00:00"
+    )
+    assert previous.id == "1a2b3c4d"
+    assert previous.type is WebhookSecretType.STANDARD_WEBHOOKS
+    assert previous.status is WebhookSecretStatus.PREVIOUS
+    assert [dict(r.params) for r in fake_api.requests] == [
+        {"limit": "1"},
+        {"limit": "1", "next": "c2"},
+    ]
+
+
+def test_list_webhook_secrets_starts_at_a_given_cursor(fake_api: FakeAPI):
+    fake_api.add("GET", SECRETS_PATH, json_body=secret_page())
+
+    page = Connectors(fake_api.client()).secrets.list(
+        CONNECTOR_UUID, next="c2"
+    )
+
+    assert list(page) == []
+    assert dict(fake_api.last_request.params) == {"next": "c2"}
+
+
+def test_a_listed_secret_tolerates_a_new_type_and_status(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        SECRETS_PATH,
+        json_body=secret_page(secret("1a2b3c4d", "retiring", type="mtls")),
+    )
+
+    (listed,) = Connectors(fake_api.client()).secrets.list(CONNECTOR_UUID)
+
+    assert listed.type == "mtls"
+    assert listed.status == "retiring"
 
 
 @pytest.mark.parametrize(
@@ -374,167 +435,155 @@ def test_create_webhook_connector_issues_no_secret(fake_api: FakeAPI):
         ("bearer", "whtok_first"),
     ],
 )
-def test_issue_the_first_webhook_secret_names_its_type(
+def test_create_the_first_webhook_secret_names_its_type(
     fake_api: FakeAPI, secret_type: WebhookSecretType | str, issued: str
 ):
     fake_api.add(
-        "PATCH",
-        CONNECTOR_PATH,
-        json_body=webhook_payload(
-            signing_secret=issued,
-            signing_secrets=[
-                secret("1a2b3c4d", "current", type=str(secret_type))
-            ],
+        "POST",
+        SECRETS_PATH,
+        status=201,
+        json_body=secret(
+            "1a2b3c4d", "current", type=str(secret_type), secret=issued
         ),
     )
 
-    updated = Connectors(fake_api.client()).update(
-        CONNECTOR_UUID, rotate_signing_secret=secret_type
+    created = Connectors(fake_api.client()).secrets.create(
+        CONNECTOR_UUID, type=secret_type
     )
 
-    assert fake_api.last_request.json() == {
-        "rotate_signing_secret": {"type": str(secret_type)}
-    }
-    assert isinstance(updated, ConnectorSecretResponse)
-    assert updated.signing_secret is not None
-    assert updated.signing_secret.get_secret_value() == issued
-    assert issued not in repr(updated)
-    assert updated.signing_secrets is not None
-    (current,) = updated.signing_secrets
-    assert current.type is WebhookSecretType(secret_type)
-    assert current.status is SigningSecretStatus.CURRENT
+    assert fake_api.last_request.method == "POST"
+    assert fake_api.last_request.json() == {"type": str(secret_type)}
+    assert type(created) is WebhookSecretCreated
+    assert created.secret.get_secret_value() == issued
+    assert issued not in repr(created)
+    assert created.type is WebhookSecretType(secret_type)
+    assert created.status is WebhookSecretStatus.CURRENT
 
 
-def test_issue_rejects_an_unknown_secret_type_before_sending(
+def test_create_without_a_type_rotates(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        SECRETS_PATH,
+        status=201,
+        json_body=secret("5e6f7a8b", "current", secret="whsec_rotated"),
+    )
+
+    rotated = Connectors(fake_api.client()).secrets.create(CONNECTOR_UUID)
+
+    # A rotation names no type: the server keeps the live secret's.
+    assert fake_api.last_request.json() == {}
+    assert rotated.id == "5e6f7a8b"
+    assert rotated.secret.get_secret_value() == "whsec_rotated"
+
+
+def test_create_rejects_an_unknown_secret_type_before_sending(
     fake_api: FakeAPI,
 ):
-    with pytest.raises(ValueError, match="mtls"):
-        Connectors(fake_api.client()).update(
-            CONNECTOR_UUID, rotate_signing_secret="mtls"
+    with pytest.raises(PydanticValidationError, match="type"):
+        Connectors(fake_api.client()).secrets.create(
+            CONNECTOR_UUID, type="mtls"
         )
     assert fake_api.requests == []
 
 
-def test_rotate_webhook_secret_keeps_its_type(fake_api: FakeAPI):
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "Two secrets are live; delete one first",
+        "A live secret is standard_webhooks; delete every secret first",
+    ],
+)
+def test_create_conflict_surfaces_the_409(fake_api: FakeAPI, detail: str):
     fake_api.add(
-        "PATCH",
-        CONNECTOR_PATH,
-        json_body=webhook_payload(
-            signing_secret="whsec_rotated",
-            signing_secrets=[
-                secret(
-                    "5e6f7a8b", "current", created_at="2026-11-14T10:00:00Z"
-                ),
-                secret("1a2b3c4d", "previous"),
-            ],
-        ),
+        "POST", SECRETS_PATH, status=409, json_body={"detail": detail}
     )
 
-    rotated = Connectors(fake_api.client()).update(
-        CONNECTOR_UUID, rotate_signing_secret=True
-    )
-
-    # A rotation names no type: the server keeps the current one's.
-    assert fake_api.last_request.json() == {"rotate_signing_secret": True}
-    assert rotated.signing_secret is not None
-    assert rotated.signing_secret.get_secret_value() == "whsec_rotated"
-    assert rotated.signing_secrets is not None
-    current, previous = rotated.signing_secrets
-    assert current.status is SigningSecretStatus.CURRENT
-    assert current.created_at == datetime.fromisoformat(
-        "2026-11-14T10:00:00+00:00"
-    )
-    assert previous.id == "1a2b3c4d"
-    assert previous.type is WebhookSecretType.STANDARD_WEBHOOKS
-    assert previous.status is SigningSecretStatus.PREVIOUS
-
-
-def test_rotate_with_two_live_secrets_surfaces_the_409(fake_api: FakeAPI):
-    fake_api.add(
-        "PATCH",
-        CONNECTOR_PATH,
-        status=409,
-        json_body={"detail": "Two secrets are live; revoke one first"},
-    )
-
-    with pytest.raises(ConflictError):
-        Connectors(fake_api.client()).update(
-            CONNECTOR_UUID, rotate_signing_secret=True
+    with pytest.raises(ConflictError, match=detail):
+        Connectors(fake_api.client()).secrets.create(
+            CONNECTOR_UUID, type="bearer"
         )
 
 
-def test_revoke_a_webhook_secret_by_kid(fake_api: FakeAPI):
-    fake_api.add("PATCH", CONNECTOR_PATH, json_body=webhook_payload())
-
-    updated = Connectors(fake_api.client()).update(
-        CONNECTOR_UUID, revoke_signing_secret="5e6f7a8b"
-    )
-
-    assert fake_api.last_request.json() == {
-        "revoke_signing_secret": "5e6f7a8b"
-    }
-    # A revoke issues nothing, so the response carries no secret.
-    assert updated.signing_secret is None
-    assert updated.signing_secrets is not None
-    assert [s.id for s in updated.signing_secrets] == ["1a2b3c4d"]
-
-
-def test_rotate_and_revoke_together_surface_the_422(fake_api: FakeAPI):
+def test_create_without_a_type_and_none_live_surfaces_the_422(
+    fake_api: FakeAPI,
+):
     fake_api.add(
-        "PATCH",
-        CONNECTOR_PATH,
+        "POST",
+        SECRETS_PATH,
         status=422,
-        json_body={
-            "detail": "Send rotate_signing_secret or "
-            "revoke_signing_secret, not both"
-        },
+        json_body={"detail": "Name a type for the first secret"},
     )
 
     with pytest.raises(ValidationError):
-        Connectors(fake_api.client()).update(
-            CONNECTOR_UUID,
-            rotate_signing_secret=True,
-            revoke_signing_secret="1a2b3c4d",
-        )
-    assert fake_api.last_request.json() == {
-        "rotate_signing_secret": True,
-        "revoke_signing_secret": "1a2b3c4d",
-    }
+        Connectors(fake_api.client()).secrets.create(CONNECTOR_UUID)
 
 
-def test_a_non_webhook_connector_lists_no_secrets(fake_api: FakeAPI):
-    fake_api.add(
-        "GET",
-        CONNECTOR_PATH,
-        json_body=connector_payload(signing_secrets=None),
-    )
-
-    assert (
-        Connectors(fake_api.client()).get(CONNECTOR_UUID).signing_secrets
-        is None
-    )
-
-
-def test_a_read_carries_no_secret_and_tolerates_a_new_secret_type(
+def test_secrets_of_a_non_webhook_connector_surface_the_404(
     fake_api: FakeAPI,
 ):
     fake_api.add(
         "GET",
-        CONNECTOR_PATH,
-        json_body=webhook_payload(
-            signing_secrets=[secret("1a2b3c4d", "current", type="mtls")]
-        ),
+        SECRETS_PATH,
+        status=404,
+        json_body={"detail": "Not a webhook connector"},
     )
 
-    connector = Connectors(fake_api.client()).get(CONNECTOR_UUID)
-
-    assert type(connector) is Connector
-    assert not hasattr(connector, "signing_secret")
-    assert connector.signing_secrets is not None
-    assert connector.signing_secrets[0].type == "mtls"
+    with pytest.raises(NotFoundError):
+        list(Connectors(fake_api.client()).secrets.list(CONNECTOR_UUID))
 
 
-def test_an_update_without_a_secret_action_sends_none(fake_api: FakeAPI):
+def test_delete_a_webhook_secret_by_kid(fake_api: FakeAPI):
+    fake_api.add("DELETE", f"{SECRETS_PATH}/5e6f7a8b", status=204)
+
+    result = Connectors(fake_api.client()).secrets.delete(
+        CONNECTOR_UUID, "5e6f7a8b"
+    )
+
+    assert result is None
+    assert fake_api.last_request.method == "DELETE"
+    assert fake_api.last_request.path == f"{SECRETS_PATH}/5e6f7a8b"
+    assert fake_api.last_request.content == b""
+
+
+def test_delete_the_current_secret_while_a_previous_is_live_surfaces_the_409(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "DELETE",
+        f"{SECRETS_PATH}/5e6f7a8b",
+        status=409,
+        json_body={"detail": "Delete the previous secret first"},
+    )
+
+    with pytest.raises(ConflictError):
+        Connectors(fake_api.client()).secrets.delete(
+            CONNECTOR_UUID, "5e6f7a8b"
+        )
+
+
+def test_delete_an_unknown_secret_surfaces_the_404(fake_api: FakeAPI):
+    with pytest.raises(NotFoundError):
+        Connectors(fake_api.client()).secrets.delete(
+            CONNECTOR_UUID, "00000000"
+        )
+    assert fake_api.last_request.path == f"{SECRETS_PATH}/00000000"
+
+
+@pytest.mark.parametrize(
+    "removed", ["rotate_signing_secret", "revoke_signing_secret"]
+)
+def test_update_no_longer_takes_secret_actions(
+    fake_api: FakeAPI, removed: str
+):
+    connectors = Connectors(fake_api.client())
+
+    with pytest.raises(TypeError, match=removed):
+        connectors.update(CONNECTOR_UUID, **{removed: True})  # type: ignore[arg-type]
+    assert removed not in ConnectorUpdateRequest.model_fields
+    assert fake_api.requests == []
+
+
+def test_an_update_returns_a_connector(fake_api: FakeAPI):
     fake_api.add("PATCH", CONNECTOR_PATH, json_body=webhook_payload())
 
     updated = Connectors(fake_api.client()).update(
@@ -542,60 +591,59 @@ def test_an_update_without_a_secret_action_sends_none(fake_api: FakeAPI):
     )
 
     assert fake_api.last_request.json() == {"name": "Orders (EU)"}
-    assert updated.signing_secret is None
+    assert type(updated) is Connector
 
 
-def test_rotating_a_non_webhook_connector_surfaces_the_422(fake_api: FakeAPI):
+async def test_async_webhook_secrets_create_list_and_delete(
+    fake_api: FakeAPI,
+):
     fake_api.add(
-        "PATCH",
-        CONNECTOR_PATH,
+        "POST",
+        SECRETS_PATH,
+        status=201,
+        json_body=secret(
+            "1a2b3c4d", "current", type="bearer", secret="whtok_a"
+        ),
+    )
+    fake_api.add(
+        "GET",
+        SECRETS_PATH,
+        json_body=secret_page(secret("1a2b3c4d", "current", type="bearer")),
+    )
+    fake_api.add("DELETE", f"{SECRETS_PATH}/1a2b3c4d", status=204)
+    secrets = AsyncConnectors(fake_api.async_client()).secrets
+
+    created = await secrets.create(
+        CONNECTOR_UUID, type=WebhookSecretType.BEARER
+    )
+    assert type(created) is WebhookSecretCreated
+    assert created.secret.get_secret_value() == "whtok_a"
+    listed = [s async for s in secrets.list(CONNECTOR_UUID)]
+    assert [s.id for s in listed] == ["1a2b3c4d"]
+    await secrets.delete(CONNECTOR_UUID, "1a2b3c4d")
+
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("POST", SECRETS_PATH),
+        ("GET", SECRETS_PATH),
+        ("DELETE", f"{SECRETS_PATH}/1a2b3c4d"),
+    ]
+    assert fake_api.requests[0].json() == {"type": "bearer"}
+
+
+async def test_async_create_without_a_type_and_none_live_surfaces_the_422(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST",
+        SECRETS_PATH,
         status=422,
-        json_body={
-            "detail": "rotate_signing_secret applies to a webhook "
-            "connector only"
-        },
+        json_body={"detail": "Name a type for the first secret"},
     )
 
     with pytest.raises(ValidationError):
-        Connectors(fake_api.client()).update(
-            CONNECTOR_UUID, rotate_signing_secret=True
+        await AsyncConnectors(fake_api.async_client()).secrets.create(
+            CONNECTOR_UUID
         )
-
-
-async def test_async_webhook_issue_rotate_and_revoke(fake_api: FakeAPI):
-    responses = iter(
-        [
-            webhook_payload(signing_secret="whtok_a"),
-            webhook_payload(signing_secret="whtok_b"),
-            webhook_payload(),
-        ]
-    )
-    fake_api.add_handler(
-        "PATCH",
-        CONNECTOR_PATH,
-        lambda _request: httpx.Response(
-            200, json=to_jsonable(next(responses))
-        ),
-    )
-    connectors = AsyncConnectors(fake_api.async_client())
-
-    issued = await connectors.update(
-        CONNECTOR_UUID, rotate_signing_secret=WebhookSecretType.BEARER
-    )
-    assert issued.signing_secret is not None
-    assert issued.signing_secret.get_secret_value() == "whtok_a"
-    rotated = await connectors.update(
-        CONNECTOR_UUID, rotate_signing_secret=True
-    )
-    assert rotated.signing_secret is not None
-    assert rotated.signing_secret.get_secret_value() == "whtok_b"
-    await connectors.update(CONNECTOR_UUID, revoke_signing_secret="1a2b3c4d")
-
-    assert [r.json() for r in fake_api.requests] == [
-        {"rotate_signing_secret": {"type": "bearer"}},
-        {"rotate_signing_secret": True},
-        {"revoke_signing_secret": "1a2b3c4d"},
-    ]
 
 
 # --- authorize ------------------------------------------------------
