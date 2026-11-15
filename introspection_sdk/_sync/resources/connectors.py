@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import builtins
 from typing import Any
-from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
@@ -15,6 +14,7 @@ from introspection_sdk._sync.resources._crud import (
     _body,
     _project,
     _Resource,
+    _segment,
 )
 from introspection_sdk.pagination import (
     Pager,
@@ -237,10 +237,8 @@ class ConnectorSecrets(_Resource):
         """Stop accepting a secret now (``secret_id`` is its kid). The
         current one only once no previous one is live (409); deleting the
         last leaves the endpoint refusing every call."""
-        if secret_id in ("", ".", ".."):
-            raise ValueError(f"{secret_id!r} is not a secret id")
         self._delete(
-            f"/v1/connectors/{connector_id}/secrets/{quote(secret_id, safe='')}"
+            f"/v1/connectors/{connector_id}/secrets/{_segment(secret_id)}"
         )
 
 
