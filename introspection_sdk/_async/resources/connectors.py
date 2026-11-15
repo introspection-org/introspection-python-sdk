@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import builtins
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._async.resources._crud import (
@@ -234,8 +235,10 @@ class AsyncConnectorSecrets(_AsyncResource):
         """Stop accepting a secret now (``secret_id`` is its kid). The
         current one only once no previous one is live (409); deleting the
         last leaves the endpoint refusing every call."""
+        if secret_id in ("", ".", ".."):
+            raise ValueError(f"{secret_id!r} is not a secret id")
         await self._delete(
-            f"/v1/connectors/{connector_id}/secrets/{secret_id}"
+            f"/v1/connectors/{connector_id}/secrets/{quote(secret_id, safe='')}"
         )
 
 

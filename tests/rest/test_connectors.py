@@ -1203,3 +1203,19 @@ async def test_async_list_and_delete_name_the_project(fake_api: FakeAPI):
     assert len(page.records) == 1
     await connectors.delete(CONNECTOR_UUID)
     assert "project" not in fake_api.last_request.params
+
+
+def test_delete_encodes_the_secret_id_and_refuses_a_dot_segment(
+    fake_api: FakeAPI,
+):
+    fake_api.add("DELETE", f"{SECRETS_PATH}/a/b", status=204)
+    secrets = Connectors(fake_api.client()).secrets
+
+    secrets.delete(CONNECTOR_UUID, "a/b")
+
+    assert (
+        fake_api.last_request.url.raw_path == f"{SECRETS_PATH}/a%2Fb".encode()
+    )
+    for bad in ("", ".", ".."):
+        with pytest.raises(ValueError):
+            secrets.delete(CONNECTOR_UUID, bad)
