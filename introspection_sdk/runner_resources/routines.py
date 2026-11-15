@@ -13,7 +13,8 @@ A prompt routine that starts a task per run can also be started by
 events: ``triggers`` lists them (a Slack or GitHub integration's events,
 or a ``webhook`` connector's calls), and ``trigger(parameters=...)``
 runs it by hand with a JSON object, which the SDK uploads through the
-Files API and attaches to the run (``parameters_file=`` attaches one
+Files API and attaches to the run (``parameters=<local JSON path>``
+reads one from disk first, and ``parameters=<File or UUID>`` attaches one
 already uploaded). Either way the run's parameters (the manual object,
 or the event's body) arrive as ``parameters.json`` and the prompt reads
 their top-level keys as ``@parameters.<name>``.

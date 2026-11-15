@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -57,6 +58,7 @@ from .conftest import (
 
 ROUTINE_ID = "0199a1b2-0000-7000-8000-000000000001"
 ROUTINE_PATH = f"/v1/routines/{ROUTINE_ID}"
+PARAMS_FILE_ID = "0199a1b2-0000-7000-8000-0000000000f1"
 
 
 def routine_body(**over: Any) -> dict[str, Any]:
@@ -672,7 +674,7 @@ def test_attach_parameters_file_skips_reading_the_routine(fake_api: FakeAPI):
     assert fake_api.last_request.json() == {"parameters": {"a": None}}
 
 
-def test_hand_trigger_with_a_parameters_file_sends_only_its_reference(
+def test_hand_trigger_with_a_file_sends_only_its_reference(
     fake_api: FakeAPI,
 ):
     fake_api.add(
@@ -680,24 +682,110 @@ def test_hand_trigger_with_a_parameters_file_sends_only_its_reference(
     )
     api = Routines(fake_api.client())
 
-    api.trigger(ROUTINE_ID, parameters_file=file_payload())
+    api.trigger(ROUTINE_ID, parameters=file_payload())
     assert fake_api.last_request.json() == {
         "files": [{"id": FILE_ID, "name": "parameters.json"}]
     }
 
     api.trigger(
         ROUTINE_ID,
-        parameters_file="file-params",
+        parameters=UUID(PARAMS_FILE_ID),
         files=[{"id": "file-brief", "name": "brief.md"}],
     )
     assert fake_api.last_request.json() == {
         "files": [
-            {"id": "file-params", "name": "parameters.json"},
+            {"id": PARAMS_FILE_ID, "name": "parameters.json"},
             {"id": "file-brief", "name": "brief.md"},
         ]
     }
     # Neither read the routine nor uploaded anything.
     assert {r.path for r in fake_api.requests} == {f"{ROUTINE_PATH}/trigger"}
+
+
+@pytest.mark.parametrize("attach", [None, True, False])
+def test_a_files_api_uuid_is_never_read_or_uploaded(
+    fake_api: FakeAPI, attach: bool | None
+):
+    fake_api.add(
+        "POST", f"{ROUTINE_PATH}/trigger", status=202, json_body=TRIGGERED
+    )
+
+    Routines(fake_api.client()).trigger(
+        ROUTINE_ID,
+        parameters=UUID(PARAMS_FILE_ID),
+        attach_parameters_file=attach,
+    )
+
+    assert [r.path for r in fake_api.requests] == [f"{ROUTINE_PATH}/trigger"]
+    assert fake_api.last_request.json() == {
+        "files": [{"id": PARAMS_FILE_ID, "name": "parameters.json"}]
+    }
+
+
+@pytest.mark.parametrize("as_path", [False, True])
+def test_a_local_json_file_is_read_then_sent_as_the_dict(
+    fake_api: FakeAPI, tmp_path: Path, as_path: bool
+):
+    parameters = {"customer": "acme", "days": 7, "note": None}
+    local = tmp_path / "acme.json"
+    local.write_text(json.dumps(parameters))
+    api = Routines(own_task_api(fake_api).client())
+
+    api.trigger(ROUTINE_ID, parameters=local if as_path else str(local))
+
+    read, upload, trigger = fake_api.requests
+    assert (read.method, read.path) == ("GET", ROUTINE_PATH)
+    assert json.loads(upload.json()["content"]) == parameters
+    assert trigger.json() == {
+        "parameters": parameters,
+        "files": [{"id": FILE_ID, "name": "parameters.json"}],
+    }
+
+
+def test_a_local_json_file_into_an_existing_task_is_sent_inline_only(
+    fake_api: FakeAPI, tmp_path: Path
+):
+    local = tmp_path / "p.json"
+    local.write_text('{"a": 1}')
+    fake_api.add(
+        "POST", f"{ROUTINE_PATH}/trigger", status=202, json_body=TRIGGERED
+    )
+
+    Routines(fake_api.client()).trigger(
+        ROUTINE_ID, parameters=local, attach_parameters_file=False
+    )
+
+    assert [r.path for r in fake_api.requests] == [f"{ROUTINE_PATH}/trigger"]
+    assert fake_api.last_request.json() == {"parameters": {"a": 1}}
+
+
+def test_a_local_file_must_hold_a_json_object(
+    fake_api: FakeAPI, tmp_path: Path
+):
+    local = tmp_path / "list.json"
+    local.write_text("[1, 2]")
+
+    with pytest.raises(ValueError, match="JSON object"):
+        Routines(fake_api.client()).trigger(ROUTINE_ID, parameters=local)
+    assert fake_api.requests == []
+
+
+def test_a_missing_local_file_raises_file_not_found(
+    fake_api: FakeAPI, tmp_path: Path
+):
+    with pytest.raises(FileNotFoundError):
+        Routines(fake_api.client()).trigger(
+            ROUTINE_ID, parameters=str(tmp_path / "missing.json")
+        )
+    assert fake_api.requests == []
+
+
+def test_a_uuid_string_naming_no_file_points_at_uuid(fake_api: FakeAPI):
+    with pytest.raises(ValueError, match=r"UUID\(\.\.\.\)"):
+        Routines(fake_api.client()).trigger(
+            ROUTINE_ID, parameters=PARAMS_FILE_ID
+        )
+    assert fake_api.requests == []
 
 
 def test_hand_trigger_with_neither_sends_no_body(fake_api: FakeAPI):
@@ -712,16 +800,6 @@ def test_hand_trigger_with_neither_sends_no_body(fake_api: FakeAPI):
     api.trigger(ROUTINE_ID, files=[{"id": "file-brief"}])
     assert fake_api.last_request.json() == {"files": [{"id": "file-brief"}]}
     assert len(fake_api.requests) == 2
-
-
-def test_hand_trigger_refuses_parameters_and_a_parameters_file(
-    fake_api: FakeAPI,
-):
-    with pytest.raises(ValueError, match="not both"):
-        Routines(fake_api.client()).trigger(
-            ROUTINE_ID, parameters={"a": 1}, parameters_file="file-params"
-        )
-    assert fake_api.requests == []
 
 
 def test_a_failed_upload_triggers_nothing(fake_api: FakeAPI):
@@ -756,9 +834,9 @@ async def test_async_hand_trigger_uploads_parameters(fake_api: FakeAPI):
     }
 
     fake_api.requests.clear()
-    await api.trigger(ROUTINE_ID, parameters_file="file-params")
+    await api.trigger(ROUTINE_ID, parameters=UUID(PARAMS_FILE_ID))
     assert fake_api.last_request.json() == {
-        "files": [{"id": "file-params", "name": "parameters.json"}]
+        "files": [{"id": PARAMS_FILE_ID, "name": "parameters.json"}]
     }
 
 

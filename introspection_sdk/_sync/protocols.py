@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import builtins
+import os
 from collections.abc import Iterator, Sequence
 from datetime import datetime
 from typing import Any, Literal, Protocol, Unpack, runtime_checkable
@@ -652,8 +653,12 @@ class RoutinesResource(Protocol):
         self,
         routine_id: UUID | str,
         *,
-        parameters: dict[str, Any] | None = None,
-        parameters_file: File | str | None = None,
+        parameters: dict[str, Any]
+        | str
+        | os.PathLike[str]
+        | UUID
+        | File
+        | None = None,
         files: builtins.list[FileRefInput] | None = None,
         attach_parameters_file: bool | None = None,
     ) -> RoutineTriggerResponse: ...

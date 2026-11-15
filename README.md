@@ -551,8 +551,10 @@ result = client.routines.trigger(weekly.id)       # run it now
 print(result.status, result.task_id, result.reason)
 ```
 
-`trigger` takes an optional `parameters` object (at most 16 KiB as JSON and
-8 levels deep, else 422). Each `@parameters.<name>` in a prompt routine's
+`trigger` takes optional `parameters`: a dict (at most 16 KiB as JSON and
+8 levels deep, else 422); a local JSON file holding one (a `str` or path),
+which the SDK reads and sends as that dict; or an already-uploaded Files API
+file holding one (a `File` or its `UUID`). Each `@parameters.<name>` in a prompt routine's
 prompt is replaced by that value as JSON (`null` when absent). For a routine
 that starts its own task, the SDK first uploads the object through the Files
 API (a unique `routine-parameters/<uuid>.json`, expiring after 30 days) and
@@ -565,13 +567,17 @@ A platform routine reads its kind's own keys:
 ```python
 client.routines.trigger(weekly.id, parameters={"customer": "acme", "days": 7})
 
-# Parameters already in a file (a JSON object, at most 256 KiB), plus inputs
+# A local JSON file: read, then sent exactly as the dict above.
+client.routines.trigger(weekly.id, parameters="runs/acme.json")
+
+# Parameters already in the Files API (a JSON object, at most 256 KiB), plus
+# inputs. Only the reference is sent: no upload, and the routine is not read.
 spec = client.files.create_text(
     name="runs/acme.json", content='{"customer": "acme"}', mime_type="application/json"
 )
 client.routines.trigger(
     weekly.id,
-    parameters_file=spec,                        # or its id
+    parameters=spec,                             # or its UUID, spec.id
     files=[{"id": brief_id, "name": "brief.md"}],  # attached to the run's task
 )
 

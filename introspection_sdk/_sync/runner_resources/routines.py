@@ -5,8 +5,11 @@
 from __future__ import annotations
 
 import builtins
+import errno
 import json
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID, uuid4
@@ -163,9 +166,34 @@ def _trigger_body(
     )
 
 
-def _parameters_ref(file: File | str) -> TaskFileRef:
+def _parameters_ref(file: File | UUID) -> TaskFileRef:
     file_id = file.id if isinstance(file, File) else file
     return TaskFileRef(id=str(file_id), name=PARAMETERS_FILE_NAME)
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _read_parameters(source: str | os.PathLike[Any]) -> dict[str, Any]:
+    path = Path(os.fspath(source))
+    if not path.is_file():
+        if isinstance(source, str) and _is_uuid(source):
+            raise ValueError(
+                f"parameters={source!r} names no local file; to reference a "
+                "Files API file pass UUID(...) or the File"
+            )
+        raise FileNotFoundError(
+            errno.ENOENT, "No such parameters file", str(path)
+        )
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{path} must hold a JSON object")
+    return value
 
 
 def _starts_own_task(routine: Routine) -> bool:
@@ -329,31 +357,42 @@ class Routines:
         self,
         routine_id: UUID | str,
         *,
-        parameters: dict[str, Any] | None = None,
-        parameters_file: File | str | None = None,
+        parameters: dict[str, Any]
+        | str
+        | os.PathLike[str]
+        | UUID
+        | File
+        | None = None,
         files: builtins.list[FileRefInput] | None = None,
         attach_parameters_file: bool | None = None,
     ) -> RoutineTriggerResponse:
         """Run a routine now (``POST /v1/routines/{id}/trigger``).
 
-        ``parameters`` is the run's JSON object (at most 16 KiB serialized
-        and 8 levels deep, else 422). Each ``@parameters.<name>`` in a
-        prompt routine's prompt is replaced by that value as JSON (``null``
-        when absent). For a routine that starts its own task, the SDK first
-        uploads them through the Files API under a unique
-        ``routine-parameters/<uuid>.json`` (expiring after 30 days) and
-        attaches that file as the run's ``parameters.json``. A platform
-        routine (one with a ``kind``) or one that posts into an existing
-        task takes no files, so it is sent ``parameters`` alone:
-        ``observation_synthesis`` takes ``{"conversation_ids": [...]}``
-        (1-100). ``attach_parameters_file`` decides this; left ``None``,
-        the SDK reads the routine first, and ``True`` / ``False`` skip
-        that read.
+        ``parameters`` is the run's parameters, in one of three forms:
 
-        ``parameters_file`` is an already-uploaded JSON object file (a
-        :class:`~introspection_sdk.schemas.files.File` or its id), attached
-        as ``parameters.json``; the server reads the parameters from it (at
-        most 256 KiB). Not with ``parameters``.
+        - A ``dict``: the JSON object itself (at most 16 KiB serialized and
+          8 levels deep, else 422), sent inline. Each ``@parameters.<name>``
+          in a prompt routine's prompt is replaced by that value as JSON
+          (``null`` when absent). For a routine that starts its own task,
+          the SDK first uploads it through the Files API under a unique
+          ``routine-parameters/<uuid>.json`` (expiring after 30 days) and
+          attaches that file as the run's ``parameters.json``. A platform
+          routine (one with a ``kind``) or one that posts into an existing
+          task takes no files, so it is sent the object alone:
+          ``observation_synthesis`` takes ``{"conversation_ids": [...]}``
+          (1-100). ``attach_parameters_file`` decides this; left ``None``,
+          the SDK reads the routine first, and ``True`` / ``False`` skip
+          that read.
+        - A ``str`` or path: a local JSON file holding an object, read and
+          then sent exactly as the ``dict`` form. A missing file raises
+          :class:`FileNotFoundError`; a string that names no file but is a
+          UUID raises :class:`ValueError`, since a Files API file is
+          referenced by ``UUID(...)`` or its ``File``.
+        - A :class:`~uuid.UUID` or
+          :class:`~introspection_sdk.schemas.files.File`: an already-uploaded
+          Files API file holding a JSON object (at most 256 KiB), attached
+          as ``parameters.json``; the server reads the parameters from it.
+          Nothing is read locally or uploaded, and the routine is not read.
 
         ``files`` are further Files API references
         (:class:`~introspection_sdk.schemas.tasks.TaskFileRef` or dicts)
@@ -364,18 +403,22 @@ class Routines:
         ``conversations``). A ``skipped`` status carries its ``reason``.
         Neither reads nor clears a scheduled slot.
         """
-        if parameters is not None and parameters_file is not None:
-            raise ValueError("pass parameters or parameters_file, not both")
         refs = [TaskFileRef.model_validate(ref) for ref in files or []]
-        if parameters_file is not None:
-            refs.insert(0, _parameters_ref(parameters_file))
+        inline: dict[str, Any] | None = None
+        if isinstance(parameters, File | UUID):
+            refs.insert(0, _parameters_ref(parameters))
         elif parameters is not None:
+            inline = (
+                _read_parameters(parameters)
+                if isinstance(parameters, str | os.PathLike)
+                else parameters
+            )
             if attach_parameters_file is None:
                 attach_parameters_file = _starts_own_task(self.get(routine_id))
             if attach_parameters_file:
                 uploaded = self._files.create_text(
                     name=f"routine-parameters/{uuid4()}.json",
-                    content=json.dumps(parameters),
+                    content=json.dumps(inline),
                     mime_type="application/json",
                     ttl_seconds=PARAMETERS_FILE_TTL_SECONDS,
                 )
@@ -384,6 +427,6 @@ class Routines:
         payload = self._http.request(
             "POST",
             f"{_path(routine_id)}/trigger",
-            json=_trigger_body(parameters, refs),
+            json=_trigger_body(inline, refs),
         )
         return decode(RoutineTriggerResponse, payload)
