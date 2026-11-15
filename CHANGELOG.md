@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.44.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.43.0...v0.44.0) (2026-11-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* ApiKeys.acknowledge() and ApiKeyAcknowledgement are removed; the server route is being retired.
+* `client.automations` / `runner.automations` is now `client.routines` / `runner.routines` (`Automations` / `AsyncAutomations` are `Routines` / `AsyncRoutines`), and `introspection_sdk.schemas.automations` is `introspection_sdk.schemas.routines` with every `Automation*` type renamed `Routine*` (`Routine`, `RoutineCreateRequest`, `RoutineUpdateRequest`, `RoutineKind`, `RoutineTriggerType`, `RoutineTriggerResponse`, ...). `AutomationTriggeredEvent` / `AutomationSkippedEvent` (and payloads) are `RoutineTriggeredEvent` / `RoutineSkippedEvent`, with event names `introspection.routines.triggered` / `introspection.routines.skipped`. The `automation_id` filters and fields are `routine_id` (`tasks.list(require_routine_id=...)`, `events.list(routine_id=...)`, `Task.routine_id`, `RoutineTriggerResponse.routine_id`); skip reasons are `routine_deleted` and `no_live_task_for_routine`. No aliases are kept. This release requires a data plane serving /v1/routines (introspection-cloud#4051).
+
+### Features
+
+* remove api_keys.acknowledge ([#269](https://github.com/introspection-org/introspection-python-sdk/issues/269)) ([94a0a15](https://github.com/introspection-org/introspection-python-sdk/commit/94a0a15409a44ea7232a9c6da43bba2821d55b2e))
+* rename automations to routines; webhook secrets per type; trigger with parameters files ([#265](https://github.com/introspection-org/introspection-python-sdk/issues/265)) ([1a44502](https://github.com/introspection-org/introspection-python-sdk/commit/1a44502f774629d94802d8607afede4d4281989f))
+
 ## [0.43.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.42.0...v0.43.0) (2026-11-13)
 
 
