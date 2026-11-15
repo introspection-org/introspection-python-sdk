@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from typing import Any, TypeVar
+from urllib.parse import quote
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -24,6 +25,15 @@ def _project(project: str | UUID | None) -> dict[str, Any]:
     """The ``?project=`` selector (slug or id), sent only when given; needed
     when the credential does not already name a project."""
     return {"project": str(project) if project is not None else None}
+
+
+def _segment(value: str) -> str:
+    """``value`` as one path segment. ``.`` and ``..`` survive percent-encoding
+    and an HTTP client collapses them, so a request would reach the parent
+    path; they are refused, as is an empty segment."""
+    if value in ("", ".", ".."):
+        raise ValueError(f"{value!r} is not a path segment")
+    return quote(value, safe="")
 
 
 def _body(request: type[BaseModel], fields: dict[str, Any]) -> dict[str, Any]:

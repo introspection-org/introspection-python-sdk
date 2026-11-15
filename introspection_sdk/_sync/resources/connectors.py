@@ -10,7 +10,12 @@ from uuid import UUID
 
 from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
-from introspection_sdk._sync.resources._crud import _project
+from introspection_sdk._sync.resources._crud import (
+    _body,
+    _project,
+    _Resource,
+    _segment,
+)
 from introspection_sdk.pagination import (
     Pager,
     cursor_paginate,
@@ -32,11 +37,12 @@ from introspection_sdk.schemas.connectors import (
     ConnectorCreateRequest,
     ConnectorOAuthDiscoveryRequest,
     ConnectorOAuthDiscoveryResponse,
-    ConnectorSecretResponse,
     ConnectorStatus,
     ConnectorUpdateRequest,
     PolicyEntity,
-    SigningSecretRotation,
+    WebhookSecret,
+    WebhookSecretCreated,
+    WebhookSecretCreateRequest,
     WebhookSecretType,
 )
 from introspection_sdk.schemas.pagination import Paginated
@@ -107,8 +113,6 @@ def _update_body(
     policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     client_secret: str | None,
     signing_secret: str | None,
-    rotate_signing_secret: bool | WebhookSecretType | str,
-    revoke_signing_secret: str | None,
 ) -> dict[str, Any]:
     # `exclude_none` is the "omitted = unchanged" contract: a secret
     # left as None never reaches the wire, so it cannot be cleared.
@@ -124,18 +128,8 @@ def _update_body(
             "policy_entities": policy_entities,
             "client_secret": client_secret,
             "signing_secret": signing_secret,
-            "rotate_signing_secret": _rotation(rotate_signing_secret),
-            "revoke_signing_secret": revoke_signing_secret,
         }
     ).model_dump(mode="json", exclude_none=True)
-
-
-def _rotation(
-    rotate: bool | WebhookSecretType | str,
-) -> bool | SigningSecretRotation | None:
-    if isinstance(rotate, bool):
-        return rotate or None
-    return SigningSecretRotation(type=WebhookSecretType(rotate))
 
 
 def _authorize_body(
@@ -195,6 +189,59 @@ def _token_result(payload: Any) -> ConnectionTokenResult:
     return decode(ConnectionToken, payload)
 
 
+class ConnectorSecrets(_Resource):
+    """CP ``/v1/connectors/{id}/secrets``: a ``webhook`` connector's
+    secrets.
+
+    At most two are live, both of one type. The newest is current; the
+    older is previous and still verifies, so senders can switch over
+    before it is deleted. Any other connector answers 404.
+    """
+
+    def list(
+        self,
+        connector_id: UUID,
+        *,
+        limit: int | None = None,
+        next: str | None = None,
+    ) -> Pager[WebhookSecret, Paginated[WebhookSecret]]:
+        """List the live secrets, current first, never their plaintext."""
+        return self._paginate(
+            f"/v1/connectors/{connector_id}/secrets",
+            Paginated[WebhookSecret],
+            {"limit": limit, "next": next},
+        )
+
+    def create(
+        self,
+        connector_id: UUID,
+        *,
+        type: WebhookSecretType | str | None = None,
+    ) -> WebhookSecretCreated:
+        """Issue a secret. Its plaintext is
+        :attr:`WebhookSecretCreated.secret` on this response only.
+
+        ``type`` is needed for the first secret; omitted, the new secret
+        keeps the live secret's type (a rotation), and with none live the
+        server answers 422. With two live, or a ``type`` other than the
+        live secrets', it answers 409: delete one first, or every one to
+        change type."""
+        return self._call(
+            "POST",
+            f"/v1/connectors/{connector_id}/secrets",
+            WebhookSecretCreated,
+            json=_body(WebhookSecretCreateRequest, {"type": type}),
+        )
+
+    def delete(self, connector_id: UUID, secret_id: str) -> None:
+        """Stop accepting a secret now (``secret_id`` is its kid). The
+        current one only once no previous one is live (409); deleting the
+        last leaves the endpoint refusing every call."""
+        self._delete(
+            f"/v1/connectors/{connector_id}/secrets/{_segment(secret_id)}"
+        )
+
+
 class Connectors:
     """CP ``/v1/connectors`` namespace.
 
@@ -203,11 +250,13 @@ class Connectors:
     credential that names none (an owner's session). ``authorize`` and
     ``get_token`` are addressed by connector id alone. A connector's
     connections are read and deleted through the data plane's
-    ``connections`` namespace (``client.connections``).
+    ``connections`` namespace (``client.connections``). A ``webhook``
+    connector's secrets are :attr:`secrets`.
     """
 
     def __init__(self, http: _HttpClient) -> None:
         self._http = http
+        self.secrets = ConnectorSecrets(http)
 
     def list(
         self,
@@ -281,8 +330,8 @@ class Connectors:
         call the control plane's ``/v1/webhooks/connectors/{id}``, and a
         routine's ``connector`` trigger runs on those calls. It is
         created without a secret, so the endpoint refuses every call until
-        :meth:`update` issues one (``rotate_signing_secret=<type>``); send
-        no secret, hosts, scopes or endpoints.
+        ``secrets.create(connector_id, type=...)`` issues one; send no
+        secret, hosts, scopes or endpoints.
         """
         payload = self._http.request(
             "POST",
@@ -392,33 +441,13 @@ class Connectors:
         | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
-        rotate_signing_secret: bool | WebhookSecretType | str = False,
-        revoke_signing_secret: str | None = None,
-    ) -> ConnectorSecretResponse:
+    ) -> Connector:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
         rotation, never a clear). ``policy_entities`` replaces the
-        connector's Cedar entities.
+        connector's Cedar entities. A ``webhook`` connector takes neither
+        secret (422): its secrets are :attr:`secrets`."""
 
-        A ``webhook`` connector's secrets are issued here, each returned
-        once as ``signing_secret`` on the response and listed (without
-        their material) in ``signing_secrets``:
-
-        - ``rotate_signing_secret="standard_webhooks"`` (or ``"bearer"``, a
-          :class:`WebhookSecretType`) issues its first secret of that type.
-        - ``rotate_signing_secret=True`` rotates: the new secret keeps the
-          current one's type, and the old one stays valid as the previous
-          secret until it is revoked. With two live, revoke one first
-          (409).
-        - ``revoke_signing_secret=<kid>`` stops accepting that secret now
-          (its ``signing_secrets[].id``). The current one only once no
-          previous one is live (409); revoking the last leaves the endpoint
-          refusing every call. To change type, revoke every secret, then
-          issue one of the other type.
-
-        Rotate and revoke together, either on any other connector, or a
-        ``client_secret`` / ``signing_secret`` on a webhook connector, is a
-        422."""
         payload = self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
@@ -433,11 +462,9 @@ class Connectors:
                 policy_entities=policy_entities,
                 client_secret=client_secret,
                 signing_secret=signing_secret,
-                rotate_signing_secret=rotate_signing_secret,
-                revoke_signing_secret=revoke_signing_secret,
             ),
         )
-        return decode(ConnectorSecretResponse, payload)
+        return decode(Connector, payload)
 
     def delete(
         self, connector_id: UUID, *, project: str | UUID | None = None

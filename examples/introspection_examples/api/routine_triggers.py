@@ -1,7 +1,7 @@
 """Start a routine from a webhook, and by hand with parameters.
 
 Creates a ``webhook`` connector, issues its first secret (shown once), rotates
-it and revokes the previous one, creates a prompt routine with a ``connector``
+it and deletes the previous one, creates a prompt routine with a ``connector``
 trigger, then runs the routine by hand with the same parameters, which the SDK
 uploads as the run's ``parameters.json``. Cleans both up at the end.
 
@@ -12,7 +12,7 @@ data)``), e.g. ``{"type": "order.created", "order_id": "o-123"}``. The run
 receives that body as ``parameters.json``, and ``@parameters.order_id`` reads
 its top-level ``order_id`` -- the same as the manual run below.
 
-Needs a platform with introspection-cloud#4052 deployed, and an
+Needs a platform that serves ``/v1/connectors/{id}/secrets``, and an
 administrator's credential.
 
 Run with:
@@ -55,17 +55,14 @@ def main() -> None:
         )
         # Created without a secret; the platform generates each one and
         # returns it once.
-        issued = client.connectors.update(
-            orders.id, rotate_signing_secret="standard_webhooks"
-        )
-        assert issued.signing_secret is not None
-        rotated = client.connectors.update(
-            orders.id, rotate_signing_secret=True
-        )
-        for secret in rotated.signing_secrets or []:
+        secrets = client.connectors.secrets
+        issued = secrets.create(orders.id, type="standard_webhooks")
+        print(f"  issued {issued.id}")  # issued.secret is shown once
+        secrets.create(orders.id)  # a rotation keeps the type
+        live = list(secrets.list(orders.id))
+        for secret in live:
             print(f"  secret {secret.id} {secret.type} {secret.status}")
-        previous = (rotated.signing_secrets or [])[-1]
-        client.connectors.update(orders.id, revoke_signing_secret=previous.id)
+        secrets.delete(orders.id, live[-1].id)
         print(f"webhook connector {orders.id}")
 
         routine = client.routines.create(

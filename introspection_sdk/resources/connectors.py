@@ -9,21 +9,29 @@ connector operation even though the route lives under ``/v1/oauth/``.
 ``client_secret`` / ``signing_secret`` are write-only: accepted on
 create and update, absent from every response, and omitting them on
 update means "unchanged". A ``webhook`` connector is the exception: it
-is created without a secret, and the platform generates each one and
-returns it once, on ``update(rotate_signing_secret="standard_webhooks")``
-(or ``"bearer"``) for the first and ``update(rotate_signing_secret=True)``
-for a rotation; the secret a rotation replaces stays valid until
-``update(revoke_signing_secret=<kid>)``.
+is created without a secret, and its secrets are the ``secrets``
+sub-resource (``/v1/connectors/{id}/secrets``). The platform generates
+each one and returns it once, on ``secrets.create(id, type=...)`` for the
+first and ``secrets.create(id)`` for a rotation; the secret a rotation
+replaces stays valid until ``secrets.delete(id, kid)``.
 Project scope comes from the authenticated credential; connector calls do not
 take a separate project selector.
 """
 
 from __future__ import annotations
 
-from introspection_sdk._async.resources.connectors import AsyncConnectors
-from introspection_sdk._sync.resources.connectors import Connectors
+from introspection_sdk._async.resources.connectors import (
+    AsyncConnectors,
+    AsyncConnectorSecrets,
+)
+from introspection_sdk._sync.resources.connectors import (
+    Connectors,
+    ConnectorSecrets,
+)
 
 __all__ = [
+    "AsyncConnectorSecrets",
     "AsyncConnectors",
+    "ConnectorSecrets",
     "Connectors",
 ]

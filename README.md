@@ -605,10 +605,10 @@ from introspection_sdk.schemas.routines import RoutineTriggerSpec
 orders = client.connectors.create(
     name="Orders", slug="orders", provider="webhook", auth_mode="static"
 )
-issued = client.connectors.update(
-    orders.id, rotate_signing_secret="standard_webhooks"  # or "bearer"
+issued = client.connectors.secrets.create(
+    orders.id, type="standard_webhooks"  # or "bearer"
 )
-save(issued.signing_secret.get_secret_value())  # shown once
+save(issued.secret.get_secret_value())  # shown once
 
 follow_up = client.routines.create(
     name="Order follow-up",
@@ -654,23 +654,24 @@ A trigger runs one task at a time; an event that arrives while its run is in
 flight is recorded as `introspection.routines.skipped` with reason
 `trigger_busy`.
 
-`update(rotate_signing_secret=True)` rotates: it issues a new secret of the
-current one's type, returned once, and the secret it replaces keeps working as
-the previous one until you revoke it with
-`update(revoke_signing_secret=<id>)`. At most two are live, so a rotation with
-two live is a 409; the current secret can be revoked only once no previous one
-is, and revoking the last leaves the endpoint refusing every call. To change
-type, revoke every secret, then issue one of the other type. A webhook
-connector's `signing_secrets` lists them, current first, as
-`{id, type, created_at, status}` without their material; `id` is the kid to
-revoke. Rotating and revoking in one update is a 422. This needs a platform
-with introspection-cloud#4052 deployed.
+A webhook connector's secrets are the `client.connectors.secrets`
+sub-resource. `secrets.create(orders.id)` without a `type` rotates: it issues
+a new secret of the live one's type, returned once, and the secret it replaces
+keeps working as the previous one until you delete it, so your senders can
+switch over. At most two are live, so a rotation with two live is a 409; the
+current secret can be deleted only once no previous one is, and deleting the
+last leaves the endpoint refusing every call. To change type, delete every
+secret, then create one of the other type (a `type` other than the live
+secrets' is a 409; no `type` with none live is a 422). `secrets.list` pages
+through them, current first, as `WebhookSecret` (`{id, type, status,
+created_at}`) without their material; `id` is the kid to delete. Any other
+connector answers 404.
 
 ```python
-rotated = client.connectors.update(orders.id, rotate_signing_secret=True)
-save(rotated.signing_secret.get_secret_value())
-previous = rotated.signing_secrets[1]  # status "previous"
-client.connectors.update(orders.id, revoke_signing_secret=previous.id)
+rotated = client.connectors.secrets.create(orders.id)
+save(rotated.secret.get_secret_value())
+current, previous = client.connectors.secrets.list(orders.id)
+client.connectors.secrets.delete(orders.id, previous.id)
 ```
 
 `update` sends only the fields you pass, so `None` never clears anything;
