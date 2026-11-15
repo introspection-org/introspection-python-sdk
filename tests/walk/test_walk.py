@@ -812,13 +812,17 @@ def test_06_connector(world: World) -> None:
             "status": "pending",
             "created_by_member_id": "[uuid]",
             "metadata": {
-                "oauth": {
-                    "resource": "[url]",
-                    "client_registration": "dynamic",
-                    "registration_endpoint": "[url]",
-                    "code_challenge_methods_supported": ["S256"],
-                    "token_endpoint_auth_methods_supported": ["none"],
-                },
+                # Members beyond these are the issuer's discovery as reported
+                # (`revocation_endpoint`, ...).
+                "oauth": IsPartialDict(
+                    {
+                        "resource": "[url]",
+                        "client_registration": "dynamic",
+                        "registration_endpoint": "[url]",
+                        "code_challenge_methods_supported": ["S256"],
+                        "token_endpoint_auth_methods_supported": ["none"],
+                    }
+                ),
                 "issuer": "[url]",
             },
             "requires_runtime": False,
