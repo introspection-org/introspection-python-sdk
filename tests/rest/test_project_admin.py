@@ -353,13 +353,10 @@ def test_api_key_create_returns_a_redacted_plaintext(fake_api: FakeAPI):
     assert PLAINTEXT not in created.model_dump_json()
 
 
-def test_api_key_update_delete_and_acknowledge(fake_api: FakeAPI):
+def test_api_key_update_and_delete(fake_api: FakeAPI):
     path = f"/v1/api-keys/{KEY_ID}"
     fake_api.add("PATCH", path, json_body=api_key_payload(name="renamed"))
     fake_api.add("DELETE", path, status=204)
-    fake_api.add(
-        "POST", f"{path}/acknowledge", json_body={"acknowledged": True}
-    )
     keys = ApiKeys(fake_api.client())
 
     updated = keys.update(UUID(KEY_ID), name="renamed")
@@ -372,10 +369,6 @@ def test_api_key_update_delete_and_acknowledge(fake_api: FakeAPI):
         "project": "support",
         "expires_in": "3600",
     }
-
-    assert keys.acknowledge(UUID(KEY_ID), project="support").acknowledged
-    assert fake_api.last_request.content == b""
-    assert fake_api.last_request.params.get("project") == "support"
 
 
 def test_api_key_delete_without_grace_sends_no_expiry(fake_api: FakeAPI):

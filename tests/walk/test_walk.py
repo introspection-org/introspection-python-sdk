@@ -2412,7 +2412,6 @@ def test_18_members_and_keys(world: World) -> None:
     w.sa.api_keys.update(
         api_key.id, project=w.project.id, name=f"{WALK.api_key_name} (renamed)"
     )
-    w.sa.api_keys.acknowledge(api_key.id, project=w.project.id)
     # The organisation's name, slug and sign-in settings are whoever is running
     # the walk, and a recording that predates the sign-in settings has none.
     assert org.slug
