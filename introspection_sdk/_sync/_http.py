@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -192,20 +193,9 @@ class _HttpClient:
         headers: Mapping[str, str] | None = None,
     ) -> Iterator[bytes]:
         req_headers = self._request_headers(headers)
-        try:
-            with self._client.stream(
-                "GET",
-                path,
-                params=_clean_params(params),
-                headers=req_headers,
-            ) as res:
-                if res.status_code >= 400:
-                    res.read()
-                    raise error_from_response(res)
-                for chunk in res.iter_bytes():
-                    yield chunk
-        except httpx.HTTPError as exc:
-            raise NetworkError(str(exc)) from exc
+        with self._open_stream(path, params, req_headers) as res:
+            for chunk in res.iter_bytes():
+                yield chunk
 
     def stream_sse_lines(
         self,
@@ -218,15 +208,25 @@ class _HttpClient:
         req_headers = self._request_headers(
             {"Accept": "text/event-stream", **(headers or {})}
         )
+        with self._open_stream(path, params, req_headers) as res:
+            for line in res.iter_lines():
+                yield line
+
+    @contextmanager
+    def _open_stream(
+        self,
+        path: str,
+        params: Mapping[str, Any] | None,
+        headers: dict[str, str],
+    ) -> Iterator[httpx.Response]:
         try:
             with self._client.stream(
-                "GET", path, params=_clean_params(params), headers=req_headers
+                "GET", path, params=_clean_params(params), headers=headers
             ) as res:
                 if res.status_code >= 400:
                     res.read()
                     raise error_from_response(res)
-                for line in res.iter_lines():
-                    yield line
+                yield res
         except httpx.HTTPError as exc:
             raise NetworkError(str(exc)) from exc
 

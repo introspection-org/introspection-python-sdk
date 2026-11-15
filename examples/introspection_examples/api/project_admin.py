@@ -5,8 +5,8 @@ project's API keys, credentials, variables, judges, endpoints and runtime
 peerings, and mints
 the member's own short-lived access token for the project, lists a GitHub
 integration's repositories and mints its short-lived installation token; then, when
-INTROSPECTION_ADMIN_WRITE=1, mints an API key, saves its one-time plaintext,
-acknowledges it and revokes it again, renames an endpoint and back, creates
+INTROSPECTION_ADMIN_WRITE=1, mints an API key, saves its one-time plaintext
+and revokes it again, renames an endpoint and back, creates
 and deletes another, and creates, renames and deletes a sibling project on the same deployment.
 
 These routes need an org credential: an owner's or admin's Control Plane
@@ -158,7 +158,6 @@ def main() -> None:
                 created.api_key.get_secret_value() if created.api_key else ""
             )
             print(f"minted {created.key_display} ({len(plaintext)} chars)")
-            client.api_keys.acknowledge(created.id, project=project)
             # `expires_in` keeps the key working that long, for a rotation.
             client.api_keys.delete(created.id, project=project, expires_in=0)
             # #endregion docs:api-key-rotate

@@ -52,7 +52,8 @@ class ApiKey(BaseModel):
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
     acknowledged_at: datetime | None = None
-    """Set once ``api_keys.acknowledge`` records the key as saved."""
+    """Legacy: no longer written by the server; set only on keys acknowledged
+    before the acknowledge route was retired."""
     key_display: str
     prefix: str
 
@@ -88,14 +89,6 @@ class ApiKeyUpdateRequest(BaseModel):
     member_id: UUID | None = None
 
 
-class ApiKeyAcknowledgement(BaseModel):
-    """Response of ``POST /v1/api-keys/{id}/acknowledge``."""
-
-    model_config = ConfigDict(extra="allow")
-
-    acknowledged: bool
-
-
 class ApiKeyList(BaseModel):
     """The ``GET /v1/api-keys`` envelope; the SDK returns its keys."""
 
@@ -106,7 +99,6 @@ class ApiKeyList(BaseModel):
 
 __all__ = [
     "ApiKey",
-    "ApiKeyAcknowledgement",
     "ApiKeyCapability",
     "ApiKeyCreateRequest",
     "ApiKeyCreated",

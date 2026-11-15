@@ -16,7 +16,6 @@ from introspection_sdk._sync.resources._crud import (
 )
 from introspection_sdk.schemas.api_keys import (
     ApiKey,
-    ApiKeyAcknowledgement,
     ApiKeyCapability,
     ApiKeyCreated,
     ApiKeyCreateRequest,
@@ -64,8 +63,8 @@ class ApiKeys(_Resource):
         expires_at: datetime | None = None,
     ) -> ApiKeyCreated:
         """Mint a key. Its plaintext is :attr:`ApiKeyCreated.api_key` (a
-        ``SecretStr``) and is never returned again: save it, then call
-        :meth:`acknowledge`. ``environment`` defaults to ``production``."""
+        ``SecretStr``) and is never returned again, so save it.
+        ``environment`` defaults to ``production``."""
         body = _body(
             ApiKeyCreateRequest,
             {
@@ -118,16 +117,4 @@ class ApiKeys(_Resource):
         self._delete(
             _key_path(api_key_id),
             {**_project(project), "expires_in": expires_in},
-        )
-
-    def acknowledge(
-        self, api_key_id: UUID, *, project: str | UUID | None = None
-    ) -> ApiKeyAcknowledgement:
-        """Record that the plaintext from :meth:`create` was saved. A second
-        acknowledge raises :class:`~introspection_sdk.NotFoundError`."""
-        return self._call(
-            "POST",
-            f"{_key_path(api_key_id)}/acknowledge",
-            ApiKeyAcknowledgement,
-            params=_project(project),
         )

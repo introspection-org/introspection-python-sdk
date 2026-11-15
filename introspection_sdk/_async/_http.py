@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -200,20 +201,9 @@ class _AsyncHttpClient:
         headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[bytes]:
         req_headers = await self._request_headers(headers)
-        try:
-            async with self._client.stream(
-                "GET",
-                path,
-                params=_clean_params(params),
-                headers=req_headers,
-            ) as res:
-                if res.status_code >= 400:
-                    await res.aread()
-                    raise error_from_response(res)
-                async for chunk in res.aiter_bytes():
-                    yield chunk
-        except httpx.HTTPError as exc:
-            raise NetworkError(str(exc)) from exc
+        async with self._open_stream(path, params, req_headers) as res:
+            async for chunk in res.aiter_bytes():
+                yield chunk
 
     async def stream_sse_lines(
         self,
@@ -226,15 +216,25 @@ class _AsyncHttpClient:
         req_headers = await self._request_headers(
             {"Accept": "text/event-stream", **(headers or {})}
         )
+        async with self._open_stream(path, params, req_headers) as res:
+            async for line in res.aiter_lines():
+                yield line
+
+    @asynccontextmanager
+    async def _open_stream(
+        self,
+        path: str,
+        params: Mapping[str, Any] | None,
+        headers: dict[str, str],
+    ) -> AsyncIterator[httpx.Response]:
         try:
             async with self._client.stream(
-                "GET", path, params=_clean_params(params), headers=req_headers
+                "GET", path, params=_clean_params(params), headers=headers
             ) as res:
                 if res.status_code >= 400:
                     await res.aread()
                     raise error_from_response(res)
-                async for line in res.aiter_lines():
-                    yield line
+                yield res
         except httpx.HTTPError as exc:
             raise NetworkError(str(exc)) from exc
 
