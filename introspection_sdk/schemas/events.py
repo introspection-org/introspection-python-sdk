@@ -26,18 +26,19 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
-from introspection_sdk.schemas.automations import (
+from introspection_sdk.schemas.routines import (
     OpenSkipReason,
     OpenTriggerType,
+    RoutineTriggerEventRef,
 )
 
 __all__ = [
     "AnnotationEvent",
     "AnnotationPayload",
-    "AutomationSkippedEvent",
-    "AutomationSkippedPayload",
-    "AutomationTriggeredEvent",
-    "AutomationTriggeredPayload",
+    "RoutineSkippedEvent",
+    "RoutineSkippedPayload",
+    "RoutineTriggeredEvent",
+    "RoutineTriggeredPayload",
     "ClusteringRunEvent",
     "ClusteringRunPayload",
     "Event",
@@ -93,8 +94,8 @@ class IntrospectionEventName(StrEnum):
     ISSUE = "introspection.issue"
     PATTERN = "introspection.pattern"
     PATTERN_ASSIGNMENT = "introspection.pattern.assignment"
-    AUTOMATION_TRIGGERED = "introspection.automation.triggered"
-    AUTOMATION_SKIPPED = "introspection.automation.skipped"
+    ROUTINE_TRIGGERED = "introspection.routines.triggered"
+    ROUTINE_SKIPPED = "introspection.routines.skipped"
     """Project-owned: readable only with project-wide telemetry access."""
     TRACK = "introspection.track"
     """Virtual projection over app events from ``log_event`` / ``track``."""
@@ -440,18 +441,19 @@ IssueActivityPayload = Annotated[
 """One issue event, discriminated by its ``action``."""
 
 
-class AutomationTriggeredPayload(_ApiModel):
-    """One automation trigger that ran.
+class RoutineTriggeredPayload(_ApiModel):
+    """One routine trigger that ran.
 
     ``slot`` is the ``next_trigger_at`` a scheduled trigger claimed
     (``None`` for a hand trigger). ``posted`` says whether the prompt went
     into an existing task rather than a new one. ``member_id`` is the
     task's member, who owns the event; ``triggered_by_member_id`` is the
-    person who triggered it by hand.
+    person who triggered it by hand. ``event`` names the event trigger and
+    delivery that started it, for a run an event trigger started.
     """
 
-    automation_id: UUID
-    automation_name: str
+    routine_id: UUID
+    routine_name: str
     trigger_type: OpenTriggerType
     task_id: UUID
     """The task created, or posted into when ``posted`` is true."""
@@ -461,20 +463,23 @@ class AutomationTriggeredPayload(_ApiModel):
     slot: datetime | None = None
     runtime_group_id: UUID | None = None
     triggered_by_member_id: UUID | None = None
+    event: RoutineTriggerEventRef | None = None
 
 
-class AutomationSkippedPayload(_ApiModel):
-    """One scheduled automation trigger that ran nothing.
+class RoutineSkippedPayload(_ApiModel):
+    """One scheduled slot, or one event delivery, that ran nothing.
 
     Project-owned, so it names no member. ``task_id`` is set only when the
-    automation targets an existing task.
+    routine targets an existing task. ``event`` names the event trigger and
+    delivery skipped (reason ``trigger_busy``); ``slot`` the scheduled slot.
     """
 
-    automation_id: UUID
+    routine_id: UUID
     trigger_type: OpenTriggerType
     reason: OpenSkipReason
     slot: datetime | None = None
     task_id: UUID | None = None
+    event: RoutineTriggerEventRef | None = None
 
 
 # --- whole-event models: envelope + typed payload, Literal tag -------
@@ -537,20 +542,20 @@ class JudgementEvent(IntrospectionEventBase):
     payload: JudgementPayload
 
 
-class AutomationTriggeredEvent(IntrospectionEventBase):
-    """An automation trigger that ran
-    (``event_name=introspection.automation.triggered``)."""
+class RoutineTriggeredEvent(IntrospectionEventBase):
+    """A routine trigger that ran
+    (``event_name=introspection.routines.triggered``)."""
 
-    event_name: Literal[IntrospectionEventName.AUTOMATION_TRIGGERED]
-    payload: AutomationTriggeredPayload
+    event_name: Literal[IntrospectionEventName.ROUTINE_TRIGGERED]
+    payload: RoutineTriggeredPayload
 
 
-class AutomationSkippedEvent(IntrospectionEventBase):
-    """A scheduled automation trigger that ran nothing
-    (``event_name=introspection.automation.skipped``)."""
+class RoutineSkippedEvent(IntrospectionEventBase):
+    """A scheduled routine trigger that ran nothing
+    (``event_name=introspection.routines.skipped``)."""
 
-    event_name: Literal[IntrospectionEventName.AUTOMATION_SKIPPED]
-    payload: AutomationSkippedPayload
+    event_name: Literal[IntrospectionEventName.ROUTINE_SKIPPED]
+    payload: RoutineSkippedPayload
 
 
 class TrackEvent(IntrospectionEventBase):
@@ -573,8 +578,8 @@ Event = Annotated[
     | AnnotationEvent
     | IssueActivityEvent
     | JudgementEvent
-    | AutomationTriggeredEvent
-    | AutomationSkippedEvent
+    | RoutineTriggeredEvent
+    | RoutineSkippedEvent
     | TrackEvent,
     Field(discriminator="event_name"),
 ]

@@ -8,13 +8,13 @@ from datetime import datetime
 from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.runner_resources import (
-    AsyncAutomations,
     AsyncConversations,
     AsyncEvents,
     AsyncFiles,
     AsyncImages,
     AsyncIssues,
     AsyncMetrics,
+    AsyncRoutines,
     AsyncRunnerAppConnections,
     AsyncShares,
     AsyncTasks,
@@ -69,7 +69,7 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
-        self._automations = AsyncAutomations(self._http)
+        self._routines = AsyncRoutines(self._http)
         self._images = AsyncImages(self._http)
         self._issues = AsyncIssues(self._http)
         self._connections = AsyncRunnerAppConnections(
@@ -133,10 +133,10 @@ class AsyncRunner:
         return self._shares
 
     @property
-    def automations(self) -> AsyncAutomations:
-        """DP ``/v1/automations`` namespace bound to this Runner."""
+    def routines(self) -> AsyncRoutines:
+        """DP ``/v1/routines`` namespace bound to this Runner."""
         self._check_open()
-        return self._automations
+        return self._routines
 
     @property
     def images(self) -> AsyncImages:
@@ -205,7 +205,7 @@ class AsyncRunner:
         self._events = AsyncEvents(self._http)
         self._metrics = AsyncMetrics(self._http)
         self._shares = AsyncShares(self._http)
-        self._automations = AsyncAutomations(self._http)
+        self._routines = AsyncRoutines(self._http)
         self._images = AsyncImages(self._http)
         self._issues = AsyncIssues(self._http)
         self._connections = AsyncRunnerAppConnections(

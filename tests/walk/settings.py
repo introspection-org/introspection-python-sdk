@@ -54,7 +54,7 @@ class Walk:
     application_name: str = "sdk-coverage-walk"
     tag_name: str = "walk"
     api_key_name: str = "walk"
-    automation_name: str = "The walk's automation"
+    routine_name: str = "The walk's routine"
     experiment_names: tuple[str, ...] = (
         "The walk's experiment",
         "The walk's cancelled experiment",
@@ -118,7 +118,7 @@ APPLICATION_SCOPES = [
     *("files:delete", "conversations:read", "events:read", "metrics:read"),
     *("shares:read", "shares:write", "shares:delete", "connectors:read"),
     *("connectors:write", "connections:read", "connections:write"),
-    *("connections:delete", "automations:read", "automations:write"),
+    *("connections:delete", "routines:read", "routines:write"),
     *("annotations:read", "approvals:read", "approvals:write"),
     *("images:read", "images:write", "api_keys:read", "api_keys:write"),
     *("api_keys:delete", "applications:read", "applications:write"),

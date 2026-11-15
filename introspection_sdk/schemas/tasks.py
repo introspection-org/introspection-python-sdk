@@ -64,7 +64,7 @@ class Task(_ApiModel):
     kind: TaskKind = TaskKind.AGENT
     status: TaskStatus = TaskStatus.PENDING
     member_id: UUID | None = None
-    automation_id: UUID | None = None
+    routine_id: UUID | None = None
     runtime_id: UUID | None = None
     runtime_group_id: UUID | None = None
     is_archived: bool = False

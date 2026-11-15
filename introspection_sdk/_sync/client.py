@@ -18,7 +18,6 @@ from introspection_sdk.resources import (
     Annotations,
     ApiKeys,
     Applications,
-    Automations,
     Connectors,
     Credentials,
     Endpoints,
@@ -31,6 +30,7 @@ from introspection_sdk.resources import (
     Projects,
     Recipes,
     Repositories,
+    Routines,
     Runtimes,
     Tags,
     Tokens,
@@ -79,7 +79,7 @@ class IntrospectionClient:
     members: Members
     annotations: Annotations
     tags: Tags
-    automations: Automations
+    routines: Routines
     events: Events
     tasks: Tasks
     files: Files
@@ -153,7 +153,7 @@ class IntrospectionClient:
         self.members = Members(self._http)
         self.annotations = Annotations(self._http, self._dp_http)
         self.tags = Tags(self._dp_http)
-        self.automations = Automations(self._dp_http)
+        self.routines = Routines(self._dp_http)
         self.events = Events(self._dp_http)
         self.tasks = Tasks(self._dp_http)
         self.files = Files(self._dp_http)

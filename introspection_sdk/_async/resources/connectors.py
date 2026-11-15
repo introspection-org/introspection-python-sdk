@@ -30,9 +30,12 @@ from introspection_sdk.schemas.connectors import (
     ConnectorCreateRequest,
     ConnectorOAuthDiscoveryRequest,
     ConnectorOAuthDiscoveryResponse,
+    ConnectorSecretResponse,
     ConnectorStatus,
     ConnectorUpdateRequest,
     PolicyEntity,
+    SigningSecretRotation,
+    WebhookSecretType,
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.runner import RunnerIdentity
@@ -102,6 +105,8 @@ def _update_body(
     policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     client_secret: str | None,
     signing_secret: str | None,
+    rotate_signing_secret: bool | WebhookSecretType | str,
+    revoke_signing_secret: str | None,
 ) -> dict[str, Any]:
     # `exclude_none` is the "omitted = unchanged" contract: a secret
     # left as None never reaches the wire, so it cannot be cleared.
@@ -117,8 +122,18 @@ def _update_body(
             "policy_entities": policy_entities,
             "client_secret": client_secret,
             "signing_secret": signing_secret,
+            "rotate_signing_secret": _rotation(rotate_signing_secret),
+            "revoke_signing_secret": revoke_signing_secret,
         }
     ).model_dump(mode="json", exclude_none=True)
+
+
+def _rotation(
+    rotate: bool | WebhookSecretType | str,
+) -> bool | SigningSecretRotation | None:
+    if isinstance(rotate, bool):
+        return rotate or None
+    return SigningSecretRotation(type=WebhookSecretType(rotate))
 
 
 def _authorize_body(
@@ -258,6 +273,14 @@ class AsyncConnectors:
         connector requires ``person_server_url`` and ``application_id``;
         ``policy_entities`` are the Cedar entities the egress policy gate
         adds to its requests.
+
+        A ``webhook`` connector (``provider="webhook"``,
+        ``auth_mode="static"``) is inbound only: the customer's systems
+        call the control plane's ``/v1/webhooks/connectors/{id}``, and a
+        routine's ``connector`` trigger runs on those calls. It is
+        created without a secret, so the endpoint refuses every call until
+        :meth:`update` issues one (``rotate_signing_secret=<type>``); send
+        no secret, hosts, scopes or endpoints.
         """
         payload = await self._http.request(
             "POST",
@@ -369,11 +392,33 @@ class AsyncConnectors:
         | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
-    ) -> Connector:
+        rotate_signing_secret: bool | WebhookSecretType | str = False,
+        revoke_signing_secret: str | None = None,
+    ) -> ConnectorSecretResponse:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
         rotation, never a clear). ``policy_entities`` replaces the
-        connector's Cedar entities."""
+        connector's Cedar entities.
+
+        A ``webhook`` connector's secrets are issued here, each returned
+        once as ``signing_secret`` on the response and listed (without
+        their material) in ``signing_secrets``:
+
+        - ``rotate_signing_secret="standard_webhooks"`` (or ``"bearer"``, a
+          :class:`WebhookSecretType`) issues its first secret of that type.
+        - ``rotate_signing_secret=True`` rotates: the new secret keeps the
+          current one's type, and the old one stays valid as the previous
+          secret until it is revoked. With two live, revoke one first
+          (409).
+        - ``revoke_signing_secret=<kid>`` stops accepting that secret now
+          (its ``signing_secrets[].id``). The current one only once no
+          previous one is live (409); revoking the last leaves the endpoint
+          refusing every call. To change type, revoke every secret, then
+          issue one of the other type.
+
+        Rotate and revoke together, either on any other connector, or a
+        ``client_secret`` / ``signing_secret`` on a webhook connector, is a
+        422."""
         payload = await self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
@@ -388,9 +433,11 @@ class AsyncConnectors:
                 policy_entities=policy_entities,
                 client_secret=client_secret,
                 signing_secret=signing_secret,
+                rotate_signing_secret=rotate_signing_secret,
+                revoke_signing_secret=revoke_signing_secret,
             ),
         )
-        return decode(Connector, payload)
+        return decode(ConnectorSecretResponse, payload)
 
     async def delete(
         self, connector_id: UUID, *, project: str | UUID | None = None

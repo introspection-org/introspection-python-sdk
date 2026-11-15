@@ -10,13 +10,13 @@ from datetime import datetime
 from introspection_sdk._errors import RunnerExpiredError
 from introspection_sdk._http import _HttpClient
 from introspection_sdk.runner_resources import (
-    Automations,
     Conversations,
     Events,
     Files,
     Images,
     Issues,
     Metrics,
+    Routines,
     RunnerAppConnections,
     Shares,
     Tasks,
@@ -59,7 +59,7 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
-        self._automations = Automations(self._http)
+        self._routines = Routines(self._http)
         self._images = Images(self._http)
         self._issues = Issues(self._http)
         self._connections = RunnerAppConnections(
@@ -119,10 +119,10 @@ class Runner:
         return self._shares
 
     @property
-    def automations(self) -> Automations:
-        """DP ``/v1/automations`` namespace bound to this Runner."""
+    def routines(self) -> Routines:
+        """DP ``/v1/routines`` namespace bound to this Runner."""
         self._check_open()
-        return self._automations
+        return self._routines
 
     @property
     def images(self) -> Images:
@@ -191,7 +191,7 @@ class Runner:
         self._events = Events(self._http)
         self._metrics = Metrics(self._http)
         self._shares = Shares(self._http)
-        self._automations = Automations(self._http)
+        self._routines = Routines(self._http)
         self._images = Images(self._http)
         self._issues = Issues(self._http)
         self._connections = RunnerAppConnections(

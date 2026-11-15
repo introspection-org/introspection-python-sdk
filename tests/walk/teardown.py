@@ -42,9 +42,9 @@ def _remove_data_plane(
     for key in owner.api_keys.list(project=project.id):
         if key.name in (WALK.api_key_name, f"{WALK.api_key_name} (renamed)"):
             owner.api_keys.delete(key.id, project=project.id)
-    for automation in member.automations.list():
-        if automation.name == WALK.automation_name:
-            member.automations.delete(automation.id)
+    for routine in member.routines.list():
+        if routine.name == WALK.routine_name:
+            member.routines.delete(routine.id)
     with contextlib.suppress(NotFoundError):
         member.tags.delete(TagKind.ACCESS, WALK.tag_name)
     for task in dp.tasks.list():

@@ -75,3 +75,7 @@ class FileCreateTextRequest(_ApiModel):
     """Tags stamped on the file when this request creates it; same rules as
     :attr:`FileUpdateRequest.tags`. A request that adds a version to an
     existing file keeps that file's tags."""
+    ttl_seconds: int | None = None
+    """Expire the file this long after it is created (at most 30 days); the
+    server sets ``expires_at`` and a sweep deletes it after that. Omitted, it
+    never expires."""

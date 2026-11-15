@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import builtins
+import os
 from collections.abc import Iterator, Sequence
 from datetime import datetime
 from typing import Any, Literal, Protocol, Unpack, runtime_checkable
@@ -15,7 +16,6 @@ from introspection_sdk.runner_resources._reads import (
     ArrowPageIterator,
     ReadFormat,
 )
-from introspection_sdk.runner_resources.automations import MetadataInput
 from introspection_sdk.runner_resources.conversations import (
     ConversationExportFormat,
     ConversationExportParams,
@@ -23,14 +23,13 @@ from introspection_sdk.runner_resources.conversations import (
     ConversationSentiment,
 )
 from introspection_sdk.runner_resources.files import FileLike
+from introspection_sdk.runner_resources.routines import (
+    FileRefInput,
+    MetadataInput,
+    TriggerInput,
+)
 from introspection_sdk.runner_resources.tasks import RunHandle
 from introspection_sdk.schemas.agui import AGUIStreamEvent, ResumeEntry
-from introspection_sdk.schemas.automations import (
-    Automation,
-    AutomationKind,
-    AutomationTriggerResponse,
-    AutomationTriggerType,
-)
 from introspection_sdk.schemas.connections import Connection, ConnectPage
 from introspection_sdk.schemas.conversations import (
     Conversation,
@@ -75,6 +74,12 @@ from introspection_sdk.schemas.metrics import (
     MetricQueryResponse,
 )
 from introspection_sdk.schemas.pagination import Paginated
+from introspection_sdk.schemas.routines import (
+    Routine,
+    RoutineKind,
+    RoutineTriggerResponse,
+    RoutineTriggerType,
+)
 from introspection_sdk.schemas.shares import (
     ResourceShare,
     ShareResourceType,
@@ -188,7 +193,7 @@ class TasksResource(Protocol):
         next: str | None = None,
         include_total: bool = False,
         statuses: builtins.list[str] | None = None,
-        require_automation_id: bool | None = None,
+        require_routine_id: bool | None = None,
         tag: str | None = None,
     ) -> Pager[Task, Paginated[Task]]: ...
 
@@ -296,6 +301,7 @@ class FilesResource(Protocol):
         mime_type: str = "text/markdown",
         metadata: dict[str, Any] | None = None,
         tags: builtins.list[str] | None = None,
+        ttl_seconds: int | None = None,
     ) -> File: ...
 
     def get(self, file_id: str) -> File: ...
@@ -493,7 +499,7 @@ class EventsResource(Protocol):
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
-        automation_id: UUID | str | None = None,
+        routine_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         format: ReadFormat = "json",
     ) -> Pager[Event, Paginated[Event]]: ...
@@ -537,7 +543,7 @@ class EventsResource(Protocol):
         severities: builtins.list[str] | None = None,
         runtime_group_unattributed: bool | None = None,
         status: str | None = None,
-        automation_id: UUID | str | None = None,
+        routine_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
     ) -> ArrowPageIterator: ...
 
@@ -591,44 +597,46 @@ class SharesResource(Protocol):
 
 
 @runtime_checkable
-class AutomationsResource(Protocol):
-    """Protocol of :class:`~introspection_sdk.runner_resources.automations.Automations`."""
+class RoutinesResource(Protocol):
+    """Protocol of :class:`~introspection_sdk.runner_resources.routines.Routines`."""
 
     def list(
         self,
         *,
-        kind: AutomationKind | str | None = None,
+        kind: RoutineKind | str | None = None,
         enabled: bool | None = None,
         scheduled: bool | None = None,
         task_id: UUID | str | None = None,
         limit: int | None = None,
         next: str | None = None,
-    ) -> Pager[Automation, Paginated[Automation]]: ...
+    ) -> Pager[Routine, Paginated[Routine]]: ...
 
-    def get(self, automation_id: UUID | str) -> Automation: ...
+    def get(self, routine_id: UUID | str) -> Routine: ...
 
     def create(
         self,
         *,
         name: str,
-        trigger_type: AutomationTriggerType | str,
+        trigger_type: RoutineTriggerType | str,
         description: str | None = None,
         cron_schedule: str | None = None,
-        kind: AutomationKind | str | None = None,
+        kind: RoutineKind | str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | None = None,
         task_id: UUID | None = None,
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
-    ) -> Automation: ...
+        triggers: builtins.list[TriggerInput] | None = None,
+    ) -> Routine: ...
 
     def update(
         self,
-        automation_id: UUID | str,
+        routine_id: UUID | str,
         *,
         name: str | None = None,
         description: str | None = None,
+        trigger_type: RoutineTriggerType | str | None = None,
         cron_schedule: str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | None = None,
@@ -636,13 +644,24 @@ class AutomationsResource(Protocol):
         next_trigger_at: datetime | None = None,
         metadata: MetadataInput | None = None,
         enabled: bool | None = None,
-    ) -> Automation: ...
+        triggers: builtins.list[TriggerInput] | None = None,
+    ) -> Routine: ...
 
-    def delete(self, automation_id: UUID | str) -> None: ...
+    def delete(self, routine_id: UUID | str) -> None: ...
 
     def trigger(
-        self, automation_id: UUID | str
-    ) -> AutomationTriggerResponse: ...
+        self,
+        routine_id: UUID | str,
+        *,
+        parameters: dict[str, Any]
+        | str
+        | os.PathLike[str]
+        | UUID
+        | File
+        | None = None,
+        files: builtins.list[FileRefInput] | None = None,
+        attach_parameters_file: bool | None = None,
+    ) -> RoutineTriggerResponse: ...
 
 
 @runtime_checkable
@@ -795,7 +814,7 @@ class DataPlaneResources(Protocol):
     def shares(self) -> SharesResource: ...
 
     @property
-    def automations(self) -> AutomationsResource: ...
+    def routines(self) -> RoutinesResource: ...
 
     @property
     def connections(self) -> ConnectionsResource: ...

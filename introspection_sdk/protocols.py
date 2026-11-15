@@ -16,7 +16,6 @@ still satisfies the Protocol, where ``runtime`` is required.
 from __future__ import annotations
 
 from introspection_sdk._async.protocols import (
-    AsyncAutomationsResource,
     AsyncConnectionsResource,
     AsyncConversationItemsResource,
     AsyncConversationsResource,
@@ -27,13 +26,13 @@ from introspection_sdk._async.protocols import (
     AsyncImagesResource,
     AsyncIssuesResource,
     AsyncMetricsResource,
+    AsyncRoutinesResource,
     AsyncSharesResource,
     AsyncTaskCommandsResource,
     AsyncTaskRunsResource,
     AsyncTasksResource,
 )
 from introspection_sdk._sync.protocols import (
-    AutomationsResource,
     ConnectionsResource,
     ConversationItemsResource,
     ConversationsResource,
@@ -44,6 +43,7 @@ from introspection_sdk._sync.protocols import (
     ImagesResource,
     IssuesResource,
     MetricsResource,
+    RoutinesResource,
     SharesResource,
     TaskCommandsResource,
     TaskRunsResource,
@@ -51,7 +51,7 @@ from introspection_sdk._sync.protocols import (
 )
 
 __all__ = [
-    "AsyncAutomationsResource",
+    "AsyncRoutinesResource",
     "AsyncConnectionsResource",
     "AsyncConversationItemsResource",
     "AsyncConversationsResource",
@@ -66,7 +66,7 @@ __all__ = [
     "AsyncTaskCommandsResource",
     "AsyncTaskRunsResource",
     "AsyncTasksResource",
-    "AutomationsResource",
+    "RoutinesResource",
     "ConnectionsResource",
     "ConversationItemsResource",
     "ConversationsResource",

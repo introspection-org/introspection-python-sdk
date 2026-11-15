@@ -1,18 +1,18 @@
 """Schedule a one-off reminder into a task and read its trigger events.
 
-Lists the project's automations, then (when INTROSPECTION_TASK_ID and
-INTROSPECTION_RUNTIME_GROUP_ID are set) creates a ``manual`` automation that
+Lists the project's routines, then (when INTROSPECTION_TASK_ID and
+INTROSPECTION_RUNTIME_GROUP_ID are set) creates a ``manual`` routine that
 posts a prompt into that task an hour from now, and reads back the
-``introspection.automation.triggered`` events for it.
+``introspection.routines.triggered`` events for it.
 
-The server serves ``/v1/automations`` to project administrators only today;
+The server serves ``/v1/routines`` to project administrators only today;
 introspection-cloud#3137 opens it to members for their own task-targeted
-automations.
+routines.
 
 Run with:
     INTROSPECTION_TOKEN=intro_xxx
 
-        uv run python -m introspection_examples.api.automations
+        uv run python -m introspection_examples.api.routines
 
 Optional env:
     INTROSPECTION_TASK_ID           - task the reminder posts into
@@ -40,10 +40,10 @@ def main() -> None:
     client = IntrospectionClient(dp_url=os.getenv("INTROSPECTION_DP_URL"))
     try:
         # A Pager: iterating follows the `next` cursor across pages.
-        for automation in client.automations.list(limit=50):
+        for routine in client.routines.list(limit=50):
             print(
-                f"  {automation.kind or 'prompt':22} {automation.name}"
-                f" next={automation.next_trigger_at}"
+                f"  {routine.kind or 'prompt':22} {routine.name}"
+                f" next={routine.next_trigger_at}"
             )
 
         task_id = os.getenv("INTROSPECTION_TASK_ID")
@@ -51,7 +51,7 @@ def main() -> None:
         if not (task_id and runtime_group_id):
             return
 
-        reminder = client.automations.create(
+        reminder = client.routines.create(
             name="Check in",
             trigger_type="manual",
             prompt="Any progress since we last spoke?",
@@ -62,8 +62,8 @@ def main() -> None:
         print(f"scheduled {reminder.id} for {reminder.next_trigger_at}")
 
         for event in client.events.list(
-            "introspection.automation.triggered",
-            automation_id=reminder.id,
+            "introspection.routines.triggered",
+            routine_id=reminder.id,
             lookback="7d",
         ):
             print(f"  triggered at {event.timestamp}")

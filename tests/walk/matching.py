@@ -92,7 +92,7 @@ ROUTE_DEFAULTS: tuple[tuple[re.Pattern[str], dict[str, str]], ...] = (
     ),
     (
         re.compile(
-            r"^/v1/(automations|annotations|tags|conversations"
+            r"^/v1/(routines|annotations|tags|conversations"
             r"|events|runtimes|experiments)$"
         ),
         {"limit": "100"},

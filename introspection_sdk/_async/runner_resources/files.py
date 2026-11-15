@@ -285,18 +285,21 @@ class AsyncFiles:
         mime_type: str = "text/markdown",
         metadata: dict[str, Any] | None = None,
         tags: builtins.list[str] | None = None,
+        ttl_seconds: int | None = None,
     ) -> File:
         """Create a text/markdown file via JSON body.
 
         ``tags`` and ``metadata`` are stamped when the request creates the
         file. A request that adds a new version to an existing file keeps
-        that file's tags; change them with :meth:`update`."""
+        that file's tags; change them with :meth:`update`. ``ttl_seconds``
+        (at most 30 days) makes the file expire that long after creation."""
         body = FileCreateTextRequest(
             name=name,
             content=content,
             mime_type=mime_type,
             metadata=metadata,
             tags=tags,
+            ttl_seconds=ttl_seconds,
         )
         payload = await self._http.request(
             "POST", "/v1/files", json=body.model_dump(exclude_none=True)

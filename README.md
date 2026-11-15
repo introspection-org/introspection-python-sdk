@@ -192,7 +192,7 @@ async for summary in runner.conversations.list(
 ```
 
 The runner also exposes `files`, `shares`, `events`, `metrics`,
-`automations`, `issues` and `connections`.
+`routines`, `issues` and `connections`.
 
 ## Export a conversation's spans
 
@@ -241,7 +241,7 @@ and returns the steps that are final. Runnable:
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:
 `tasks` (with `tasks.runs`), `files`, `conversations`, `events`, `metrics`,
-`shares`, `automations`, `issues` and `connections`. The contract is
+`shares`, `routines`, `issues` and `connections`. The contract is
 `introspection_sdk.protocols.DataPlaneResources` (and
 `AsyncDataPlaneResources` for `AsyncIntrospectionClient` / `AsyncRunner`),
 so code written against it runs with either handle:
@@ -262,8 +262,8 @@ The two differ only in the credential they send: the client sends its own
 token (an API key, a service account or a member's token) against
 `dp_url`, and a Runner sends the session token minted for it. A route the
 credential lacks the scope for answers 403 either way. A runner a member
-opens for themself is being given `automations:read` and
-`automations:write`, so it manages that member's automations.
+opens for themself is being given `routines:read` and
+`routines:write`, so it manages that member's routines.
 
 ## Curate traces with human review
 
@@ -512,20 +512,20 @@ Control Plane namespaces such as `client.runtimes` reject it. `AsyncEmailCodeAut
 `revoke_session` are the one-shot calls underneath. See
 [`examples/introspection_examples/api/native_email_code.py`](examples/introspection_examples/api/native_email_code.py).
 
-## Schedule automations
+## Schedule routines
 
-`client.automations` manages a project's automations on the data plane: a
+`client.routines` manages a project's routines on the data plane: a
 prompt on a schedule (`kind=None`), or platform work (`observation_synthesis`,
-`observation_clustering`, `project_check_in`). A prompt automation creates a
+`observation_clustering`, `project_check_in`). A prompt routine creates a
 task per firing, or posts into an existing task when it names `task_id`. A
-one-off reminder is a `manual` automation with a future `next_trigger_at`:
+one-off reminder is a `manual` routine with a future `next_trigger_at`:
 
 ```python
 from datetime import UTC, datetime
 
-from introspection_sdk.schemas.automations import AutomationMetadata
+from introspection_sdk.schemas.routines import RoutineMetadata
 
-reminder = client.automations.create(
+reminder = client.routines.create(
     name="Friday check-in",
     trigger_type="manual",
     prompt="How did the week go?",
@@ -534,25 +534,150 @@ reminder = client.automations.create(
     next_trigger_at=datetime(2026, 10, 9, 16, tzinfo=UTC),
 )
 
-weekly = client.automations.create(
+weekly = client.routines.create(
     name="Weekly digest",
     trigger_type="cron",
     cron_schedule="0 9 * * 1",
     prompt="Summarize my week",
     runtime_group_id=runtime_group_id,
-    metadata=AutomationMetadata(timezone="Europe/London"),
+    metadata=RoutineMetadata(timezone="Europe/London"),
 )
 
-for automation in client.automations.list(enabled=True, scheduled=True):
-    print(automation.name, automation.kind, automation.next_trigger_at)
+for routine in client.routines.list(enabled=True, scheduled=True):
+    print(routine.name, routine.kind, routine.next_trigger_at)
 
-client.automations.update(weekly.id, enabled=False)  # pause, keep the slot
-result = client.automations.trigger(weekly.id)       # run it now
+client.routines.update(weekly.id, enabled=False)  # pause, keep the slot
+result = client.routines.trigger(weekly.id)       # run it now
 print(result.status, result.task_id, result.reason)
 ```
 
+`trigger` takes optional `parameters`: a dict (at most 16 KiB as JSON and
+8 levels deep, else 422); a local JSON file holding one (a `str` or path),
+which the SDK reads and sends as that dict; or an already-uploaded Files API
+file holding one (a `File` or its `UUID`). Each `@parameters.<name>` in a prompt routine's
+prompt is replaced by that value as JSON (`null` when absent). For a routine
+that starts its own task, the SDK first uploads the object through the Files
+API (a unique `routine-parameters/<uuid>.json`, expiring after 30 days) and
+attaches it to the run as `parameters.json`, so a trigger is two requests.
+A platform routine (it has a `kind`) or one that posts into an existing task
+takes no files and is sent `parameters` alone; the SDK reads the routine to
+tell which, unless you say with `attach_parameters_file=True` / `False`.
+A platform routine reads its kind's own keys:
+
+```python
+client.routines.trigger(weekly.id, parameters={"customer": "acme", "days": 7})
+
+# A local JSON file: read, then sent exactly as the dict above.
+client.routines.trigger(weekly.id, parameters="runs/acme.json")
+
+# Parameters already in the Files API (a JSON object, at most 256 KiB), plus
+# inputs. Only the reference is sent: no upload, and the routine is not read.
+spec = client.files.create_text(
+    name="runs/acme.json", content='{"customer": "acme"}', mime_type="application/json"
+)
+client.routines.trigger(
+    weekly.id,
+    parameters=spec,                             # or its UUID, spec.id
+    files=[{"id": brief_id, "name": "brief.md"}],  # attached to the run's task
+)
+
+synthesis = next(iter(client.routines.list(kind="observation_synthesis")))
+queued = client.routines.trigger(
+    synthesis.id, parameters={"conversation_ids": ["conv-1"]}
+)
+print(queued.result)  # {"enqueued": 1, "conversations": [...]}
+```
+
+### Start a routine from an event
+
+A prompt routine that starts a task per run can also run on events: its
+`triggers` list a Slack or GitHub integration's events, or the calls a
+`webhook` connector receives. A webhook connector is inbound only: your own
+systems call the control plane's `/v1/webhooks/connectors/{id}`, signed with
+[Standard Webhooks](https://www.standardwebhooks.com/) (the default) or
+sending `Authorization: Bearer <secret>`, by the type of its secret. It is
+created without one, so it refuses every call until you issue a secret; the
+platform generates it and returns it once, as a `SecretStr`:
+
+```python
+from introspection_sdk.schemas.routines import RoutineTriggerSpec
+
+orders = client.connectors.create(
+    name="Orders", slug="orders", provider="webhook", auth_mode="static"
+)
+issued = client.connectors.update(
+    orders.id, rotate_signing_secret="standard_webhooks"  # or "bearer"
+)
+save(issued.signing_secret.get_secret_value())  # shown once
+
+follow_up = client.routines.create(
+    name="Order follow-up",
+    trigger_type="manual",
+    prompt="An order was placed: @parameters.data. Check stock for it.",
+    runtime_group_id=runtime_group_id,
+    triggers=[
+        RoutineTriggerSpec(
+            source="connector",
+            provider="webhook",
+            connector_slug="orders",
+            event_types=["order.created"],  # the body's `type`; "*" for any
+            filter={"payload_fields": {"region": ["eu"]}},
+        )
+    ],
+)
+```
+
+Your system signs each call with the
+[`standardwebhooks`](https://pypi.org/project/standardwebhooks/) package:
+
+```python
+from datetime import datetime, timezone
+
+from standardwebhooks import Webhook
+
+body = '{"type": "order.created", "region": "eu", "data": {"id": "ord_1"}}'
+msg_id = "msg_1"
+signature = Webhook(secret).sign(msg_id, datetime.now(timezone.utc), body)
+# POST body with webhook-id: msg_1, webhook-timestamp, webhook-signature
+```
+
+A trigger declares no parameters: the run it starts receives the event's body
+as `parameters.json` (any JSON; a non-JSON body arrives as a JSON string), and
+`@parameters.<key>` reads its top-level keys, the same as a manual run's
+`parameters`. A key with no value is listed in the task's
+`unresolved_parameters` metadata; the event itself stays in
+`trigger/event.json`. The task's
+`trigger_source` metadata is `trigger` and its `routine_trigger` names the
+trigger, event type and delivery. `update(triggers=[...])` replaces the list:
+an entry with an existing trigger's `id` keeps it, and `[]` removes them all.
+A trigger runs one task at a time; an event that arrives while its run is in
+flight is recorded as `introspection.routines.skipped` with reason
+`trigger_busy`.
+
+`update(rotate_signing_secret=True)` rotates: it issues a new secret of the
+current one's type, returned once, and the secret it replaces keeps working as
+the previous one until you revoke it with
+`update(revoke_signing_secret=<id>)`. At most two are live, so a rotation with
+two live is a 409; the current secret can be revoked only once no previous one
+is, and revoking the last leaves the endpoint refusing every call. To change
+type, revoke every secret, then issue one of the other type. A webhook
+connector's `signing_secrets` lists them, current first, as
+`{id, type, created_at, status}` without their material; `id` is the kid to
+revoke. Rotating and revoking in one update is a 422. This needs a platform
+with introspection-cloud#4052 deployed.
+
+```python
+rotated = client.connectors.update(orders.id, rotate_signing_secret=True)
+save(rotated.signing_secret.get_secret_value())
+previous = rotated.signing_secrets[1]  # status "previous"
+client.connectors.update(orders.id, revoke_signing_secret=previous.id)
+```
+
 `update` sends only the fields you pass, so `None` never clears anything;
-`metadata` replaces wholesale, and `kind` / `trigger_type` are immutable.
+`metadata` replaces wholesale, and `kind` is immutable. `trigger_type`
+switches a prompt routine between `manual` and `cron`: `cron` needs a
+`cron_schedule` (or `metadata.cron_schedules`) in the same update, and
+`manual` drops the next slot.
 `delete` soft-deletes, except for a project default, which answers 409:
 disable it instead. `kind`, `trigger_type`, condition types, skip reasons and
 trigger statuses are open enums: a value this SDK does not know yet decodes
@@ -562,24 +687,26 @@ Each firing is recorded as an event, read like any other family:
 
 ```python
 for event in client.events.list(
-    "introspection.automation.triggered", automation_id=weekly.id
+    "introspection.routines.triggered", routine_id=weekly.id
 ):
     print(event.payload.slot, event.payload.task_id, event.payload.posted)
 ```
 
-`introspection.automation.skipped` records a scheduled slot that ran nothing,
-with its `reason`; it is project-owned, so only callers with project-wide
-telemetry access read it. Both families take the `automation_id` and
+`introspection.routines.skipped` records a scheduled slot or an event
+delivery that ran nothing, with its `reason`; a run or skip an event trigger
+answered carries `payload.event` (`trigger_id`, `event_type`, `delivery_id`).
+It is project-owned, so only callers with project-wide
+telemetry access read it. Both families take the `routine_id` and
 `task_id` filters.
 
-Today the server serves `/v1/automations` to project administrators only and
+Today the server serves `/v1/routines` to project administrators only and
 answers anyone else with a 403. introspection-cloud#3137 (not yet shipped)
-opens the routes to members for their own automations that post into one of
+opens the routes to members for their own routines that post into one of
 their own tasks, and adds the `task_id` list filter, which this SDK already
 sends.
 
-The routes need the `automations:read` and `automations:write` scopes, so a `native` sign-in cannot use them yet.
-`can_manage` says whether the caller may change an automation, and
+The routes need the `routines:read` and `routines:write` scopes, so a `native` sign-in cannot use them yet.
+`can_manage` says whether the caller may change a routine, and
 `created_by_member_id` who created it.
 
 ## Track issues

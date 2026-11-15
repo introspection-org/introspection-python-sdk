@@ -385,16 +385,16 @@ def test_client_renews_after_a_401_and_retries_once(
     auth.verify_code("user@example.com", "123456")
     seen: list[str | None] = []
 
-    def automations(request: httpx.Request) -> httpx.Response:
+    def routines(request: httpx.Request) -> httpx.Response:
         seen.append(request.headers.get("authorization"))
         if request.headers.get("authorization") == "Bearer access-1":
             return httpx.Response(401, json={"detail": "Token expired"})
         return httpx.Response(200, json=paginated([]).model_dump(mode="json"))
 
-    fake_api.add_handler("GET", "/v1/automations", automations)
+    fake_api.add_handler("GET", "/v1/routines", routines)
     client = auth.client()
 
-    page = client.automations.list().page()
+    page = client.routines.list().page()
 
     assert page.records == []
     assert seen == ["Bearer access-1", "Bearer access-2"]
@@ -409,10 +409,10 @@ def test_client_does_not_loop_on_a_persistent_401(
 ):
     auth = _auth(fake_api, Clock())
     auth.verify_code("user@example.com", "123456")
-    fake_api.add("GET", "/v1/automations", status=401, json_body={})
+    fake_api.add("GET", "/v1/routines", status=401, json_body={})
 
     with pytest.raises(AuthenticationError):
-        auth.client().automations.list().page()
+        auth.client().routines.list().page()
 
     assert token_endpoint.refreshes == 1
 
@@ -515,15 +515,15 @@ async def test_async_client_renews_after_a_401(
     auth = _async_auth(fake_api, Clock())
     await auth.verify_code("user@example.com", "123456")
 
-    def automations(request: httpx.Request) -> httpx.Response:
+    def routines(request: httpx.Request) -> httpx.Response:
         if request.headers.get("authorization") == "Bearer access-1":
             return httpx.Response(401, json={"detail": "Token expired"})
         return httpx.Response(200, json=paginated([]).model_dump(mode="json"))
 
-    fake_api.add_handler("GET", "/v1/automations", automations)
+    fake_api.add_handler("GET", "/v1/routines", routines)
     client = await auth.client()
 
-    page = await client.automations.list()
+    page = await client.routines.list()
 
     assert page.records == []
     assert token_endpoint.refreshes == 1
