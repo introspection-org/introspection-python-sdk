@@ -1,8 +1,9 @@
 """Start a routine from a webhook, and by hand with parameters.
 
-Creates a ``webhook`` connector (its secret is shown once), a prompt routine
-with a ``connector`` trigger, then runs the routine by hand with the same
-parameters. Cleans both up at the end.
+Creates a ``webhook`` connector, issues its first secret (shown once), rotates
+it and revokes the previous one, creates a prompt routine with a ``connector``
+trigger, then runs the routine by hand with the same parameters, which the SDK
+uploads as the run's ``parameters.json``. Cleans both up at the end.
 
 Your own system then calls the control plane's
 ``/v1/webhooks/connectors/{id}`` with a Standard Webhooks signature (the
@@ -52,9 +53,20 @@ def main() -> None:
             provider="webhook",
             auth_mode="static",
         )
-        # The platform generates the secret and returns it once.
-        assert orders.signing_secret is not None
-        print(f"webhook connector {orders.id} ({orders.webhook_auth})")
+        # Created without a secret; the platform generates each one and
+        # returns it once.
+        issued = client.connectors.update(
+            orders.id, rotate_signing_secret="standard_webhooks"
+        )
+        assert issued.signing_secret is not None
+        rotated = client.connectors.update(
+            orders.id, rotate_signing_secret=True
+        )
+        for secret in rotated.signing_secrets or []:
+            print(f"  secret {secret.id} {secret.type} {secret.status}")
+        previous = (rotated.signing_secrets or [])[-1]
+        client.connectors.update(orders.id, revoke_signing_secret=previous.id)
+        print(f"webhook connector {orders.id}")
 
         routine = client.routines.create(
             name="Order follow-up",

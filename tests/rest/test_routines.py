@@ -6,6 +6,7 @@ nothing in ``introspection_sdk`` is patched.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -18,6 +19,7 @@ from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
 from introspection_sdk._errors import ConflictError, IntrospectionAPIError
 from introspection_sdk.runner_resources.events import AsyncEvents, Events
 from introspection_sdk.runner_resources.routines import (
+    PARAMETERS_FILE_TTL_SECONDS,
     AsyncRoutines,
     Routines,
 )
@@ -40,15 +42,17 @@ from introspection_sdk.schemas.routines import (
     RoutineTriggerSpec,
     RoutineTriggerType,
 )
-from introspection_sdk.schemas.tasks import TaskRepoRequest
+from introspection_sdk.schemas.tasks import TaskFileRef, TaskRepoRequest
 
 from .conftest import (
+    FILE_ID,
     MEMBER_ID,
     ORG_ID,
     PROJECT_ID,
     RUNTIME_GROUP_ID,
     TASK_ID,
     FakeAPI,
+    file_payload,
 )
 
 ROUTINE_ID = "0199a1b2-0000-7000-8000-000000000001"
@@ -509,11 +513,23 @@ def test_hand_trigger_reports_what_synthesis_queued(fake_api: FakeAPI):
             },
         },
     )
+    fake_api.add(
+        "GET",
+        ROUTINE_PATH,
+        json_body=routine_body(
+            kind="observation_synthesis", task_id=None, prompt=None
+        ),
+    )
 
     queued = Routines(fake_api.client()).trigger(
         ROUTINE_ID, parameters={"conversation_ids": ["conv-1"]}
     )
 
+    # A platform routine takes no files, so nothing is uploaded.
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("GET", ROUTINE_PATH),
+        ("POST", f"{ROUTINE_PATH}/trigger"),
+    ]
     assert fake_api.last_request.json() == {
         "parameters": {"conversation_ids": ["conv-1"]}
     }
@@ -530,34 +546,239 @@ def test_hand_trigger_reports_what_synthesis_queued(fake_api: FakeAPI):
     assert not hasattr(queued, "enqueued")
 
 
-def test_hand_trigger_sends_parameters_and_nothing_else(fake_api: FakeAPI):
-    fake_api.add(
-        "POST",
-        f"{ROUTINE_PATH}/trigger",
-        status=202,
-        json_body={
-            "status": "triggered",
-            "routine_id": ROUTINE_ID,
-            "task_id": TASK_ID,
-            "run_id": None,
-            "reason": None,
-            "result": None,
-        },
-    )
-    api = Routines(fake_api.client())
+TRIGGERED: dict[str, Any] = {
+    "status": "triggered",
+    "routine_id": ROUTINE_ID,
+    "task_id": TASK_ID,
+    "run_id": None,
+    "reason": None,
+    "result": None,
+}
 
+
+def own_task_api(fake_api: FakeAPI) -> FakeAPI:
+    """A prompt routine that starts its own task per run."""
+    fake_api.add("GET", ROUTINE_PATH, json_body=routine_body(task_id=None))
+    fake_api.add("POST", "/v1/files", status=201, json_body=file_payload())
+    fake_api.add(
+        "POST", f"{ROUTINE_PATH}/trigger", status=202, json_body=TRIGGERED
+    )
+    return fake_api
+
+
+def test_hand_trigger_uploads_parameters_then_attaches_them(
+    fake_api: FakeAPI,
+):
+    api = Routines(own_task_api(fake_api).client())
     parameters = {"order_id": "o-1", "lines": [{"sku": "a", "qty": 2}]}
+
     triggered = api.trigger(ROUTINE_ID, parameters=parameters)
-    assert fake_api.last_request.json() == {"parameters": parameters}
+
+    read, upload, trigger = fake_api.requests
+    assert (read.method, read.path) == ("GET", ROUTINE_PATH)
+    assert (upload.method, upload.path) == ("POST", "/v1/files")
+    sent = upload.json()
+    assert sent.pop("name").startswith("routine-parameters/")
+    assert json.loads(sent.pop("content")) == parameters
+    assert sent == {
+        "mime_type": "application/json",
+        "ttl_seconds": PARAMETERS_FILE_TTL_SECONDS,
+    }
+    assert trigger.json() == {
+        "parameters": parameters,
+        "files": [{"id": FILE_ID, "name": "parameters.json"}],
+    }
+    assert triggered.status is RoutineExecutionStatus.TRIGGERED
     assert triggered.task_id == UUID(TASK_ID)
     assert triggered.result is None
 
+
+def test_each_hand_trigger_uploads_under_a_unique_name(fake_api: FakeAPI):
+    api = Routines(own_task_api(fake_api).client())
+
+    api.trigger(ROUTINE_ID, parameters={"n": 1})
+    api.trigger(ROUTINE_ID, parameters={"n": 2})
+
+    names = [
+        r.json()["name"] for r in fake_api.requests if r.path == "/v1/files"
+    ]
+    assert len(names) == 2
+    assert names[0] != names[1]
+    for name in names:
+        stem = name.removeprefix("routine-parameters/").removesuffix(".json")
+        assert UUID(stem)
+
+
+def test_hand_trigger_passes_extra_files_after_the_parameters_file(
+    fake_api: FakeAPI,
+):
+    api = Routines(own_task_api(fake_api).client())
+
+    api.trigger(
+        ROUTINE_ID,
+        parameters={},
+        files=[
+            TaskFileRef(id="file-brief", name="brief.md"),
+            {"id": "file-data"},
+        ],
+    )
+
     # An empty object is a run with parameters, not a run without.
-    api.trigger(ROUTINE_ID, parameters={})
-    assert fake_api.last_request.json() == {"parameters": {}}
+    assert fake_api.last_request.json() == {
+        "parameters": {},
+        "files": [
+            {"id": FILE_ID, "name": "parameters.json"},
+            {"id": "file-brief", "name": "brief.md"},
+            {"id": "file-data"},
+        ],
+    }
+
+
+def test_hand_trigger_into_an_existing_task_sends_parameters_only(
+    fake_api: FakeAPI,
+):
+    fake_api.add("GET", ROUTINE_PATH, json_body=routine_body())
+    fake_api.add(
+        "POST", f"{ROUTINE_PATH}/trigger", status=202, json_body=TRIGGERED
+    )
+
+    Routines(fake_api.client()).trigger(ROUTINE_ID, parameters={"a": 1})
+
+    assert [r.path for r in fake_api.requests] == [
+        ROUTINE_PATH,
+        f"{ROUTINE_PATH}/trigger",
+    ]
+    assert fake_api.last_request.json() == {"parameters": {"a": 1}}
+
+
+def test_attach_parameters_file_skips_reading_the_routine(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", status=201, json_body=file_payload())
+    fake_api.add(
+        "POST", f"{ROUTINE_PATH}/trigger", status=202, json_body=TRIGGERED
+    )
+    api = Routines(fake_api.client())
+
+    api.trigger(ROUTINE_ID, parameters={"a": 1}, attach_parameters_file=True)
+    assert [r.path for r in fake_api.requests] == [
+        "/v1/files",
+        f"{ROUTINE_PATH}/trigger",
+    ]
+
+    fake_api.requests.clear()
+    api.trigger(
+        ROUTINE_ID, parameters={"a": None}, attach_parameters_file=False
+    )
+    assert [r.path for r in fake_api.requests] == [f"{ROUTINE_PATH}/trigger"]
+    assert fake_api.last_request.json() == {"parameters": {"a": None}}
+
+
+def test_hand_trigger_with_a_parameters_file_sends_only_its_reference(
+    fake_api: FakeAPI,
+):
+    fake_api.add(
+        "POST", f"{ROUTINE_PATH}/trigger", status=202, json_body=TRIGGERED
+    )
+    api = Routines(fake_api.client())
+
+    api.trigger(ROUTINE_ID, parameters_file=file_payload())
+    assert fake_api.last_request.json() == {
+        "files": [{"id": FILE_ID, "name": "parameters.json"}]
+    }
+
+    api.trigger(
+        ROUTINE_ID,
+        parameters_file="file-params",
+        files=[{"id": "file-brief", "name": "brief.md"}],
+    )
+    assert fake_api.last_request.json() == {
+        "files": [
+            {"id": "file-params", "name": "parameters.json"},
+            {"id": "file-brief", "name": "brief.md"},
+        ]
+    }
+    # Neither read the routine nor uploaded anything.
+    assert {r.path for r in fake_api.requests} == {f"{ROUTINE_PATH}/trigger"}
+
+
+def test_hand_trigger_with_neither_sends_no_body(fake_api: FakeAPI):
+    fake_api.add(
+        "POST", f"{ROUTINE_PATH}/trigger", status=202, json_body=TRIGGERED
+    )
+    api = Routines(fake_api.client())
 
     api.trigger(ROUTINE_ID)
     assert fake_api.last_request.content == b""
+
+    api.trigger(ROUTINE_ID, files=[{"id": "file-brief"}])
+    assert fake_api.last_request.json() == {"files": [{"id": "file-brief"}]}
+    assert len(fake_api.requests) == 2
+
+
+def test_hand_trigger_refuses_parameters_and_a_parameters_file(
+    fake_api: FakeAPI,
+):
+    with pytest.raises(ValueError, match="not both"):
+        Routines(fake_api.client()).trigger(
+            ROUTINE_ID, parameters={"a": 1}, parameters_file="file-params"
+        )
+    assert fake_api.requests == []
+
+
+def test_a_failed_upload_triggers_nothing(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", status=413, json_body={"detail": "big"})
+
+    with pytest.raises(IntrospectionAPIError) as exc:
+        Routines(fake_api.client()).trigger(
+            ROUTINE_ID, parameters={"a": 1}, attach_parameters_file=True
+        )
+    assert exc.value.status_code == 413
+    assert [r.path for r in fake_api.requests] == ["/v1/files"]
+
+
+async def test_async_hand_trigger_uploads_parameters(fake_api: FakeAPI):
+    api = AsyncRoutines(own_task_api(fake_api).async_client())
+
+    await api.trigger(
+        ROUTINE_ID, parameters={"ticket": 42}, files=[{"id": "file-x"}]
+    )
+
+    assert [(r.method, r.path) for r in fake_api.requests] == [
+        ("GET", ROUTINE_PATH),
+        ("POST", "/v1/files"),
+        ("POST", f"{ROUTINE_PATH}/trigger"),
+    ]
+    assert fake_api.last_request.json() == {
+        "parameters": {"ticket": 42},
+        "files": [
+            {"id": FILE_ID, "name": "parameters.json"},
+            {"id": "file-x"},
+        ],
+    }
+
+    fake_api.requests.clear()
+    await api.trigger(ROUTINE_ID, parameters_file="file-params")
+    assert fake_api.last_request.json() == {
+        "files": [{"id": "file-params", "name": "parameters.json"}]
+    }
+
+
+def test_update_switches_trigger_type(fake_api: FakeAPI):
+    fake_api.add(
+        "PATCH",
+        ROUTINE_PATH,
+        json_body=routine_body(trigger_type="manual", next_trigger_at=None),
+    )
+    api = Routines(fake_api.client())
+
+    updated = api.update(ROUTINE_ID, trigger_type=RoutineTriggerType.MANUAL)
+    assert fake_api.last_request.json() == {"trigger_type": "manual"}
+    assert updated.trigger_type is RoutineTriggerType.MANUAL
+
+    api.update(ROUTINE_ID, trigger_type="cron", cron_schedule="0 9 * * 1")
+    assert fake_api.last_request.json() == {
+        "trigger_type": "cron",
+        "cron_schedule": "0 9 * * 1",
+    }
 
 
 def test_hand_trigger_surfaces_oversized_parameters_422(fake_api: FakeAPI):
@@ -578,7 +799,9 @@ def test_hand_trigger_surfaces_oversized_parameters_422(fake_api: FakeAPI):
 
     with pytest.raises(IntrospectionAPIError) as exc:
         Routines(fake_api.client()).trigger(
-            ROUTINE_ID, parameters={"a": {"b": {"c": {}}}}
+            ROUTINE_ID,
+            parameters={"a": {"b": {"c": {}}}},
+            attach_parameters_file=False,
         )
     assert exc.value.status_code == 422
 

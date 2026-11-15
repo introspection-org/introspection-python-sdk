@@ -26,7 +26,7 @@ from pydantic import (
     ValidationError,
 )
 
-from introspection_sdk.schemas.tasks import TaskRepoRequest
+from introspection_sdk.schemas.tasks import TaskFileRef, TaskRepoRequest
 
 
 class _ApiModel(BaseModel):
@@ -346,12 +346,15 @@ class RoutineUpdateRequest(_ApiModel):
     """Body of ``PATCH /v1/routines/{id}``.
 
     Only set fields are sent: ``None`` leaves a field as it is, so nothing
-    can be cleared. ``kind`` and ``trigger_type`` are immutable;
-    ``metadata`` replaces wholesale.
+    can be cleared. ``kind`` is immutable; ``metadata`` replaces wholesale.
     """
 
     name: str | None = None
     description: str | None = None
+    trigger_type: OpenTriggerType | None = None
+    """Switches a prompt routine between ``manual`` and ``cron``. ``cron``
+    needs a schedule in the same update (``cron_schedule`` and/or
+    ``metadata.cron_schedules``); ``manual`` drops the next slot."""
     cron_schedule: str | None = None
     prompt: str | None = None
     runtime_group_id: UUID | None = None
@@ -377,9 +380,16 @@ class RoutineTriggerRequest(_ApiModel):
     run receives it as ``parameters.json`` and ``@parameters.<name>`` in
     its prompt; a platform routine reads the keys its kind defines
     (``observation_synthesis``: ``conversation_ids``, 1-100).
+
+    ``files`` (at most 100) are attached to the run's new task, as on
+    ``POST /v1/tasks``; only a prompt routine that starts a task per run
+    takes them. One named ``parameters.json`` is the run's parameters
+    file: with no inline ``parameters`` the server reads it (a JSON object,
+    at most 256 KiB) as the parameters. Inline ``parameters`` win.
     """
 
     parameters: dict[str, Any] | None = None
+    files: list[TaskFileRef] | None = None
 
 
 class EnqueuedConversation(_ApiModel):

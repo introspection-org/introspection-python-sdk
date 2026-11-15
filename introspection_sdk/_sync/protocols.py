@@ -23,6 +23,7 @@ from introspection_sdk.runner_resources.conversations import (
 )
 from introspection_sdk.runner_resources.files import FileLike
 from introspection_sdk.runner_resources.routines import (
+    FileRefInput,
     MetadataInput,
     TriggerInput,
 )
@@ -299,6 +300,7 @@ class FilesResource(Protocol):
         mime_type: str = "text/markdown",
         metadata: dict[str, Any] | None = None,
         tags: builtins.list[str] | None = None,
+        ttl_seconds: int | None = None,
     ) -> File: ...
 
     def get(self, file_id: str) -> File: ...
@@ -633,6 +635,7 @@ class RoutinesResource(Protocol):
         *,
         name: str | None = None,
         description: str | None = None,
+        trigger_type: RoutineTriggerType | str | None = None,
         cron_schedule: str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | None = None,
@@ -650,6 +653,9 @@ class RoutinesResource(Protocol):
         routine_id: UUID | str,
         *,
         parameters: dict[str, Any] | None = None,
+        parameters_file: File | str | None = None,
+        files: builtins.list[FileRefInput] | None = None,
+        attach_parameters_file: bool | None = None,
     ) -> RoutineTriggerResponse: ...
 
 

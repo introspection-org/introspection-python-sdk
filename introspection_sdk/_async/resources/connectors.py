@@ -34,7 +34,8 @@ from introspection_sdk.schemas.connectors import (
     ConnectorStatus,
     ConnectorUpdateRequest,
     PolicyEntity,
-    WebhookAuth,
+    SigningSecretRotation,
+    WebhookSecretType,
 )
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.runner import RunnerIdentity
@@ -62,7 +63,6 @@ def _create_body(
     assertion_audience: str | None,
     policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     webhook_url: str | None,
-    webhook_auth: WebhookAuth | str | None,
 ) -> dict[str, Any]:
     # Loose public inputs (plain str) are coerced by validation:
     # str -> ConnectorAuthMode. Secrets ride the body as-is; the API
@@ -89,7 +89,6 @@ def _create_body(
             "assertion_audience": assertion_audience,
             "policy_entities": policy_entities,
             "webhook_url": webhook_url,
-            "webhook_auth": webhook_auth,
         }
     ).model_dump(mode="json", exclude_none=True)
 
@@ -106,9 +105,8 @@ def _update_body(
     policy_entities: list[PolicyEntity | dict[str, Any]] | None,
     client_secret: str | None,
     signing_secret: str | None,
-    webhook_auth: WebhookAuth | str | None,
-    rotate_signing_secret: bool,
-    revoke_previous_signing_secret: bool,
+    rotate_signing_secret: bool | WebhookSecretType | str,
+    revoke_signing_secret: str | None,
 ) -> dict[str, Any]:
     # `exclude_none` is the "omitted = unchanged" contract: a secret
     # left as None never reaches the wire, so it cannot be cleared.
@@ -124,12 +122,18 @@ def _update_body(
             "policy_entities": policy_entities,
             "client_secret": client_secret,
             "signing_secret": signing_secret,
-            "webhook_auth": webhook_auth,
-            "rotate_signing_secret": rotate_signing_secret or None,
-            "revoke_previous_signing_secret": revoke_previous_signing_secret
-            or None,
+            "rotate_signing_secret": _rotation(rotate_signing_secret),
+            "revoke_signing_secret": revoke_signing_secret,
         }
     ).model_dump(mode="json", exclude_none=True)
+
+
+def _rotation(
+    rotate: bool | WebhookSecretType | str,
+) -> bool | SigningSecretRotation | None:
+    if isinstance(rotate, bool):
+        return rotate or None
+    return SigningSecretRotation(type=WebhookSecretType(rotate))
 
 
 def _authorize_body(
@@ -251,8 +255,7 @@ class AsyncConnectors:
         policy_entities: builtins.list[PolicyEntity | dict[str, Any]]
         | None = None,
         webhook_url: str | None = None,
-        webhook_auth: WebhookAuth | str | None = None,
-    ) -> ConnectorSecretResponse:
+    ) -> Connector:
         """Create a connector, or replace one with the same ``slug``.
 
         ``slug`` is unique per project. A repeat create with a live slug
@@ -274,11 +277,10 @@ class AsyncConnectors:
         A ``webhook`` connector (``provider="webhook"``,
         ``auth_mode="static"``) is inbound only: the customer's systems
         call the control plane's ``/v1/webhooks/connectors/{id}``, and a
-        routine's ``connector`` trigger runs on those calls.
-        ``webhook_auth`` picks how callers authenticate
-        (``standard_webhooks``, the default, or ``bearer``). The platform
-        generates its secret and returns it once, as ``signing_secret``
-        on the response; send no secret.
+        routine's ``connector`` trigger runs on those calls. It is
+        created without a secret, so the endpoint refuses every call until
+        :meth:`update` issues one (``rotate_signing_secret=<type>``); send
+        no secret, hosts, scopes or endpoints.
         """
         payload = await self._http.request(
             "POST",
@@ -304,10 +306,9 @@ class AsyncConnectors:
                 assertion_audience=assertion_audience,
                 policy_entities=policy_entities,
                 webhook_url=webhook_url,
-                webhook_auth=webhook_auth,
             ),
         )
-        return decode(ConnectorSecretResponse, payload)
+        return decode(Connector, payload)
 
     async def list_apps(
         self,
@@ -391,24 +392,33 @@ class AsyncConnectors:
         | None = None,
         client_secret: str | None = None,
         signing_secret: str | None = None,
-        webhook_auth: WebhookAuth | str | None = None,
-        rotate_signing_secret: bool = False,
-        revoke_previous_signing_secret: bool = False,
+        rotate_signing_secret: bool | WebhookSecretType | str = False,
+        revoke_signing_secret: str | None = None,
     ) -> ConnectorSecretResponse:
         """Update a connector. Only provided fields change; an omitted
         ``client_secret`` / ``signing_secret`` stays as it is (write-only
         rotation, never a clear). ``policy_entities`` replaces the
         connector's Cedar entities.
 
-        For a ``webhook`` connector, ``webhook_auth`` changes how callers
-        authenticate and ``rotate_signing_secret=True`` issues a new
-        secret, returned once as ``signing_secret`` on the response. The
-        one it replaces stays valid as the previous secret until the next
-        rotation or ``revoke_previous_signing_secret=True``, which stops
-        accepting it now; at most two are valid, listed in
-        ``signing_secrets``. Rotate and revoke together, either on any
-        other connector, or a ``client_secret`` / ``signing_secret`` on a
-        webhook connector, is a 422."""
+        A ``webhook`` connector's secrets are issued here, each returned
+        once as ``signing_secret`` on the response and listed (without
+        their material) in ``signing_secrets``:
+
+        - ``rotate_signing_secret="standard_webhooks"`` (or ``"bearer"``, a
+          :class:`WebhookSecretType`) issues its first secret of that type.
+        - ``rotate_signing_secret=True`` rotates: the new secret keeps the
+          current one's type, and the old one stays valid as the previous
+          secret until it is revoked. With two live, revoke one first
+          (409).
+        - ``revoke_signing_secret=<kid>`` stops accepting that secret now
+          (its ``signing_secrets[].id``). The current one only once no
+          previous one is live (409); revoking the last leaves the endpoint
+          refusing every call. To change type, revoke every secret, then
+          issue one of the other type.
+
+        Rotate and revoke together, either on any other connector, or a
+        ``client_secret`` / ``signing_secret`` on a webhook connector, is a
+        422."""
         payload = await self._http.request(
             "PATCH",
             f"/v1/connectors/{connector_id}",
@@ -423,9 +433,8 @@ class AsyncConnectors:
                 policy_entities=policy_entities,
                 client_secret=client_secret,
                 signing_secret=signing_secret,
-                webhook_auth=webhook_auth,
                 rotate_signing_secret=rotate_signing_secret,
-                revoke_previous_signing_secret=revoke_previous_signing_secret,
+                revoke_signing_secret=revoke_signing_secret,
             ),
         )
         return decode(ConnectorSecretResponse, payload)

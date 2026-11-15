@@ -8,14 +8,14 @@ accepts them on create and update and never returns them, so the read
 models here deliberately have no such fields. Omitting them on update
 means "unchanged", not "clear". The one exception is a ``webhook``
 connector's platform-generated ``signing_secret``, returned once in
-:class:`ConnectorSecretResponse` on its create and on a rotation.
+:class:`ConnectorSecretResponse` on the update that issues it.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
@@ -39,15 +39,20 @@ class ConnectorAuthMode(StrEnum):
     AAUTH = "aauth"
 
 
-class WebhookAuth(StrEnum):
-    """How a ``webhook`` connector's callers prove themselves."""
+class WebhookSecretType(StrEnum):
+    """How a caller proves it holds a ``webhook`` connector's secret."""
 
     STANDARD_WEBHOOKS = "standard_webhooks"
     """A Standard Webhooks signature (``webhook-id``,
     ``webhook-timestamp``, ``webhook-signature``) over the body, keyed by
-    the connector's secret. The default."""
+    the secret (``whsec_...``)."""
     BEARER = "bearer"
-    """``Authorization: Bearer <secret>``."""
+    """``Authorization: Bearer <secret>`` (``whtok_...``)."""
+
+
+OpenWebhookSecretType = Annotated[
+    WebhookSecretType | str, Field(union_mode="left_to_right")
+]
 
 
 WEBHOOK_PROVIDER = "webhook"
@@ -120,7 +125,9 @@ class SigningSecret(ApiModel):
     """One secret a ``webhook`` connector accepts, without its material."""
 
     id: str
-    """A fingerprint of the secret: the first 8 hex digits of its SHA-256."""
+    """A fingerprint of the secret (its kid): the first 8 hex digits of
+    its SHA-256. Revoke it with ``update(revoke_signing_secret=id)``."""
+    type: OpenWebhookSecretType
     created_at: datetime | None = None
     status: SigningSecretStatus | str = Field(union_mode="left_to_right")
     """A status this SDK does not know decodes as a plain string."""
@@ -162,12 +169,6 @@ class Connector(ApiModel):
     created_by_member_id: UUID | None = None
     metadata: dict[str, Any] | None = None
     requires_runtime: bool = False
-    webhook_auth: WebhookAuth | str | None = Field(
-        default=None, union_mode="left_to_right"
-    )
-    """How a ``webhook`` connector's callers authenticate; ``None`` for
-    every other provider. An auth mode this SDK does not know decodes as a
-    plain string."""
     signing_secrets: list[SigningSecret] | None = None
     """A ``webhook`` connector's accepted secrets (at most two), current
     first, described without their material; ``None`` for every other
@@ -175,12 +176,13 @@ class Connector(ApiModel):
 
 
 class ConnectorSecretResponse(Connector):
-    """A create or update response: a :class:`Connector`, plus a
-    ``webhook`` connector's secret the one time it is issued."""
+    """An update response: a :class:`Connector`, plus a ``webhook``
+    connector's secret the one time it is issued."""
 
     signing_secret: SecretStr | None = None
-    """A ``webhook`` connector's new secret, on its create or on
-    ``rotate_signing_secret`` only. Shown once: no read returns it. A
+    """A ``webhook`` connector's new secret (``whsec_...`` or
+    ``whtok_...``), on the ``rotate_signing_secret`` update only. Shown
+    once: no read returns it. A
     :class:`~pydantic.SecretStr`, so it never prints; read it with
     ``.get_secret_value()``."""
 
@@ -226,10 +228,13 @@ class ConnectorCreateRequest(ApiModel):
     """Cedar entities the egress policy gate adds to this connector's
     requests."""
     webhook_url: str | None = None
-    webhook_auth: WebhookAuth | None = None
-    """For a ``webhook`` connector only: how callers authenticate;
-    ``standard_webhooks`` when omitted. Such a connector takes
-    ``auth_mode=static`` and no secret, hosts, scopes or endpoints."""
+
+
+class SigningSecretRotation(ApiModel):
+    """``rotate_signing_secret`` naming the type of the secret it issues:
+    how a ``webhook`` connector's first secret is issued."""
+
+    type: WebhookSecretType
 
 
 class ConnectorUpdateRequest(ApiModel):
@@ -252,18 +257,18 @@ class ConnectorUpdateRequest(ApiModel):
     untouched."""
     client_secret: str | None = None
     signing_secret: str | None = None
-    """Not for a ``webhook`` connector, whose secret the platform
-    generates: rotate it with ``rotate_signing_secret``."""
-    webhook_auth: WebhookAuth | None = None
-    """For a ``webhook`` connector only."""
-    rotate_signing_secret: bool | None = None
+    """Not for a ``webhook`` connector, whose secrets the platform
+    generates: issue one with ``rotate_signing_secret``."""
+    rotate_signing_secret: bool | SigningSecretRotation | None = None
     """For a ``webhook`` connector only: issue a new secret, returned once
-    in the response. The current one stays valid as the previous secret
-    until the next rotation or a revoke; at most two are ever valid."""
-    revoke_previous_signing_secret: bool | None = None
-    """For a ``webhook`` connector only: stop accepting its previous
-    secret now. Not with ``rotate_signing_secret`` (the server answers
-    422)."""
+    in the response. The first names its type
+    (:class:`SigningSecretRotation`); ``True`` rotates, keeping the
+    current secret's type, and the old one stays valid as the previous
+    secret until it is revoked. With two live, the server answers 409."""
+    revoke_signing_secret: str | None = None
+    """For a ``webhook`` connector only: the id (kid) of a live secret to
+    stop accepting now. The current one only once no previous one is live
+    (409). Not with ``rotate_signing_secret`` (422)."""
 
 
 class ConnectorAuthorizeBinding(ApiModel):
@@ -460,8 +465,10 @@ __all__ = [
     "ConnectorUpdateRequest",
     "EntityUid",
     "PolicyEntity",
+    "OpenWebhookSecretType",
     "SigningSecret",
+    "SigningSecretRotation",
     "SigningSecretStatus",
     "WEBHOOK_PROVIDER",
-    "WebhookAuth",
+    "WebhookSecretType",
 ]
