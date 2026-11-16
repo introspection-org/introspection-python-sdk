@@ -94,6 +94,11 @@ class Runtime(ApiModel):
     # active runtime for its environment; in-flight sticky runs keep using it.
     yanked_at: datetime | None = None
     yanked_reason: str | None = None
+    # When the runtime was turned off, which turns off every version of it;
+    # ``None`` while it is on. Read-only.
+    disabled_at: datetime | None = None
+    # Whether the runtime is on (``disabled_at`` is ``None``). Read-only.
+    enabled: bool = True
     # Per-environment git ref each lane tracks ({environment: 'main' | 'pr/N' |
     # <sha>}), projected from the runtime group.
     environment_ref: dict[str, str] | None = None
