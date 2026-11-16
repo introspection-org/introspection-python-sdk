@@ -1525,3 +1525,55 @@ def test_get_decodes_soft_delete_and_agent(
 
     assert routine.deleted_at == datetime(2026, 10, 1, 9, tzinfo=UTC)
     assert routine.agent_member_id == UUID(MEMBER_ID)
+
+
+def test_a_schedules_idle_window_is_sent_cleared_explicitly_or_left_out(
+    fake_api: FakeAPI,
+):
+    stored = {
+        "id": "01990000-0000-7000-8000-0000000000aa",
+        "type": "schedule",
+        "cron": "0 */6 * * *",
+        "member_idle_seconds": 172800,
+    }
+    fake_api.add(
+        "PATCH", ROUTINE_PATH, json_body=routine_body(triggers=[stored])
+    )
+    api = Routines(fake_api.client())
+
+    updated = api.update(
+        ROUTINE_ID,
+        triggers=[
+            {
+                "type": "schedule",
+                "cron": "0 */6 * * *",
+                "member_idle_seconds": 172800,
+            },
+            {
+                "type": "schedule",
+                "cron": "0 9 * * 1",
+                "member_idle_seconds": None,
+            },
+            {"type": "schedule", "cron": "0 17 * * 5"},
+        ],
+    )
+
+    assert fake_api.last_request.json() == {
+        "triggers": [
+            {
+                "type": "schedule",
+                "cron": "0 */6 * * *",
+                "member_idle_seconds": 172800,
+            },
+            {
+                "type": "schedule",
+                "cron": "0 9 * * 1",
+                "member_idle_seconds": None,
+            },
+            {"type": "schedule", "cron": "0 17 * * 5"},
+        ]
+    }
+    [trigger] = updated.triggers
+    assert isinstance(trigger, ScheduleTrigger)
+    assert trigger.member_idle_seconds == 172800
+    assert RoutineSkipReason("member_idle") is RoutineSkipReason.MEMBER_IDLE

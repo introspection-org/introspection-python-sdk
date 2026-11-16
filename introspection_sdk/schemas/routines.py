@@ -24,7 +24,9 @@ from pydantic import (
     ConfigDict,
     Discriminator,
     Field,
+    SerializerFunctionWrapHandler,
     Tag,
+    model_serializer,
 )
 
 from introspection_sdk.schemas.tasks import TaskFileRef, TaskRepoRequest
@@ -91,6 +93,9 @@ class RoutineSkipReason(StrEnum):
     TRIGGER_BUSY = "trigger_busy"
     """An event arrived while the run its trigger last started was still in
     flight; the payload's ``event`` names the delivery."""
+    MEMBER_IDLE = "member_idle"
+    """The routine's member had no turn for the schedule's
+    ``member_idle_seconds``."""
 
 
 class RoutineRunSource(StrEnum):
@@ -155,8 +160,26 @@ class ScheduleTriggerSpec(_ApiModel):
     type: Literal["schedule"] = "schedule"
     cron: str
     timezone: str | None = None
+    member_idle_seconds: int | None = None
+    """Skip a slot when the routine's member has had no turn in a
+    conversation they started in the project for this many seconds (3600 to
+    31536000). Left out, a kept schedule keeps its stored value and a new one
+    runs every slot; set it to ``None`` explicitly to clear it."""
     id: UUID | None = None
     """Keeps that existing trigger; omit for a new one."""
+
+    @model_serializer(mode="wrap")
+    def _send_an_explicit_clear(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        # Request bodies drop every None; an explicitly set one is the clear.
+        data = handler(self)
+        if (
+            "member_idle_seconds" in self.model_fields_set
+            and self.member_idle_seconds is None
+        ):
+            data["member_idle_seconds"] = None
+        return data
 
 
 class SlackTriggerSpec(_ApiModel):
