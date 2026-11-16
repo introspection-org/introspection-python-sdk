@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.45.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.44.0...v0.45.0) (2026-11-16)
+
+
+### Features
+
+* model a routine's budget_exhausted ([#273](https://github.com/introspection-org/introspection-python-sdk/issues/273)) ([4833349](https://github.com/introspection-org/introspection-python-sdk/commit/48333498a5c9fc643f44253cd83c8cac42078acf))
+* model a runtime's enabled and disabled_at ([#271](https://github.com/introspection-org/introspection-python-sdk/issues/271)) ([69655f4](https://github.com/introspection-org/introspection-python-sdk/commit/69655f416632557143a8ea1050390acdd8c73f47))
+
 ## [0.44.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.43.0...v0.44.0) (2026-11-15)
 
 
