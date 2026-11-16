@@ -897,6 +897,8 @@ def test_07_runtime(world: World) -> None:
             "git_commit_sha": IsOneOf(None, "[sha]"),
             "yanked_at": None,
             "yanked_reason": None,
+            "disabled_at": None,
+            "enabled": True,
             "environment_ref": None,
             "runtime_group_type": "custom",
             "mcp_requirements": None,

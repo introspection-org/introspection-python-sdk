@@ -17,6 +17,7 @@ from pydantic import ValidationError
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError
 from introspection_sdk._http import _HttpClient
+from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
 from introspection_sdk.resources.runtimes import AsyncRuntimes, Runtimes
 from introspection_sdk.runner import Runner
 from introspection_sdk.schemas.runner import RunnerIdentity
@@ -59,6 +60,37 @@ def test_list_validates_and_drops_none_params(fake_api: FakeAPI):
     assert params.get("environment") == "production"
     assert "name" not in params
     assert "runtime" not in params
+
+
+def test_strict_decoding_accepts_enabled_and_disabled_at(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    on = to_jsonable(runtime_payload(name="on"))
+    off = {
+        **to_jsonable(runtime_payload(name="off")),
+        "enabled": False,
+        "disabled_at": "2026-11-12T09:30:00Z",
+    }
+    fake_api.add(
+        "GET",
+        "/v1/runtimes",
+        json_body={
+            "records": [on, off],
+            "count": 2,
+            "next": None,
+            "total_count": None,
+        },
+    )
+
+    page = _runtimes(fake_api).list(project=PROJECT_ID)
+
+    on_runtime, off_runtime = page.records
+    assert on_runtime.enabled is True
+    assert on_runtime.disabled_at is None
+    assert off_runtime.enabled is False
+    assert off_runtime.disabled_at is not None
+    assert off_runtime.disabled_at.isoformat() == "2026-11-12T09:30:00+00:00"
 
 
 def test_iter_follows_pagination(fake_api: FakeAPI):
