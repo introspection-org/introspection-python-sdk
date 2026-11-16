@@ -139,9 +139,9 @@ from introspection_sdk.schemas.repositories import (
     RepositoryMerge,
 )
 from introspection_sdk.schemas.routines import (
-    BudgetExhausted,
     EnqueuedConversation,
     Routine,
+    RoutineBudgetExhausted,
     RoutineCondition,
     RoutineConditionType,
     RoutineCreateRequest,
@@ -191,7 +191,7 @@ __all__ = [
     "AnnotationTarget",
     "AGUIEvent",
     "AGUIStreamEvent",
-    "BudgetExhausted",
+    "RoutineBudgetExhausted",
     "Routine",
     "RoutineCondition",
     "RoutineConditionType",
