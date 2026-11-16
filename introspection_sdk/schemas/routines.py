@@ -255,6 +255,14 @@ class RoutineTriggerEventRef(_ApiModel):
     repeats it."""
 
 
+class BudgetExhausted(_ApiModel):
+    """The budget pausing a routine's scheduled and event-started runs."""
+
+    budget_id: UUID
+    until: datetime
+    """When the budget's period ends and the routine's runs resume."""
+
+
 class Routine(_ApiModel):
     """A stored routine: scheduled agent work, or platform work when
     ``kind`` is set."""
@@ -287,6 +295,9 @@ class Routine(_ApiModel):
     created_by_member_id: UUID | None = None
     execution_blocked_reason: str | None = None
     """Why the scheduler will not run this routine, when it will not."""
+    budget_exhausted: BudgetExhausted | None = None
+    """The budget pausing this routine's scheduled and event-started runs,
+    until its period ends; ``None`` while none does. Read-only."""
     can_manage: bool = False
     """Whether the caller may edit it."""
     owner_role: str | None = None
@@ -425,6 +436,7 @@ class RoutineTriggerResponse(_ApiModel):
 
 
 __all__ = [
+    "BudgetExhausted",
     "Routine",
     "RoutineCondition",
     "RoutineConditionType",

@@ -2035,6 +2035,7 @@ def test_16_routines(world: World) -> None:
             "agent_member_id": None,
             "created_by_member_id": "[uuid]",
             "execution_blocked_reason": None,
+            "budget_exhausted": None,
             "can_manage": True,
             "owner_role": "operator",
             "created_at": "[timestamp]",
