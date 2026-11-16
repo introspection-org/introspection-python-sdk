@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import contextlib
 from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any, Literal, Unpack
@@ -11,6 +12,9 @@ from uuid import UUID
 
 from pydantic import TypeAdapter
 
+from introspection_sdk._async.runner_resources.conversation_export import (
+    AsyncConversationExport,
+)
 from introspection_sdk._http import RawResponse, _AsyncHttpClient
 from introspection_sdk._jsonl import JSONL_ACCEPT_HEADERS, iter_jsonl_async
 from introspection_sdk._strict_schema import decode, note_response
@@ -274,6 +278,7 @@ class AsyncConversationItems:
         *,
         limit: int = 100,
         next: str | None = None,
+        direction: Literal["asc", "desc"] | None = None,
         include: builtins.list[ConversationItemInclude] | None = None,
         agent: str | None = None,
         service_name: str | None = None,
@@ -287,9 +292,11 @@ class AsyncConversationItems:
         the returned :class:`AsyncPager` for the first
         page, or ``async for`` it to stream every item across pages.
 
-        Items are always returned newest-first: the route hardcodes a
-        descending sort and rejects a cursor that disagrees, so there is no
-        ordering parameter.
+        Items are newest-first by default. ``direction="asc"`` reads them
+        oldest-first from the conversation start, and ``"desc"`` asks for
+        newest-first explicitly. A ``next`` token is tied to the direction
+        that produced it: the pager keeps it, but a token saved from an
+        ``asc`` read must only be passed back with ``direction="asc"``.
 
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
@@ -326,9 +333,11 @@ class AsyncConversationItems:
         the returned :class:`Pager` to stream every item
         across pages, or call ``.page()`` for the first page only.
 
-        Items are always returned newest-first: the route hardcodes a
-        descending sort and rejects a cursor that disagrees, so there is no
-        ordering parameter.
+        Items are newest-first by default. ``direction="asc"`` reads them
+        oldest-first from the conversation start, and ``"desc"`` asks for
+        newest-first explicitly. A ``next`` token is tied to the direction
+        that produced it: the pager keeps it, but a token saved from an
+        ``asc`` read must only be passed back with ``direction="asc"``.
 
         Items carry the turn-local delta in ``input_messages`` — only the
         messages new to that turn. Use :meth:`get` for the full input
@@ -365,6 +374,7 @@ class AsyncConversationItems:
             params: dict[str, Any] = {
                 "limit": limit,
                 "next": cursor,
+                "direction": direction,
                 "include": include,
                 "agent": agent,
                 "service_name": service_name,
@@ -693,6 +703,52 @@ class AsyncConversations:
             headers=_export_headers(format),
         )
 
+    @contextlib.asynccontextmanager
+    async def export_resumable(
+        self,
+        conversation_id: str,
+        format: ConversationExportFormat = "jsonl",
+        *,
+        direction: Literal["asc", "desc"] | None = None,
+        next: str | None = None,
+        **params: Unpack[ConversationExportParams],
+    ) -> AsyncIterator[AsyncConversationExport]:
+        # unasync: async-only (the sync twin's docstring follows)
+        """Open a conversation export: ``async with`` it to read the
+        ``X-Next-Cursor`` cursor before the body, then ``async for``
+        ``export.iter_spans()`` or ``export.iter_bytes()``. See
+        :meth:`Conversations.export_resumable` for the semantics.
+        """
+        # unasync: end
+        """Open a conversation export: ``with`` it to read the
+        ``X-Next-Cursor`` cursor before the body, then iterate
+        ``export.iter_spans()`` (``jsonl``) or ``export.iter_bytes()``.
+
+        ``direction="asc"`` exports oldest-first, from the conversation
+        start up to the latest item that existed when the request began.
+        ``"desc"`` (a span export's default) is newest-first. ``next``
+        resumes an oldest-first export after that cursor and implies
+        ``"asc"``. An oldest-first or resumed export answers
+        :attr:`~ConversationExport.next`, the cursor to pass as ``next``
+        the following time; it is opaque, so store it as the string it is.
+
+        When ``next`` is given and nothing is newer,
+        :attr:`~ConversationExport.nothing_newer` is ``True``, the body is
+        empty and ``next`` echoes the cursor sent. The server refuses
+        (``400``) ``"desc"`` with a trajectory format or with ``next``.
+
+        An error status raises its typed error on entry. The response is
+        closed when the block exits.
+        """
+        path = _export_path(conversation_id)
+        query = build_export_params(**params)
+        query["direction"] = direction
+        query["next"] = next
+        async with self._http.open_stream(
+            path, params=query, headers=_export_headers(format)
+        ) as response:
+            yield AsyncConversationExport(response, path=path, format=format)
+
     async def export_trajectory(
         self,
         conversation_id: str,
@@ -819,7 +875,7 @@ class AsyncConversations:
         """
         fallback: GenAiSpan | None = None
         scanned = 0
-        # The route is descending-only, so the first match is the latest.
+        # Unset ``direction`` is newest-first, so the first match is the latest.
         async for item in self.items.list(
             conversation_id, limit=LATEST_TURN_SCAN_LIMIT
         ):
