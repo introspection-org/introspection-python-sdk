@@ -139,7 +139,6 @@ class RoutineCondition(_ApiModel):
 class RoutineSynthesis(_ApiModel):
     """How an ``observation_synthesis`` routine runs."""
 
-    batch: bool = True
     max_conversations: int | None = None
 
 

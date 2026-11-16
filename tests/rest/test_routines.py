@@ -316,7 +316,7 @@ def test_minimal_routine_and_synthesis_settings(fake_api: FakeAPI):
         json_body=routine_body(
             kind="observation_synthesis",
             runtime_group_id=None,
-            synthesis={"batch": False, "max_conversations": 50},
+            synthesis={"max_conversations": 50},
         ),
     )
     api = Routines(fake_api.client())
@@ -332,9 +332,7 @@ def test_minimal_routine_and_synthesis_settings(fake_api: FakeAPI):
     assert minimal.next_trigger_at is None
     assert minimal.tags == []
 
-    assert api.get("b").synthesis == RoutineSynthesis(
-        batch=False, max_conversations=50
-    )
+    assert api.get("b").synthesis == RoutineSynthesis(max_conversations=50)
 
 
 def test_list_encodes_filters_and_paginates(fake_api: FakeAPI):
@@ -502,12 +500,12 @@ def test_create_sends_only_set_fields(fake_api: FakeAPI):
     api.create(
         name="Synthesis",
         kind=RoutineKind.OBSERVATION_SYNTHESIS,
-        synthesis={"batch": True, "max_conversations": 20},
+        synthesis={"max_conversations": 20},
     )
     assert fake_api.last_request.json() == {
         "name": "Synthesis",
         "kind": "observation_synthesis",
-        "synthesis": {"batch": True, "max_conversations": 20},
+        "synthesis": {"max_conversations": 20},
     }
 
 
@@ -566,7 +564,7 @@ def test_create_a_one_off_reminder_into_an_existing_task(fake_api: FakeAPI):
         ),
         (
             {"synthesis": RoutineSynthesis(max_conversations=10)},
-            {"synthesis": {"batch": True, "max_conversations": 10}},
+            {"synthesis": {"max_conversations": 10}},
         ),
         # An empty list is sent: it clears the repositories.
         ({"repositories": []}, {"repositories": []}),
