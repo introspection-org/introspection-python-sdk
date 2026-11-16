@@ -517,17 +517,19 @@ Control Plane namespaces such as `client.runtimes` reject it. `AsyncEmailCodeAut
 `client.routines` manages a project's routines on the data plane: a
 prompt on a schedule (`kind=None`), or platform work (`observation_synthesis`,
 `observation_clustering`, `project_check_in`). A prompt routine creates a
-task per firing, or posts into an existing task when it names `task_id`. A
-one-off reminder is a `manual` routine with a future `next_trigger_at`:
+task per firing, or posts into an existing task when it names `task_id`.
+Its `triggers` list what starts it besides a manual run, each discriminated
+on `type`: `schedule` (`cron`, `timezone`), `slack`, `github`, `linear` or
+`webhook`. A one-off reminder is a routine with no `schedule` trigger and a
+future `next_trigger_at`:
 
 ```python
 from datetime import UTC, datetime
 
-from introspection_sdk.schemas.routines import RoutineMetadata
+from introspection_sdk.schemas.routines import ScheduleTriggerSpec
 
 reminder = client.routines.create(
     name="Friday check-in",
-    trigger_type="manual",
     prompt="How did the week go?",
     runtime_group_id=runtime_group_id,
     task_id=task_id,
@@ -536,11 +538,9 @@ reminder = client.routines.create(
 
 weekly = client.routines.create(
     name="Weekly digest",
-    trigger_type="cron",
-    cron_schedule="0 9 * * 1",
     prompt="Summarize my week",
     runtime_group_id=runtime_group_id,
-    metadata=RoutineMetadata(timezone="Europe/London"),
+    triggers=[ScheduleTriggerSpec(cron="0 9 * * 1", timezone="Europe/London")],
 )
 
 for routine in client.routines.list(enabled=True, scheduled=True):
@@ -591,8 +591,8 @@ print(queued.result)  # {"enqueued": 1, "conversations": [...]}
 ### Start a routine from an event
 
 A prompt routine that starts a task per run can also run on events: its
-`triggers` list a Slack or GitHub integration's events, or the calls a
-`webhook` connector receives. A webhook connector is inbound only: your own
+`triggers` list a Slack, GitHub or Linear integration's events, or the calls
+a `webhook` connector receives. A webhook connector is inbound only: your own
 systems call the control plane's `/v1/webhooks/connectors/{id}`, signed with
 [Standard Webhooks](https://www.standardwebhooks.com/) (the default) or
 sending `Authorization: Bearer <secret>`, by the type of its secret. It is
@@ -600,7 +600,7 @@ created without one, so it refuses every call until you issue a secret; the
 platform generates it and returns it once, as a `SecretStr`:
 
 ```python
-from introspection_sdk.schemas.routines import RoutineTriggerSpec
+from introspection_sdk.schemas.routines import WebhookTriggerSpec
 
 orders = client.connectors.create(
     name="Orders", slug="orders", provider="webhook", auth_mode="static"
@@ -612,16 +612,13 @@ save(issued.secret.get_secret_value())  # shown once
 
 follow_up = client.routines.create(
     name="Order follow-up",
-    trigger_type="manual",
     prompt="An order was placed: @parameters.data. Check stock for it.",
     runtime_group_id=runtime_group_id,
     triggers=[
-        RoutineTriggerSpec(
-            source="connector",
-            provider="webhook",
+        WebhookTriggerSpec(
             connector_slug="orders",
             event_types=["order.created"],  # the body's `type`; "*" for any
-            filter={"payload_fields": {"region": ["eu"]}},
+            payload_fields={"region": ["eu"]},
         )
     ],
 )
@@ -648,8 +645,7 @@ as `parameters.json` (any JSON; a non-JSON body arrives as a JSON string), and
 `unresolved_parameters` metadata; the event itself stays in
 `trigger/event.json`. The task's
 `trigger_source` metadata is `trigger` and its `routine_trigger` names the
-trigger, event type and delivery. `update(triggers=[...])` replaces the list:
-an entry with an existing trigger's `id` keeps it, and `[]` removes them all.
+trigger, event type and delivery.
 A trigger runs one task at a time; an event that arrives while its run is in
 flight is recorded as `introspection.routines.skipped` with reason
 `trigger_busy`.
@@ -674,15 +670,16 @@ current, previous = client.connectors.secrets.list(orders.id)
 client.connectors.secrets.delete(orders.id, previous.id)
 ```
 
-`update` sends only the fields you pass, so `None` never clears anything;
-`metadata` replaces wholesale, and `kind` is immutable. `trigger_type`
-switches a prompt routine between `manual` and `cron`: `cron` needs a
-`cron_schedule` (or `metadata.cron_schedules`) in the same update, and
-`manual` drops the next slot.
+`update` sends only the fields you pass, so `None` never clears anything,
+and `kind` is immutable. `update(triggers=[...])` replaces the whole list,
+schedules and events alike: an entry with an existing trigger's `id` keeps it,
+one without adds one, and `[]` removes them all, so a routine's own
+`triggers` can be passed back with an entry added or dropped.
 `delete` soft-deletes, except for a project default, which answers 409:
-disable it instead. `kind`, `trigger_type`, condition types, skip reasons and
-trigger statuses are open enums: a value this SDK does not know yet decodes
-as a plain string rather than failing.
+disable it instead. `kind`, condition types, skip reasons and trigger
+statuses are open enums: a value this SDK does not know yet decodes as a
+plain string rather than failing. A trigger `type` this SDK does not know
+decodes as `UnknownTrigger`, its fields kept.
 
 Each firing is recorded as an event, read like any other family:
 

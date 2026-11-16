@@ -32,17 +32,23 @@ from introspection_sdk.schemas.events import (
 )
 from introspection_sdk.schemas.routines import (
     EnqueuedConversation,
+    GitHubTrigger,
+    LinearTrigger,
+    RoutineCondition,
     RoutineConditionType,
     RoutineExecutionStatus,
     RoutineKind,
     RoutineMetadata,
     RoutineRunSource,
     RoutineSkipReason,
-    RoutineTriggerFilter,
-    RoutineTriggerProvider,
-    RoutineTriggerSource,
-    RoutineTriggerSpec,
     RoutineTriggerType,
+    ScheduleTrigger,
+    ScheduleTriggerSpec,
+    SlackTrigger,
+    SlackTriggerSpec,
+    UnknownTrigger,
+    WebhookTrigger,
+    WebhookTriggerSpec,
 )
 from introspection_sdk.schemas.tasks import TaskFileRef, TaskRepoRequest
 
@@ -60,6 +66,8 @@ from .conftest import (
 ROUTINE_ID = "0199a1b2-0000-7000-8000-000000000001"
 ROUTINE_PATH = f"/v1/routines/{ROUTINE_ID}"
 PARAMS_FILE_ID = "0199a1b2-0000-7000-8000-0000000000f1"
+TRIGGER_ID = "0199a1b2-0000-7000-8000-0000000000e1"
+SCHEDULE_ID = "0199a1b2-0000-7000-8000-0000000000e2"
 
 
 def routine_body(**over: Any) -> dict[str, Any]:
@@ -76,19 +84,25 @@ def routine_body(**over: Any) -> dict[str, Any]:
         "execution_blocked_reason": None,
         "can_manage": True,
         "tags": ["digest"],
-        "trigger_type": "cron",
-        "cron_schedule": "0 9 * * 1",
         "kind": None,
         "prompt": "Summarize my week",
-        "metadata": {
-            "cron_schedules": ["0 9 * * 1", "0 17 * * 5"],
-            "timezone": "Europe/London",
+        "routine_metadata": {
             "repositories": [{"repo": "acme/app", "ref": "main"}],
             "conditions": [
                 {"type": "has_new_tasks_since_last_run"},
                 {"type": "brand_new_condition"},
             ],
+            "synthesis_max_conversations": None,
         },
+        "triggers": [
+            {
+                "id": SCHEDULE_ID,
+                "type": "schedule",
+                "cron": "0 9 * * 1",
+                "timezone": "Europe/London",
+            },
+            {"id": TRIGGER_ID, "type": "schedule", "cron": "0 17 * * 5"},
+        ],
         "last_triggered_at": "2026-09-28T09:00:00Z",
         "next_trigger_at": "2026-10-05T09:00:00.123456Z",
         "created_at": "2026-09-01T10:00:00Z",
@@ -138,42 +152,119 @@ async def test_async_client_exposes_routines():
         await client.shutdown()
 
 
-@pytest.mark.parametrize(
-    "budget_exhausted",
-    [
-        None,
-        {
-            "budget_id": "0199a1b2-0000-7000-8000-0000000000b1",
-            "until": "2026-12-01T00:00:00Z",
-        },
-    ],
-    ids=["none", "exhausted"],
-)
-def test_strict_decoding_accepts_budget_exhausted(
-    fake_api: FakeAPI,
-    monkeypatch: pytest.MonkeyPatch,
-    budget_exhausted: dict[str, str] | None,
+EVERY_TRIGGER: list[dict[str, Any]] = [
+    {
+        "id": SCHEDULE_ID,
+        "type": "schedule",
+        "cron": "0 9 * * 1-5",
+        "timezone": "Australia/Sydney",
+    },
+    {
+        "id": "0199a1b2-0000-7000-8000-0000000000e3",
+        "type": "slack",
+        "event_types": ["slack.reaction.added"],
+        "channel_ids": ["C1"],
+        "emoji": ["eyes"],
+    },
+    {
+        "id": "0199a1b2-0000-7000-8000-0000000000e4",
+        "type": "github",
+        "event_types": ["github.push"],
+        "repository_ids": ["r1"],
+        "branches": ["main"],
+    },
+    {
+        "id": "0199a1b2-0000-7000-8000-0000000000e5",
+        "type": "linear",
+        "event_types": ["linear.issue.created"],
+        "to_states": ["Todo"],
+    },
+    {
+        "id": TRIGGER_ID,
+        "type": "webhook",
+        "connector_slug": "orders",
+        "event_types": ["*"],
+        "payload_fields": {"status": ["paid"]},
+    },
+    {
+        "id": "0199a1b2-0000-7000-8000-0000000000e6",
+        "type": "jira",
+        "event_types": ["jira.issue.created"],
+        "project_keys": ["OPS"],
+    },
+]
+
+
+@pytest.mark.parametrize("strict", [False, True], ids=["lenient", "strict"])
+def test_get_decodes_every_trigger_type(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch, strict: bool
 ):
-    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    if strict:
+        monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    fake_api.add(
+        "GET", ROUTINE_PATH, json_body=routine_body(triggers=EVERY_TRIGGER)
+    )
+
+    triggers = Routines(fake_api.client()).get(ROUTINE_ID).triggers
+
+    schedule, slack, github, linear, webhook, jira = triggers
+    assert isinstance(schedule, ScheduleTrigger)
+    assert schedule.id == UUID(SCHEDULE_ID)
+    assert schedule.cron == "0 9 * * 1-5"
+    assert schedule.timezone == "Australia/Sydney"
+    assert isinstance(slack, SlackTrigger)
+    assert slack.event_types == ["slack.reaction.added"]
+    assert slack.channel_ids == ["C1"]
+    assert slack.emoji == ["eyes"]
+    assert isinstance(github, GitHubTrigger)
+    assert github.repository_ids == ["r1"]
+    assert github.branches == ["main"]
+    assert isinstance(linear, LinearTrigger)
+    assert linear.to_states == ["Todo"]
+    assert isinstance(webhook, WebhookTrigger)
+    assert webhook.id == UUID(TRIGGER_ID)
+    assert webhook.connector_slug == "orders"
+    assert webhook.event_types == ["*"]
+    assert webhook.payload_fields == {"status": ["paid"]}
+    assert isinstance(jira, UnknownTrigger)
+    assert jira.type == "jira"
+    assert jira.id == UUID("0199a1b2-0000-7000-8000-0000000000e6")
+    assert jira.model_dump(mode="json") == EVERY_TRIGGER[-1]
+
+
+def test_a_trigger_omits_the_filter_keys_it_does_not_set(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         ROUTINE_PATH,
-        json_body=routine_body(budget_exhausted=budget_exhausted),
+        json_body=routine_body(
+            triggers=[
+                {"id": SCHEDULE_ID, "type": "schedule", "cron": "0 9 * * *"},
+                {
+                    "id": TRIGGER_ID,
+                    "type": "slack",
+                    "event_types": ["slack.reaction.added"],
+                },
+                {
+                    "id": "0199a1b2-0000-7000-8000-0000000000e4",
+                    "type": "webhook",
+                    "connector_slug": "orders",
+                    "event_types": ["*"],
+                },
+            ]
+        ),
     )
 
-    routine = Routines(fake_api.client()).get(UUID(ROUTINE_ID))
+    schedule, slack, webhook = (
+        Routines(fake_api.client()).get(ROUTINE_ID).triggers
+    )
 
-    if budget_exhausted is None:
-        assert routine.budget_exhausted is None
-    else:
-        assert routine.budget_exhausted is not None
-        assert (
-            str(routine.budget_exhausted.budget_id)
-            == (budget_exhausted["budget_id"])
-        )
-        assert routine.budget_exhausted.until == datetime(
-            2026, 12, 1, tzinfo=UTC
-        )
+    assert isinstance(schedule, ScheduleTrigger)
+    assert schedule.timezone is None
+    assert isinstance(slack, SlackTrigger)
+    assert slack.channel_ids is None
+    assert slack.emoji is None
+    assert isinstance(webhook, WebhookTrigger)
+    assert webhook.payload_fields is None
 
 
 def test_get_decodes_the_server_routine(fake_api: FakeAPI):
@@ -183,7 +274,6 @@ def test_get_decodes_the_server_routine(fake_api: FakeAPI):
 
     assert fake_api.last_request.method == "GET"
     assert routine.name == "Weekly digest"
-    assert routine.trigger_type is RoutineTriggerType.CRON
     assert routine.kind is None
     assert routine.can_manage is True
     assert routine.runtime_group_id == UUID(RUNTIME_GROUP_ID)
@@ -196,48 +286,89 @@ def test_get_decodes_the_server_routine(fake_api: FakeAPI):
         2026, 10, 5, 9, 0, 0, 123456, tzinfo=UTC
     )
 
-    metadata = routine.typed_metadata
-    assert metadata is not None
-    assert metadata.cron_schedules == ["0 9 * * 1", "0 17 * * 5"]
-    assert metadata.timezone == "Europe/London"
+    assert routine.triggers == [
+        ScheduleTrigger(
+            id=UUID(SCHEDULE_ID), cron="0 9 * * 1", timezone="Europe/London"
+        ),
+        ScheduleTrigger(id=UUID(TRIGGER_ID), cron="0 17 * * 5"),
+    ]
+    metadata = routine.routine_metadata
+    assert metadata.synthesis_max_conversations is None
     assert metadata.repositories == [
         TaskRepoRequest(repo="acme/app", ref="main")
     ]
-    assert metadata.conditions is not None
     types = [condition.type for condition in metadata.conditions]
     assert types == ["has_new_tasks_since_last_run", "brand_new_condition"]
     assert types[0] is RoutineConditionType.HAS_NEW_TASKS_SINCE_LAST_RUN
     assert not isinstance(types[1], RoutineConditionType)
 
 
-def test_minimal_routine_and_unfit_metadata(fake_api: FakeAPI):
+def test_routine_metadata_keeps_unknown_keys_through_an_update(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    stored = {
+        "repositories": [],
+        "conditions": [],
+        "synthesis_max_conversations": None,
+        "future_setting": {"level": 2},
+    }
+    fake_api.add(
+        "GET", ROUTINE_PATH, json_body=routine_body(routine_metadata=stored)
+    )
+    fake_api.add("PATCH", ROUTINE_PATH, json_body=routine_body())
+    api = Routines(fake_api.client())
+
+    metadata = api.get(ROUTINE_ID).routine_metadata
+    metadata.repositories = [TaskRepoRequest(repo="acme/app")]
+    api.update(ROUTINE_ID, routine_metadata=metadata)
+
+    assert fake_api.last_request.json() == {
+        "routine_metadata": {
+            "repositories": [{"repo": "acme/app"}],
+            "conditions": [],
+            "future_setting": {"level": 2},
+        }
+    }
+
+
+def test_minimal_routine_and_synthesis_settings(fake_api: FakeAPI):
     fake_api.add(
         "GET",
         "/v1/routines/a",
         json_body={
             "id": ROUTINE_ID,
             "name": "n",
-            "trigger_type": "manual",
             "kind": "observation_clustering",
         },
     )
     fake_api.add(
         "GET",
         "/v1/routines/b",
-        json_body=routine_body(metadata={"cron_schedules": "not-a-list"}),
+        json_body=routine_body(
+            kind="observation_synthesis",
+            runtime_group_id=None,
+            routine_metadata={
+                "repositories": [],
+                "conditions": [],
+                "synthesis_max_conversations": 50,
+            },
+        ),
     )
     api = Routines(fake_api.client())
 
     minimal = api.get("a")
     assert minimal.kind is RoutineKind.OBSERVATION_CLUSTERING
-    assert minimal.metadata is None
-    assert minimal.typed_metadata is None
+    assert minimal.triggers == []
+    assert minimal.routine_metadata == RoutineMetadata()
     assert minimal.runtime_group_id is None
     assert minimal.task_id is None
     assert minimal.next_trigger_at is None
     assert minimal.tags == []
 
-    assert api.get("b").typed_metadata is None
+    assert api.get("b").routine_metadata == RoutineMetadata(
+        synthesis_max_conversations=50
+    )
 
 
 def test_list_encodes_filters_and_paginates(fake_api: FakeAPI):
@@ -252,7 +383,6 @@ def test_list_encodes_filters_and_paginates(fake_api: FakeAPI):
                         {
                             "id": ROUTINE_ID,
                             "name": "second",
-                            "trigger_type": "manual",
                         }
                     ]
                 ),
@@ -327,7 +457,6 @@ def test_list_decodes_the_check_in_and_an_unknown_kind(fake_api: FakeAPI):
                 ),
                 routine_body(
                     kind="not_yet_invented",
-                    trigger_type="on_webhook",
                     owner_role=None,
                 ),
             ]
@@ -340,7 +469,6 @@ def test_list_decodes_the_check_in_and_an_unknown_kind(fake_api: FakeAPI):
     assert check_in.owner_role == "operator"
     assert later.kind == "not_yet_invented"
     assert not isinstance(later.kind, RoutineKind)
-    assert later.trigger_type == "on_webhook"
     assert later.owner_role is None
 
 
@@ -363,11 +491,15 @@ def test_create_sends_only_set_fields(fake_api: FakeAPI):
 
     created = api.create(
         name="Weekly digest",
-        trigger_type=RoutineTriggerType.CRON,
-        cron_schedule="0 9 * * 1",
         prompt="Summarize my week",
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
-        metadata=RoutineMetadata(cron_schedules=["0 9 * * 1"], timezone="UTC"),
+        routine_metadata=RoutineMetadata(
+            repositories=[TaskRepoRequest(repo="acme/app", ref="main")]
+        ),
+        triggers=[
+            ScheduleTriggerSpec(cron="0 9 * * 1", timezone="UTC"),
+            {"type": "schedule", "cron": "0 17 * * 5"},
+        ],
     )
 
     assert created.name == "Weekly digest"
@@ -375,28 +507,55 @@ def test_create_sends_only_set_fields(fake_api: FakeAPI):
     assert fake_api.last_request.path == "/v1/routines"
     assert fake_api.last_request.json() == {
         "name": "Weekly digest",
-        "trigger_type": "cron",
-        "cron_schedule": "0 9 * * 1",
         "prompt": "Summarize my week",
         "runtime_group_id": RUNTIME_GROUP_ID,
-        "metadata": {"cron_schedules": ["0 9 * * 1"], "timezone": "UTC"},
+        "routine_metadata": {
+            "repositories": [{"repo": "acme/app", "ref": "main"}],
+            "conditions": [],
+        },
+        "triggers": [
+            {"type": "schedule", "cron": "0 9 * * 1", "timezone": "UTC"},
+            {"type": "schedule", "cron": "0 17 * * 5"},
+        ],
     }
 
     api.create(
         name="Clusters",
-        trigger_type="manual",
         kind=RoutineKind.OBSERVATION_CLUSTERING,
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
-        metadata={"conditions": [{"type": "has_new_tasks_since_last_run"}]},
+        routine_metadata=RoutineMetadata(
+            conditions=[
+                RoutineCondition(
+                    type=RoutineConditionType.HAS_NEW_TASKS_SINCE_LAST_RUN
+                )
+            ]
+        ),
         enabled=False,
     )
     assert fake_api.last_request.json() == {
         "name": "Clusters",
-        "trigger_type": "manual",
         "kind": "observation_clustering",
         "runtime_group_id": RUNTIME_GROUP_ID,
-        "metadata": {"conditions": [{"type": "has_new_tasks_since_last_run"}]},
+        "routine_metadata": {
+            "repositories": [],
+            "conditions": [{"type": "has_new_tasks_since_last_run"}],
+        },
         "enabled": False,
+    }
+
+    api.create(
+        name="Synthesis",
+        kind=RoutineKind.OBSERVATION_SYNTHESIS,
+        routine_metadata={"synthesis_max_conversations": 20},
+    )
+    assert fake_api.last_request.json() == {
+        "name": "Synthesis",
+        "kind": "observation_synthesis",
+        "routine_metadata": {
+            "repositories": [],
+            "conditions": [],
+            "synthesis_max_conversations": 20,
+        },
     }
 
 
@@ -405,7 +564,6 @@ def test_create_a_one_off_reminder_into_an_existing_task(fake_api: FakeAPI):
 
     Routines(fake_api.client()).create(
         name="Friday check-in",
-        trigger_type=RoutineTriggerType.MANUAL,
         prompt="How did the week go?",
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
         task_id=UUID(TASK_ID),
@@ -415,7 +573,6 @@ def test_create_a_one_off_reminder_into_an_existing_task(fake_api: FakeAPI):
 
     assert fake_api.last_request.json() == {
         "name": "Friday check-in",
-        "trigger_type": "manual",
         "description": "Ask on Friday",
         "prompt": "How did the week go?",
         "runtime_group_id": RUNTIME_GROUP_ID,
@@ -443,20 +600,41 @@ def test_create_a_one_off_reminder_into_an_existing_task(fake_api: FakeAPI):
             {
                 "name": "n",
                 "description": "d",
-                "cron_schedule": "0 * * * *",
                 "prompt": "p",
-                "metadata": RoutineMetadata(timezone="Asia/Tokyo"),
+                "routine_metadata": {
+                    "repositories": [{"repo": "acme/app"}],
+                    "conditions": [{"type": "brand_new_condition"}],
+                },
             },
             {
                 "name": "n",
                 "description": "d",
-                "cron_schedule": "0 * * * *",
                 "prompt": "p",
-                "metadata": {"timezone": "Asia/Tokyo"},
+                "routine_metadata": {
+                    "repositories": [{"repo": "acme/app"}],
+                    "conditions": [{"type": "brand_new_condition"}],
+                },
             },
         ),
-        # An empty map is sent: metadata replaces wholesale.
-        ({"metadata": {}}, {"metadata": {}}),
+        (
+            {
+                "routine_metadata": RoutineMetadata(
+                    synthesis_max_conversations=10
+                )
+            },
+            {
+                "routine_metadata": {
+                    "repositories": [],
+                    "conditions": [],
+                    "synthesis_max_conversations": 10,
+                }
+            },
+        ),
+        # The whole object is sent: empty lists clear them.
+        (
+            {"routine_metadata": RoutineMetadata()},
+            {"routine_metadata": {"repositories": [], "conditions": []}},
+        ),
         ({}, {}),
     ],
 )
@@ -879,22 +1057,23 @@ async def test_async_hand_trigger_uploads_parameters(fake_api: FakeAPI):
     }
 
 
-def test_update_switches_trigger_type(fake_api: FakeAPI):
+def test_update_moves_between_schedules_and_none(fake_api: FakeAPI):
     fake_api.add(
         "PATCH",
         ROUTINE_PATH,
-        json_body=routine_body(trigger_type="manual", next_trigger_at=None),
+        json_body=routine_body(triggers=[], next_trigger_at=None),
     )
     api = Routines(fake_api.client())
 
-    updated = api.update(ROUTINE_ID, trigger_type=RoutineTriggerType.MANUAL)
-    assert fake_api.last_request.json() == {"trigger_type": "manual"}
-    assert updated.trigger_type is RoutineTriggerType.MANUAL
+    updated = api.update(ROUTINE_ID, triggers=[])
+    assert fake_api.last_request.json() == {"triggers": []}
+    assert updated.triggers == []
 
-    api.update(ROUTINE_ID, trigger_type="cron", cron_schedule="0 9 * * 1")
+    api.update(
+        ROUTINE_ID, triggers=[{"type": "schedule", "cron": "0 9 * * 1"}]
+    )
     assert fake_api.last_request.json() == {
-        "trigger_type": "cron",
-        "cron_schedule": "0 9 * * 1",
+        "triggers": [{"type": "schedule", "cron": "0 9 * * 1"}]
     }
 
 
@@ -925,30 +1104,12 @@ def test_hand_trigger_surfaces_oversized_parameters_422(fake_api: FakeAPI):
 
 # --- event triggers ----------------------------------------------------
 
-TRIGGER_ID = "0199a1b2-0000-7000-8000-0000000000e1"
-
 WEBHOOK_TRIGGER: dict[str, Any] = {
     "id": TRIGGER_ID,
-    "routine_id": ROUTINE_ID,
-    "org_id": ORG_ID,
-    "project_id": PROJECT_ID,
-    "source": "connector",
-    "provider": "webhook",
+    "type": "webhook",
     "connector_slug": "orders",
     "event_types": ["order.created"],
-    "filter": {
-        "channel_ids": None,
-        "emoji": None,
-        "team_ids": None,
-        "to_states": None,
-        "repository_ids": None,
-        "branches": None,
-        "payload_fields": {"region": ["eu"]},
-    },
-    "enabled": True,
-    "created_at": "2026-11-01T10:00:00Z",
-    "updated_at": "2026-11-01T10:00:00Z",
-    "deleted_at": None,
+    "payload_fields": {"region": ["eu"]},
 }
 
 
@@ -957,84 +1118,79 @@ def test_create_sends_triggers_and_decodes_them(fake_api: FakeAPI):
         "POST",
         "/v1/routines",
         status=201,
-        json_body=routine_body(
-            trigger_type="manual", triggers=[WEBHOOK_TRIGGER]
-        ),
+        json_body=routine_body(triggers=[WEBHOOK_TRIGGER]),
     )
 
     created = Routines(fake_api.client()).create(
         name="Order follow-up",
-        trigger_type="manual",
         prompt="Follow up on order @parameters.order_id",
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
         triggers=[
-            RoutineTriggerSpec(
-                source=RoutineTriggerSource.CONNECTOR,
-                provider=RoutineTriggerProvider.WEBHOOK,
+            WebhookTriggerSpec(
                 connector_slug="orders",
                 event_types=["order.created"],
-                filter=RoutineTriggerFilter(payload_fields={"region": ["eu"]}),
+                payload_fields={"region": ["eu"]},
             ),
             {
-                "provider": "github",
+                "type": "github",
                 "event_types": ["github.push"],
-                "filter": {"branches": ["main"]},
+                "branches": ["main"],
             },
+            {"type": "jira", "event_types": ["jira.issue.created"]},
         ],
     )
 
     assert fake_api.last_request.json() == {
         "name": "Order follow-up",
-        "trigger_type": "manual",
         "prompt": "Follow up on order @parameters.order_id",
         "runtime_group_id": RUNTIME_GROUP_ID,
         "triggers": [
             {
-                "source": "connector",
-                "provider": "webhook",
+                "type": "webhook",
                 "connector_slug": "orders",
                 "event_types": ["order.created"],
-                "filter": {"payload_fields": {"region": ["eu"]}},
+                "payload_fields": {"region": ["eu"]},
             },
             {
-                "provider": "github",
+                "type": "github",
                 "event_types": ["github.push"],
-                "filter": {"branches": ["main"]},
+                "branches": ["main"],
             },
+            {"type": "jira", "event_types": ["jira.issue.created"]},
         ],
     }
     (trigger,) = created.triggers
+    assert isinstance(trigger, WebhookTrigger)
     assert trigger.id == UUID(TRIGGER_ID)
-    assert trigger.source is RoutineTriggerSource.CONNECTOR
-    assert trigger.provider is RoutineTriggerProvider.WEBHOOK
     assert trigger.connector_slug == "orders"
-    assert trigger.filter.payload_fields == {"region": ["eu"]}
-    assert trigger.filter.channel_ids is None
-    assert trigger.enabled is True
+    assert trigger.payload_fields == {"region": ["eu"]}
 
 
 def test_a_routine_without_triggers_reads_an_empty_list(fake_api: FakeAPI):
-    fake_api.add("GET", ROUTINE_PATH, json_body=routine_body())
+    fake_api.add("GET", ROUTINE_PATH, json_body=routine_body(triggers=[]))
 
     assert Routines(fake_api.client()).get(ROUTINE_ID).triggers == []
 
 
-def test_trigger_decodes_an_unknown_source_and_provider(fake_api: FakeAPI):
-    future = {
-        **WEBHOOK_TRIGGER,
-        "source": "schedule_from_the_future",
-        "provider": "jira",
-        "filter": {},
-    }
+def test_a_trigger_spec_rejects_a_missing_required_field(fake_api: FakeAPI):
+    with pytest.raises(pydantic.ValidationError):
+        Routines(fake_api.client()).update(
+            ROUTINE_ID, triggers=[{"type": "webhook", "event_types": ["*"]}]
+        )
+    assert fake_api.requests == []
+
+
+def test_update_passes_a_routines_own_triggers_back(fake_api: FakeAPI):
     fake_api.add(
-        "GET", ROUTINE_PATH, json_body=routine_body(triggers=[future])
+        "GET", ROUTINE_PATH, json_body=routine_body(triggers=EVERY_TRIGGER)
     )
+    fake_api.add("PATCH", ROUTINE_PATH, json_body=routine_body())
+    api = Routines(fake_api.client())
 
-    (trigger,) = Routines(fake_api.client()).get(ROUTINE_ID).triggers
+    kept = api.get(ROUTINE_ID).triggers
+    api.update(ROUTINE_ID, triggers=list(kept))
 
-    assert trigger.source == "schedule_from_the_future"
-    assert trigger.provider == "jira"
-    assert trigger.filter == RoutineTriggerFilter()
+    assert fake_api.last_request.json() == {"triggers": EVERY_TRIGGER}
 
 
 @pytest.mark.parametrize(
@@ -1045,21 +1201,17 @@ def test_trigger_decodes_an_unknown_source_and_provider(fake_api: FakeAPI):
             [
                 {
                     "id": TRIGGER_ID,
-                    "provider": "webhook",
-                    "source": "connector",
+                    "type": "webhook",
                     "connector_slug": "orders",
                     "event_types": ["*"],
-                    "enabled": False,
                 }
             ],
             [
                 {
                     "id": TRIGGER_ID,
-                    "provider": "webhook",
-                    "source": "connector",
+                    "type": "webhook",
                     "connector_slug": "orders",
                     "event_types": ["*"],
-                    "enabled": False,
                 }
             ],
         ),
@@ -1111,14 +1263,12 @@ async def test_async_crud_and_trigger(fake_api: FakeAPI):
 
     await api.create(
         name="n",
-        trigger_type="manual",
         prompt="p",
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
         task_id=UUID(TASK_ID),
     )
     assert fake_api.last_request.json() == {
         "name": "n",
-        "trigger_type": "manual",
         "prompt": "p",
         "runtime_group_id": RUNTIME_GROUP_ID,
         "task_id": TASK_ID,
@@ -1140,19 +1290,17 @@ async def test_async_crud_and_trigger(fake_api: FakeAPI):
     await api.update(
         ROUTINE_ID,
         triggers=[
-            RoutineTriggerSpec(
-                provider="slack",
-                event_types=["slack.message.posted"],
-                filter=RoutineTriggerFilter(channel_ids=["C1"]),
+            SlackTriggerSpec(
+                event_types=["slack.message.posted"], channel_ids=["C1"]
             )
         ],
     )
     assert fake_api.last_request.json() == {
         "triggers": [
             {
-                "provider": "slack",
+                "type": "slack",
                 "event_types": ["slack.message.posted"],
-                "filter": {"channel_ids": ["C1"]},
+                "channel_ids": ["C1"],
             }
         ]
     }
@@ -1350,7 +1498,6 @@ def test_create_rejects_a_naive_slot_before_sending(fake_api: FakeAPI):
     with pytest.raises(pydantic.ValidationError):
         Routines(fake_api.client()).create(
             name="One-off",
-            trigger_type="manual",
             prompt="Go",
             runtime_group_id=UUID(RUNTIME_GROUP_ID),
             next_trigger_at=datetime(2026, 2, 1, 9, 0),
@@ -1362,7 +1509,7 @@ def test_create_rejects_a_naive_slot_before_sending(fake_api: FakeAPI):
     assert fake_api.requests == []
 
 
-def test_get_decodes_soft_delete_agent_and_operator_default(
+def test_get_decodes_soft_delete_and_agent(
     fake_api: FakeAPI,
 ):
     fake_api.add(
@@ -1371,7 +1518,6 @@ def test_get_decodes_soft_delete_agent_and_operator_default(
         json_body=routine_body(
             deleted_at="2026-10-01T09:00:00Z",
             agent_member_id=MEMBER_ID,
-            metadata={"operator_default": "project_check_in"},
         ),
     )
 
@@ -1379,6 +1525,3 @@ def test_get_decodes_soft_delete_agent_and_operator_default(
 
     assert routine.deleted_at == datetime(2026, 10, 1, 9, tzinfo=UTC)
     assert routine.agent_member_id == UUID(MEMBER_ID)
-    metadata = routine.typed_metadata
-    assert metadata is not None
-    assert metadata.operator_default == "project_check_in"

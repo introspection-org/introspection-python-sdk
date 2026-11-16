@@ -15,15 +15,16 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, Any
+from typing import Annotated, Any, ClassVar, Literal
 from uuid import UUID
 
 from pydantic import (
     AwareDatetime,
     BaseModel,
     ConfigDict,
+    Discriminator,
     Field,
-    ValidationError,
+    Tag,
 )
 
 from introspection_sdk.schemas.tasks import TaskFileRef, TaskRepoRequest
@@ -34,7 +35,8 @@ class _ApiModel(BaseModel):
 
 
 class RoutineTriggerType(StrEnum):
-    """How a routine is triggered."""
+    """How a run was started, as ``trigger_type`` on the
+    ``introspection.routines.triggered`` / ``.skipped`` payloads."""
 
     CRON = "cron"
     MANUAL = "manual"
@@ -102,25 +104,6 @@ class RoutineRunSource(StrEnum):
     :class:`RoutineTriggerEventRef`."""
 
 
-class RoutineTriggerSource(StrEnum):
-    """What an event trigger listens to."""
-
-    INTEGRATION = "integration"
-    """An org integration bound to the project (Slack, GitHub)."""
-    CONNECTOR = "connector"
-    """A project connector, named by ``connector_slug`` (a ``webhook``
-    connector)."""
-
-
-class RoutineTriggerProvider(StrEnum):
-    """The provider whose events a trigger matches."""
-
-    SLACK = "slack"
-    LINEAR = "linear"
-    GITHUB = "github"
-    WEBHOOK = "webhook"
-
-
 # Left-to-right tries the enum first and falls back to the raw string, so
 # a known value is the member and an unknown one still decodes. Pydantic's
 # default "smart" union would pick ``str`` for every input from a dict.
@@ -137,12 +120,6 @@ OpenExecutionStatus = Annotated[
 OpenSkipReason = Annotated[
     RoutineSkipReason | str, Field(union_mode="left_to_right")
 ]
-OpenTriggerSource = Annotated[
-    RoutineTriggerSource | str, Field(union_mode="left_to_right")
-]
-OpenTriggerProvider = Annotated[
-    RoutineTriggerProvider | str, Field(union_mode="left_to_right")
-]
 
 MAX_TRIGGER_PARAMETERS_BYTES = 16 * 1024
 """A manual trigger's ``parameters`` serialize to at most this many bytes
@@ -153,94 +130,151 @@ this deep; the server answers 422 past it."""
 
 
 class RoutineCondition(_ApiModel):
-    """One condition stored in a routine's metadata."""
+    """A built-in condition the routine checks before it runs."""
 
     type: OpenConditionType
     runtime_group_id: UUID | None = None
 
 
 class RoutineMetadata(_ApiModel):
-    """The typed shape of a routine's ``metadata`` object.
+    """A routine's typed settings, replaced whole on update. Keys this SDK
+    does not model are kept and sent back."""
 
-    The runtime group is the routine's top-level ``runtime_group_id``;
-    the server rejects one inside metadata. Unset fields are left out of
-    the request, which matters for a member's own routine: the server
-    accepts only ``cron_schedules`` and ``timezone`` from a non-admin.
-    """
+    open_schema: ClassVar[bool] = True
 
-    cron_schedules: list[str] | None = None
-    """Several cron expressions; ``cron_schedule`` on the routine is the
-    single-schedule form."""
-    timezone: str | None = None
-    """IANA time zone the cron schedules are evaluated in."""
-    repositories: list[TaskRepoRequest] | None = None
+    repositories: list[TaskRepoRequest] = []
     """Repositories a task-backed routine clones."""
-    conditions: list[RoutineCondition] | None = None
-    operator_default: str | None = None
-    """Set by the platform on a project's default routine
-    (``project_check_in``)."""
+    conditions: list[RoutineCondition] = []
+    synthesis_max_conversations: int | None = None
+    """Accepted on an ``observation_synthesis`` routine only."""
 
 
-class RoutineTriggerFilter(_ApiModel):
-    """An event trigger's filter: every key set must contain the event's
-    value for it. Which keys a provider takes is the server's catalogue:
-    Slack ``channel_ids`` / ``emoji`` (``slack.message.posted`` requires
-    ``channel_ids``), GitHub ``repository_ids`` / ``branches``, Linear
-    ``team_ids`` / ``to_states``, and a webhook ``payload_fields``."""
+class ScheduleTriggerSpec(_ApiModel):
+    """A cron schedule. ``timezone`` is IANA, UTC when unset."""
 
+    type: Literal["schedule"] = "schedule"
+    cron: str
+    timezone: str | None = None
+    id: UUID | None = None
+    """Keeps that existing trigger; omit for a new one."""
+
+
+class SlackTriggerSpec(_ApiModel):
+    """Slack events; ``slack.message.posted`` requires ``channel_ids``."""
+
+    type: Literal["slack"] = "slack"
+    event_types: list[str]
     channel_ids: list[str] | None = None
     emoji: list[str] | None = None
-    team_ids: list[str] | None = None
-    to_states: list[str] | None = None
+    id: UUID | None = None
+
+
+class GitHubTriggerSpec(_ApiModel):
+    """GitHub events."""
+
+    type: Literal["github"] = "github"
+    event_types: list[str]
     repository_ids: list[str] | None = None
     branches: list[str] | None = None
-    payload_fields: dict[str, list[str]] | None = None
-    """A webhook body's top-level scalars, by key: a string matches as
-    given, a number, boolean or ``null`` as its JSON text."""
-
-
-class RoutineTriggerSpec(_ApiModel):
-    """One entry of ``triggers`` on a routine create or update.
-
-    With ``id`` it keeps that existing trigger, applying the fields given;
-    without one it is a new trigger. A trigger declares no parameters:
-    the run it starts receives the event's body as ``parameters.json``
-    (any JSON; a non-JSON body arrives as a JSON string) and
-    ``@parameters.<key>`` reads its top-level keys, as a manual run's
-    ``parameters`` do.
-    """
-
-    provider: OpenTriggerProvider
-    event_types: list[str]
-    """``{provider}.{object}.{action}`` names (``github.push``); a webhook
-    connector takes the sender's own type names, or ``*`` alone for
-    every one (a body with no string ``type`` arrives as
-    ``webhook.received``)."""
     id: UUID | None = None
-    source: OpenTriggerSource | None = None
-    """``integration`` when omitted."""
-    connector_slug: str | None = None
-    """The project connector, set for a ``connector`` source only."""
-    filter: RoutineTriggerFilter | None = None
-    enabled: bool | None = None
 
 
-class RoutineTrigger(_ApiModel):
-    """A stored event trigger on a routine."""
+class LinearTriggerSpec(_ApiModel):
+    """Linear events, from the teams bound to the project."""
+
+    type: Literal["linear"] = "linear"
+    event_types: list[str]
+    to_states: list[str] | None = None
+    id: UUID | None = None
+
+
+class WebhookTriggerSpec(_ApiModel):
+    """Events posted to a project's webhook connector. ``event_types`` are
+    the sender's own names, or ``*`` alone for every one."""
+
+    type: Literal["webhook"] = "webhook"
+    connector_slug: str
+    event_types: list[str]
+    payload_fields: dict[str, list[str]] | None = None
+    """A body's top-level scalars, by key: a string matches as given, a
+    number, boolean or ``null`` as its JSON text."""
+    id: UUID | None = None
+
+
+class UnknownTriggerSpec(_ApiModel):
+    """A trigger ``type`` this SDK does not model, sent as given."""
+
+    open_schema: ClassVar[bool] = True
+
+    type: str
+    id: UUID | None = None
+
+
+class ScheduleTrigger(ScheduleTriggerSpec):
+    id: UUID
+
+
+class SlackTrigger(SlackTriggerSpec):
+    id: UUID
+
+
+class GitHubTrigger(GitHubTriggerSpec):
+    id: UUID
+
+
+class LinearTrigger(LinearTriggerSpec):
+    id: UUID
+
+
+class WebhookTrigger(WebhookTriggerSpec):
+    id: UUID
+
+
+class UnknownTrigger(UnknownTriggerSpec):
+    """A stored trigger whose ``type`` this SDK predates; its other fields
+    are kept as extras."""
 
     id: UUID
-    routine_id: UUID
-    source: OpenTriggerSource
-    provider: OpenTriggerProvider
-    event_types: list[str]
-    connector_slug: str | None = None
-    filter: RoutineTriggerFilter = Field(default_factory=RoutineTriggerFilter)
-    enabled: bool = True
-    org_id: UUID | None = None
-    project_id: UUID | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    deleted_at: datetime | None = None
+
+
+TRIGGER_TYPES = frozenset({"schedule", "slack", "github", "linear", "webhook"})
+
+
+def _trigger_tag(value: Any) -> str:
+    kind = (
+        value.get("type")
+        if isinstance(value, dict)
+        else getattr(value, "type", None)
+    )
+    return kind if kind in TRIGGER_TYPES else "unknown"
+
+
+RoutineTrigger = Annotated[
+    Annotated[ScheduleTrigger, Tag("schedule")]
+    | Annotated[SlackTrigger, Tag("slack")]
+    | Annotated[GitHubTrigger, Tag("github")]
+    | Annotated[LinearTrigger, Tag("linear")]
+    | Annotated[WebhookTrigger, Tag("webhook")]
+    | Annotated[UnknownTrigger, Tag("unknown")],
+    Discriminator(_trigger_tag),
+]
+"""A stored trigger, discriminated on ``type``."""
+
+RoutineTriggerSpec = Annotated[
+    Annotated[ScheduleTriggerSpec, Tag("schedule")]
+    | Annotated[SlackTriggerSpec, Tag("slack")]
+    | Annotated[GitHubTriggerSpec, Tag("github")]
+    | Annotated[LinearTriggerSpec, Tag("linear")]
+    | Annotated[WebhookTriggerSpec, Tag("webhook")]
+    | Annotated[UnknownTriggerSpec, Tag("unknown")],
+    Discriminator(_trigger_tag),
+]
+"""One entry of ``triggers`` on a create or update, discriminated on
+``type``. A stored :data:`RoutineTrigger` is one too, keeping its ``id``.
+
+An event-started run receives the event's body as ``parameters.json``, and
+``@parameters.<key>`` reads its top-level keys, as a manual run's
+``parameters`` do."""
 
 
 class RoutineTriggerEventRef(_ApiModel):
@@ -255,36 +289,24 @@ class RoutineTriggerEventRef(_ApiModel):
     repeats it."""
 
 
-class RoutineBudgetExhausted(_ApiModel):
-    """The budget pausing a routine's scheduled and event-started runs."""
-
-    budget_id: UUID
-    until: datetime
-    """When the budget's period ends and the routine's runs resume."""
-
-
 class Routine(_ApiModel):
     """A stored routine: scheduled agent work, or platform work when
     ``kind`` is set."""
 
     id: UUID
     name: str
-    trigger_type: OpenTriggerType
     org_id: UUID | None = None
     project_id: UUID | None = None
     description: str | None = None
     enabled: bool = True
-    cron_schedule: str | None = None
     kind: OpenKind | None = None
     """``None`` for a routine a person created."""
     prompt: str | None = None
-    metadata: dict[str, Any] | None = None
-    """Open-ended; read the known fields with :attr:`typed_metadata`."""
     tags: list[str] = []
     last_triggered_at: datetime | None = None
     next_trigger_at: datetime | None = None
-    """The next slot: derived from the schedule for ``cron``, client-set for
-    a one-off ``manual`` routine and cleared once that slot fires."""
+    """The next slot: the earliest across its ``schedule`` triggers, or,
+    with none, a client-set one-off cleared once it fires."""
     runtime_group_id: UUID | None = None
     """The runtime group it runs on (or clusters); ``None`` for
     ``observation_synthesis``."""
@@ -295,9 +317,6 @@ class Routine(_ApiModel):
     created_by_member_id: UUID | None = None
     execution_blocked_reason: str | None = None
     """Why the scheduler will not run this routine, when it will not."""
-    budget_exhausted: RoutineBudgetExhausted | None = None
-    """The budget pausing this routine's scheduled and event-started runs,
-    until its period ends; ``None`` while none does. Read-only."""
     can_manage: bool = False
     """Whether the caller may edit it."""
     owner_role: str | None = None
@@ -307,33 +326,20 @@ class Routine(_ApiModel):
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
     """Set on a soft-deleted routine, which ``get`` still returns."""
+    routine_metadata: RoutineMetadata = Field(default_factory=RoutineMetadata)
     triggers: list[RoutineTrigger] = []
-    """Events that start a run, beside the schedule and a manual trigger."""
-
-    @property
-    def typed_metadata(self) -> RoutineMetadata | None:
-        """``metadata`` parsed into :class:`RoutineMetadata`, or ``None``
-        when it is absent or does not fit."""
-        if self.metadata is None:
-            return None
-        try:
-            return RoutineMetadata.model_validate(self.metadata)
-        except ValidationError:
-            return None
+    """What starts it besides a manual trigger: schedules and events."""
 
 
 class RoutineCreateRequest(_ApiModel):
     """Body of ``POST /v1/routines``.
 
-    A one-off reminder is a ``manual`` routine with a future
-    ``next_trigger_at``; a ``cron`` routine derives its own slots and
-    must not send one.
+    A one-off reminder is a routine with no ``schedule`` trigger and a
+    future ``next_trigger_at``.
     """
 
     name: str
-    trigger_type: OpenTriggerType
     description: str | None = None
-    cron_schedule: str | None = None
     kind: OpenKind | None = None
     """Omit for a prompt routine, which then needs ``prompt``."""
     prompt: str | None = None
@@ -344,42 +350,40 @@ class RoutineCreateRequest(_ApiModel):
     """An existing task each firing posts the prompt into (prompt
     routines only)."""
     next_trigger_at: AwareDatetime | None = None
-    """A one-off slot for a ``manual`` routine; must be in the future
-    and timezone-aware."""
-    metadata: dict[str, Any] | None = None
+    """A one-off slot, only without a ``schedule`` trigger; must be in
+    the future and timezone-aware."""
     enabled: bool | None = None
+    routine_metadata: RoutineMetadata | None = None
     triggers: list[RoutineTriggerSpec] | None = None
-    """Event triggers (at most 20), for a prompt routine that starts a
-    task per run; a new routine's triggers carry no ``id``."""
+    """At most 20. Event triggers are an administrator's, on a prompt
+    routine that starts a task per run; a platform routine takes only
+    ``schedule`` triggers."""
 
 
 class RoutineUpdateRequest(_ApiModel):
     """Body of ``PATCH /v1/routines/{id}``.
 
     Only set fields are sent: ``None`` leaves a field as it is, so nothing
-    can be cleared. ``kind`` is immutable; ``metadata`` replaces wholesale.
+    can be cleared. ``kind`` is immutable.
     """
 
     name: str | None = None
     description: str | None = None
-    trigger_type: OpenTriggerType | None = None
-    """Switches a prompt routine between ``manual`` and ``cron``. ``cron``
-    needs a schedule in the same update (``cron_schedule`` and/or
-    ``metadata.cron_schedules``); ``manual`` drops the next slot."""
-    cron_schedule: str | None = None
     prompt: str | None = None
     runtime_group_id: UUID | None = None
     """Moves a prompt routine to another runtime group."""
     task_id: UUID | None = None
     next_trigger_at: AwareDatetime | None = None
-    """Schedules, moves or re-arms a ``manual`` routine's one-off slot;
-    must be in the future and timezone-aware."""
-    metadata: dict[str, Any] | None = None
+    """Schedules, moves or re-arms a one-off slot on a routine with no
+    ``schedule`` trigger; must be in the future and timezone-aware."""
     enabled: bool | None = None
     """``False`` pauses and keeps the slot."""
+    routine_metadata: RoutineMetadata | None = None
+    """Replaces the whole object: send the values you keep."""
     triggers: list[RoutineTriggerSpec] | None = None
     """Replaces the routine's triggers: an entry with an ``id`` keeps that
-    trigger, the rest are removed; ``[]`` removes them all."""
+    trigger, one without adds one, the rest are removed; ``[]`` removes
+    them all."""
 
 
 class RoutineTriggerRequest(_ApiModel):
@@ -436,26 +440,35 @@ class RoutineTriggerResponse(_ApiModel):
 
 
 __all__ = [
-    "RoutineBudgetExhausted",
+    "GitHubTrigger",
+    "GitHubTriggerSpec",
+    "LinearTrigger",
+    "LinearTriggerSpec",
     "Routine",
     "RoutineCondition",
     "RoutineConditionType",
     "RoutineCreateRequest",
     "RoutineExecutionStatus",
     "RoutineKind",
-    "RoutineMetadata",
     "RoutineSkipReason",
+    "RoutineMetadata",
     "RoutineRunSource",
     "RoutineTrigger",
     "RoutineTriggerEventRef",
-    "RoutineTriggerFilter",
-    "RoutineTriggerProvider",
     "RoutineTriggerRequest",
     "RoutineTriggerResponse",
-    "RoutineTriggerSource",
     "RoutineTriggerSpec",
     "RoutineTriggerType",
     "RoutineUpdateRequest",
+    "ScheduleTrigger",
+    "ScheduleTriggerSpec",
+    "SlackTrigger",
+    "SlackTriggerSpec",
+    "TRIGGER_TYPES",
+    "UnknownTrigger",
+    "UnknownTriggerSpec",
+    "WebhookTrigger",
+    "WebhookTriggerSpec",
     "EnqueuedConversation",
     "MAX_TRIGGER_PARAMETERS_BYTES",
     "MAX_TRIGGER_PARAMETERS_DEPTH",
@@ -463,7 +476,5 @@ __all__ = [
     "OpenExecutionStatus",
     "OpenKind",
     "OpenSkipReason",
-    "OpenTriggerProvider",
-    "OpenTriggerSource",
     "OpenTriggerType",
 ]

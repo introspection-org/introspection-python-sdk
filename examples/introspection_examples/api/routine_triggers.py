@@ -1,7 +1,7 @@
 """Start a routine from a webhook, and by hand with parameters.
 
 Creates a ``webhook`` connector, issues its first secret (shown once), rotates
-it and deletes the previous one, creates a prompt routine with a ``connector``
+it and deletes the previous one, creates a prompt routine with a ``webhook``
 trigger, then runs the routine by hand with the same parameters, which the SDK
 uploads as the run's ``parameters.json``. Cleans both up at the end.
 
@@ -34,7 +34,7 @@ from uuid import UUID
 
 from dotenv import load_dotenv
 from introspection_sdk import IntrospectionClient
-from introspection_sdk.schemas.routines import RoutineTriggerSpec
+from introspection_sdk.schemas.routines import WebhookTriggerSpec
 
 
 def main() -> None:
@@ -67,20 +67,17 @@ def main() -> None:
 
         routine = client.routines.create(
             name="Order follow-up",
-            trigger_type="manual",
             prompt="Order @parameters.order_id was placed; check stock for it.",
             runtime_group_id=UUID(runtime_group_id),
             triggers=[
-                RoutineTriggerSpec(
-                    source="connector",
-                    provider="webhook",
+                WebhookTriggerSpec(
                     connector_slug="orders-example",
                     event_types=["order.created"],
                 )
             ],
         )
         for trigger in routine.triggers:
-            print(f"  trigger {trigger.id}: {trigger.event_types}")
+            print(f"  trigger {trigger.id}: {trigger.type}")
 
         run = client.routines.trigger(
             routine.id, parameters={"order_id": "o-manual-1"}

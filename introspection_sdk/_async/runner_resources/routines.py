@@ -12,6 +12,8 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
+from pydantic import TypeAdapter
+
 from introspection_sdk._async.runner_resources.files import AsyncFiles
 from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk._strict_schema import decode
@@ -29,13 +31,12 @@ from introspection_sdk.schemas.routines import (
     RoutineTriggerRequest,
     RoutineTriggerResponse,
     RoutineTriggerSpec,
-    RoutineTriggerType,
     RoutineUpdateRequest,
 )
 from introspection_sdk.schemas.tasks import TaskFileRef
 
-MetadataInput = RoutineMetadata | dict[str, Any]
 TriggerInput = RoutineTriggerSpec | dict[str, Any]
+MetadataInput = RoutineMetadata | dict[str, Any]
 FileRefInput = TaskFileRef | dict[str, Any]
 
 PARAMETERS_FILE_NAME = "parameters.json"
@@ -71,10 +72,9 @@ def _uuid(value: UUID | str | None) -> UUID | None:
     return value if value is None or isinstance(value, UUID) else UUID(value)
 
 
-def _metadata(metadata: MetadataInput | None) -> dict[str, Any] | None:
-    if isinstance(metadata, RoutineMetadata):
-        return metadata.model_dump(mode="json", exclude_none=True)
-    return metadata
+_TRIGGER_SPECS: TypeAdapter[list[RoutineTriggerSpec]] = TypeAdapter(
+    list[RoutineTriggerSpec]
+)
 
 
 def _triggers(
@@ -82,36 +82,38 @@ def _triggers(
 ) -> list[RoutineTriggerSpec] | None:
     if triggers is None:
         return None
-    return [RoutineTriggerSpec.model_validate(trigger) for trigger in triggers]
+    return _TRIGGER_SPECS.validate_python(triggers)
+
+
+def _metadata(metadata: MetadataInput | None) -> RoutineMetadata | None:
+    if metadata is None:
+        return None
+    return RoutineMetadata.model_validate(metadata)
 
 
 def _create_body(
     *,
     name: str,
-    trigger_type: RoutineTriggerType | str,
     description: str | None,
-    cron_schedule: str | None,
     kind: RoutineKind | str | None,
     prompt: str | None,
     runtime_group_id: UUID | str | None,
     task_id: UUID | str | None,
     next_trigger_at: datetime | None,
-    metadata: MetadataInput | None,
     enabled: bool | None,
+    routine_metadata: MetadataInput | None,
     triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
     return RoutineCreateRequest(
         name=name,
-        trigger_type=trigger_type,
         description=description,
-        cron_schedule=cron_schedule,
         kind=kind,
         prompt=prompt,
         runtime_group_id=_uuid(runtime_group_id),
         task_id=_uuid(task_id),
         next_trigger_at=next_trigger_at,
-        metadata=_metadata(metadata),
         enabled=enabled,
+        routine_metadata=_metadata(routine_metadata),
         triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
 
@@ -120,14 +122,12 @@ def _update_body(
     *,
     name: str | None,
     description: str | None,
-    trigger_type: RoutineTriggerType | str | None,
-    cron_schedule: str | None,
     prompt: str | None,
     runtime_group_id: UUID | str | None,
     task_id: UUID | str | None,
     next_trigger_at: datetime | None,
-    metadata: MetadataInput | None,
     enabled: bool | None,
+    routine_metadata: MetadataInput | None,
     triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
     # `exclude_none` is the whole PATCH contract: an unset field is absent,
@@ -135,14 +135,12 @@ def _update_body(
     return RoutineUpdateRequest(
         name=name,
         description=description,
-        trigger_type=trigger_type,
-        cron_schedule=cron_schedule,
         prompt=prompt,
         runtime_group_id=_uuid(runtime_group_id),
         task_id=_uuid(task_id),
         next_trigger_at=next_trigger_at,
-        metadata=_metadata(metadata),
         enabled=enabled,
+        routine_metadata=_metadata(routine_metadata),
         triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
 
@@ -257,50 +255,44 @@ class AsyncRoutines:
         self,
         *,
         name: str,
-        trigger_type: RoutineTriggerType | str,
         description: str | None = None,
-        cron_schedule: str | None = None,
         kind: RoutineKind | str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
-        metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine:
         """Create a routine.
 
         Omit ``kind`` for a prompt routine, which then needs ``prompt``
         and a ``runtime_group_id``. ``task_id`` posts each firing into that
-        existing task instead of creating one. A one-off reminder is
-        ``trigger_type="manual"`` with a future, timezone-aware
-        ``next_trigger_at``; a ``cron`` routine needs ``cron_schedule``
-        (or ``metadata.cron_schedules``) and must not send a slot.
-        ``metadata`` takes an :class:`RoutineMetadata` or a plain dict.
+        existing task instead of creating one.
 
-        ``triggers`` are events that start a run (at most 20), each a
-        :class:`RoutineTriggerSpec` or a plain dict, for a prompt routine
-        that starts a task per run. An event-started run receives the
-        event's body as ``parameters.json`` and ``@parameters.<key>`` in
-        the prompt reads its top-level keys, as a manual run's
-        ``parameters`` do. Only an administrator can add triggers.
+        ``triggers`` (at most 20) are what start a run besides
+        :meth:`trigger`, each a :data:`RoutineTriggerSpec` variant or a
+        plain dict discriminated on ``type``: ``schedule`` (``cron``,
+        ``timezone``), ``slack``, ``github``, ``linear`` or ``webhook``.
+        A routine with no ``schedule`` trigger may set a future,
+        timezone-aware ``next_trigger_at`` to run once (a one-off
+        reminder). Event triggers are an administrator's, on a prompt
+        routine that starts a task per run.
         """
         payload = await self._http.request(
             "POST",
             "/v1/routines",
             json=_create_body(
                 name=name,
-                trigger_type=trigger_type,
                 description=description,
-                cron_schedule=cron_schedule,
                 kind=kind,
                 prompt=prompt,
                 runtime_group_id=runtime_group_id,
                 task_id=task_id,
                 next_trigger_at=next_trigger_at,
-                metadata=metadata,
                 enabled=enabled,
+                routine_metadata=routine_metadata,
                 triggers=triggers,
             ),
         )
@@ -312,44 +304,37 @@ class AsyncRoutines:
         *,
         name: str | None = None,
         description: str | None = None,
-        trigger_type: RoutineTriggerType | str | None = None,
-        cron_schedule: str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | str | None = None,
         task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
-        metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine:
         """Update a routine. Only the fields you pass are sent; ``None``
         leaves a field as it is, so nothing can be cleared. ``kind`` is
-        immutable and ``metadata`` replaces wholesale. ``enabled=False``
-        pauses and keeps the slot.
+        immutable. ``enabled=False`` pauses and keeps the slot.
+        ``routine_metadata`` replaces the whole object, so send the values
+        you keep.
 
-        ``trigger_type`` switches a prompt routine between ``manual`` and
-        ``cron``: ``cron`` needs a ``cron_schedule`` (or
-        ``metadata.cron_schedules``) in the same update, and ``manual``
-        drops the next slot. A schedule list may not repeat a cron (422).
-
-        ``triggers`` replaces the routine's event triggers: an entry with
-        the ``id`` of an existing trigger keeps it (with the fields given),
-        one without is new, and every trigger not listed is removed, so
-        ``[]`` removes them all."""
+        ``triggers`` replaces the routine's triggers, schedules and events
+        alike: an entry with the ``id`` of an existing trigger keeps it
+        (its ``type`` is fixed), one without is new, and every trigger not
+        listed is removed, so ``[]`` removes them all. A routine's own
+        ``triggers`` can be passed back as they are."""
         payload = await self._http.request(
             "PATCH",
             _path(routine_id),
             json=_update_body(
                 name=name,
                 description=description,
-                trigger_type=trigger_type,
-                cron_schedule=cron_schedule,
                 prompt=prompt,
                 runtime_group_id=runtime_group_id,
                 task_id=task_id,
                 next_trigger_at=next_trigger_at,
-                metadata=metadata,
                 enabled=enabled,
+                routine_metadata=routine_metadata,
                 triggers=triggers,
             ),
         )

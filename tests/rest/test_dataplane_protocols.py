@@ -77,7 +77,13 @@ ROUTINE = {
     "project_id": "00000000-0000-0000-0000-0000000000bb",
     "name": "Weekly digest",
     "enabled": True,
-    "trigger_type": "cron",
+    "triggers": [
+        {
+            "id": "0199a1b2-0000-7000-8000-0000000000e1",
+            "type": "schedule",
+            "cron": "0 9 * * 1",
+        }
+    ],
     "created_at": "2026-09-01T10:00:00Z",
     "updated_at": "2026-09-01T10:00:00Z",
 }

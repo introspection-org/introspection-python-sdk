@@ -76,7 +76,6 @@ from introspection_sdk.schemas.routines import (
     Routine,
     RoutineKind,
     RoutineTriggerResponse,
-    RoutineTriggerType,
 )
 from introspection_sdk.schemas.shares import (
     ResourceShare,
@@ -615,16 +614,14 @@ class AsyncRoutinesResource(Protocol):
         self,
         *,
         name: str,
-        trigger_type: RoutineTriggerType | str,
         description: str | None = None,
-        cron_schedule: str | None = None,
         kind: RoutineKind | str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | None = None,
         task_id: UUID | None = None,
         next_trigger_at: datetime | None = None,
-        metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine: ...
 
@@ -634,14 +631,12 @@ class AsyncRoutinesResource(Protocol):
         *,
         name: str | None = None,
         description: str | None = None,
-        trigger_type: RoutineTriggerType | str | None = None,
-        cron_schedule: str | None = None,
         prompt: str | None = None,
         runtime_group_id: UUID | None = None,
         task_id: UUID | None = None,
         next_trigger_at: datetime | None = None,
-        metadata: MetadataInput | None = None,
         enabled: bool | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine: ...
 
