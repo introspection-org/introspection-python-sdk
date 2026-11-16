@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.46.0...v0.47.0) (2026-11-16)
+
+
+### Features
+
+* **routines:** a schedule trigger's member_idle_seconds and the member_idle skip reason ([#276](https://github.com/introspection-org/introspection-python-sdk/issues/276)) ([3a758b9](https://github.com/introspection-org/introspection-python-sdk/commit/3a758b99c8141ad70d218efac86fd0bc1dc2acd4))
+
 ## [0.46.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.45.0...v0.46.0) (2026-11-16)
 
 
