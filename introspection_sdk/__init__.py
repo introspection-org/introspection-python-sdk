@@ -93,7 +93,7 @@ from introspection_sdk.schemas.repositories import (
 )
 from introspection_sdk.schemas.routines import (
     Routine,
-    RoutineMetadata,
+    RoutineTrigger,
     RoutineTriggerResponse,
     RoutineTriggerType,
 )
@@ -201,7 +201,7 @@ __all__ = [
     "AuthSession",
     "AuthenticationError",
     "Routine",
-    "RoutineMetadata",
+    "RoutineTrigger",
     "RoutineTriggerResponse",
     "RoutineTriggerType",
     "Issue",

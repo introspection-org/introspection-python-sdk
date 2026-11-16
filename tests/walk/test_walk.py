@@ -2006,7 +2006,6 @@ def test_16_routines(world: World) -> None:
     routines = w.sa.routines
     routine = routines.create(
         name=WALK.routine_name,
-        trigger_type="manual",
         prompt=second_turn(w.settings),
         runtime_group_id=UUID(w.group_id),
         # A routine its owner creates posts into that owner's own task;
@@ -2018,15 +2017,12 @@ def test_16_routines(world: World) -> None:
         {
             "id": "[uuid]",
             "name": "The walk's routine",
-            "trigger_type": "manual",
             "org_id": "[uuid]",
             "project_id": "[uuid]",
             "description": None,
             "enabled": True,
-            "cron_schedule": None,
             "kind": None,
             "prompt": 'Reply with the single word done. <<SCRIPT {"reply":"done"}>>',
-            "metadata": None,
             "tags": [],
             "last_triggered_at": None,
             "next_trigger_at": None,
@@ -2035,12 +2031,14 @@ def test_16_routines(world: World) -> None:
             "agent_member_id": None,
             "created_by_member_id": "[uuid]",
             "execution_blocked_reason": None,
-            "budget_exhausted": None,
             "can_manage": True,
             "owner_role": "operator",
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
             "deleted_at": None,
+            "repositories": [],
+            "conditions": [],
+            "synthesis": None,
             "triggers": [],
         }
     )

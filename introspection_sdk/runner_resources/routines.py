@@ -10,8 +10,9 @@ recorded as an ``introspection.routines.triggered`` or
 ``client.events`` with the ``routine_id`` / ``task_id`` filters.
 
 A prompt routine that starts a task per run can also be started by
-events: ``triggers`` lists them (a Slack or GitHub integration's events,
-or a ``webhook`` connector's calls), and ``trigger(parameters=...)``
+events: ``triggers`` lists them beside its ``schedule`` triggers (a
+Slack, GitHub or Linear integration's events, or a ``webhook``
+connector's calls), and ``trigger(parameters=...)``
 runs it by hand with a JSON object, which the SDK uploads through the
 Files API and attaches to the run (``parameters=<local JSON path>``
 reads one from disk first, and ``parameters=<File or UUID>`` attaches one
@@ -35,8 +36,10 @@ from introspection_sdk._async.runner_resources.routines import (
     PARAMETERS_FILE_NAME,
     PARAMETERS_FILE_TTL_SECONDS,
     AsyncRoutines,
+    ConditionInput,
     FileRefInput,
-    MetadataInput,
+    RepositoryInput,
+    SynthesisInput,
     TriggerInput,
 )
 from introspection_sdk._sync.runner_resources.routines import (
@@ -46,8 +49,10 @@ from introspection_sdk._sync.runner_resources.routines import (
 __all__ = [
     "AsyncRoutines",
     "Routines",
+    "ConditionInput",
     "FileRefInput",
-    "MetadataInput",
+    "RepositoryInput",
+    "SynthesisInput",
     "PARAMETERS_FILE_NAME",
     "PARAMETERS_FILE_TTL_SECONDS",
     "TriggerInput",

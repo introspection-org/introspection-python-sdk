@@ -53,7 +53,6 @@ def main() -> None:
 
         reminder = client.routines.create(
             name="Check in",
-            trigger_type="manual",
             prompt="Any progress since we last spoke?",
             runtime_group_id=UUID(runtime_group_id),
             task_id=UUID(task_id),
