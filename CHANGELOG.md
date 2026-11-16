@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.46.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.45.0...v0.46.0) (2026-11-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* routine triggers as one union discriminated on type; schedules are triggers ([#274](https://github.com/introspection-org/introspection-python-sdk/issues/274))
+
+### Features
+
+* **conversations:** resume an export oldest-first and order items ([#266](https://github.com/introspection-org/introspection-python-sdk/issues/266)) ([e33ae7a](https://github.com/introspection-org/introspection-python-sdk/commit/e33ae7a38b69c30a4b5327280aaf8984863cb613))
+* routine triggers as one union discriminated on type; schedules are triggers ([#274](https://github.com/introspection-org/introspection-python-sdk/issues/274)) ([4016033](https://github.com/introspection-org/introspection-python-sdk/commit/40160336b497de4a938ba2f43e288b3d13cc4918))
+
 ## [0.45.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.44.0...v0.45.0) (2026-11-16)
 
 
