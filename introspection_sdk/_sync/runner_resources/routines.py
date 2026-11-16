@@ -27,21 +27,18 @@ from introspection_sdk.schemas.files import File
 from introspection_sdk.schemas.pagination import Paginated
 from introspection_sdk.schemas.routines import (
     Routine,
-    RoutineCondition,
     RoutineCreateRequest,
     RoutineKind,
-    RoutineSynthesis,
+    RoutineMetadata,
     RoutineTriggerRequest,
     RoutineTriggerResponse,
     RoutineTriggerSpec,
     RoutineUpdateRequest,
 )
-from introspection_sdk.schemas.tasks import TaskFileRef, TaskRepoRequest
+from introspection_sdk.schemas.tasks import TaskFileRef
 
 TriggerInput = RoutineTriggerSpec | dict[str, Any]
-RepositoryInput = TaskRepoRequest | dict[str, Any]
-ConditionInput = RoutineCondition | dict[str, Any]
-SynthesisInput = RoutineSynthesis | dict[str, Any]
+MetadataInput = RoutineMetadata | dict[str, Any]
 FileRefInput = TaskFileRef | dict[str, Any]
 
 PARAMETERS_FILE_NAME = "parameters.json"
@@ -90,26 +87,10 @@ def _triggers(
     return _TRIGGER_SPECS.validate_python(triggers)
 
 
-def _repositories(
-    repositories: list[RepositoryInput] | None,
-) -> list[TaskRepoRequest] | None:
-    if repositories is None:
+def _metadata(metadata: MetadataInput | None) -> RoutineMetadata | None:
+    if metadata is None:
         return None
-    return [TaskRepoRequest.model_validate(repo) for repo in repositories]
-
-
-def _conditions(
-    conditions: list[ConditionInput] | None,
-) -> list[RoutineCondition] | None:
-    if conditions is None:
-        return None
-    return [RoutineCondition.model_validate(cond) for cond in conditions]
-
-
-def _synthesis(synthesis: SynthesisInput | None) -> RoutineSynthesis | None:
-    if synthesis is None:
-        return None
-    return RoutineSynthesis.model_validate(synthesis)
+    return RoutineMetadata.model_validate(metadata)
 
 
 def _create_body(
@@ -122,9 +103,7 @@ def _create_body(
     task_id: UUID | str | None,
     next_trigger_at: datetime | None,
     enabled: bool | None,
-    repositories: list[RepositoryInput] | None,
-    conditions: list[ConditionInput] | None,
-    synthesis: SynthesisInput | None,
+    routine_metadata: MetadataInput | None,
     triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
     return RoutineCreateRequest(
@@ -136,9 +115,7 @@ def _create_body(
         task_id=_uuid(task_id),
         next_trigger_at=next_trigger_at,
         enabled=enabled,
-        repositories=_repositories(repositories),
-        conditions=_conditions(conditions),
-        synthesis=_synthesis(synthesis),
+        routine_metadata=_metadata(routine_metadata),
         triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
 
@@ -152,9 +129,7 @@ def _update_body(
     task_id: UUID | str | None,
     next_trigger_at: datetime | None,
     enabled: bool | None,
-    repositories: list[RepositoryInput] | None,
-    conditions: list[ConditionInput] | None,
-    synthesis: SynthesisInput | None,
+    routine_metadata: MetadataInput | None,
     triggers: list[TriggerInput] | None,
 ) -> dict[str, Any]:
     # `exclude_none` is the whole PATCH contract: an unset field is absent,
@@ -167,9 +142,7 @@ def _update_body(
         task_id=_uuid(task_id),
         next_trigger_at=next_trigger_at,
         enabled=enabled,
-        repositories=_repositories(repositories),
-        conditions=_conditions(conditions),
-        synthesis=_synthesis(synthesis),
+        routine_metadata=_metadata(routine_metadata),
         triggers=_triggers(triggers),
     ).model_dump(mode="json", exclude_none=True)
 
@@ -281,9 +254,7 @@ class Routines:
         task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
         enabled: bool | None = None,
-        repositories: builtins.list[RepositoryInput] | None = None,
-        conditions: builtins.list[ConditionInput] | None = None,
-        synthesis: SynthesisInput | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine:
         """Create a routine.
@@ -313,9 +284,7 @@ class Routines:
                 task_id=task_id,
                 next_trigger_at=next_trigger_at,
                 enabled=enabled,
-                repositories=repositories,
-                conditions=conditions,
-                synthesis=synthesis,
+                routine_metadata=routine_metadata,
                 triggers=triggers,
             ),
         )
@@ -332,14 +301,14 @@ class Routines:
         task_id: UUID | str | None = None,
         next_trigger_at: datetime | None = None,
         enabled: bool | None = None,
-        repositories: builtins.list[RepositoryInput] | None = None,
-        conditions: builtins.list[ConditionInput] | None = None,
-        synthesis: SynthesisInput | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine:
         """Update a routine. Only the fields you pass are sent; ``None``
         leaves a field as it is, so nothing can be cleared. ``kind`` is
         immutable. ``enabled=False`` pauses and keeps the slot.
+        ``routine_metadata`` replaces the whole object, so send the values
+        you keep.
 
         ``triggers`` replaces the routine's triggers, schedules and events
         alike: an entry with the ``id`` of an existing trigger keeps it
@@ -357,9 +326,7 @@ class Routines:
                 task_id=task_id,
                 next_trigger_at=next_trigger_at,
                 enabled=enabled,
-                repositories=repositories,
-                conditions=conditions,
-                synthesis=synthesis,
+                routine_metadata=routine_metadata,
                 triggers=triggers,
             ),
         )

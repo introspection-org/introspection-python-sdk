@@ -2036,9 +2036,11 @@ def test_16_routines(world: World) -> None:
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
             "deleted_at": None,
-            "repositories": [],
-            "conditions": [],
-            "synthesis": None,
+            "routine_metadata": {
+                "repositories": [],
+                "conditions": [],
+                "synthesis_max_conversations": None,
+            },
             "triggers": [],
         }
     )

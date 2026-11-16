@@ -36,10 +36,8 @@ from introspection_sdk._async.runner_resources.routines import (
     PARAMETERS_FILE_NAME,
     PARAMETERS_FILE_TTL_SECONDS,
     AsyncRoutines,
-    ConditionInput,
     FileRefInput,
-    RepositoryInput,
-    SynthesisInput,
+    MetadataInput,
     TriggerInput,
 )
 from introspection_sdk._sync.runner_resources.routines import (
@@ -49,10 +47,8 @@ from introspection_sdk._sync.runner_resources.routines import (
 __all__ = [
     "AsyncRoutines",
     "Routines",
-    "ConditionInput",
     "FileRefInput",
-    "RepositoryInput",
-    "SynthesisInput",
+    "MetadataInput",
     "PARAMETERS_FILE_NAME",
     "PARAMETERS_FILE_TTL_SECONDS",
     "TriggerInput",

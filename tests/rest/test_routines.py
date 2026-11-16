@@ -38,9 +38,9 @@ from introspection_sdk.schemas.routines import (
     RoutineConditionType,
     RoutineExecutionStatus,
     RoutineKind,
+    RoutineMetadata,
     RoutineRunSource,
     RoutineSkipReason,
-    RoutineSynthesis,
     RoutineTriggerType,
     ScheduleTrigger,
     ScheduleTriggerSpec,
@@ -86,12 +86,14 @@ def routine_body(**over: Any) -> dict[str, Any]:
         "tags": ["digest"],
         "kind": None,
         "prompt": "Summarize my week",
-        "repositories": [{"repo": "acme/app", "ref": "main"}],
-        "conditions": [
-            {"type": "has_new_tasks_since_last_run"},
-            {"type": "brand_new_condition"},
-        ],
-        "synthesis": None,
+        "routine_metadata": {
+            "repositories": [{"repo": "acme/app", "ref": "main"}],
+            "conditions": [
+                {"type": "has_new_tasks_since_last_run"},
+                {"type": "brand_new_condition"},
+            ],
+            "synthesis_max_conversations": None,
+        },
         "triggers": [
             {
                 "id": SCHEDULE_ID,
@@ -290,11 +292,12 @@ def test_get_decodes_the_server_routine(fake_api: FakeAPI):
         ),
         ScheduleTrigger(id=UUID(TRIGGER_ID), cron="0 17 * * 5"),
     ]
-    assert routine.synthesis is None
-    assert routine.repositories == [
+    metadata = routine.routine_metadata
+    assert metadata.synthesis_max_conversations is None
+    assert metadata.repositories == [
         TaskRepoRequest(repo="acme/app", ref="main")
     ]
-    types = [condition.type for condition in routine.conditions]
+    types = [condition.type for condition in metadata.conditions]
     assert types == ["has_new_tasks_since_last_run", "brand_new_condition"]
     assert types[0] is RoutineConditionType.HAS_NEW_TASKS_SINCE_LAST_RUN
     assert not isinstance(types[1], RoutineConditionType)
@@ -316,7 +319,11 @@ def test_minimal_routine_and_synthesis_settings(fake_api: FakeAPI):
         json_body=routine_body(
             kind="observation_synthesis",
             runtime_group_id=None,
-            synthesis={"max_conversations": 50},
+            routine_metadata={
+                "repositories": [],
+                "conditions": [],
+                "synthesis_max_conversations": 50,
+            },
         ),
     )
     api = Routines(fake_api.client())
@@ -324,15 +331,15 @@ def test_minimal_routine_and_synthesis_settings(fake_api: FakeAPI):
     minimal = api.get("a")
     assert minimal.kind is RoutineKind.OBSERVATION_CLUSTERING
     assert minimal.triggers == []
-    assert minimal.repositories == []
-    assert minimal.conditions == []
-    assert minimal.synthesis is None
+    assert minimal.routine_metadata == RoutineMetadata()
     assert minimal.runtime_group_id is None
     assert minimal.task_id is None
     assert minimal.next_trigger_at is None
     assert minimal.tags == []
 
-    assert api.get("b").synthesis == RoutineSynthesis(max_conversations=50)
+    assert api.get("b").routine_metadata == RoutineMetadata(
+        synthesis_max_conversations=50
+    )
 
 
 def test_list_encodes_filters_and_paginates(fake_api: FakeAPI):
@@ -457,7 +464,9 @@ def test_create_sends_only_set_fields(fake_api: FakeAPI):
         name="Weekly digest",
         prompt="Summarize my week",
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
-        repositories=[TaskRepoRequest(repo="acme/app", ref="main")],
+        routine_metadata=RoutineMetadata(
+            repositories=[TaskRepoRequest(repo="acme/app", ref="main")]
+        ),
         triggers=[
             ScheduleTriggerSpec(cron="0 9 * * 1", timezone="UTC"),
             {"type": "schedule", "cron": "0 17 * * 5"},
@@ -471,7 +480,10 @@ def test_create_sends_only_set_fields(fake_api: FakeAPI):
         "name": "Weekly digest",
         "prompt": "Summarize my week",
         "runtime_group_id": RUNTIME_GROUP_ID,
-        "repositories": [{"repo": "acme/app", "ref": "main"}],
+        "routine_metadata": {
+            "repositories": [{"repo": "acme/app", "ref": "main"}],
+            "conditions": [],
+        },
         "triggers": [
             {"type": "schedule", "cron": "0 9 * * 1", "timezone": "UTC"},
             {"type": "schedule", "cron": "0 17 * * 5"},
@@ -482,30 +494,39 @@ def test_create_sends_only_set_fields(fake_api: FakeAPI):
         name="Clusters",
         kind=RoutineKind.OBSERVATION_CLUSTERING,
         runtime_group_id=UUID(RUNTIME_GROUP_ID),
-        conditions=[
-            RoutineCondition(
-                type=RoutineConditionType.HAS_NEW_TASKS_SINCE_LAST_RUN
-            )
-        ],
+        routine_metadata=RoutineMetadata(
+            conditions=[
+                RoutineCondition(
+                    type=RoutineConditionType.HAS_NEW_TASKS_SINCE_LAST_RUN
+                )
+            ]
+        ),
         enabled=False,
     )
     assert fake_api.last_request.json() == {
         "name": "Clusters",
         "kind": "observation_clustering",
         "runtime_group_id": RUNTIME_GROUP_ID,
-        "conditions": [{"type": "has_new_tasks_since_last_run"}],
+        "routine_metadata": {
+            "repositories": [],
+            "conditions": [{"type": "has_new_tasks_since_last_run"}],
+        },
         "enabled": False,
     }
 
     api.create(
         name="Synthesis",
         kind=RoutineKind.OBSERVATION_SYNTHESIS,
-        synthesis={"max_conversations": 20},
+        routine_metadata={"synthesis_max_conversations": 20},
     )
     assert fake_api.last_request.json() == {
         "name": "Synthesis",
         "kind": "observation_synthesis",
-        "synthesis": {"max_conversations": 20},
+        "routine_metadata": {
+            "repositories": [],
+            "conditions": [],
+            "synthesis_max_conversations": 20,
+        },
     }
 
 
@@ -551,23 +572,40 @@ def test_create_a_one_off_reminder_into_an_existing_task(fake_api: FakeAPI):
                 "name": "n",
                 "description": "d",
                 "prompt": "p",
-                "repositories": [{"repo": "acme/app"}],
-                "conditions": [{"type": "brand_new_condition"}],
+                "routine_metadata": {
+                    "repositories": [{"repo": "acme/app"}],
+                    "conditions": [{"type": "brand_new_condition"}],
+                },
             },
             {
                 "name": "n",
                 "description": "d",
                 "prompt": "p",
-                "repositories": [{"repo": "acme/app"}],
-                "conditions": [{"type": "brand_new_condition"}],
+                "routine_metadata": {
+                    "repositories": [{"repo": "acme/app"}],
+                    "conditions": [{"type": "brand_new_condition"}],
+                },
             },
         ),
         (
-            {"synthesis": RoutineSynthesis(max_conversations=10)},
-            {"synthesis": {"max_conversations": 10}},
+            {
+                "routine_metadata": RoutineMetadata(
+                    synthesis_max_conversations=10
+                )
+            },
+            {
+                "routine_metadata": {
+                    "repositories": [],
+                    "conditions": [],
+                    "synthesis_max_conversations": 10,
+                }
+            },
         ),
-        # An empty list is sent: it clears the repositories.
-        ({"repositories": []}, {"repositories": []}),
+        # The whole object is sent: empty lists clear them.
+        (
+            {"routine_metadata": RoutineMetadata()},
+            {"routine_metadata": {"repositories": [], "conditions": []}},
+        ),
         ({}, {}),
     ],
 )

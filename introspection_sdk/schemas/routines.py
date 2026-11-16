@@ -136,10 +136,14 @@ class RoutineCondition(_ApiModel):
     runtime_group_id: UUID | None = None
 
 
-class RoutineSynthesis(_ApiModel):
-    """How an ``observation_synthesis`` routine runs."""
+class RoutineMetadata(_ApiModel):
+    """A routine's typed settings, replaced whole on update."""
 
-    max_conversations: int | None = None
+    repositories: list[TaskRepoRequest] = []
+    """Repositories a task-backed routine clones."""
+    conditions: list[RoutineCondition] = []
+    synthesis_max_conversations: int | None = None
+    """Accepted on an ``observation_synthesis`` routine only."""
 
 
 class ScheduleTriggerSpec(_ApiModel):
@@ -319,11 +323,7 @@ class Routine(_ApiModel):
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
     """Set on a soft-deleted routine, which ``get`` still returns."""
-    repositories: list[TaskRepoRequest] = []
-    """Repositories a task-backed routine clones."""
-    conditions: list[RoutineCondition] = []
-    synthesis: RoutineSynthesis | None = None
-    """Set on an ``observation_synthesis`` routine only."""
+    routine_metadata: RoutineMetadata = Field(default_factory=RoutineMetadata)
     triggers: list[RoutineTrigger] = []
     """What starts it besides a manual trigger: schedules and events."""
 
@@ -350,9 +350,7 @@ class RoutineCreateRequest(_ApiModel):
     """A one-off slot, only without a ``schedule`` trigger; must be in
     the future and timezone-aware."""
     enabled: bool | None = None
-    repositories: list[TaskRepoRequest] | None = None
-    conditions: list[RoutineCondition] | None = None
-    synthesis: RoutineSynthesis | None = None
+    routine_metadata: RoutineMetadata | None = None
     triggers: list[RoutineTriggerSpec] | None = None
     """At most 20. Event triggers are an administrator's, on a prompt
     routine that starts a task per run; a platform routine takes only
@@ -377,9 +375,8 @@ class RoutineUpdateRequest(_ApiModel):
     ``schedule`` trigger; must be in the future and timezone-aware."""
     enabled: bool | None = None
     """``False`` pauses and keeps the slot."""
-    repositories: list[TaskRepoRequest] | None = None
-    conditions: list[RoutineCondition] | None = None
-    synthesis: RoutineSynthesis | None = None
+    routine_metadata: RoutineMetadata | None = None
+    """Replaces the whole object: send the values you keep."""
     triggers: list[RoutineTriggerSpec] | None = None
     """Replaces the routine's triggers: an entry with an ``id`` keeps that
     trigger, one without adds one, the rest are removed; ``[]`` removes
@@ -451,7 +448,7 @@ __all__ = [
     "RoutineExecutionStatus",
     "RoutineKind",
     "RoutineSkipReason",
-    "RoutineSynthesis",
+    "RoutineMetadata",
     "RoutineRunSource",
     "RoutineTrigger",
     "RoutineTriggerEventRef",

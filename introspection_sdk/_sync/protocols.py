@@ -24,10 +24,8 @@ from introspection_sdk.runner_resources.conversations import (
 )
 from introspection_sdk.runner_resources.files import FileLike
 from introspection_sdk.runner_resources.routines import (
-    ConditionInput,
     FileRefInput,
-    RepositoryInput,
-    SynthesisInput,
+    MetadataInput,
     TriggerInput,
 )
 from introspection_sdk.runner_resources.tasks import RunHandle
@@ -625,9 +623,7 @@ class RoutinesResource(Protocol):
         task_id: UUID | None = None,
         next_trigger_at: datetime | None = None,
         enabled: bool | None = None,
-        repositories: builtins.list[RepositoryInput] | None = None,
-        conditions: builtins.list[ConditionInput] | None = None,
-        synthesis: SynthesisInput | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine: ...
 
@@ -642,9 +638,7 @@ class RoutinesResource(Protocol):
         task_id: UUID | None = None,
         next_trigger_at: datetime | None = None,
         enabled: bool | None = None,
-        repositories: builtins.list[RepositoryInput] | None = None,
-        conditions: builtins.list[ConditionInput] | None = None,
-        synthesis: SynthesisInput | None = None,
+        routine_metadata: MetadataInput | None = None,
         triggers: builtins.list[TriggerInput] | None = None,
     ) -> Routine: ...
 
