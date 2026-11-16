@@ -18,6 +18,7 @@ import pytest
 
 from introspection_sdk import AsyncIntrospectionClient, IntrospectionClient
 from introspection_sdk._errors import ConflictError, IntrospectionAPIError
+from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
 from introspection_sdk.runner_resources.events import AsyncEvents, Events
 from introspection_sdk.runner_resources.routines import (
     PARAMETERS_FILE_TTL_SECONDS,
@@ -135,6 +136,44 @@ async def test_async_client_exposes_routines():
         assert isinstance(client.routines, AsyncRoutines)
     finally:
         await client.shutdown()
+
+
+@pytest.mark.parametrize(
+    "budget_exhausted",
+    [
+        None,
+        {
+            "budget_id": "0199a1b2-0000-7000-8000-0000000000b1",
+            "until": "2026-12-01T00:00:00Z",
+        },
+    ],
+    ids=["none", "exhausted"],
+)
+def test_strict_decoding_accepts_budget_exhausted(
+    fake_api: FakeAPI,
+    monkeypatch: pytest.MonkeyPatch,
+    budget_exhausted: dict[str, str] | None,
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    fake_api.add(
+        "GET",
+        ROUTINE_PATH,
+        json_body=routine_body(budget_exhausted=budget_exhausted),
+    )
+
+    routine = Routines(fake_api.client()).get(UUID(ROUTINE_ID))
+
+    if budget_exhausted is None:
+        assert routine.budget_exhausted is None
+    else:
+        assert routine.budget_exhausted is not None
+        assert (
+            str(routine.budget_exhausted.budget_id)
+            == (budget_exhausted["budget_id"])
+        )
+        assert routine.budget_exhausted.until == datetime(
+            2026, 12, 1, tzinfo=UTC
+        )
 
 
 def test_get_decodes_the_server_routine(fake_api: FakeAPI):

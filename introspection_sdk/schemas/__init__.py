@@ -141,6 +141,7 @@ from introspection_sdk.schemas.repositories import (
 from introspection_sdk.schemas.routines import (
     EnqueuedConversation,
     Routine,
+    RoutineBudgetExhausted,
     RoutineCondition,
     RoutineConditionType,
     RoutineCreateRequest,
@@ -190,6 +191,7 @@ __all__ = [
     "AnnotationTarget",
     "AGUIEvent",
     "AGUIStreamEvent",
+    "RoutineBudgetExhausted",
     "Routine",
     "RoutineCondition",
     "RoutineConditionType",
