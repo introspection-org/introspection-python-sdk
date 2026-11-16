@@ -303,6 +303,35 @@ def test_get_decodes_the_server_routine(fake_api: FakeAPI):
     assert not isinstance(types[1], RoutineConditionType)
 
 
+def test_routine_metadata_keeps_unknown_keys_through_an_update(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    stored = {
+        "repositories": [],
+        "conditions": [],
+        "synthesis_max_conversations": None,
+        "future_setting": {"level": 2},
+    }
+    fake_api.add(
+        "GET", ROUTINE_PATH, json_body=routine_body(routine_metadata=stored)
+    )
+    fake_api.add("PATCH", ROUTINE_PATH, json_body=routine_body())
+    api = Routines(fake_api.client())
+
+    metadata = api.get(ROUTINE_ID).routine_metadata
+    metadata.repositories = [TaskRepoRequest(repo="acme/app")]
+    api.update(ROUTINE_ID, routine_metadata=metadata)
+
+    assert fake_api.last_request.json() == {
+        "routine_metadata": {
+            "repositories": [{"repo": "acme/app"}],
+            "conditions": [],
+            "future_setting": {"level": 2},
+        }
+    }
+
+
 def test_minimal_routine_and_synthesis_settings(fake_api: FakeAPI):
     fake_api.add(
         "GET",

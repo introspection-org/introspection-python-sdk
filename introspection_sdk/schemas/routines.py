@@ -137,7 +137,10 @@ class RoutineCondition(_ApiModel):
 
 
 class RoutineMetadata(_ApiModel):
-    """A routine's typed settings, replaced whole on update."""
+    """A routine's typed settings, replaced whole on update. Keys this SDK
+    does not model are kept and sent back."""
+
+    open_schema: ClassVar[bool] = True
 
     repositories: list[TaskRepoRequest] = []
     """Repositories a task-backed routine clones."""
