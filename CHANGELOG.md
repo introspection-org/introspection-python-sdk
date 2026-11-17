@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.48.0...v0.49.0) (2026-11-17)
+
+
+### Features
+
+* **files:** ttl_seconds on files.upload ([#280](https://github.com/introspection-org/introspection-python-sdk/issues/280)) ([3d7774f](https://github.com/introspection-org/introspection-python-sdk/commit/3d7774fde4d3909be70eff4dd71ce3bc69de979c))
+
 ## [0.48.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.47.0...v0.48.0) (2026-11-17)
 
 
