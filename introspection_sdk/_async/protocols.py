@@ -288,6 +288,7 @@ class AsyncFilesResource(Protocol):
         content_type: str | None = None,
         metadata: dict[str, Any] | None = None,
         tags: builtins.list[str] | None = None,
+        ttl_seconds: int | None = None,
     ) -> File: ...
 
     async def create_text(

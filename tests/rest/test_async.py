@@ -367,6 +367,15 @@ async def test_files_upload_omits_tags_and_metadata_when_unset(
     content = fake_api.last_request.content
     assert b'name="tags"' not in content
     assert b'name="metadata"' not in content
+    assert b'name="ttl_seconds"' not in content
+
+
+async def test_files_upload_sends_ttl_seconds(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/files", json_body=file_payload())
+    files = AsyncFiles(fake_api.async_client())
+    await files.upload(file=b"x", name="a.bin", ttl_seconds=604800)
+    content = fake_api.last_request.content
+    assert b'name="ttl_seconds"\r\n\r\n604800\r\n' in content
 
 
 async def test_files_list_async_iter(fake_api: FakeAPI):

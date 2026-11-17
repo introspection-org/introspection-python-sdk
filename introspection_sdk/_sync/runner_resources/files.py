@@ -233,12 +233,14 @@ class Files:
         content_type: str | None = None,
         metadata: dict[str, Any] | None = None,
         tags: builtins.list[str] | None = None,
+        ttl_seconds: int | None = None,
     ) -> File:
         """Upload a binary file via multipart.
 
         ``tags`` and ``metadata`` are stamped when the request creates the
         file. A request that adds a new version to an existing file keeps
-        that file's tags; change them with :meth:`update`.
+        that file's tags; change them with :meth:`update`. ``ttl_seconds``
+        (at most 30 days) makes the file expire that long after creation.
 
         Example:
             >>> runner.files.upload(
@@ -253,6 +255,8 @@ class Files:
         ):
             files = {"file": (n, body, ct)}
             data = _upload_form(n, file_type, metadata, tags)
+            if ttl_seconds is not None:
+                data["ttl_seconds"] = str(ttl_seconds)
             payload = self._http.request(
                 "POST", "/v1/files", files=files, data=data
             )
