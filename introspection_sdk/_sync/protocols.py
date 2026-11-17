@@ -290,6 +290,7 @@ class FilesResource(Protocol):
         content_type: str | None = None,
         metadata: dict[str, Any] | None = None,
         tags: builtins.list[str] | None = None,
+        ttl_seconds: int | None = None,
     ) -> File: ...
 
     def create_text(
