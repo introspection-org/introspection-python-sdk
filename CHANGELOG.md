@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.47.0...v0.48.0) (2026-11-17)
+
+
+### Features
+
+* **events:** run_id on the routines.triggered payload ([#278](https://github.com/introspection-org/introspection-python-sdk/issues/278)) ([64473f1](https://github.com/introspection-org/introspection-python-sdk/commit/64473f13e88507c0cba221d263b030cf4ac59fe6))
+
 ## [0.47.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.46.0...v0.47.0) (2026-11-16)
 
 
