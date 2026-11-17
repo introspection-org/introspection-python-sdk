@@ -450,6 +450,9 @@ class RoutineTriggeredPayload(_ApiModel):
     task's member, who owns the event; ``triggered_by_member_id`` is the
     person who triggered it by hand. ``event`` names the event trigger and
     delivery that started it, for a run an event trigger started.
+    ``run_id`` is the run the trigger's turn executes on, the
+    ``introspection.run.id`` its spans carry; ``None`` on a row written
+    before it was recorded.
     """
 
     routine_id: UUID
@@ -464,6 +467,7 @@ class RoutineTriggeredPayload(_ApiModel):
     runtime_group_id: UUID | None = None
     triggered_by_member_id: UUID | None = None
     event: RoutineTriggerEventRef | None = None
+    run_id: UUID | None = None
 
 
 class RoutineSkippedPayload(_ApiModel):

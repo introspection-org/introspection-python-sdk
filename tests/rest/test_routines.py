@@ -64,6 +64,7 @@ from .conftest import (
 )
 
 ROUTINE_ID = "0199a1b2-0000-7000-8000-000000000001"
+RUN_ID = "0199a1b2-0000-7000-8000-0000000000f1"
 ROUTINE_PATH = f"/v1/routines/{ROUTINE_ID}"
 PARAMS_FILE_ID = "0199a1b2-0000-7000-8000-0000000000f1"
 TRIGGER_ID = "0199a1b2-0000-7000-8000-0000000000e1"
@@ -1325,6 +1326,7 @@ TRIGGERED_ROW: dict[str, Any] = {
         "member_id": MEMBER_ID,
         "runtime_group_id": RUNTIME_GROUP_ID,
         "triggered_by_member_id": None,
+        "run_id": RUN_ID,
     },
 }
 
@@ -1371,6 +1373,7 @@ def test_events_read_triggered_rows_with_routine_filters(
     assert run.task_id == UUID(TASK_ID)
     assert run.member_id == UUID(MEMBER_ID)
     assert run.triggered_by_member_id is None
+    assert run.run_id == UUID(RUN_ID)
     assert event.conversation_id == "conv-1"
 
 
