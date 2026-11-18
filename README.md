@@ -918,6 +918,32 @@ print(command.status, command.exit_code, command.stdout)
 `MAX_COMMAND_WAIT_SECONDS` (25, below the client's 30-second request timeout),
 so call `get` again to wait longer.
 
+`local_config` binds an eval task's MCP servers and APIs to its compose
+services: `mcp` is the exact `.pi/mcp.local.json` and `api` the exact
+`.pi/api.local.json` the session reads in place of the Recipe's committed
+files. The server requires `kind="eval"` and that every `url` host is a
+service of `compose`.
+
+```python
+from introspection_sdk.schemas.tasks import (
+    ApiLocalConfig,
+    LocalApiBinding,
+    LocalMcpServer,
+    McpLocalConfig,
+    TaskLocalConfig,
+)
+
+task = client.tasks.create(
+    prompt="Close the open tickets",
+    kind="eval",
+    compose={"services": {"crm": {"image": "crm:1"}}},
+    local_config=TaskLocalConfig(
+        mcp=McpLocalConfig(servers=[LocalMcpServer(id="crm", url="http://crm:8080/mcp")]),
+        api=ApiLocalConfig(apis=[LocalApiBinding(host="api.crm.example", url="http://crm:8080")]),
+    ),
+)
+```
+
 ## Environment variables
 
 ```shell
