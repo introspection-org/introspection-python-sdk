@@ -45,6 +45,7 @@ from introspection_sdk.schemas.tasks import (
     TaskCreateResponse,
     TaskFileRef,
     TaskKind,
+    TaskLocalConfig,
     TaskPrompt,
     TaskRepoRequest,
     TaskRun,
@@ -89,6 +90,16 @@ def _repo_refs(
         else repo
         for repo in repositories
     ]
+
+
+def _local_config(
+    local_config: TaskLocalConfig | dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    # The server writes this out as the binding files, which refuse a null,
+    # so the keys go by their file spelling and a `None` field is left out.
+    if local_config is None:
+        return None
+    return TaskLocalConfig.model_validate(local_config).file_content()
 
 
 #: The longest :meth:`TaskCommands.get` asks the API to hold a read. The API
@@ -466,6 +477,7 @@ class AsyncTasks:
         compose: dict[str, Any] | None = None,
         recipe_git_commit_sha: str | None = None,
         runtime_id: UUID | str | None = None,
+        local_config: TaskLocalConfig | dict[str, Any] | None = None,
     ) -> TaskCreateResponse:
         """Create a task and its initial run.
 
@@ -474,7 +486,11 @@ class AsyncTasks:
         sandbox, ``compose`` runs services beside it, and
         ``recipe_git_commit_sha`` pins the Recipe commit it runs.
         ``runtime_id`` names the Runtime for a caller whose credential is not
-        bound to one (a member token rather than a runner). Each is omitted
+        bound to one (a member token rather than a runner).
+        ``local_config`` (:class:`TaskLocalConfig`) gives an eval task its
+        ``.pi/mcp.local.json`` and ``.pi/api.local.json`` in place of the
+        Recipe's committed ones; the server requires ``kind="eval"`` and
+        every ``url`` host to be a service of ``compose``. Each is omitted
         from the body unless given.
         """
         body: dict[str, Any] = {
@@ -493,6 +509,7 @@ class AsyncTasks:
             "compose": compose,
             "recipe_git_commit_sha": recipe_git_commit_sha,
             "runtime_id": str(runtime_id) if runtime_id is not None else None,
+            "local_config": _local_config(local_config),
         }
         body = {k: v for k, v in body.items() if v is not None}
         payload = await self._http.request("POST", "/v1/tasks", json=body)
