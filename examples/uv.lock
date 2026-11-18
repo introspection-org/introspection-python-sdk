@@ -476,7 +476,7 @@ wheels = [
 
 [[package]]
 name = "introspection-aauth"
-version = "0.0.0"
+version = "0.1.0"
 source = { editable = "../packages/introspection-aauth" }
 dependencies = [
     { name = "cryptography" },
@@ -533,7 +533,7 @@ requires-dist = [
 
 [[package]]
 name = "introspection-sdk"
-version = "0.29.1"
+version = "0.49.0"
 source = { editable = "../" }
 dependencies = [
     { name = "ag-ui-protocol" },
@@ -549,7 +549,7 @@ otel = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ag-ui-protocol", specifier = ">=0.1.19,<0.2.0" },
+    { name = "ag-ui-protocol", specifier = ">=0.1.19,<2" },
     { name = "dirty-equals", marker = "extra == 'test'", specifier = ">=0.11.0" },
     { name = "griffe", marker = "extra == 'dev'", specifier = ">=2.3.2" },
     { name = "httpx", marker = "extra == 'proxy-httpx'", specifier = ">=0.27.0,<1" },
@@ -557,8 +557,8 @@ requires-dist = [
     { name = "inline-snapshot", marker = "extra == 'test'", specifier = ">=0.31.0" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.23.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.4.0" },
-    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otel'", specifier = ">=1.39.0,<1.43.0" },
-    { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.39.0,<1.43.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otel'", specifier = ">=1.39.0,<2" },
+    { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.39.0,<2" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "pyarrow", marker = "extra == 'arrow'", specifier = ">=14.0.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
@@ -566,11 +566,13 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'", specifier = ">=9.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.3.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=7.1.0" },
+    { name = "pytest-recording", marker = "extra == 'test'", specifier = ">=0.14.0" },
     { name = "responses", marker = "extra == 'test'", specifier = ">=0.25.8" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.14.14" },
     { name = "trustme", marker = "extra == 'test'", specifier = ">=1.2.0" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.7" },
     { name = "unasync", marker = "extra == 'dev'", specifier = "==0.6.0" },
+    { name = "vcrpy", marker = "extra == 'test'", specifier = ">=8.3.0" },
 ]
 provides-extras = ["arrow", "proxy-httpx", "otel", "dev", "test"]
 
