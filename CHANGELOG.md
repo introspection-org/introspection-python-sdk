@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.51.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.50.0...v0.51.0) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **issues:** `Issue`, `IssueCreate`, `IssueUpdate` and `IssueEvidence` no longer have `links`, `files`, `events` or `spans`, and `issues.create` no longer takes them. Read `Issue.attachments`; write `attachments` on create and `add_attachments` / `remove_attachments` on update.
+
+### Features
+
+* **issues:** attachments discriminated on kind, with add_attachments and remove_attachments ([#287](https://github.com/introspection-org/introspection-python-sdk/issues/287)) ([fe04022](https://github.com/introspection-org/introspection-python-sdk/commit/fe04022e2f0640306bd746f66564d7b3412f4a11))
+* **tasks:** open a run from AG-UI messages and load ATIF trajectories ([#284](https://github.com/introspection-org/introspection-python-sdk/issues/284)) ([a843a5c](https://github.com/introspection-org/introspection-python-sdk/commit/a843a5c8c9f844d28e8290f65db10d7eccb32f2f))
+
 ## [0.50.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.49.0...v0.50.0) (2026-11-19)
 
 
