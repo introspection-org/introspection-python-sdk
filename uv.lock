@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'win32'",
@@ -816,7 +816,7 @@ black = [
 
 [[package]]
 name = "introspection-sdk"
-version = "0.33.0"
+version = "0.49.0"
 source = { editable = "." }
 dependencies = [
     { name = "ag-ui-protocol" },
@@ -873,8 +873,8 @@ requires-dist = [
     { name = "inline-snapshot", marker = "extra == 'test'", specifier = ">=0.31.0" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.23.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.4.0" },
-    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otel'", specifier = ">=1.39.0,<1.43.0" },
-    { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.39.0,<1.43.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otel'", specifier = ">=1.39.0,<1.45.0" },
+    { name = "opentelemetry-sdk", marker = "extra == 'otel'", specifier = ">=1.39.0,<1.45.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "pyarrow", marker = "extra == 'arrow'", specifier = ">=14.0.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
