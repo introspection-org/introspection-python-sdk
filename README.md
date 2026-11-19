@@ -75,7 +75,9 @@ from introspection_sdk import AsyncIntrospectionClient
 
 
 async def main() -> None:
-    async with AsyncIntrospectionClient() as client:  # token from INTROSPECTION_TOKEN
+    async with (
+        AsyncIntrospectionClient() as client
+    ):  # token from INTROSPECTION_TOKEN
         runner = await client.runtimes("customer-agent").run()
 
         async with runner:
@@ -313,7 +315,7 @@ def connected_apps(dp: DataPlaneResources) -> list[str]:
     return [connection.app for connection in dp.connections.list()]
 
 
-connected_apps(client)                               # the client's own token
+connected_apps(client)  # the client's own token
 connected_apps(client.runtimes("support-agent").run())  # the runner's token
 ```
 
@@ -426,7 +428,9 @@ siblings with it).
 ```python
 from introspection_sdk.schemas.runtimes import RuntimeInclude
 
-head_sha = client.repositories.commits(repo.id, sha="main").page().records[0].sha
+head_sha = (
+    client.repositories.commits(repo.id, sha="main").page().records[0].sha
+)
 recipe = client.recipes.create(
     project="support",
     repository_id=repo.id,
@@ -463,10 +467,14 @@ whose tags intersect its own, still works but is being retired; share with a
 cohort through `shares.create(..., granted_tag="team:acme")` instead.
 
 ```python
-for member in client.members.list(metadata={"plan": "enterprise"}, tag="team:acme"):
+for member in client.members.list(
+    metadata={"plan": "enterprise"}, tag="team:acme"
+):
     print(member.id, member.metadata)
 
-member = client.members.update(member_id, metadata={"plan": "pro", "region": "eu"})
+member = client.members.update(
+    member_id, metadata={"plan": "pro", "region": "eu"}
+)
 client.members.update(member_id, metadata={})  # clear it
 ```
 
@@ -487,7 +495,9 @@ share = client.shares.create(
 
 # On a conversation, `visible_from` hides earlier spans; `update` changes only it.
 convo = client.shares.create(
-    resource_type="conversation", resource_id=conversation_id, visible_from=cutoff
+    resource_type="conversation",
+    resource_id=conversation_id,
+    visible_from=cutoff,
 )
 client.shares.update(str(convo.id), visible_from=None)  # clear the cutoff
 ```
@@ -547,7 +557,9 @@ from introspection_sdk import EmailCodeAuth
 
 auth = EmailCodeAuth(client_id="intro_app_...", project="ark")
 auth.send_code("user@example.com")
-auth.verify_code("user@example.com", code)  # six digits, or six letters and digits on a first sign-in
+auth.verify_code(
+    "user@example.com", code
+)  # six digits, or six letters and digits on a first sign-in
 
 client = auth.client()  # Data Plane URL from the session
 for event in client.events.list("introspection.feedback", limit=5):
@@ -606,7 +618,7 @@ for routine in client.routines.list(enabled=True, scheduled=True):
     print(routine.name, routine.kind, routine.next_trigger_at)
 
 client.routines.update(weekly.id, enabled=False)  # pause, keep the slot
-result = client.routines.trigger(weekly.id)       # run it now
+result = client.routines.trigger(weekly.id)  # run it now
 print(result.status, result.task_id, result.reason)
 ```
 
@@ -632,11 +644,13 @@ client.routines.trigger(weekly.id, parameters="runs/acme.json")
 # Parameters already in the Files API (a JSON object, at most 256 KiB), plus
 # inputs. Only the reference is sent: no upload, and the routine is not read.
 spec = client.files.create_text(
-    name="runs/acme.json", content='{"customer": "acme"}', mime_type="application/json"
+    name="runs/acme.json",
+    content='{"customer": "acme"}',
+    mime_type="application/json",
 )
 client.routines.trigger(
     weekly.id,
-    parameters=spec,                             # or its UUID, spec.id
+    parameters=spec,  # or its UUID, spec.id
     files=[{"id": brief_id, "name": "brief.md"}],  # attached to the run's task
 )
 
@@ -665,7 +679,8 @@ orders = client.connectors.create(
     name="Orders", slug="orders", provider="webhook", auth_mode="static"
 )
 issued = client.connectors.secrets.create(
-    orders.id, type="standard_webhooks"  # or "bearer"
+    orders.id,
+    type="standard_webhooks",  # or "bearer"
 )
 save(issued.secret.get_secret_value())  # shown once
 
@@ -876,7 +891,7 @@ here too.
 
 ```python
 page = runner.connections.create(app="gmail")  # runtime: the runner's group
-print(page.authorize_url, page.expires_in)     # open it once; never cache it
+print(page.authorize_url, page.expires_in)  # open it once; never cache it
 
 for connection in runner.connections.list(app="gmail"):
     print(connection.id, connection.account_name, connection.healthy)
@@ -943,7 +958,9 @@ client = IntrospectionClient(cp_session=os.environ["INTROSPECTION_CP_SESSION"])
 created = client.api_keys.create(project="support", name="ci")
 save(created.api_key.get_secret_value())  # a SecretStr: it never prints
 
-client.credentials.create(name="OPENAI_API_KEY", secret="sk-...", project="support")
+client.credentials.create(
+    name="OPENAI_API_KEY", secret="sk-...", project="support"
+)
 ```
 
 A secret the API returns once (an API key, a client secret) or takes on write
@@ -967,9 +984,15 @@ image = client.images.create(
 )
 # Poll client.images.get(image.id) until status is "ready".
 
-task = client.tasks.create(prompt="Fix the failing test", kind="eval", commands=True)
-command = client.tasks.commands.create(str(task.task.id), ExecCommand(command=["pytest", "-q"]))
-command = client.tasks.commands.get(str(task.task.id), command.id, wait_seconds=25)
+task = client.tasks.create(
+    prompt="Fix the failing test", kind="eval", commands=True
+)
+command = client.tasks.commands.create(
+    str(task.task.id), ExecCommand(command=["pytest", "-q"])
+)
+command = client.tasks.commands.get(
+    str(task.task.id), command.id, wait_seconds=25
+)
 print(command.status, command.exit_code, command.stdout)
 ```
 

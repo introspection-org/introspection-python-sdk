@@ -1431,8 +1431,10 @@ def test_11_evidence(world: World) -> None:
         w.mode,
         lambda: conversations.items.list(cid, limit=200).page(),
         lambda: w.sa_quiet.conversations.items.list(cid, limit=200).page(),
-        lambda p: "echo" in p.model_dump_json()
-        and WALK.variable_value in p.model_dump_json(),
+        lambda p: (
+            "echo" in p.model_dump_json()
+            and WALK.variable_value in p.model_dump_json()
+        ),
         label="conversation items",
         timeout=120,
         interval=5,
@@ -1936,8 +1938,10 @@ def test_15_commands(world: World) -> None:
             w.mode,
             lambda: commands.get(eval_id, created.id),
             lambda: w.sa_quiet.tasks.commands.get(eval_id, created.id),
-            lambda c: str(c.status)
-            in ("succeeded", "completed", "failed", "cancelled"),
+            lambda c: (
+                str(c.status)
+                in ("succeeded", "completed", "failed", "cancelled")
+            ),
             label="task command",
             timeout=120,
         )
