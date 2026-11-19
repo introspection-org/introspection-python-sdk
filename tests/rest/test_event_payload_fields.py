@@ -9,6 +9,8 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
+from introspection_sdk._errors import SchemaDriftError
+from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV, decode
 from introspection_sdk.runner_resources.events import Events
 from introspection_sdk.schemas.events import (
     AnnotationEvent,
@@ -26,6 +28,11 @@ from introspection_sdk.schemas.events import (
     JudgeType,
     UnknownIssuePayload,
     UnknownJudgementPayload,
+)
+from introspection_sdk.schemas.issues import (
+    IssueLinkAttachment,
+    IssueSpanAttachment,
+    UnknownIssueAttachment,
 )
 
 from .conftest import FakeAPI
@@ -282,6 +289,86 @@ def test_issue_updated_carries_its_changes(fake_api: FakeAPI):
     assert updated.changes["status"].after == "waiting"
     assert updated.changes["assignee_member_id"].before is None
     assert updated.changes["assignee_member_id"].after == MEMBER_ID
+
+
+LINK_ATTACHMENT_ID = "019fc000-0000-7000-8000-0000000000b1"
+SPAN_ATTACHMENT_ID = "019fc000-0000-7000-8000-0000000000b2"
+TICKET_ATTACHMENT_ID = "019fc000-0000-7000-8000-0000000000b3"
+PR_URL = "https://github.com/acme/app/pull/7"
+ATTACHMENTS_CHANGE: dict[str, Any] = {
+    "action": "updated",
+    "changes": {
+        "attachments": {
+            "added": [
+                {"id": LINK_ATTACHMENT_ID, "kind": "link", "url": PR_URL},
+            ],
+            "removed": [
+                {
+                    "id": SPAN_ATTACHMENT_ID,
+                    "kind": "span",
+                    "trace_id": "0af7651916cd43dd8448eb211c80319c",
+                    "span_id": "b7ad6b7169203331",
+                }
+            ],
+        }
+    },
+}
+
+
+def test_issue_updated_carries_the_attachments_added_and_removed(
+    fake_api: FakeAPI,
+):
+    (updated,) = issue_payloads(fake_api, ATTACHMENTS_CHANGE)
+
+    assert isinstance(updated, IssueUpdatedPayload)
+    change = updated.changes["attachments"]
+    assert (change.before, change.after) == (None, None)
+    assert change.added == [
+        IssueLinkAttachment(
+            id=UUID(LINK_ATTACHMENT_ID), kind="link", url=PR_URL
+        )
+    ]
+    assert change.removed is not None
+    (removed,) = change.removed
+    assert isinstance(removed, IssueSpanAttachment)
+    assert removed.id == UUID(SPAN_ATTACHMENT_ID)
+
+
+def test_strict_schema_models_an_attachments_change(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+
+    updated = decode(
+        IssueUpdatedPayload, {**ISSUE_SHARED, **ATTACHMENTS_CHANGE}
+    )
+
+    assert updated.changes["attachments"].added is not None
+
+
+def test_an_attachments_change_of_an_unknown_kind_decodes_unless_strict(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    ticket = {"id": TICKET_ATTACHMENT_ID, "kind": "ticket", "key": "OPS-12"}
+    payload = {
+        "action": "updated",
+        "changes": {"attachments": {"added": [ticket], "removed": []}},
+    }
+    monkeypatch.delenv(STRICT_SCHEMA_ENV, raising=False)
+
+    (updated,) = issue_payloads(fake_api, payload)
+
+    assert isinstance(updated, IssueUpdatedPayload)
+    assert updated.changes["attachments"].added == [
+        UnknownIssueAttachment.model_validate(ticket)
+    ]
+
+    # The events list read does not run the strict check, so decode the
+    # payload the way a strict read does.
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    with pytest.raises(SchemaDriftError) as raised:
+        decode(IssueUpdatedPayload, {**ISSUE_SHARED, **payload})
+    assert raised.value.fields == ["$.changes.attachments.added[0].key"]
 
 
 def test_issue_commented_carries_the_comment(fake_api: FakeAPI):

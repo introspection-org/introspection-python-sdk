@@ -41,7 +41,7 @@ from pydantic import (
     Tag,
 )
 
-from introspection_sdk.schemas.events import tag_or_unknown
+from introspection_sdk.schemas.discriminators import tag_or_unknown
 from introspection_sdk.schemas.tasks import TaskStatus
 
 
