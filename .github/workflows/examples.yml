@@ -1,10 +1,8 @@
 name: Examples
 
-# Examples start real runtime tasks, so they're NOT run on every push.
-#
-# Triggers:
-#   - workflow_dispatch  → manual run from the Actions UI / `gh workflow run`
-#   - push of a v* tag   → verify release-time before publish picks up
+# Examples start real runtime tasks against runtimes the target project must
+# already hold, so they run only by hand: from the Actions UI or
+# `gh workflow run`.
 
 on:
   workflow_dispatch:
@@ -14,9 +12,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    tags:
-      - "v*"
 
 concurrency:
   group: examples-${{ github.ref }}
@@ -50,7 +45,7 @@ jobs:
 
       - name: Run the AAuth example
         # Every party runs in process; it needs no secrets.
-        if: inputs.run_examples || startsWith(github.ref, 'refs/tags/v')
+        if: inputs.run_examples
         working-directory: examples
         run: uv run -m introspection_examples.aauth.four_party
 
@@ -59,7 +54,7 @@ jobs:
         # patterns.add_to_your_app and patterns.web_chat also need a service
         # account (the INTRO_SA_* secrets api/service_account.py reads); they
         # print a skip message and exit 0 when those secrets are unset.
-        if: inputs.run_examples || startsWith(github.ref, 'refs/tags/v')
+        if: inputs.run_examples
         working-directory: examples
         env:
           INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
@@ -84,16 +79,14 @@ jobs:
           uv run -m introspection_examples.patterns.trigger
 
       - name: Run examples
-        # Also runs on the v* tag push this workflow declares a trigger for,
-        # where `inputs` is empty.
-        if: inputs.run_examples || startsWith(github.ref, 'refs/tags/v')
+        if: inputs.run_examples
         working-directory: examples
         env:
           INTROSPECTION_TOKEN: ${{ secrets.INTROSPECTION_TOKEN }}
           # An unset repository variable expands to an empty string, which
           # overrides the SDK's documented production default and leaves httpx
           # with a URL that has no scheme. Preserve the configurable target,
-          # but make an unconfigured release workflow use the same default as
+          # but make an unconfigured run use the same default as
           # the examples themselves.
           INTROSPECTION_BASE_API_URL: ${{ vars.INTROSPECTION_BASE_API_URL || 'https://api.introspection.dev' }}
           # reference.auth_service_account needs a service account (the
