@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import builtins
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any
 from uuid import UUID
 
@@ -32,6 +32,10 @@ from introspection_sdk.schemas.agui import (
     UnknownEvent,
 )
 from introspection_sdk.schemas.pagination import Paginated
+from introspection_sdk.schemas.run_messages import (
+    RunMessage,
+    run_messages_wire,
+)
 from introspection_sdk.schemas.task_commands import (
     TASK_COMMAND_SPEC_ADAPTER,
     DownloadCommand,
@@ -66,6 +70,19 @@ def _resume_body(
             for entry in resume
         ]
     }
+
+
+def _check_messages_alone(
+    prompt: TaskPrompt | dict[str, Any] | None,
+    kind: TaskRunKind | str | None,
+) -> None:
+    if prompt is not None:
+        raise ValueError(
+            "messages and prompt are mutually exclusive: the last message "
+            "is the prompt"
+        )
+    if kind is not None and str(kind) != TaskRunKind.PROMPT:
+        raise ValueError("a run with messages is a prompt run, never a steer")
 
 
 def _file_refs(
@@ -224,8 +241,25 @@ class TaskRuns:
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
+        messages: Sequence[RunMessage | dict[str, Any]] | None = None,
     ) -> RunHandle:
+        """Start a run on a task: a follow-up prompt, a steer, or an opening.
+
+        ``messages`` opens the conversation from AG-UI messages
+        (:mod:`introspection_sdk.schemas.run_messages`) in place of
+        ``prompt``: every message but the last is loaded into the session
+        without a model call, and the last, a user message, runs as this
+        turn's prompt. The server accepts it only while the task's
+        conversation is empty, and answers 422 otherwise.
+
+        Raises:
+            ValueError: ``messages`` given together with ``prompt`` or with
+                ``kind="steer"``.
+        """
         body: dict[str, Any] = {}
+        if messages is not None:
+            _check_messages_alone(prompt, kind)
+            body["messages"] = run_messages_wire(messages)
         if prompt is not None:
             body["prompt"] = (
                 prompt.model_dump(exclude_none=True)

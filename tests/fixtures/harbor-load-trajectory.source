@@ -1,0 +1,5 @@
+Harbor's ATIF loading example, copied unchanged from
+examples/tasks/hello-load-atif-trajectory-task-level/trajectory.json in
+https://github.com/laude-institute/harbor at commit a215bfa03ccc026d22a0f11d5d6c51a8a46f0510.
+A claude-code trajectory (ATIF-v1.7) whose task instruction asks the agent to
+recall the file it created; tests/test_atif_messages.py loads it.

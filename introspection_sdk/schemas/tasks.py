@@ -13,6 +13,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from introspection_sdk.schemas.agui import ResumeEntry
+from introspection_sdk.schemas.run_messages import RunMessage
 
 
 class _ApiModel(BaseModel):
@@ -224,6 +225,16 @@ class TaskRunCreateRequest(_ApiModel):
             "and joins the task's set so a restart replays it. Re-sending a "
             "file the task already carries is a no-op. Not accepted alongside "
             "resume."
+        ),
+    )
+    messages: list[RunMessage] | None = Field(
+        default=None,
+        description=(
+            "AG-UI messages that open the conversation, in place of `prompt`. "
+            "Every message but the last is loaded into the session without a "
+            "model call; the last, which must be a user message, runs as this "
+            "turn's prompt. Only accepted while the task's conversation is "
+            "empty."
         ),
     )
 

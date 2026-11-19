@@ -79,6 +79,7 @@ from introspection_sdk.schemas.routines import (
     RoutineKind,
     RoutineTriggerResponse,
 )
+from introspection_sdk.schemas.run_messages import RunMessage
 from introspection_sdk.schemas.shares import (
     ResourceShare,
     ShareResourceType,
@@ -118,6 +119,7 @@ class TaskRunsResource(Protocol):
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
+        messages: Sequence[RunMessage | dict[str, Any]] | None = None,
     ) -> RunHandle: ...
 
     def resume(
