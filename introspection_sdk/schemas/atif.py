@@ -102,7 +102,12 @@ class AtifMetrics(AtifModel):
 
 
 class AtifStep(AtifModel):
-    """One step: a system prompt, a user turn, or one model call."""
+    """One step: a system prompt, a user turn, or one model call.
+
+    A step built from an input message a run's ``messages`` loaded (the
+    first model call's ``introspection.history.loaded_messages``) is marked
+    twice: ATIF's own ``is_copied_context``, and ``extra: {"loaded": true}``.
+    """
 
     step_id: int = Field(ge=1)
     timestamp: str | None = None
@@ -114,6 +119,12 @@ class AtifStep(AtifModel):
     observation: AtifObservation | None = None
     metrics: AtifMetrics | None = None
     llm_call_count: int | None = Field(default=None, ge=0)
+    is_copied_context: bool | None = None
+    """Set on a step built from a message a run loaded rather than produced
+    (see :class:`AtifStep`), so training data leaves it out, as ATIF
+    intends."""
+    extra: dict[str, Any] | None = None
+    """Step-level metadata: ``{"loaded": true}`` on a loaded step."""
 
 
 class AtifAgent(AtifModel):

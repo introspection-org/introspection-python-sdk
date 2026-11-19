@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "introspection-sdk"
-version = "0.49.0"
+version = "0.50.0"
 description = "Python SDK for Introspection — continuously improve your AI systems with production feedback and frontier practices"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 dependencies = [
-    "ag-ui-protocol>=0.1.19,<2",
+    "ag-ui-protocol>=1.0.0",
     "httpx2>=2.12.0",
     "pydantic>=2.10.0",
 ]
@@ -22,15 +22,15 @@ dependencies = [
 arrow = ["pyarrow>=14.0.0"]
 # Compatibility transport for libraries that have not migrated to httpx2 yet
 # (notably Harbor 0.20 and the current E2B Python SDK).
-proxy-httpx = ["httpx>=0.27.0,<1"]
+proxy-httpx = ["httpx>=0.27.0"]
 # Install with `pip install introspection-sdk[otel]` to enable the
 # OpenTelemetry exporter, `IntrospectionSpanProcessor`, and the
 # IntrospectionLogs (track / feedback / identify) surface. Default
 # install is REST-only (client.runtimes / client.experiments / Runner
 # / tasks / files).
 otel = [
-    "opentelemetry-sdk >= 1.39.0, < 2",
-    "opentelemetry-exporter-otlp-proto-http>=1.39.0,<2",
+    "opentelemetry-sdk>=1.39.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.39.0",
 ]
 # unasync is pinned: scripts/gen_sync.py generates introspection_sdk/_sync/
 # and CI fails on any diff, so a new release must not change its output.

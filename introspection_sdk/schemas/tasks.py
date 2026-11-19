@@ -10,12 +10,35 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
+from ag_ui.core import Message
 from pydantic import BaseModel, ConfigDict, Field
 
 from introspection_sdk.schemas.agui import ResumeEntry
 
+__all__ = [
+    "AgentInfo",
+    "Task",
+    "TaskCancelMode",
+    "TaskCancelRequest",
+    "TaskCancelResponse",
+    "TaskCreateRequest",
+    "TaskCreateResponse",
+    "TaskFileRef",
+    "TaskKind",
+    "TaskPrompt",
+    "TaskRepoRequest",
+    "TaskRun",
+    "TaskRunCreateRequest",
+    "TaskRunKind",
+    "TaskRunResponse",
+    "TaskRunResumeRequest",
+    "TaskStatus",
+]
 
-class _ApiModel(BaseModel):
+
+class ApiModel(BaseModel):
+    """Extra fields are tolerated so API additions don't break the SDK."""
+
     model_config = ConfigDict(extra="allow")
 
 
@@ -48,12 +71,12 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
-class AgentInfo(_ApiModel):
+class AgentInfo(ApiModel):
     sandbox_status: str | None = None
     session_id: str | None = None
 
 
-class Task(_ApiModel):
+class Task(ApiModel):
     id: UUID
     org_id: UUID
     project_id: UUID
@@ -78,7 +101,7 @@ class Task(_ApiModel):
     """``key:value`` grouping tags stamped on this task."""
 
 
-class TaskFileRef(_ApiModel):
+class TaskFileRef(ApiModel):
     """A reference to an already-uploaded file, attached to a task.
 
     Bytes go through ``POST /v1/files`` first (``runner.files.upload`` /
@@ -95,7 +118,7 @@ class TaskFileRef(_ApiModel):
     size_bytes: int | None = None
 
 
-class TaskRepoRequest(_ApiModel):
+class TaskRepoRequest(ApiModel):
     """One ``repositories[]`` entry: a repository plus the state to clone it at.
 
     The recipe's ``runtime.github.repositories`` grant decides what a runtime
@@ -123,7 +146,7 @@ class TaskRepoRequest(_ApiModel):
     )
 
 
-class TaskCreateRequest(_ApiModel):
+class TaskCreateRequest(ApiModel):
     # Task creation through a Runner gets its Runtime authority from the
     # Runner credential. Keep response models forward-compatible, but do not
     # forward undeclared create fields such as the browser-only `runtime_id`.
@@ -200,7 +223,7 @@ class TaskCreateRequest(_ApiModel):
     )
 
 
-class TaskPrompt(_ApiModel):
+class TaskPrompt(ApiModel):
     text: str = Field(min_length=1)
     images: list[str] | None = None
 
@@ -210,7 +233,7 @@ class TaskRunKind(StrEnum):
     STEER = "steer"
 
 
-class TaskRunCreateRequest(_ApiModel):
+class TaskRunCreateRequest(ApiModel):
     prompt: TaskPrompt | None = None
     kind: TaskRunKind | None = None
     metadata: dict[str, Any] | None = None
@@ -226,13 +249,23 @@ class TaskRunCreateRequest(_ApiModel):
             "resume."
         ),
     )
+    messages: list[Message] | None = Field(
+        default=None,
+        description=(
+            "AG-UI messages that open the conversation, in place of `prompt`. "
+            "Every message but the last is loaded into the session without a "
+            "model call; the last, which must be a user message, runs as this "
+            "turn's prompt. Only accepted while the task's conversation is "
+            "empty."
+        ),
+    )
 
 
-class TaskRunResumeRequest(_ApiModel):
+class TaskRunResumeRequest(ApiModel):
     resume: list[ResumeEntry]
 
 
-class TaskRun(_ApiModel):
+class TaskRun(ApiModel):
     id: str
     task_id: UUID
     status: TaskStatus
@@ -243,16 +276,16 @@ class TaskRun(_ApiModel):
     updated_at: datetime | None = None
 
 
-class TaskCreateResponse(_ApiModel):
+class TaskCreateResponse(ApiModel):
     task: Task
     run: TaskRun
 
 
-class TaskRunResponse(_ApiModel):
+class TaskRunResponse(ApiModel):
     run: TaskRun
 
 
-class TaskCancelResponse(_ApiModel):
+class TaskCancelResponse(ApiModel):
     id: str
 
 
@@ -261,6 +294,6 @@ class TaskCancelMode(StrEnum):
     DRAIN = "drain"
 
 
-class TaskCancelRequest(_ApiModel):
+class TaskCancelRequest(ApiModel):
     mode: TaskCancelMode = TaskCancelMode.ABORT
     drain_within_seconds: int | None = Field(default=None, ge=0)

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.49.0...v0.50.0) (2026-11-19)
+
+
+### Features
+
+* **otel:** bring back traced OpenAI embeddings, name gen_ai keys on Attr, and set dependency floors only ([#285](https://github.com/introspection-org/introspection-python-sdk/issues/285)) ([74637ea](https://github.com/introspection-org/introspection-python-sdk/commit/74637eabe3460e3ea05f026410db6542a41ccd1b))
+
 ## [0.49.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.48.0...v0.49.0) (2026-11-17)
 
 

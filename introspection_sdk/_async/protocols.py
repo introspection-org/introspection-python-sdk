@@ -9,6 +9,8 @@ from datetime import datetime
 from typing import Any, Literal, Protocol, Unpack, runtime_checkable
 from uuid import UUID
 
+from ag_ui.core import Message
+
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.runner_resources._reads import (
     AsyncArrowPageIterator,
@@ -53,16 +55,13 @@ from introspection_sdk.schemas.images import (
 )
 from introspection_sdk.schemas.issues import (
     Issue,
+    IssueAttachmentCreate,
     IssueComment,
-    IssueEventReference,
-    IssueFile,
     IssueInclude,
-    IssueLink,
     IssueMemberRelation,
     IssueMetadataValue,
     IssueOwner,
     IssuePriority,
-    IssueSpanReference,
     IssueStatus,
     IssueStoredInclude,
     IssueUpdate,
@@ -116,6 +115,7 @@ class AsyncTaskRunsResource(Protocol):
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
+        messages: Sequence[Message | dict[str, Any]] | None = None,
     ) -> AsyncRunHandle: ...
 
     async def resume(
@@ -757,10 +757,7 @@ class AsyncIssuesResource(Protocol):
         description: str,
         task_id: UUID | str,
         priority: IssuePriority | str | None = None,
-        files: builtins.list[IssueFile] | None = None,
-        links: builtins.list[IssueLink] | None = None,
-        events: builtins.list[IssueEventReference] | None = None,
-        spans: builtins.list[IssueSpanReference] | None = None,
+        attachments: builtins.list[IssueAttachmentCreate] | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, IssueMetadataValue] | None = None,
         assignee_member_id: UUID | str | None = None,

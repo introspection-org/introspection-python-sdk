@@ -261,6 +261,41 @@ reported it. For a streamed read, `AtifProjection` takes one span at a time
 and returns the steps that are final. Runnable:
 [`conversation_atif.py`](examples/introspection_examples/api/conversation_atif.py).
 
+A run opened from `messages` (below) loads its history without a model call.
+The steps built from those loaded messages are marked with ATIF's
+`is_copied_context` and `extra: {"loaded": true}`, so Harbor and training
+pipelines can tell them from what the conversation produced.
+
+## Open a conversation from a Harbor trajectory
+
+`tasks.runs.create(task_id, messages=...)` opens a task's empty conversation
+from `ag_ui.core` messages instead of a `prompt`: every message but the last
+is loaded into the session without a model call, and the last, a user
+message, runs as the turn's prompt. `atif_to_messages` turns an ATIF
+trajectory, such as the `trajectory.json` a Harbor adapter's `load()` is
+given, into those messages, with the task instruction last:
+
+```python
+import json
+from pathlib import Path
+
+from introspection_sdk.atif_messages import atif_to_messages
+
+trajectory = json.loads(Path("trajectory.json").read_text())
+messages = atif_to_messages(trajectory, prompt=instruction)
+run = runner.tasks.runs.create(task_id, messages=messages)
+print(run.text())
+```
+
+| Piece | What it does |
+| --- | --- |
+| `UserMessage`, `AssistantMessage` (`tool_calls`), `ToolMessage` (`tool_call_id`, `error`) | The three `ag_ui.core` message types a run loads, with text content; sent camelCase (`toolCalls`, `toolCallId`). A plain dict is sent as given |
+| `tasks.runs.create(..., messages=...)` | Refuses `prompt` or `kind="steer"` beside `messages` with a `ValueError`. The server answers 422 (`ValidationError`) unless the conversation is empty, the last message is a user message, every tool call and result pair up, and the JSON is at most 1 MiB |
+| `atif_to_messages(trajectory, *, prompt=None)` | User steps become user messages, agent steps assistant messages followed by their results as tool messages; system steps, reasoning and metrics are left out. A trajectory the messages cannot express (an unpaired tool call or result, non-text content, no user message last) raises `AtifConversionError`, a `ValueError` naming the step |
+
+Runnable:
+[`load_trajectory.py`](examples/introspection_examples/api/load_trajectory.py).
+
 ## One data-plane interface on the client and the Runner
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:
@@ -736,11 +771,15 @@ The routes need the `routines:read` and `routines:write` scopes, so a `native` s
 `client.issues` / `runner.issues` manage a project's issues on the data
 plane. An issue is a brief (title, description, priority, status) on a fixed
 worker task, which carries its chat, with the people on it (a creator, an
-assignee, a reviewer and followers), the evidence it cites (files, links,
-events, spans) and its comments.
+assignee, a reviewer and followers), the evidence it cites (its
+attachments: links, files, events and spans) and its comments.
 
 ```python
-from introspection_sdk.schemas.issues import IssueStatus, IssueUpdate
+from introspection_sdk.schemas.issues import (
+    IssueLinkAttachmentCreate,
+    IssueStatus,
+    IssueUpdate,
+)
 
 issue = client.issues.create(
     title="Checkout times out",
@@ -754,6 +793,19 @@ client.issues.update(
     IssueUpdate(assignee_member_id=member_id, status=IssueStatus.WAITING),
 )
 client.issues.comments.create(issue.id, comment="Ship the retry?")
+
+# Attach a pull request without reading the issue first: the server skips
+# one it already holds. Remove one by its id with `remove_attachments`.
+client.issues.update(
+    issue.id,
+    IssueUpdate(
+        add_attachments=[
+            IssueLinkAttachmentCreate(
+                url="https://github.com/acme/app/pull/12", title="Proposed fix"
+            )
+        ]
+    ),
+)
 
 # Read the answer: comments come back with the issue, oldest first.
 issue = client.issues.get(issue.id, include=["members", "comments"])
@@ -774,10 +826,17 @@ for issue in client.issues.list(relation=["assignee", "reviewer"]):
 
 A read returns the brief, with `created_by_member_id`, `assignee_member_id`
 and `reviewer_member_id`. The related lists come back only when `include`
-names them, and are `None` otherwise: `members`, `attachments` (`links`,
-`files`, `events`, `spans`) and, on `get` only, `comments` (at most 500; page
-the issue's events for more). `list`, `create` and `update` take `members`
-and `attachments`.
+names them, and are `None` otherwise: `members`, `attachments` and, on `get`
+only, `comments` (at most 500; page the issue's events for more). `list`,
+`create` and `update` take `members` and `attachments`.
+
+`issue.attachments` is one list in the order the evidence was added, each
+item discriminated on `kind`: `IssueLinkAttachment`, `IssueFileAttachment`,
+`IssueEventAttachment` or `IssueSpanAttachment`, each with its own `id`. A
+kind this SDK does not know yet is an `UnknownIssueAttachment` that keeps
+every field. `create` takes `attachments` and `IssueUpdate` takes
+`add_attachments` (the `Issue*AttachmentCreate` models, without `id`) and
+`remove_attachments` (attachment ids); neither needs `if_match`.
 
 `update` takes an `IssueUpdate` and sends only the fields set on it: an
 omitted field is left as it is, `[]` clears a list (`{}` for `metadata`), and

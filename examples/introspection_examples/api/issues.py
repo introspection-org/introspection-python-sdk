@@ -3,8 +3,8 @@
 Lists the open issues the caller may read. When INTROSPECTION_TASK_ID and
 INTROSPECTION_MEMBER_ID are set, it also opens an issue on that worker task,
 asks that member a question (assign, move to waiting, comment), reads the
-comments back, edits the brief against the version it read, and deletes the
-issue again.
+comments back, attaches a pull request, edits the brief against the version
+it read, and deletes the issue again.
 
 Run with:
     INTROSPECTION_TOKEN=intro_xxx
@@ -27,7 +27,7 @@ from uuid import UUID
 from dotenv import load_dotenv
 from introspection_sdk import IntrospectionClient
 from introspection_sdk.schemas.issues import (
-    IssueLink,
+    IssueLinkAttachmentCreate,
     IssueStatus,
     IssueUpdate,
 )
@@ -80,16 +80,27 @@ def main() -> None:
                 f"  {comment.created_at} {comment.member_id}: {comment.comment}"
             )
 
-        # Edit the brief; `if_match` refuses it (412) if the issue changed
-        # since the read. A list you pass replaces the issue's list;
-        # `tags=[]` clears it, an omitted field is kept.
+        # Attach a pull request; the server skips one the issue already
+        # holds, so no read or `if_match` is needed.
         issue = client.issues.update(
             issue.id,
             IssueUpdate(
-                links=[IssueLink(url="https://github.com/acme/app/pull/7")],
-                tags=[],
+                add_attachments=[
+                    IssueLinkAttachmentCreate(
+                        url="https://github.com/acme/app/pull/7"
+                    )
+                ]
             ),
-            if_match=issue.etag,
+            include=["attachments"],
+        )
+        for attachment in issue.attachments or []:
+            print(f"  {attachment.kind} {attachment.id}")
+
+        # Edit the brief; `if_match` refuses it (412) if the issue changed
+        # since the read. `tags=[]` clears the tags, an omitted field is
+        # kept.
+        issue = client.issues.update(
+            issue.id, IssueUpdate(tags=[]), if_match=issue.etag
         )
         print(f"#{issue.display_index} at version {issue.etag}")
         # #endregion docs:issues-lifecycle

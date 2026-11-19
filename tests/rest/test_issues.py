@@ -19,20 +19,27 @@ from introspection_sdk._errors import (
     ConflictError,
     IntrospectionAPIError,
     NotFoundError,
+    SchemaDriftError,
 )
+from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
 from introspection_sdk.runner_resources.issues import AsyncIssues, Issues
 from introspection_sdk.schemas.issues import (
     Issue,
-    IssueEventReference,
-    IssueFile,
-    IssueLink,
+    IssueEventAttachment,
+    IssueEventAttachmentCreate,
+    IssueFileAttachment,
+    IssueFileAttachmentCreate,
+    IssueLinkAttachment,
+    IssueLinkAttachmentCreate,
     IssueMember,
     IssueMemberRelation,
     IssueOwner,
     IssuePriority,
-    IssueSpanReference,
+    IssueSpanAttachment,
+    IssueSpanAttachmentCreate,
     IssueStatus,
     IssueUpdate,
+    UnknownIssueAttachment,
 )
 from introspection_sdk.schemas.tasks import TaskStatus
 
@@ -52,20 +59,43 @@ COMMENT_ID = "0199a1b2-0000-7000-8000-0000000000e3"
 REVIEWER_ID = "0199a1b2-0000-7000-8000-0000000000e4"
 TRACE_ID = "0af7651916cd43dd8448eb211c80319c"
 SPAN_ID = "b7ad6b7169203331"
+LINK_ATTACHMENT_ID = "0199a1b2-0000-7000-8000-0000000000a1"
+FILE_ATTACHMENT_ID = "0199a1b2-0000-7000-8000-0000000000a2"
+EVENT_ATTACHMENT_ID = "0199a1b2-0000-7000-8000-0000000000a3"
+SPAN_ATTACHMENT_ID = "0199a1b2-0000-7000-8000-0000000000a4"
+TICKET_ATTACHMENT_ID = "0199a1b2-0000-7000-8000-0000000000a5"
+PR_URL = "https://github.com/acme/app/pull/7"
 
 
 ATTACHMENTS: dict[str, Any] = {
-    "files": [
+    "attachments": [
         {
+            "id": LINK_ATTACHMENT_ID,
+            "kind": "link",
+            "url": PR_URL,
+            "title": "PR",
+        },
+        {
+            "id": FILE_ATTACHMENT_ID,
+            "kind": "file",
             "file_id": FILE_ID,
             "name": "trace.json",
             "checksum": "sha256:abc",
             "source_event_ids": [EVENT_ID],
-        }
+        },
+        {"id": EVENT_ATTACHMENT_ID, "kind": "event", "event_id": EVENT_ID},
+        {
+            "id": SPAN_ATTACHMENT_ID,
+            "kind": "span",
+            "trace_id": TRACE_ID,
+            "span_id": SPAN_ID,
+        },
     ],
-    "links": [{"url": "https://github.com/acme/app/pull/7", "title": "PR"}],
-    "events": [{"event_id": EVENT_ID}],
-    "spans": [{"trace_id": TRACE_ID, "span_id": SPAN_ID}],
+}
+TICKET: dict[str, Any] = {
+    "id": TICKET_ATTACHMENT_ID,
+    "kind": "ticket",
+    "key": "OPS-12",
 }
 MEMBERS: dict[str, Any] = {
     "members": [
@@ -110,10 +140,7 @@ def issue_body(**over: Any) -> dict[str, Any]:
         "reviewer_member_id": None,
         "closed_at": None,
         "members": None,
-        "links": None,
-        "files": None,
-        "events": None,
-        "spans": None,
+        "attachments": None,
         "comments": None,
     }
     body.update(over)
@@ -181,9 +208,7 @@ def test_get_decodes_the_brief_and_leaves_the_lists_none(fake_api: FakeAPI):
     assert issue.reviewer_member_id is None
     assert issue.closed_at is None
     assert issue.created_at == datetime(2026, 10, 1, 10, tzinfo=UTC)
-    assert (issue.members, issue.comments) == (None, None)
-    assert (issue.links, issue.files, issue.events, issue.spans) == (
-        None,
+    assert (issue.members, issue.comments, issue.attachments) == (
         None,
         None,
         None,
@@ -207,30 +232,77 @@ def test_get_includes_members(fake_api: FakeAPI):
             member_id=UUID(REVIEWER_ID), relation=IssueMemberRelation.REVIEWER
         ),
     ]
-    assert issue.files is None
+    assert issue.attachments is None
 
 
-def test_get_includes_attachments(fake_api: FakeAPI):
+def test_get_includes_attachments_discriminated_on_kind(fake_api: FakeAPI):
     fake_api.add("GET", ISSUE_PATH, json_body=issue_body(**ATTACHMENTS))
 
     issue = Issues(fake_api.client()).get(ISSUE_ID, include=["attachments"])
 
     assert fake_api.last_request.params.get_list("include") == ["attachments"]
-    assert issue.files == [
-        IssueFile(
+    assert issue.attachments == [
+        IssueLinkAttachment(
+            id=UUID(LINK_ATTACHMENT_ID), kind="link", url=PR_URL, title="PR"
+        ),
+        IssueFileAttachment(
+            id=UUID(FILE_ATTACHMENT_ID),
+            kind="file",
             file_id=UUID(FILE_ID),
             name="trace.json",
             checksum="sha256:abc",
             source_event_ids=[UUID(EVENT_ID)],
-        )
-    ]
-    assert issue.links is not None
-    assert issue.links[0].url == "https://github.com/acme/app/pull/7"
-    assert issue.events == [IssueEventReference(event_id=UUID(EVENT_ID))]
-    assert issue.spans == [
-        IssueSpanReference(trace_id=TRACE_ID, span_id=SPAN_ID)
+        ),
+        IssueEventAttachment(
+            id=UUID(EVENT_ATTACHMENT_ID), kind="event", event_id=UUID(EVENT_ID)
+        ),
+        IssueSpanAttachment(
+            id=UUID(SPAN_ATTACHMENT_ID),
+            kind="span",
+            trace_id=TRACE_ID,
+            span_id=SPAN_ID,
+        ),
     ]
     assert issue.members is None
+
+
+def test_an_attachment_of_an_unknown_kind_keeps_every_field(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv(STRICT_SCHEMA_ENV, raising=False)
+    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(attachments=[TICKET]))
+
+    issue = Issues(fake_api.client()).get(ISSUE_ID, include=["attachments"])
+
+    assert issue.attachments is not None
+    (ticket,) = issue.attachments
+    assert isinstance(ticket, UnknownIssueAttachment)
+    assert (ticket.id, ticket.kind) == (UUID(TICKET_ATTACHMENT_ID), "ticket")
+    assert ticket.model_extra == {"key": "OPS-12"}
+
+
+def test_strict_schema_reports_an_attachment_of_an_unknown_kind(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(attachments=[TICKET]))
+
+    with pytest.raises(SchemaDriftError) as raised:
+        Issues(fake_api.client()).get(ISSUE_ID, include=["attachments"])
+
+    assert raised.value.fields == ["$.attachments[0].key"]
+
+
+def test_the_per_kind_lists_a_server_still_sends_are_kept_as_extras(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv(STRICT_SCHEMA_ENV, raising=False)
+    links = [{"url": PR_URL, "title": "PR"}]
+    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(links=links))
+
+    issue = Issues(fake_api.client()).get(ISSUE_ID, include=["attachments"])
+
+    assert issue.model_extra == {"links": links}
 
 
 def test_get_includes_comments(fake_api: FakeAPI):
@@ -377,8 +449,7 @@ def test_create_sends_the_body(fake_api: FakeAPI):
         description="Stripe calls exceed 30s under load.",
         task_id=TASK_ID,
         priority=IssuePriority.HIGH,
-        links=[IssueLink(url="https://github.com/acme/app/pull/7")],
-        spans=[IssueSpanReference(trace_id=TRACE_ID, span_id=SPAN_ID)],
+        attachments=[IssueLinkAttachmentCreate(url=PR_URL)],
         tags=["customer:acme"],
         metadata={"severity": 2},
     )
@@ -392,10 +463,37 @@ def test_create_sends_the_body(fake_api: FakeAPI):
         "description": "Stripe calls exceed 30s under load.",
         "task_id": TASK_ID,
         "priority": "high",
-        "links": [{"url": "https://github.com/acme/app/pull/7"}],
-        "spans": [{"trace_id": TRACE_ID, "span_id": SPAN_ID}],
+        "attachments": [{"kind": "link", "url": PR_URL}],
         "tags": ["customer:acme"],
         "metadata": {"severity": 2},
+    }
+
+
+def test_create_sends_attachments_tagged_with_their_kind(fake_api: FakeAPI):
+    fake_api.add("POST", "/v1/issues", status=201, json_body=issue_body())
+
+    Issues(fake_api.client()).create(
+        title="t",
+        description="d",
+        task_id=TASK_ID,
+        attachments=[
+            IssueLinkAttachmentCreate(url=PR_URL, title="PR"),
+            IssueFileAttachmentCreate(file_id=UUID(FILE_ID)),
+            IssueEventAttachmentCreate(event_id=UUID(EVENT_ID)),
+            IssueSpanAttachmentCreate(trace_id=TRACE_ID, span_id=SPAN_ID),
+        ],
+    )
+
+    assert fake_api.last_request.json() == {
+        "title": "t",
+        "description": "d",
+        "task_id": TASK_ID,
+        "attachments": [
+            {"kind": "link", "url": PR_URL, "title": "PR"},
+            {"kind": "file", "file_id": FILE_ID, "source_event_ids": []},
+            {"kind": "event", "event_id": EVENT_ID},
+            {"kind": "span", "trace_id": TRACE_ID, "span_id": SPAN_ID},
+        ],
     }
 
 
@@ -428,7 +526,7 @@ def test_create_sets_the_people_and_asks_for_lists(fake_api: FakeAPI):
         "follower_member_ids": [REVIEWER_ID],
     }
     assert issue.members is not None
-    assert issue.files is not None
+    assert issue.attachments is not None
 
 
 def test_create_omits_unset_fields(fake_api: FakeAPI):
@@ -460,7 +558,9 @@ def test_update_sends_only_set_fields(fake_api: FakeAPI):
         ISSUE_ID,
         IssueUpdate(
             status=IssueStatus.CLOSED,
-            links=[IssueLink(url="https://x.test", title="fix")],
+            add_attachments=[
+                IssueLinkAttachmentCreate(url="https://x.test", title="fix")
+            ],
         ),
     )
 
@@ -470,8 +570,73 @@ def test_update_sends_only_set_fields(fake_api: FakeAPI):
     assert "If-Match" not in sent.headers
     assert sent.json() == {
         "status": "closed",
-        "links": [{"url": "https://x.test", "title": "fix"}],
+        "add_attachments": [
+            {"kind": "link", "url": "https://x.test", "title": "fix"}
+        ],
     }
+
+
+def test_update_adds_and_removes_attachments_without_if_match(
+    fake_api: FakeAPI,
+):
+    fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body(**ATTACHMENTS))
+
+    issue = Issues(fake_api.client()).update(
+        ISSUE_ID,
+        IssueUpdate(
+            add_attachments=[
+                IssueLinkAttachmentCreate(url=PR_URL),
+                IssueSpanAttachmentCreate(trace_id=TRACE_ID, span_id=SPAN_ID),
+            ],
+            remove_attachments=[UUID(TICKET_ATTACHMENT_ID)],
+        ),
+        include=["attachments"],
+    )
+
+    sent = fake_api.last_request
+    assert "If-Match" not in sent.headers
+    assert sent.json() == {
+        "add_attachments": [
+            {"kind": "link", "url": PR_URL},
+            {"kind": "span", "trace_id": TRACE_ID, "span_id": SPAN_ID},
+        ],
+        "remove_attachments": [TICKET_ATTACHMENT_ID],
+    }
+    assert issue.attachments is not None
+    assert len(issue.attachments) == 4
+
+
+def test_update_takes_attachments_as_plain_dicts():
+    change = IssueUpdate.model_validate(
+        {"add_attachments": [{"kind": "event", "event_id": EVENT_ID}]}
+    )
+
+    assert change.add_attachments == [
+        IssueEventAttachmentCreate(event_id=UUID(EVENT_ID))
+    ]
+    with pytest.raises(pydantic.ValidationError):
+        IssueUpdate.model_validate(
+            {"add_attachments": [{"kind": "ticket", "key": "OPS-12"}]}
+        )
+
+
+def test_attachment_creates_reject_what_the_server_refuses():
+    with pytest.raises(pydantic.ValidationError):
+        IssueLinkAttachmentCreate.model_validate(
+            {"url": PR_URL, "id": LINK_ATTACHMENT_ID}
+        )
+    with pytest.raises(pydantic.ValidationError):
+        IssueSpanAttachmentCreate(trace_id="nothex", span_id=SPAN_ID)
+    with pytest.raises(pydantic.ValidationError):
+        IssueLinkAttachmentCreate.model_validate(
+            {"kind": "file", "url": PR_URL}
+        )
+
+
+def test_request_models_refuse_the_per_kind_lists():
+    for field in ("links", "files", "events", "spans"):
+        with pytest.raises(pydantic.ValidationError):
+            IssueUpdate.model_validate({field: []})
 
 
 def test_update_clears_a_person_with_null_and_leaves_an_omitted_one(
@@ -509,12 +674,14 @@ def test_update_sends_an_empty_list_and_an_explicit_null(fake_api: FakeAPI):
 
     Issues(fake_api.client()).update(
         ISSUE_ID,
-        IssueUpdate(tags=[], files=[], metadata={}, priority=None),
+        IssueUpdate(
+            tags=[], follower_member_ids=[], metadata={}, priority=None
+        ),
     )
 
     assert fake_api.last_request.json() == {
         "tags": [],
-        "files": [],
+        "follower_member_ids": [],
         "metadata": {},
         "priority": None,
     }
@@ -537,7 +704,7 @@ def test_request_models_reject_what_the_server_refuses():
     with pytest.raises(pydantic.ValidationError):
         IssueUpdate(follower_member_ids=[UUID(MEMBER_ID)] * 51)
     with pytest.raises(pydantic.ValidationError):
-        IssueSpanReference(trace_id="nothex", span_id=SPAN_ID)
+        IssueSpanAttachmentCreate(trace_id="nothex", span_id=SPAN_ID)
 
 
 def test_comment_create_posts_the_comment(fake_api: FakeAPI):
@@ -663,7 +830,9 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     assert (await api.get(ISSUE_ID)).title == "Checkout times out"
     created = await api.create(title="t", description="d", task_id=TASK_ID)
     assert created.id == UUID(ISSUE_ID)
-    await api.update(ISSUE_ID, IssueUpdate(events=[]), if_match=created.etag)
+    await api.update(
+        ISSUE_ID, IssueUpdate(remove_attachments=[]), if_match=created.etag
+    )
     comment = await api.comments.create(ISSUE_ID, comment="Ship the retry?")
     assert comment.id == UUID(COMMENT_ID)
     await api.delete(ISSUE_ID, if_match='"k3"')
@@ -685,6 +854,6 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     assert fake_api.requests[0].params.get_list("status") == ["open"]
     assert fake_api.requests[1].params.get_list("owner") == ["me"]
     assert fake_api.requests[5].json() == {
-        "events": [],
+        "remove_attachments": [],
     }
     assert fake_api.requests[6].json() == {"comment": "Ship the retry?"}
