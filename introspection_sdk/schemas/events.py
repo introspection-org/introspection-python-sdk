@@ -18,7 +18,6 @@ All reads share the standard cursor envelope
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
@@ -26,6 +25,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
+from introspection_sdk.schemas.discriminators import tag_or_unknown
+from introspection_sdk.schemas.issues import IssueAttachment
 from introspection_sdk.schemas.routines import (
     OpenSkipReason,
     OpenTriggerType,
@@ -151,20 +152,6 @@ class _ApiModel(BaseModel):
     # ``extra="allow"`` keeps unknown server fields; ``protected_namespaces=()``
     # silences the ``model_`` warning for wire fields like ``model``.
     model_config = ConfigDict(extra="allow", protected_namespaces=())
-
-
-def tag_or_unknown(field: str, known: frozenset[str]) -> Callable[[Any], str]:
-    """A union discriminator on ``field``: a value outside ``known`` selects
-    the union's ``unknown`` member, so a member the API adds later decodes."""
-
-    def tag(payload: Any) -> str:
-        if isinstance(payload, dict):
-            value = payload.get(field)
-        else:
-            value = getattr(payload, field, None)
-        return value if value in known else "unknown"
-
-    return tag
 
 
 class IntrospectionEventBase(_ApiModel):
@@ -376,10 +363,15 @@ class IssueEventAction(StrEnum):
 
 class IssueFieldChange(_ApiModel):
     """One authored field's value on either side of an update. A side that
-    was empty is absent."""
+    was empty is absent. The ``attachments`` change carries ``added`` and
+    ``removed`` instead."""
 
     before: Any = None
     after: Any = None
+    added: list[IssueAttachment] | None = None
+    """On ``attachments``: the attachments the update added."""
+    removed: list[IssueAttachment] | None = None
+    """On ``attachments``: the attachments the update removed."""
 
 
 class IssueActivityBasePayload(_ApiModel):

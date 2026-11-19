@@ -736,11 +736,15 @@ The routes need the `routines:read` and `routines:write` scopes, so a `native` s
 `client.issues` / `runner.issues` manage a project's issues on the data
 plane. An issue is a brief (title, description, priority, status) on a fixed
 worker task, which carries its chat, with the people on it (a creator, an
-assignee, a reviewer and followers), the evidence it cites (files, links,
-events, spans) and its comments.
+assignee, a reviewer and followers), the evidence it cites (its
+attachments: links, files, events and spans) and its comments.
 
 ```python
-from introspection_sdk.schemas.issues import IssueStatus, IssueUpdate
+from introspection_sdk.schemas.issues import (
+    IssueLinkAttachmentCreate,
+    IssueStatus,
+    IssueUpdate,
+)
 
 issue = client.issues.create(
     title="Checkout times out",
@@ -754,6 +758,19 @@ client.issues.update(
     IssueUpdate(assignee_member_id=member_id, status=IssueStatus.WAITING),
 )
 client.issues.comments.create(issue.id, comment="Ship the retry?")
+
+# Attach a pull request without reading the issue first: the server skips
+# one it already holds. Remove one by its id with `remove_attachments`.
+client.issues.update(
+    issue.id,
+    IssueUpdate(
+        add_attachments=[
+            IssueLinkAttachmentCreate(
+                url="https://github.com/acme/app/pull/12", title="Proposed fix"
+            )
+        ]
+    ),
+)
 
 # Read the answer: comments come back with the issue, oldest first.
 issue = client.issues.get(issue.id, include=["members", "comments"])
@@ -774,10 +791,17 @@ for issue in client.issues.list(relation=["assignee", "reviewer"]):
 
 A read returns the brief, with `created_by_member_id`, `assignee_member_id`
 and `reviewer_member_id`. The related lists come back only when `include`
-names them, and are `None` otherwise: `members`, `attachments` (`links`,
-`files`, `events`, `spans`) and, on `get` only, `comments` (at most 500; page
-the issue's events for more). `list`, `create` and `update` take `members`
-and `attachments`.
+names them, and are `None` otherwise: `members`, `attachments` and, on `get`
+only, `comments` (at most 500; page the issue's events for more). `list`,
+`create` and `update` take `members` and `attachments`.
+
+`issue.attachments` is one list in the order the evidence was added, each
+item discriminated on `kind`: `IssueLinkAttachment`, `IssueFileAttachment`,
+`IssueEventAttachment` or `IssueSpanAttachment`, each with its own `id`. A
+kind this SDK does not know yet is an `UnknownIssueAttachment` that keeps
+every field. `create` takes `attachments` and `IssueUpdate` takes
+`add_attachments` (the `Issue*AttachmentCreate` models, without `id`) and
+`remove_attachments` (attachment ids); neither needs `if_match`.
 
 `update` takes an `IssueUpdate` and sends only the fields set on it: an
 omitted field is left as it is, `[]` clears a list (`{}` for `metadata`), and
