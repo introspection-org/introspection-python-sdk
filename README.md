@@ -261,6 +261,41 @@ reported it. For a streamed read, `AtifProjection` takes one span at a time
 and returns the steps that are final. Runnable:
 [`conversation_atif.py`](examples/introspection_examples/api/conversation_atif.py).
 
+A run opened from `messages` (below) loads its history without a model call.
+The steps built from those loaded messages are marked with ATIF's
+`is_copied_context` and `extra: {"loaded": true}`, so Harbor and training
+pipelines can tell them from what the conversation produced.
+
+## Open a conversation from a Harbor trajectory
+
+`tasks.runs.create(task_id, messages=...)` opens a task's empty conversation
+from `ag_ui.core` messages instead of a `prompt`: every message but the last
+is loaded into the session without a model call, and the last, a user
+message, runs as the turn's prompt. `atif_to_messages` turns an ATIF
+trajectory, such as the `trajectory.json` a Harbor adapter's `load()` is
+given, into those messages, with the task instruction last:
+
+```python
+import json
+from pathlib import Path
+
+from introspection_sdk.atif_messages import atif_to_messages
+
+trajectory = json.loads(Path("trajectory.json").read_text())
+messages = atif_to_messages(trajectory, prompt=instruction)
+run = runner.tasks.runs.create(task_id, messages=messages)
+print(run.text())
+```
+
+| Piece | What it does |
+| --- | --- |
+| `UserMessage`, `AssistantMessage` (`tool_calls`), `ToolMessage` (`tool_call_id`, `error`) | The three `ag_ui.core` message types a run loads, with text content; sent camelCase (`toolCalls`, `toolCallId`). A plain dict is sent as given |
+| `tasks.runs.create(..., messages=...)` | Refuses `prompt` or `kind="steer"` beside `messages` with a `ValueError`. The server answers 422 (`ValidationError`) unless the conversation is empty, the last message is a user message, every tool call and result pair up, and the JSON is at most 1 MiB |
+| `atif_to_messages(trajectory, *, prompt=None)` | User steps become user messages, agent steps assistant messages followed by their results as tool messages; system steps, reasoning and metrics are left out. A trajectory the messages cannot express (an unpaired tool call or result, non-text content, no user message last) raises `AtifConversionError`, a `ValueError` naming the step |
+
+Runnable:
+[`load_trajectory.py`](examples/introspection_examples/api/load_trajectory.py).
+
 ## One data-plane interface on the client and the Runner
 
 `IntrospectionClient` and `Runner` expose the same data-plane namespaces:

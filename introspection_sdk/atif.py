@@ -21,6 +21,13 @@ result-level metadata. A tool result the prompt never echoed, such as a
 session's last tool call, becomes an observation result from the span alone.
 The span may be read before or after the spans holding the call and the result.
 
+A run that opens its conversation from ``messages`` loads every message but
+the last into the session without a model call. Its first model call says so
+with ``introspection.history.loaded_messages = n``: input messages ``[0, n)``
+were loaded. The steps built from them are marked ``is_copied_context`` and
+``extra: {"loaded": true}``, so a reader such as Harbor can tell them from
+what this conversation produced.
+
 The caller chooses which spans to pass. Steps are one linear sequence, so a
 conversation with delegated agents is normally read one agent at a time.
 """
@@ -55,6 +62,7 @@ from introspection_sdk.schemas.genai_span import GenAiSpan
 __all__ = ["AtifProjection", "spans_to_atif"]
 
 UNKNOWN = "unknown"
+
 
 #: The keys of an agent framework's tool result, ``{content, details}`` on Pi:
 #: only ``details`` is structured, ``content`` is the text the model reads.
@@ -192,8 +200,12 @@ class AtifProjection:
             if history and history.new_messages
             else None
         )
+        loaded = history.loaded_messages if history else None
+        loaded_ids = {id(message) for message in inputs[: loaded or 0]}
         for message in self._new_messages(lane, inputs, declared):
-            self._input_step(lane, message, timestamp)
+            self._input_step(
+                lane, message, timestamp, loaded=id(message) in loaded_ids
+            )
         # The results of this agent's earlier calls arrive in this input, so
         # whatever is still unanswered now stays unanswered.
         self._close(lane)
@@ -416,10 +428,22 @@ class AtifProjection:
         return messages
 
     def _input_step(
-        self, lane: str, message: InputMessage, timestamp: str
+        self,
+        lane: str,
+        message: InputMessage,
+        timestamp: str,
+        *,
+        loaded: bool = False,
     ) -> None:
         if message.role == "assistant":
-            self._agent_step(lane, [message], timestamp, model=None, span=None)
+            self._agent_step(
+                lane,
+                [message],
+                timestamp,
+                model=None,
+                span=None,
+                loaded=loaded,
+            )
             return
         text: list[str] = []
         for part in message.parts:
@@ -437,6 +461,7 @@ class AtifProjection:
                     timestamp=timestamp,
                     source="system" if message.role == "system" else "user",
                     message="\n\n".join(text),
+                    **_loaded_marks(loaded),
                 )
             )
 
@@ -504,6 +529,7 @@ class AtifProjection:
         *,
         model: str | None,
         span: GenAiSpan | None,
+        loaded: bool = False,
     ) -> None:
         text: list[str] = []
         reasoning: list[str] = []
@@ -540,6 +566,7 @@ class AtifProjection:
             tool_calls=calls or None,
             metrics=self._metrics(span) if span is not None else None,
             llm_call_count=1 if span is not None else None,
+            **_loaded_marks(loaded),
         )
         if model:
             self._models.add(model)
@@ -603,6 +630,17 @@ class Total:
     def over(self, calls: int) -> float | None:
         """The sum, when each of ``calls`` model calls reported a value."""
         return self.value if calls and self.reported == calls else None
+
+
+def _loaded_marks(loaded: bool) -> dict[str, Any]:
+    """How a step built from a loaded input message is marked.
+
+    ATIF's ``is_copied_context`` keeps it out of training data, and
+    ``extra.loaded`` says why.
+    """
+    if not loaded:
+        return {}
+    return {"is_copied_context": True, "extra": {"loaded": True}}
 
 
 def _whole(value: float | None) -> int | None:

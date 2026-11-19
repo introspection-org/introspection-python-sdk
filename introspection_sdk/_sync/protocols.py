@@ -11,6 +11,8 @@ from datetime import datetime
 from typing import Any, Literal, Protocol, Unpack, runtime_checkable
 from uuid import UUID
 
+from ag_ui.core import Message
+
 from introspection_sdk.pagination import Pager
 from introspection_sdk.runner_resources._reads import (
     ArrowPageIterator,
@@ -115,6 +117,7 @@ class TaskRunsResource(Protocol):
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
+        messages: Sequence[Message | dict[str, Any]] | None = None,
     ) -> RunHandle: ...
 
     def resume(

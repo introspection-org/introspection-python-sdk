@@ -78,6 +78,7 @@ def chat(
     agent: dict[str, Any] | None = None,
     system: str | None = None,
     new_messages_start: int | None = None,
+    loaded_messages: int | None = None,
 ) -> GenAiSpan:
     gen_ai: dict[str, Any] = {
         "operation": {"name": "chat"},
@@ -96,10 +97,13 @@ def chat(
     if system is not None:
         gen_ai["system_instructions"] = [{"type": "text", "content": system}]
     attributes: dict[str, Any] = {"gen_ai": gen_ai}
+    history: dict[str, Any] = {}
     if new_messages_start is not None:
-        attributes["introspection"] = {
-            "history": {"new_messages": {"start": new_messages_start}}
-        }
+        history["new_messages"] = {"start": new_messages_start}
+    if loaded_messages is not None:
+        history["loaded_messages"] = loaded_messages
+    if history:
+        attributes["introspection"] = {"history": history}
     return GenAiSpan.model_validate(
         {
             "trace_id": "t1",
@@ -1216,3 +1220,51 @@ def test_a_tool_call_without_an_id_is_refused() -> None:
 def test_spans_without_messages_are_refused() -> None:
     with pytest.raises(ValueError, match="no message"):
         spans_to_atif([tool(1, "c1", "Ok")])
+
+
+def test_steps_from_loaded_input_messages_are_marked_loaded() -> None:
+    """Input messages ``[0, loaded_messages)`` were loaded, not produced."""
+    loaded = [
+        text("user", "List the files"),
+        {
+            "role": "assistant",
+            "parts": [
+                {"type": "text", "content": "Listing them."},
+                call("call-0", {"path": "."}),
+            ],
+        },
+        result("call-0", "a.txt"),
+    ]
+    prompt = text("user", "Now read a.txt")
+    first = chat(
+        1,
+        [*loaded, prompt],
+        [text("assistant", "Reading it.")],
+        system="Be brief.",
+        loaded_messages=3,
+    )
+    second = chat(
+        2,
+        [*loaded, prompt, text("assistant", "Reading it."), USER],
+        [text("assistant", "Done.")],
+    )
+    steps = dump(spans_to_atif([first, second]))["steps"]
+    marks = {"is_copied_context": True, "extra": {"loaded": True}}
+
+    def marked(step: dict[str, Any]) -> bool:
+        return all(step.get(key) == value for key, value in marks.items())
+
+    assert [(step["source"], marked(step)) for step in steps] == [
+        ("system", False),
+        ("user", True),
+        ("agent", True),
+        ("user", False),
+        ("agent", False),
+        ("user", False),
+        ("agent", False),
+    ]
+    assert steps[2]["observation"]["results"] == [
+        {"source_call_id": "call-0", "content": "a.txt"}
+    ]
+    assert "metrics" not in steps[2]
+    assert all("extra" not in step for step in steps if not marked(step))

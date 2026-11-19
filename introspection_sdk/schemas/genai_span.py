@@ -391,6 +391,10 @@ class IntrospectionHistory(SpanModel):
     continuation_method: str | None = None
     hash_hit: bool | None = None
     new_messages: IntrospectionNewMessages | None = None
+    loaded_messages: int | None = None
+    """``introspection.history.loaded_messages``: input messages ``[0, n)``
+    of this call were loaded from a run's ``messages``, not produced by a
+    model call. Only the first model call of such a run carries it."""
 
 
 class IntrospectionContains(SpanModel):

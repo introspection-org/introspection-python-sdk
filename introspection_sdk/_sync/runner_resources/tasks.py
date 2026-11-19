@@ -5,9 +5,11 @@
 from __future__ import annotations
 
 import builtins
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any
 from uuid import UUID
+
+from ag_ui.core import Message
 
 from introspection_sdk._errors import RunFailedError, StreamIncompleteError
 from introspection_sdk._http import _HttpClient
@@ -66,6 +68,30 @@ def _resume_body(
             for entry in resume
         ]
     }
+
+
+def _check_messages_alone(
+    prompt: TaskPrompt | dict[str, Any] | None,
+    kind: TaskRunKind | str | None,
+) -> None:
+    if prompt is not None:
+        raise ValueError(
+            "messages and prompt are mutually exclusive: the last message "
+            "is the prompt"
+        )
+    if kind is not None and str(kind) != TaskRunKind.PROMPT:
+        raise ValueError("a run with messages is a prompt run, never a steer")
+
+
+def _messages_wire(
+    messages: Sequence[Message | dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        message
+        if isinstance(message, dict)
+        else message.model_dump(mode="json", by_alias=True, exclude_none=True)
+        for message in messages
+    ]
 
 
 def _file_refs(
@@ -224,8 +250,25 @@ class TaskRuns:
         kind: TaskRunKind | str | None = None,
         metadata: dict[str, Any] | None = None,
         files: list[TaskFileRef | dict[str, Any]] | None = None,
+        messages: Sequence[Message | dict[str, Any]] | None = None,
     ) -> RunHandle:
+        """Start a run on a task: a follow-up prompt, a steer, or an opening.
+
+        ``messages`` opens the conversation from ``ag_ui.core`` messages
+        (``UserMessage``, ``AssistantMessage``, ``ToolMessage``; a dict is
+        sent as given) in place of ``prompt``: every message but the last
+        is loaded into the session without a model call, and the last, a
+        user message, runs as this turn's prompt. The server accepts it only while the task's
+        conversation is empty, and answers 422 otherwise.
+
+        Raises:
+            ValueError: ``messages`` given together with ``prompt`` or with
+                ``kind="steer"``.
+        """
         body: dict[str, Any] = {}
+        if messages is not None:
+            _check_messages_alone(prompt, kind)
+            body["messages"] = _messages_wire(messages)
         if prompt is not None:
             body["prompt"] = (
                 prompt.model_dump(exclude_none=True)
