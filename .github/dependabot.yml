@@ -2,12 +2,13 @@ version: 2
 
 updates:
   # ── Python dependencies (pyproject.toml + uv.lock) ──
-  # `uv` reads uv.lock; `pip` opened no version update here. examples/ and
-  # packages/introspection-aauth are their own uv projects, not workspace members.
+  # `uv` reads uv.lock. packages/introspection-aauth is its own uv project, not
+  # a workspace member; one entry with both directories opens one PR per group
+  # across them. The root's dev tools are optional-dependency extras, which
+  # Dependabot types as production, so groups match by name, not dependency-type.
   - package-ecosystem: "uv"
     directories:
       - "/"
-      - "/examples"
       - "/packages/introspection-aauth"
     schedule:
       interval: "weekly"
@@ -17,60 +18,81 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
-      - "python"
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: "scope"
     groups:
-      # OpenTelemetry runtime + exporter deps move as a fleet.
       otel:
         applies-to: version-updates
         patterns:
           - "opentelemetry-*"
-      otel-security:
-        applies-to: security-updates
-        patterns:
-          - "opentelemetry-*"
-
-      # Test toolchain — pytest family + helpers.
-      test-tooling:
-        applies-to: version-updates
-        patterns:
-          - "pytest*"
-          - "inline-snapshot"
-          - "dirty-equals"
-          - "responses"
-          - "pydantic"
-      test-tooling-security:
-        applies-to: security-updates
-        patterns:
-          - "pytest*"
-          - "inline-snapshot"
-          - "dirty-equals"
-          - "responses"
-          - "pydantic"
-
-      # Lint / format / typecheck.
+      # 0.x tools whose "minor" bumps change output; CI gates the one PR.
       lint-tooling:
         applies-to: version-updates
         patterns:
           - "ruff"
           - "ty"
           - "pre-commit"
-      lint-tooling-security:
-        applies-to: security-updates
+      dev-tooling:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
         patterns:
-          - "ruff"
-          - "ty"
-          - "pre-commit"
-
-      # Catch-all for security alerts not matching a more specific group.
+          - "pytest*"
+          - "vcrpy"
+          - "responses"
+          - "trustme"
+          - "jsonschema"
+          - "inline-snapshot"
+          - "dirty-equals"
+          - "griffe"
+          - "mypy"
+          - "deptry"
+          - "unasync"
+      dev-tooling-major:
+        applies-to: version-updates
+        update-types: ["major"]
+        patterns:
+          - "pytest*"
+          - "vcrpy"
+          - "responses"
+          - "trustme"
+          - "jsonschema"
+          - "inline-snapshot"
+          - "dirty-equals"
+          - "griffe"
+          - "mypy"
+          - "deptry"
+          - "unasync"
+      runtime:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+        patterns:
+          - "*"
+      # Runtime majors stay ungrouped: each changes what SDK users install.
       security-rollup:
         applies-to: security-updates
         patterns:
           - "*"
-    # No blanket ignore of majors: it hid ag-ui-protocol 1.0, and
-    # dependabot-auto-merge.yml already leaves majors for a person to merge.
+    ignore:
+      # ty 0.0.104 reports 51 errors on this tree; held until they are fixed.
+      - dependency-name: "ty"
+        versions: [">0.0.23"]
+
+  # examples/ is its own uv project and is not shipped: one monthly PR.
+  - package-ecosystem: "uv"
+    directory: "/examples"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      examples:
+        patterns:
+          - "*"
 
   # ── GitHub Actions (used by ci.yml / publish.yml / tag.yml) ──
   - package-ecosystem: "github-actions"
@@ -83,3 +105,7 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "chore(actions)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
