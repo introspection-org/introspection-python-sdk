@@ -226,6 +226,26 @@ instrumentation: `Attr.TERMINATION_REASON` (`"cancelled"` alongside
 requested abort reads as an outcome rather than a failure) and
 `Attr.LLM_COST_USD` / `Attr.LLM_UPSTREAM_COST_USD` for provider-reported cost.
 
+### Embedding calls
+
+The SDK instruments no framework, but an OpenAI-compatible embeddings call can
+report its usage through a helper that records metadata only: the model, input
+tokens, the vector width and any provider-reported cost. Inputs and vectors
+never reach the span. Conversation and agent come from baggage, as for any
+span the processor exports (`with_agent` needs `init()`).
+
+```python
+from introspection_sdk import with_agent, with_conversation
+from introspection_sdk.otel.openai import async_traced_embeddings_create
+
+with with_conversation(conversation_id), with_agent("embedding"):
+    response = await async_traced_embeddings_create(
+        tracer, client, model="text-embedding-3-small", input=texts
+    )
+```
+
+`traced_embeddings_create` is the synchronous form.
+
 ## Environment variables (OTel)
 
 ```shell
