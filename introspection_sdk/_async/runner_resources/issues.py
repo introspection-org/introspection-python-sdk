@@ -19,15 +19,11 @@ from introspection_sdk.schemas.issues import (
     IssueAttachmentCreate,
     IssueComment,
     IssueCreate,
-    IssueEventReference,
-    IssueFile,
     IssueInclude,
-    IssueLink,
     IssueMemberRelation,
     IssueMetadataValue,
     IssueOwner,
     IssuePriority,
-    IssueSpanReference,
     IssueStatus,
     IssueStoredInclude,
     IssueUpdate,
@@ -177,10 +173,6 @@ class AsyncIssues:
         task_id: UUID | str,
         priority: IssuePriority | str | None = None,
         attachments: builtins.list[IssueAttachmentCreate] | None = None,
-        files: builtins.list[IssueFile] | None = None,
-        links: builtins.list[IssueLink] | None = None,
-        events: builtins.list[IssueEventReference] | None = None,
-        spans: builtins.list[IssueSpanReference] | None = None,
         tags: builtins.list[str] | None = None,
         metadata: dict[str, IssueMetadataValue] | None = None,
         assignee_member_id: UUID | str | None = None,
@@ -190,8 +182,7 @@ class AsyncIssues:
     ) -> Issue:
         """Open an issue on its fixed worker Task (``task_id``). It starts
         ``open``; change its status later with :meth:`update`.
-        ``attachments`` is its evidence, in order; ``files``, ``links``,
-        ``events`` and ``spans`` are deprecated in its favour. ``include``
+        ``attachments`` is its evidence, in order. ``include``
         adds ``members`` and ``attachments`` to the returned issue."""
         body = IssueCreate.model_validate(
             {
@@ -200,10 +191,6 @@ class AsyncIssues:
                 "task_id": task_id,
                 "priority": priority,
                 "attachments": attachments,
-                "files": files,
-                "links": links,
-                "events": events,
-                "spans": spans,
                 "tags": tags,
                 "metadata": metadata,
                 "assignee_member_id": assignee_member_id,

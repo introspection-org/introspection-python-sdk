@@ -6,7 +6,6 @@ nothing in ``introspection_sdk`` is patched.
 
 from __future__ import annotations
 
-import warnings
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -28,11 +27,8 @@ from introspection_sdk.schemas.issues import (
     Issue,
     IssueEventAttachment,
     IssueEventAttachmentCreate,
-    IssueEventReference,
-    IssueFile,
     IssueFileAttachment,
     IssueFileAttachmentCreate,
-    IssueLink,
     IssueLinkAttachment,
     IssueLinkAttachmentCreate,
     IssueMember,
@@ -41,7 +37,6 @@ from introspection_sdk.schemas.issues import (
     IssuePriority,
     IssueSpanAttachment,
     IssueSpanAttachmentCreate,
-    IssueSpanReference,
     IssueStatus,
     IssueUpdate,
     UnknownIssueAttachment,
@@ -73,17 +68,6 @@ PR_URL = "https://github.com/acme/app/pull/7"
 
 
 ATTACHMENTS: dict[str, Any] = {
-    "files": [
-        {
-            "file_id": FILE_ID,
-            "name": "trace.json",
-            "checksum": "sha256:abc",
-            "source_event_ids": [EVENT_ID],
-        }
-    ],
-    "links": [{"url": PR_URL, "title": "PR"}],
-    "events": [{"event_id": EVENT_ID}],
-    "spans": [{"trace_id": TRACE_ID, "span_id": SPAN_ID}],
     "attachments": [
         {
             "id": LINK_ATTACHMENT_ID,
@@ -157,10 +141,6 @@ def issue_body(**over: Any) -> dict[str, Any]:
         "closed_at": None,
         "members": None,
         "attachments": None,
-        "links": None,
-        "files": None,
-        "events": None,
-        "spans": None,
         "comments": None,
     }
     body.update(over)
@@ -313,40 +293,16 @@ def test_strict_schema_reports_an_attachment_of_an_unknown_kind(
     assert raised.value.fields == ["$.attachments[0].key"]
 
 
-def test_strict_schema_reads_the_deprecated_lists_without_warning(
+def test_the_per_kind_lists_a_server_still_sends_are_kept_as_extras(
     fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
 ):
-    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
-    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(**ATTACHMENTS))
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
-        issue = Issues(fake_api.client()).get(ISSUE_ID)
-
-    assert issue.attachments is not None
-
-
-def test_get_still_decodes_the_deprecated_lists(fake_api: FakeAPI):
-    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(**ATTACHMENTS))
+    monkeypatch.delenv(STRICT_SCHEMA_ENV, raising=False)
+    links = [{"url": PR_URL, "title": "PR"}]
+    fake_api.add("GET", ISSUE_PATH, json_body=issue_body(links=links))
 
     issue = Issues(fake_api.client()).get(ISSUE_ID, include=["attachments"])
 
-    with pytest.warns(DeprecationWarning, match="attachments"):
-        lists = (issue.links, issue.files, issue.events, issue.spans)
-
-    assert lists == (
-        [IssueLink(url=PR_URL, title="PR")],
-        [
-            IssueFile(
-                file_id=UUID(FILE_ID),
-                name="trace.json",
-                checksum="sha256:abc",
-                source_event_ids=[UUID(EVENT_ID)],
-            )
-        ],
-        [IssueEventReference(event_id=UUID(EVENT_ID))],
-        [IssueSpanReference(trace_id=TRACE_ID, span_id=SPAN_ID)],
-    )
+    assert issue.model_extra == {"links": links}
 
 
 def test_get_includes_comments(fake_api: FakeAPI):
@@ -493,8 +449,7 @@ def test_create_sends_the_body(fake_api: FakeAPI):
         description="Stripe calls exceed 30s under load.",
         task_id=TASK_ID,
         priority=IssuePriority.HIGH,
-        links=[IssueLink(url="https://github.com/acme/app/pull/7")],
-        spans=[IssueSpanReference(trace_id=TRACE_ID, span_id=SPAN_ID)],
+        attachments=[IssueLinkAttachmentCreate(url=PR_URL)],
         tags=["customer:acme"],
         metadata={"severity": 2},
     )
@@ -508,8 +463,7 @@ def test_create_sends_the_body(fake_api: FakeAPI):
         "description": "Stripe calls exceed 30s under load.",
         "task_id": TASK_ID,
         "priority": "high",
-        "links": [{"url": "https://github.com/acme/app/pull/7"}],
-        "spans": [{"trace_id": TRACE_ID, "span_id": SPAN_ID}],
+        "attachments": [{"kind": "link", "url": PR_URL}],
         "tags": ["customer:acme"],
         "metadata": {"severity": 2},
     }
@@ -604,7 +558,9 @@ def test_update_sends_only_set_fields(fake_api: FakeAPI):
         ISSUE_ID,
         IssueUpdate(
             status=IssueStatus.CLOSED,
-            links=[IssueLink(url="https://x.test", title="fix")],
+            add_attachments=[
+                IssueLinkAttachmentCreate(url="https://x.test", title="fix")
+            ],
         ),
     )
 
@@ -614,7 +570,9 @@ def test_update_sends_only_set_fields(fake_api: FakeAPI):
     assert "If-Match" not in sent.headers
     assert sent.json() == {
         "status": "closed",
-        "links": [{"url": "https://x.test", "title": "fix"}],
+        "add_attachments": [
+            {"kind": "link", "url": "https://x.test", "title": "fix"}
+        ],
     }
 
 
@@ -675,17 +633,10 @@ def test_attachment_creates_reject_what_the_server_refuses():
         )
 
 
-def test_the_deprecated_replace_lists_warn_on_read_and_still_send(
-    fake_api: FakeAPI,
-):
-    fake_api.add("PATCH", ISSUE_PATH, json_body=issue_body())
-    change = IssueUpdate(links=[IssueLink(url=PR_URL)])
-
-    with pytest.warns(DeprecationWarning, match="add_attachments"):
-        assert change.links == [IssueLink(url=PR_URL)]
-    Issues(fake_api.client()).update(ISSUE_ID, change)
-
-    assert fake_api.last_request.json() == {"links": [{"url": PR_URL}]}
+def test_request_models_refuse_the_per_kind_lists():
+    for field in ("links", "files", "events", "spans"):
+        with pytest.raises(pydantic.ValidationError):
+            IssueUpdate.model_validate({field: []})
 
 
 def test_update_clears_a_person_with_null_and_leaves_an_omitted_one(
@@ -723,12 +674,14 @@ def test_update_sends_an_empty_list_and_an_explicit_null(fake_api: FakeAPI):
 
     Issues(fake_api.client()).update(
         ISSUE_ID,
-        IssueUpdate(tags=[], files=[], metadata={}, priority=None),
+        IssueUpdate(
+            tags=[], follower_member_ids=[], metadata={}, priority=None
+        ),
     )
 
     assert fake_api.last_request.json() == {
         "tags": [],
-        "files": [],
+        "follower_member_ids": [],
         "metadata": {},
         "priority": None,
     }
@@ -751,7 +704,7 @@ def test_request_models_reject_what_the_server_refuses():
     with pytest.raises(pydantic.ValidationError):
         IssueUpdate(follower_member_ids=[UUID(MEMBER_ID)] * 51)
     with pytest.raises(pydantic.ValidationError):
-        IssueSpanReference(trace_id="nothex", span_id=SPAN_ID)
+        IssueSpanAttachmentCreate(trace_id="nothex", span_id=SPAN_ID)
 
 
 def test_comment_create_posts_the_comment(fake_api: FakeAPI):
@@ -877,7 +830,9 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     assert (await api.get(ISSUE_ID)).title == "Checkout times out"
     created = await api.create(title="t", description="d", task_id=TASK_ID)
     assert created.id == UUID(ISSUE_ID)
-    await api.update(ISSUE_ID, IssueUpdate(events=[]), if_match=created.etag)
+    await api.update(
+        ISSUE_ID, IssueUpdate(remove_attachments=[]), if_match=created.etag
+    )
     comment = await api.comments.create(ISSUE_ID, comment="Ship the retry?")
     assert comment.id == UUID(COMMENT_ID)
     await api.delete(ISSUE_ID, if_match='"k3"')
@@ -899,6 +854,6 @@ async def test_async_issues_cover_every_operation(fake_api: FakeAPI):
     assert fake_api.requests[0].params.get_list("status") == ["open"]
     assert fake_api.requests[1].params.get_list("owner") == ["me"]
     assert fake_api.requests[5].json() == {
-        "events": [],
+        "remove_attachments": [],
     }
     assert fake_api.requests[6].json() == {"comment": "Ship the retry?"}

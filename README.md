@@ -801,10 +801,7 @@ item discriminated on `kind`: `IssueLinkAttachment`, `IssueFileAttachment`,
 kind this SDK does not know yet is an `UnknownIssueAttachment` that keeps
 every field. `create` takes `attachments` and `IssueUpdate` takes
 `add_attachments` (the `Issue*AttachmentCreate` models, without `id`) and
-`remove_attachments` (attachment ids); neither needs `if_match`. The `links`,
-`files`, `events` and `spans` lists are deprecated in their favour: they
-still read and write as before, warn on access, and cannot be sent together
-with `add_attachments` or `remove_attachments`.
+`remove_attachments` (attachment ids); neither needs `if_match`.
 
 `update` takes an `IssueUpdate` and sends only the fields set on it: an
 omitted field is left as it is, `[]` clears a list (`{}` for `metadata`), and

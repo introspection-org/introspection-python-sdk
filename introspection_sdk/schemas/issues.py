@@ -19,9 +19,6 @@ wholesale, and an explicit ``None`` for ``assignee_member_id`` or
 by ``add_attachments`` and ``remove_attachments`` instead, which need no
 ``If-Match``.
 
-The ``links``, ``files``, ``events`` and ``spans`` lists are deprecated in
-favour of ``attachments``; the server keeps them for one release cycle.
-
 :attr:`Issue.etag` is the issue's version for ``If-Match`` on an update or
 delete, so a write made against a stale read is refused with 412.
 """
@@ -146,12 +143,6 @@ class IssueSpanReference(ApiModel):
 
 ATTACHMENT_KINDS = frozenset({"link", "file", "event", "span"})
 """The attachment kinds this SDK models."""
-
-DEPRECATED_READ = "read `attachments`"
-DEPRECATED_WRITE = (
-    "use `attachments` on create, `add_attachments` and "
-    "`remove_attachments` on update"
-)
 
 
 class IssueLinkAttachment(IssueLink):
@@ -315,22 +306,6 @@ class Issue(ApiModel):
     attachments: list[IssueAttachment] | None = None
     """With ``include=attachments``: the issue's evidence in the order it
     was added."""
-    links: Annotated[
-        list[IssueLink] | None, Field(deprecated=DEPRECATED_READ)
-    ] = None
-    """Deprecated: read ``attachments``."""
-    files: Annotated[
-        list[IssueFile] | None, Field(deprecated=DEPRECATED_READ)
-    ] = None
-    """Deprecated: read ``attachments``."""
-    events: Annotated[
-        list[IssueEventReference] | None, Field(deprecated=DEPRECATED_READ)
-    ] = None
-    """Deprecated: read ``attachments``."""
-    spans: Annotated[
-        list[IssueSpanReference] | None, Field(deprecated=DEPRECATED_READ)
-    ] = None
-    """Deprecated: read ``attachments``."""
     comments: list[IssueComment] | None = None
     """With ``include=comments`` on the single-issue read: oldest first, at
     most 500. Page the issue's events for more."""
@@ -350,30 +325,12 @@ class Issue(ApiModel):
 
 
 class IssueEvidence(RequestModel):
-    """The evidence and labels an issue's create and update bodies share.
+    """The labels an issue's create and update bodies share.
 
-    On an update each one replaces its list wholesale: ``[]`` clears it,
-    ``{}`` clears ``metadata``. ``files``, ``links``, ``events`` and
-    ``spans`` are deprecated: sending one with ``add_attachments`` or
-    ``remove_attachments`` is refused with 422.
+    On an update each one replaces its value wholesale: ``[]`` clears
+    ``tags``, ``{}`` clears ``metadata``.
     """
 
-    files: Annotated[
-        list[IssueFile] | None, Field(deprecated=DEPRECATED_WRITE)
-    ] = Field(default=None, max_length=200)
-    """Deprecated: use attachments."""
-    links: Annotated[
-        list[IssueLink] | None, Field(deprecated=DEPRECATED_WRITE)
-    ] = Field(default=None, max_length=200)
-    """Deprecated: use attachments."""
-    events: Annotated[
-        list[IssueEventReference] | None, Field(deprecated=DEPRECATED_WRITE)
-    ] = Field(default=None, max_length=50)
-    """Deprecated: use attachments."""
-    spans: Annotated[
-        list[IssueSpanReference] | None, Field(deprecated=DEPRECATED_WRITE)
-    ] = Field(default=None, max_length=50)
-    """Deprecated: use attachments."""
     tags: list[str] | None = None
     metadata: dict[str, IssueMetadataValue] | None = None
 
