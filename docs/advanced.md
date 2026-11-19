@@ -88,7 +88,9 @@ import httpx2
 
 from introspection_sdk import IntrospectionClient
 
-client = IntrospectionClient(token="...", transport=httpx2.HTTPTransport(retries=3))
+client = IntrospectionClient(
+    token="...", transport=httpx2.HTTPTransport(retries=3)
+)
 ```
 
 The same applies to anything you build around a response or exception the SDK

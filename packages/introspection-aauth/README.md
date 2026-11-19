@@ -63,7 +63,7 @@ person_server = PersonServer(
     "https://ps.example",
     SigningKey.from_pem(open("ps.pem").read()),
     MemoryStore(),
-    subject_secret=b"...",                 # keys each person's directed `sub`
+    subject_secret=b"...",  # keys each person's directed `sub`
     agent_providers=["https://agents.example"],
     http=httpx.AsyncClient(),
     endpoint_base="https://ps.example/aauth",
@@ -76,8 +76,13 @@ app.include_router(person_server_router(person_server))
 #   app.include_router(person_server_well_known_router(person_server))
 
 # Your approval app answers what it asks:
-await person_server.decide(tenant, approval_id, ApprovalStatus.APPROVED,
-                           decided_by="dana", budget=Budget(amount=200_000, unit="USD", decimals=2))
+await person_server.decide(
+    tenant,
+    approval_id,
+    ApprovalStatus.APPROVED,
+    decided_by="dana",
+    budget=Budget(amount=200_000, unit="USD", decimals=2),
+)
 ```
 
 `subject_secret` is separate from the signing key, so rotating the key
@@ -89,14 +94,19 @@ published until what it signed has expired.
 ```python
 def policy(request: AccessRequest) -> Verdict:
     if request.tenant == "acme":
-        return Verdict.allow()              # or allow(scope=..., budget=...) for less
-    return Verdict.approval()               # wait; settle it with decide()
+        return Verdict.allow()  # or allow(scope=..., budget=...) for less
+    return Verdict.approval()  # wait; settle it with decide()
 
-access_server = AccessServer("https://as.example", key, policy,
-                             resources=["https://booking.example"],
-                             person_servers=["https://ps.example"],
-                             agent_providers=["https://agents.example"],
-                             http=httpx.AsyncClient())
+
+access_server = AccessServer(
+    "https://as.example",
+    key,
+    policy,
+    resources=["https://booking.example"],
+    person_servers=["https://ps.example"],
+    agent_providers=["https://agents.example"],
+    http=httpx.AsyncClient(),
+)
 app.include_router(access_server_router(access_server))
 ```
 

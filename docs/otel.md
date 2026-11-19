@@ -24,10 +24,10 @@ introspection.init(token="intro_xxx", service_name="my-service")
 
 with introspection.conversation() as conversation_id:
     with introspection.with_user_id("user_123"):
-        ...                                  # your gen_ai spans
+        ...  # your gen_ai spans
         introspection.track("checkout_completed", {"amount": 42})
 
-introspection.shutdown()                     # also runs at exit
+introspection.shutdown()  # also runs at exit
 ```
 
 `init()` attaches the span processor to a shared `TracerProvider` (yours if you
@@ -48,7 +48,7 @@ read, so anything set inside the block lands on the events *and* on the spans.
 from introspection_sdk import IntrospectionLogs
 
 logs = IntrospectionLogs(
-    token="intro_xxx",        # or env: INTROSPECTION_TOKEN
+    token="intro_xxx",  # or env: INTROSPECTION_TOKEN
     service_name="my-service",
     base_otel_url="https://otel.introspection.dev",  # or env: INTROSPECTION_BASE_OTEL_URL
 )
@@ -102,7 +102,9 @@ logs.log_event(
     {"entry_id": entry.id, "source": "rss", "score": 0.92},
     event_id=f"feed-entry:{entry.id}",  # stable id: consumers dedupe on it
     timestamp=entry.published_at,  # datetime or epoch ms; default now
-    identity=EventIdentity(user_id=entry.owner_id),  # overrides the scoped identity
+    identity=EventIdentity(
+        user_id=entry.owner_id
+    ),  # overrides the scoped identity
     severity="INFO",  # DEBUG | INFO | WARN | ERROR
 )
 
