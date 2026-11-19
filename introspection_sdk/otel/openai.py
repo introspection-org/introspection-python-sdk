@@ -54,16 +54,14 @@ def _start_span(
 ) -> tuple[Span, Token[Context]]:
     model = kwargs.get("model", "unknown")
     attributes: dict[str, Any] = {
-        "gen_ai.provider.name": provider_name,
-        "gen_ai.operation.name": "embeddings",
-        "gen_ai.request.model": model,
+        Attr.PROVIDER_NAME: provider_name,
+        Attr.OPERATION_NAME: "embeddings",
+        Attr.REQUEST_MODEL: model,
     }
     if kwargs.get("dimensions") is not None:
-        attributes["gen_ai.embeddings.dimension.count"] = kwargs["dimensions"]
+        attributes[Attr.EMBEDDINGS_DIMENSION_COUNT] = kwargs["dimensions"]
     if kwargs.get("encoding_format"):
-        attributes["gen_ai.request.encoding_formats"] = [
-            kwargs["encoding_format"]
-        ]
+        attributes[Attr.REQUEST_ENCODING_FORMATS] = [kwargs["encoding_format"]]
     span = tracer.start_span(
         f"embeddings {model}", kind=SpanKind.CLIENT, attributes=attributes
     )
@@ -73,14 +71,14 @@ def _start_span(
 def _record_response(span: Span, response: Any) -> None:
     response_model = _get(response, "model")
     if response_model:
-        span.set_attribute("gen_ai.response.model", response_model)
+        span.set_attribute(Attr.RESPONSE_MODEL, response_model)
     usage = _get(response, "usage")
     if usage is not None:
         prompt_tokens = _get(usage, "prompt_tokens")
         if prompt_tokens is not None:
             # Embeddings produce no output tokens; total_tokens repeats the
             # input total and must not be reported as output.
-            span.set_attribute("gen_ai.usage.input_tokens", prompt_tokens)
+            span.set_attribute(Attr.USAGE_INPUT_TOKENS, prompt_tokens)
         cost = _cost(_get(usage, "cost"))
         if cost is not None:
             span.set_attribute(Attr.LLM_COST_USD, cost)
@@ -93,14 +91,12 @@ def _record_response(span: Span, response: Any) -> None:
     if data:
         embedding = _get(data[0], "embedding")
         if isinstance(embedding, (list, tuple)):
-            span.set_attribute(
-                "gen_ai.embeddings.dimension.count", len(embedding)
-            )
+            span.set_attribute(Attr.EMBEDDINGS_DIMENSION_COUNT, len(embedding))
     span.set_status(StatusCode.OK)
 
 
 def _mark_cancelled(span: Span) -> None:
-    span.set_attribute("gen_ai.response.finish_reasons", ["aborted"])
+    span.set_attribute(Attr.RESPONSE_FINISH_REASONS, ["aborted"])
     span.set_attribute(Attr.TERMINATION_REASON, "cancelled")
 
 

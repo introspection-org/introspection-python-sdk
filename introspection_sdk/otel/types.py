@@ -88,6 +88,26 @@ class Attr:
     PREVIOUS_RESPONSE_ID = "gen_ai.request.previous_response_id"
     AGENT_NAME = "gen_ai.agent.name"
     AGENT_ID = "gen_ai.agent.id"
+    PROVIDER_NAME = "gen_ai.provider.name"
+    OPERATION_NAME = "gen_ai.operation.name"
+    REQUEST_MODEL = "gen_ai.request.model"
+    RESPONSE_MODEL = "gen_ai.response.model"
+    RESPONSE_FINISH_REASONS = "gen_ai.response.finish_reasons"
+    REQUEST_ENCODING_FORMATS = "gen_ai.request.encoding_formats"
+    INPUT_MESSAGES = "gen_ai.input.messages"
+    OUTPUT_MESSAGES = "gen_ai.output.messages"
+    USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
+    USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
+    USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
+    USAGE_CACHE_CREATION_INPUT_TOKENS = (
+        "gen_ai.usage.cache_creation.input_tokens"
+    )
+    USAGE_CACHE_CREATION_1H_INPUT_TOKENS = (
+        "gen_ai.usage.cache_creation.ephemeral_1h_input_tokens"
+    )
+    EMBEDDINGS_DIMENSION_COUNT = "gen_ai.embeddings.dimension.count"
+    #: Deprecated in favour of PROVIDER_NAME; the span processor drops it.
+    SYSTEM = "gen_ai.system"
 
     # Introspection-namespaced span attributes. The SDK emits no spans of its
     # own, so nothing here writes them — they are the names hand-written and
