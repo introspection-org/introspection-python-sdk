@@ -10,6 +10,7 @@ from uuid import UUID
 import pytest
 
 from introspection_sdk._errors import NotFoundError, ValidationError
+from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
 from introspection_sdk.resources import (
     AsyncOrganizations,
     AsyncProjects,
@@ -86,6 +87,25 @@ def test_update_addresses_the_project_by_slug(fake_api: FakeAPI):
     }
 
 
+def test_update_renames_the_slug_and_reads_the_previous_ones(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    fake_api.add(
+        "PATCH",
+        "/v1/projects/support",
+        json_body=project(slug="helpdesk", previous_slugs=["support"]),
+    )
+    updated = Projects(fake_api.client()).update("support", slug="helpdesk")
+    assert fake_api.last_request.json() == {"slug": "helpdesk"}
+    assert (updated.slug, updated.previous_slugs) == ("helpdesk", ["support"])
+
+
+def test_a_project_without_previous_slugs_reads_none(fake_api: FakeAPI):
+    fake_api.add("GET", "/v1/projects/support", json_body=project())
+    assert Projects(fake_api.client()).get("support").previous_slugs == []
+
+
 def test_update_keeps_an_empty_description(fake_api: FakeAPI):
     # An empty string clears the description; only `None` is left unsent.
     fake_api.add("PATCH", f"/v1/projects/{PROJECT_ID}", json_body=project())
@@ -124,8 +144,11 @@ async def test_async_project_writes(fake_api: FakeAPI):
     )
     assert created.slug == "support"
     assert fake_api.requests[-1].json()["include_ark"] is False
-    await projects.update("support", name="Support desk")
-    assert fake_api.requests[-1].json() == {"name": "Support desk"}
+    await projects.update("support", name="Support desk", slug="desk")
+    assert fake_api.requests[-1].json() == {
+        "name": "Support desk",
+        "slug": "desk",
+    }
     await projects.delete("support")
     assert fake_api.last_request.method == "DELETE"
 

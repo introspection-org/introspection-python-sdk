@@ -1472,6 +1472,23 @@ def test_run_source_names_the_trigger_source_values():
     ]
 
 
+def test_a_skipped_row_names_its_owning_member(
+    fake_api: FakeAPI, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    member_id = "0199a1b2-0000-7000-8000-0000000000e1"
+    row = {
+        **SKIPPED_ROW,
+        "payload": {**SKIPPED_ROW["payload"], "member_id": member_id},
+    }
+    fake_api.add("GET", f"/v1/events/{SKIPPED_ROW['id']}", json_body=row)
+
+    event = Events(fake_api.client()).get(SKIPPED_ROW["id"])
+
+    assert isinstance(event, RoutineSkippedEvent)
+    assert event.payload.member_id == UUID(member_id)
+
+
 def test_event_get_resolves_an_routine_family(fake_api: FakeAPI):
     fake_api.add(
         "GET", f"/v1/events/{SKIPPED_ROW['id']}", json_body=SKIPPED_ROW

@@ -516,6 +516,8 @@ class AsyncTasks:
         ``commands=True`` it also accepts :attr:`commands` against its live
         sandbox, ``compose`` runs services beside it, and
         ``recipe_git_commit_sha`` pins the Recipe commit it runs.
+        ``kind="simulate"`` runs it against a simulated user, kept out of
+        observations and patterns.
         ``runtime_id`` names the Runtime for a caller whose credential is not
         bound to one (a member token rather than a runner). Each is omitted
         from the body unless given.
