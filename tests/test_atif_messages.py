@@ -1,4 +1,4 @@
-"""An ATIF trajectory → run ``messages`` (:mod:`introspection_sdk.atif_messages`).
+"""An ATIF trajectory → ``ag_ui.core`` messages (:mod:`introspection_sdk.atif_messages`).
 
 Pure-unit tests of a conversion. The main input is Harbor's own ATIF loading
 example (``fixtures/harbor-load-trajectory.json``, see its ``.source``); the
@@ -13,15 +13,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from ag_ui.core import Message, UserMessage
 
 from introspection_sdk.atif import spans_to_atif
 from introspection_sdk.atif_messages import (
     AtifConversionError,
-    atif_to_run_messages,
-)
-from introspection_sdk.schemas.run_messages import (
-    RunUserMessage,
-    run_messages_wire,
+    atif_to_messages,
 )
 
 from .test_atif import ATIF_SCHEMA, whole_prompt_spans
@@ -35,13 +32,20 @@ INSTRUCTION = "Write the filename and the content to /app/recall.txt."
 CALL_ID = "toolu_01Rmm2GPxpGq9Er31axjfYRv"
 
 
+def to_wire(messages: list[Message]) -> list[dict[str, Any]]:
+    return [
+        m.model_dump(mode="json", by_alias=True, exclude_none=True)
+        for m in messages
+    ]
+
+
 def harbor() -> dict[str, Any]:
     return copy.deepcopy(HARBOR)
 
 
 def test_harbors_example_loads_as_messages_then_the_instruction() -> None:
-    messages = atif_to_run_messages(harbor(), prompt=INSTRUCTION)
-    wire = run_messages_wire(list(messages))
+    messages = atif_to_messages(harbor(), prompt=INSTRUCTION)
+    wire = to_wire(messages)
     content = HARBOR["steps"][1]["observation"]["results"][0]["content"]
     assert wire == [
         {
@@ -86,9 +90,9 @@ def test_harbors_example_loads_as_messages_then_the_instruction() -> None:
 
 def test_a_model_converts_the_same_as_its_json() -> None:
     trajectory = spans_to_atif(whole_prompt_spans())
-    assert atif_to_run_messages(
+    assert atif_to_messages(
         trajectory, prompt=INSTRUCTION
-    ) == atif_to_run_messages(
+    ) == atif_to_messages(
         trajectory.model_dump(mode="json"), prompt=INSTRUCTION
     )
 
@@ -98,9 +102,7 @@ def test_a_projected_conversation_round_trips_without_its_system_step() -> (
 ):
     trajectory = spans_to_atif(whole_prompt_spans())
     assert trajectory.steps[0].source == "system"
-    wire = run_messages_wire(
-        list(atif_to_run_messages(trajectory, prompt="Thanks"))
-    )
+    wire = to_wire(atif_to_messages(trajectory, prompt="Thanks"))
     assert [(m["role"], m.get("content")) for m in wire] == [
         ("user", "Read the file"),
         ("assistant", "Reading."),
@@ -116,10 +118,8 @@ def test_a_last_user_step_is_the_prompt() -> None:
     trajectory["steps"].append(
         {"step_id": 4, "source": "user", "message": INSTRUCTION}
     )
-    messages = atif_to_run_messages(trajectory)
-    assert messages[-1] == RunUserMessage(
-        id="atif-step-4", content=INSTRUCTION
-    )
+    messages = atif_to_messages(trajectory)
+    assert messages[-1] == UserMessage(id="atif-step-4", content=INSTRUCTION)
 
 
 def test_a_failed_result_carries_its_error() -> None:
@@ -127,9 +127,7 @@ def test_a_failed_result_carries_its_error() -> None:
     trajectory["steps"][1]["observation"]["results"][0]["extra"] = {
         "is_error": True
     }
-    tool = run_messages_wire(
-        list(atif_to_run_messages(trajectory, prompt=INSTRUCTION))
-    )[2]
+    tool = to_wire(atif_to_messages(trajectory, prompt=INSTRUCTION))[2]
     assert tool["error"] == tool["content"]
 
 
@@ -139,9 +137,7 @@ def test_a_failed_result_without_content_still_names_a_failure() -> None:
         "source_call_id": CALL_ID,
         "extra": {"is_error": True},
     }
-    tool = run_messages_wire(
-        atif_to_run_messages(trajectory, prompt=INSTRUCTION)
-    )[2]
+    tool = to_wire(atif_to_messages(trajectory, prompt=INSTRUCTION))[2]
     assert tool["content"] == ""
     assert tool["error"] == "the tool call failed"
 
@@ -154,7 +150,7 @@ def test_text_parts_join_and_reasoning_only_steps_add_nothing() -> None:
     ]
     trajectory["steps"][2]["message"] = ""
     trajectory["steps"][2]["reasoning_content"] = "Nothing left to do."
-    messages = atif_to_run_messages(trajectory, prompt=INSTRUCTION)
+    messages = atif_to_messages(trajectory, prompt=INSTRUCTION)
     assert messages[0].content == "Create hello.txt.\n\nUse Write."
     assert [m.role for m in messages] == ["user", "assistant", "tool", "user"]
 
@@ -234,12 +230,12 @@ def test_what_messages_cannot_express_is_refused(
     trajectory: dict[str, Any], prompt: str | None, error: str
 ) -> None:
     with pytest.raises(AtifConversionError, match=error):
-        atif_to_run_messages(trajectory, prompt=prompt)
+        atif_to_messages(trajectory, prompt=prompt)
 
 
 def test_the_error_names_its_step() -> None:
     with pytest.raises(AtifConversionError) as caught:
-        atif_to_run_messages(edit(RESULT, []), prompt=INSTRUCTION)
+        atif_to_messages(edit(RESULT, []), prompt=INSTRUCTION)
     assert caught.value.step_id == 2
     assert isinstance(caught.value, ValueError)
 

@@ -1,41 +1,40 @@
 """``tasks.runs.create(messages=...)``: a run that opens its conversation
-from AG-UI messages (:mod:`introspection_sdk.schemas.run_messages`)."""
+from ``ag_ui.core`` messages."""
 
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError as PydanticValidationError
+from ag_ui.core import (
+    AssistantMessage,
+    FunctionCall,
+    Message,
+    ToolCall,
+    ToolMessage,
+    UserMessage,
+)
 
 from introspection_sdk._errors import ValidationError
 from introspection_sdk.runner_resources.tasks import AsyncTasks, Tasks
-from introspection_sdk.schemas.run_messages import (
-    RunAssistantMessage,
-    RunFunctionCall,
-    RunMessage,
-    RunToolCall,
-    RunToolMessage,
-    RunUserMessage,
-)
 from introspection_sdk.schemas.tasks import TaskRunCreateRequest, TaskRunKind
 
 from .conftest import TASK_ID, FakeAPI, task_run_response
 
 RUNS = f"/v1/tasks/{TASK_ID}/runs"
 
-MESSAGES: list[RunMessage] = [
-    RunUserMessage(id="m1", content="List the files."),
-    RunAssistantMessage(
+MESSAGES: list[Message] = [
+    UserMessage(id="m1", content="List the files."),
+    AssistantMessage(
         id="m2",
         content="Listing them.",
         tool_calls=[
-            RunToolCall(
+            ToolCall(
                 id="call-1",
-                function=RunFunctionCall(name="bash", arguments='{"c":"ls"}'),
+                function=FunctionCall(name="bash", arguments='{"c":"ls"}'),
             )
         ],
     ),
-    RunToolMessage(id="m3", content="a.txt", tool_call_id="call-1"),
-    RunUserMessage(id="m4", content="Now read a.txt."),
+    ToolMessage(id="m3", content="a.txt", tool_call_id="call-1"),
+    UserMessage(id="m4", content="Now read a.txt."),
 ]
 
 WIRE = [
@@ -80,7 +79,7 @@ def test_runs_create_sends_dict_messages_as_given(fake_api: FakeAPI):
 
 def test_a_failed_tool_result_sends_its_error(fake_api: FakeAPI):
     fake_api.add("POST", RUNS, json_body=task_run_response())
-    failed = RunToolMessage(
+    failed = ToolMessage(
         id="m3", content="", tool_call_id="call-1", error="exit 1"
     )
     Tasks(fake_api.client()).runs.create(
@@ -135,18 +134,6 @@ def test_messages_refuse_a_prompt_or_a_steer(
     assert fake_api.requests == []
 
 
-def test_models_read_either_spelling():
-    by_alias = RunToolMessage.model_validate(
-        {"id": "t", "role": "tool", "content": "x", "toolCallId": "c"}
-    )
-    by_name = RunToolMessage(id="t", content="x", tool_call_id="c")
-    assert by_alias == by_name
+def test_the_request_model_reads_the_wire_shape():
     request = TaskRunCreateRequest.model_validate({"messages": WIRE})
     assert request.messages == MESSAGES
-
-
-def test_models_mirror_the_servers_rules():
-    with pytest.raises(PydanticValidationError, match="content or toolCalls"):
-        RunAssistantMessage(id="a")
-    with pytest.raises(PydanticValidationError):
-        RunUserMessage(id="u", content="")

@@ -1,7 +1,7 @@
 """Open a conversation from a Harbor ATIF trajectory, then run an instruction.
 
-Converts an ATIF trajectory (Harbor's ``trajectory.json``) into run
-``messages`` with ``atif_to_run_messages`` and prints them. With
+Converts an ATIF trajectory (Harbor's ``trajectory.json``) into
+``ag_ui.core`` messages with ``atif_to_messages`` and prints them. With
 ``INTROSPECTION_RUNTIME`` set, it also creates a task on that runtime and
 opens its empty conversation with those messages: the trajectory is loaded
 without a model call and the instruction runs as the turn's prompt, the way a
@@ -34,9 +34,8 @@ from dotenv import load_dotenv
 from introspection_sdk import IntrospectionClient, RunHandle, Runner
 from introspection_sdk.atif_messages import (
     AtifConversionError,
-    atif_to_run_messages,
+    atif_to_messages,
 )
-from introspection_sdk.schemas.run_messages import run_messages_wire
 
 INSTRUCTION = (
     "Earlier in this conversation you created a file. Write its name and "
@@ -84,7 +83,7 @@ def load_and_run(
     runner: Runner, trajectory: dict[str, Any], instruction: str
 ) -> RunHandle:
     """Open a new task's conversation from ``trajectory``, then run ``instruction``."""
-    messages = atif_to_run_messages(trajectory, prompt=instruction)
+    messages = atif_to_messages(trajectory, prompt=instruction)
     # A task created without a prompt has an empty conversation, the only
     # one a run with messages may open.
     task = runner.tasks.create(title="Loaded from a Harbor trajectory").task
@@ -99,11 +98,11 @@ def main() -> None:
         else SAMPLE
     )
     try:
-        messages = atif_to_run_messages(trajectory, prompt=INSTRUCTION)
+        messages = atif_to_messages(trajectory, prompt=INSTRUCTION)
     except AtifConversionError as error:
         sys.exit(f"cannot load this trajectory: {error}")
-    for message in run_messages_wire(messages):
-        print(json.dumps(message)[:120])
+    for message in messages:
+        print(message.model_dump_json(by_alias=True, exclude_none=True)[:120])
 
     runtime = os.getenv("INTROSPECTION_RUNTIME")
     if not runtime:

@@ -2,7 +2,7 @@
 
 A Harbor adapter's ``load()`` seeds an agent's session from a previous
 trajectory (Harbor's ``trajectory.json``) and then runs the task instruction.
-On Introspection that is one call: :func:`atif_to_run_messages` turns the
+On Introspection that is one call: :func:`atif_to_messages` turns the
 trajectory into run ``messages``, with the instruction as the last user
 message, and ``tasks.runs.create(task_id, messages=...)`` loads every message
 but the last into an empty conversation and runs the last as the prompt.
@@ -33,18 +33,17 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from ag_ui.core import (
+    AssistantMessage,
+    FunctionCall,
+    Message,
+    ToolCall,
+    ToolMessage,
+    UserMessage,
+)
 from pydantic import BaseModel
 
-from introspection_sdk.schemas.run_messages import (
-    RunAssistantMessage,
-    RunFunctionCall,
-    RunMessage,
-    RunToolCall,
-    RunToolMessage,
-    RunUserMessage,
-)
-
-__all__ = ["AtifConversionError", "atif_to_run_messages"]
+__all__ = ["AtifConversionError", "atif_to_messages"]
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +62,11 @@ class AtifConversionError(ValueError):
         self.step_id = step_id
 
 
-def atif_to_run_messages(
+def atif_to_messages(
     trajectory: Mapping[str, Any] | BaseModel,
     *,
     prompt: str | None = None,
-) -> list[RunMessage]:
+) -> list[Message]:
     """The run ``messages`` that load ``trajectory`` and then run ``prompt``.
 
     ``trajectory`` is an ATIF trajectory: the parsed ``trajectory.json``, an
@@ -91,12 +90,12 @@ def atif_to_run_messages(
     steps = data.get("steps")
     if not isinstance(steps, list):
         raise AtifConversionError("the trajectory has no steps list")
-    messages: list[RunMessage] = []
+    messages: list[Message] = []
     for step in steps:
         messages.extend(_step_messages(step))
     if prompt is not None:
-        messages.append(RunUserMessage(id="prompt", content=prompt))
-    if not messages or not isinstance(messages[-1], RunUserMessage):
+        messages.append(UserMessage(id="prompt", content=prompt))
+    if not messages or not isinstance(messages[-1], UserMessage):
         raise AtifConversionError(
             "the last message must be a user message: pass the task "
             "instruction as prompt"
@@ -108,7 +107,7 @@ def atif_to_run_messages(
     return messages
 
 
-def _step_messages(step: Mapping[str, Any]) -> list[RunMessage]:
+def _step_messages(step: Mapping[str, Any]) -> list[Message]:
     step_id = step.get("step_id")
     source = step.get("source")
     if source == "system":
@@ -125,7 +124,7 @@ def _step_messages(step: Mapping[str, Any]) -> list[RunMessage]:
             raise AtifConversionError(
                 "a user message needs text", step_id=step_id
             )
-        return [RunUserMessage(id=f"atif-step-{step_id}", content=text)]
+        return [UserMessage(id=f"atif-step-{step_id}", content=text)]
     if source == "agent":
         return _agent_messages(step, step_id, text)
     raise AtifConversionError(
@@ -135,7 +134,7 @@ def _step_messages(step: Mapping[str, Any]) -> list[RunMessage]:
 
 def _agent_messages(
     step: Mapping[str, Any], step_id: Any, text: str
-) -> list[RunMessage]:
+) -> list[Message]:
     calls = [
         _tool_call(call, step_id) for call in step.get("tool_calls") or []
     ]
@@ -149,8 +148,8 @@ def _agent_messages(
                 step_id=step_id,
             )
         return []
-    messages: list[RunMessage] = [
-        RunAssistantMessage(
+    messages: list[Message] = [
+        AssistantMessage(
             id=f"atif-step-{step_id}",
             content=text or None,
             tool_calls=calls or None,
@@ -167,7 +166,7 @@ def _agent_messages(
         content = _text(result.get("content"), step_id)
         failed = bool((result.get("extra") or {}).get("is_error"))
         messages.append(
-            RunToolMessage(
+            ToolMessage(
                 id=f"atif-step-{step_id}-result-{call.id}",
                 content=content,
                 tool_call_id=call.id,
@@ -177,7 +176,7 @@ def _agent_messages(
     return messages
 
 
-def _tool_call(call: Mapping[str, Any], step_id: Any) -> RunToolCall:
+def _tool_call(call: Mapping[str, Any], step_id: Any) -> ToolCall:
     call_id = call.get("tool_call_id")
     name = call.get("function_name")
     if not call_id or not name:
@@ -185,9 +184,9 @@ def _tool_call(call: Mapping[str, Any], step_id: Any) -> RunToolCall:
             "a tool call needs a tool_call_id and a function_name",
             step_id=step_id,
         )
-    return RunToolCall(
+    return ToolCall(
         id=call_id,
-        function=RunFunctionCall(
+        function=FunctionCall(
             name=name, arguments=json.dumps(call.get("arguments") or {})
         ),
     )

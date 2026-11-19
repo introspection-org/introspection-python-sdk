@@ -10,10 +10,10 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
+from ag_ui.core import Message
 from pydantic import BaseModel, ConfigDict, Field
 
 from introspection_sdk.schemas.agui import ResumeEntry
-from introspection_sdk.schemas.run_messages import RunMessage
 
 __all__ = [
     "AgentInfo",
@@ -249,7 +249,7 @@ class TaskRunCreateRequest(ApiModel):
             "resume."
         ),
     )
-    messages: list[RunMessage] | None = Field(
+    messages: list[Message] | None = Field(
         default=None,
         description=(
             "AG-UI messages that open the conversation, in place of `prompt`. "
