@@ -18,6 +18,7 @@ from introspection_sdk.pagination import (
 )
 from introspection_sdk.schemas.issues import (
     Issue,
+    IssueAttachmentCreate,
     IssueComment,
     IssueCreate,
     IssueEventReference,
@@ -167,6 +168,7 @@ class Issues:
         description: str,
         task_id: UUID | str,
         priority: IssuePriority | str | None = None,
+        attachments: builtins.list[IssueAttachmentCreate] | None = None,
         files: builtins.list[IssueFile] | None = None,
         links: builtins.list[IssueLink] | None = None,
         events: builtins.list[IssueEventReference] | None = None,
@@ -179,7 +181,9 @@ class Issues:
         include: Sequence[IssueStoredInclude] | None = None,
     ) -> Issue:
         """Open an issue on its fixed worker Task (``task_id``). It starts
-        ``open``; change its status later with :meth:`update`. ``include``
+        ``open``; change its status later with :meth:`update`.
+        ``attachments`` is its evidence, in order; ``files``, ``links``,
+        ``events`` and ``spans`` are deprecated in its favour. ``include``
         adds ``members`` and ``attachments`` to the returned issue."""
         body = IssueCreate.model_validate(
             {
@@ -187,6 +191,7 @@ class Issues:
                 "description": description,
                 "task_id": task_id,
                 "priority": priority,
+                "attachments": attachments,
                 "files": files,
                 "links": links,
                 "events": events,
@@ -220,6 +225,9 @@ class Issues:
         Only the fields set on ``change`` are sent. An omitted field is left
         as it is, ``[]`` clears a list, and an explicit ``None`` for
         ``assignee_member_id`` or ``reviewer_member_id`` clears that person.
+        ``add_attachments`` appends the attachments the issue does not hold
+        yet and ``remove_attachments`` drops them by id; neither needs
+        ``if_match``.
         ``if_match`` (an :attr:`Issue.etag`) refuses the edit with 412 if
         the issue changed since that read; without it the edit applies
         regardless."""

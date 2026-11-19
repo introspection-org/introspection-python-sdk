@@ -132,7 +132,8 @@ def _model_fields(
             if not open_schema:
                 found.append(f"{at}.{key}")
             continue
-        found += unmodelled(getattr(value, name), raw, f"{at}.{key}")
+        # `__dict__`, not `getattr`: a deprecated field warns on access.
+        found += unmodelled(value.__dict__[name], raw, f"{at}.{key}")
     return found
 
 
