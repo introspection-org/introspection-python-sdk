@@ -387,19 +387,20 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.158.2"
+version = "0.163.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
+    { name = "anyio" },
     { name = "opentelemetry-api" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/51/d8ed723a728ba8d61d0984a8cf18d546ac1d7256b41100b4f1e8cc51d725/fastapi-0.158.2.tar.gz", hash = "sha256:b06b177c35b7739c3d9ca246ebc366026a830b6de81f7eac4645813fcf5a0894", size = 513741, upload-time = "2026-10-21T19:20:53.276Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/62/19000d0f3699cacaeffe8a3c4cc7046d87aac3291163ffeb2ef08b82d859/fastapi-0.163.1.tar.gz", hash = "sha256:3d364b02a68b67292e833ff2dfed3b8dc3aeadf73e271c15316c6c166668792f", size = 544796, upload-time = "2026-11-15T09:51:31.271Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/50/67/1e5ec1d8bd2c497dffbec7e2ef49abe19f24414e471a349e48fba710cea8/fastapi-0.158.2-py3-none-any.whl", hash = "sha256:d65d72a4a93858a6ff703360823bd0bf75e00773de32dcda166fd8131436e2c0", size = 149396, upload-time = "2026-10-21T19:20:51.769Z" },
+    { url = "https://files.pythonhosted.org/packages/20/b6/2424da1e40825d3fc54539621811f34e21472499677c9490e4967270e38e/fastapi-0.163.1-py3-none-any.whl", hash = "sha256:68f2d8050f5c3583121c0d203046cc7def5c16a7d6c43a0e7707a8ea610fe2d3", size = 154541, upload-time = "2026-11-15T09:51:29.726Z" },
 ]
 
 [[package]]
