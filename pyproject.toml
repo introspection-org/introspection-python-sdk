@@ -29,8 +29,8 @@ proxy-httpx = ["httpx>=0.27.0,<1"]
 # install is REST-only (client.runtimes / client.experiments / Runner
 # / tasks / files).
 otel = [
-    "opentelemetry-sdk >= 1.39.0, < 1.45.0",
-    "opentelemetry-exporter-otlp-proto-http>=1.39.0,<1.45.0",
+    "opentelemetry-sdk>=1.39.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.39.0",
 ]
 # unasync is pinned: scripts/gen_sync.py generates introspection_sdk/_sync/
 # and CI fails on any diff, so a new release must not change its output.
