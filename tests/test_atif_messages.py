@@ -214,6 +214,11 @@ RESULT = ["steps", 1, "observation", "results"]
         ),
         (edit(["steps", 0, "message"], ""), INSTRUCTION, "step 1: .* text"),
         (
+            edit(["steps", 1, "tool_calls"], None),
+            INSTRUCTION,
+            "step 2: an observation result without a tool call",
+        ),
+        (
             edit(["steps", 0, "observation"], {"results": []}),
             INSTRUCTION,
             "step 1: a user step with tool calls or an observation",

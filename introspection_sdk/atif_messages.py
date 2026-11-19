@@ -18,16 +18,18 @@ What maps, step by step, in order:
   Runtime's recipe owns the system prompt.
 
 Reasoning, metrics and ``extra`` have no AG-UI field and are left out, and
-an agent step with neither text nor tool calls adds no message. Anything
+an agent step with neither text, tool calls nor results adds no message. Anything
 else that the messages cannot carry raises :class:`AtifConversionError`
 rather than being dropped: a tool call without exactly one result in its own
-step, a result naming no call of its step, non-text content, an empty user
+step, a result naming no call of its step (also on a step without calls),
+non-text content, an empty user
 message, and a list whose last message is not a user message.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Mapping
 from typing import Any
 
@@ -43,6 +45,8 @@ from introspection_sdk.schemas.run_messages import (
 )
 
 __all__ = ["AtifConversionError", "atif_to_run_messages"]
+
+logger = logging.getLogger(__name__)
 
 
 class AtifConversionError(ValueError):
@@ -97,6 +101,10 @@ def atif_to_run_messages(
             "the last message must be a user message: pass the task "
             "instruction as prompt"
         )
+    logger.debug(
+        "Converted an ATIF trajectory to run messages",
+        extra={"steps": len(steps), "messages": len(messages)},
+    )
     return messages
 
 
@@ -132,6 +140,14 @@ def _agent_messages(
         _tool_call(call, step_id) for call in step.get("tool_calls") or []
     ]
     if not text and not calls:
+        if (step.get("observation") or {}).get("results"):
+            # A result answers a call; with none in its step it pairs with
+            # nothing, and dropping the step would lose it unseen.
+            raise AtifConversionError(
+                "an observation result without a tool call in its step "
+                "pairs with nothing",
+                step_id=step_id,
+            )
         return []
     messages: list[RunMessage] = [
         RunAssistantMessage(
