@@ -2,8 +2,13 @@ version: 2
 
 updates:
   # ── Python dependencies (pyproject.toml + uv.lock) ──
-  - package-ecosystem: "pip"
-    directory: "/"
+  # `uv` reads uv.lock; `pip` opened no version update here. examples/ and
+  # packages/introspection-aauth are their own uv projects, not workspace members.
+  - package-ecosystem: "uv"
+    directories:
+      - "/"
+      - "/examples"
+      - "/packages/introspection-aauth"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -16,12 +21,6 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
-    # Restrict alerts/PRs to deps that actually ship to SDK consumers — main
-    # `[project] dependencies` plus the user-facing `[project.optional-dependencies]`
-    # extras (otel / arrow). Excludes the `test` and `dev` extras, which are
-    # CI-only and not part of the published surface area.
-    allow:
-      - dependency-type: "production"
     groups:
       # OpenTelemetry runtime + exporter deps move as a fleet.
       otel:
@@ -70,10 +69,8 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-major"
+    # No blanket ignore of majors: it hid ag-ui-protocol 1.0, and
+    # dependabot-auto-merge.yml already leaves majors for a person to merge.
 
   # ── GitHub Actions (used by ci.yml / publish.yml / tag.yml) ──
   - package-ecosystem: "github-actions"
