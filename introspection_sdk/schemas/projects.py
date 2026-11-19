@@ -51,6 +51,8 @@ class Project(BaseModel):
     slug: str | None = None
     """The stable identifier the CLI and dashboard URLs use. A project
     created before slugs existed may have none."""
+    previous_slugs: list[str] = Field(default_factory=list)
+    """Slugs the project had before a rename; each still resolves to it."""
     description: str | None = None
     display_id_prefixes: DisplayIdPrefixes = Field(
         default_factory=DisplayIdPrefixes
@@ -88,6 +90,9 @@ class ProjectUpdate(BaseModel):
     is."""
 
     name: str | None = None
+    slug: str | None = None
+    """A new slug; the current one moves to :attr:`Project.previous_slugs`
+    and keeps resolving to the project."""
     description: str | None = None
     display_id_prefixes: DisplayIdPrefixesUpdate | None = None
     connection_integrations: list[IntegrationType | str] | None = None

@@ -8,7 +8,9 @@ from introspection_sdk import RunFailedError
 from introspection_sdk.runner_resources.tasks import RunHandle, Tasks
 from introspection_sdk.schemas.agui import ResumeEntry
 from introspection_sdk.schemas.tasks import (
+    TaskCreateResponse,
     TaskFileRef,
+    TaskKind,
     TaskPrompt,
     TaskRepoRequest,
     TaskRunKind,
@@ -102,6 +104,19 @@ def test_create_sends_no_retired_task_mode_fields(fake_api: FakeAPI):
     body = fake_api.last_request.json()
     assert "mode" not in body
     assert "system_id" not in body
+
+
+def test_create_sends_a_simulate_kind_and_reads_it_back(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/tasks",
+        json_body=TaskCreateResponse(
+            task=task_payload(kind="simulate"), run=task_run_payload()
+        ),
+    )
+    res = _tasks(fake_api).create(prompt="hello", kind=TaskKind.SIMULATE)
+    assert fake_api.last_request.json()["kind"] == "simulate"
+    assert res.task.kind is TaskKind.SIMULATE
 
 
 def test_create_sends_idle_timeout_and_fork_share_id(fake_api: FakeAPI):

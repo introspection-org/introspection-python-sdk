@@ -138,6 +138,21 @@ def test_strict_passes_a_fully_modelled_response(fake_api: FakeAPI):
 
 
 @pytest.mark.usefixtures("strict")
+def test_strict_models_the_loaded_messages_of_a_run(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        "/v1/conversations/conv-1/export",
+        content=_jsonl(_span(history={"position": 1, "loaded_messages": 3})),
+    )
+
+    (span,) = Conversations(fake_api.client()).export_jsonl("conv-1")
+
+    assert span.attributes.introspection is not None
+    assert span.attributes.introspection.history is not None
+    assert span.attributes.introspection.history.loaded_messages == 3
+
+
+@pytest.mark.usefixtures("strict")
 def test_strict_checks_a_list_envelope(fake_api: FakeAPI):
     key = api_key_payload()
     fake_api.add(

@@ -128,6 +128,23 @@ def test_judgement_payload_is_a_union_on_kind(fake_api: FakeAPI):
     )
 
 
+def test_a_classifier_verdict_carries_its_scores(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv(STRICT_SCHEMA_ENV, "1")
+    verdict = decode(
+        JudgementVerdictPayload,
+        {
+            **VERDICT,
+            "contract_version": "3",
+            "reasoning": None,
+            "scores": {"resolved": 0.92, "polite": 0.4},
+        },
+    )
+    assert verdict.scores == {"resolved": 0.92, "polite": 0.4}
+    assert decode(JudgementVerdictPayload, VERDICT).scores is None
+
+
 def test_a_judgement_without_kind_does_not_decode(fake_api: FakeAPI):
     with pytest.raises(PydanticValidationError):
         judgements(fake_api, {"judgement_id": "judgement-2"})

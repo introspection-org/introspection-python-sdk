@@ -47,7 +47,9 @@ class TaskKind(StrEnum):
 
     ``AGENT`` boots the runtime-agent image and runs an interactive LLM agent;
     ``EVAL`` is the same shape run as an evaluation trial, admitted and
-    governed apart from production conversations; ``PROCESS`` runs a one-shot baked script and reports through the same
+    governed apart from production conversations; ``SIMULATE`` is the same
+    shape run against a simulated user, admitted like ``EVAL`` and kept out
+    of observations and patterns; ``PROCESS`` runs a one-shot baked script and reports through the same
     completion path. This replaced the retired ``TaskMode``: there are no task
     modes any more — every agent task is a conversation, and the recipe agent
     is selected by ``agent_name``.
@@ -55,6 +57,7 @@ class TaskKind(StrEnum):
 
     AGENT = "agent"
     EVAL = "eval"
+    SIMULATE = "simulate"
     PROCESS = "process"
 
 

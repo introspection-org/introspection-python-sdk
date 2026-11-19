@@ -145,6 +145,7 @@ class Projects(_Resource):
         project: str | UUID,
         *,
         name: str | None = None,
+        slug: str | None = None,
         description: str | None = None,
         display_id_prefixes: DisplayIdPrefixesUpdate | None = None,
         settings: dict[str, Any] | None = None,
@@ -152,13 +153,16 @@ class Projects(_Resource):
         | None = None,
     ) -> Project:
         """Update a project by slug or id; only the fields given are sent,
-        and a call with none is a 400 (no fields to update).
+        and a call with none is a 400 (no fields to update). A new ``slug``
+        renames the project; the old one keeps resolving to it and is listed
+        in :attr:`~Project.previous_slugs`.
         ``connection_integrations`` replaces the project's list; ``[]``
         allows none."""
         body = _body(
             ProjectUpdate,
             {
                 "name": name,
+                "slug": slug,
                 "description": description,
                 "display_id_prefixes": display_id_prefixes,
                 "settings": settings,

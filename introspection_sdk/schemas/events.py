@@ -316,6 +316,9 @@ class JudgementVerdictPayload(JudgementBasePayload):
     judge_provider: str | None = None
     contract_version: str | None = None
     sequence_hash: str | None = None
+    #: A classifier judge's answers: each question's probability of true,
+    #: 0-1. Absent for an LLM judge.
+    scores: dict[str, float] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
     total_tokens: int | None = None
@@ -465,7 +468,9 @@ class RoutineTriggeredPayload(_ApiModel):
 class RoutineSkippedPayload(_ApiModel):
     """One scheduled slot, or one event delivery, that ran nothing.
 
-    Project-owned, so it names no member. ``task_id`` is set only when the
+    ``member_id`` owns the row: the member who triggered the run, else the
+    routine's creator, else the organization's Admin Agent; ``None`` on a
+    row written before it was recorded. ``task_id`` is set only when the
     routine targets an existing task. ``event`` names the event trigger and
     delivery skipped (reason ``trigger_busy``); ``slot`` the scheduled slot.
     """
@@ -476,6 +481,7 @@ class RoutineSkippedPayload(_ApiModel):
     slot: datetime | None = None
     task_id: UUID | None = None
     event: RoutineTriggerEventRef | None = None
+    member_id: UUID | None = None
 
 
 # --- whole-event models: envelope + typed payload, Literal tag -------

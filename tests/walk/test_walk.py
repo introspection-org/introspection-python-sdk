@@ -245,6 +245,7 @@ def test_01_project(world: World) -> None:
             "deployment_id": "[uuid]",
             "name": None,
             "slug": None,
+            "previous_slugs": [],
             "description": None,
             "display_id_prefixes": {
                 "issue": "I",
@@ -287,6 +288,7 @@ def test_01_project(world: World) -> None:
             "deployment_id": "[uuid]",
             "name": None,
             "slug": None,
+            "previous_slugs": [],
             "description": None,
             "display_id_prefixes": {
                 "issue": "I",
