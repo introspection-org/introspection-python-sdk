@@ -30,11 +30,11 @@ __all__ = ["IntrospectionSpanProcessor"]
 #: reaches this processor too once it is attached to the global provider, and
 #: must not be shipped to Introspection.
 _GEN_AI_MARKERS = (
-    "gen_ai.provider.name",
-    "gen_ai.operation.name",
-    "gen_ai.request.model",
-    "gen_ai.input.messages",
-    "gen_ai.output.messages",
+    Attr.PROVIDER_NAME,
+    Attr.OPERATION_NAME,
+    Attr.REQUEST_MODEL,
+    Attr.INPUT_MESSAGES,
+    Attr.OUTPUT_MESSAGES,
 )
 
 #: End-user identity baggage keys -> their semconv span-attribute keys. The
@@ -47,7 +47,7 @@ _IDENTITY_BAGGAGE_TO_ATTRIBUTE = {
 
 #: Deprecated pre-1.27 provider key. ``gen_ai.provider.name`` supersedes it and
 #: an emitter that still writes it would ship both.
-_DEPRECATED_SYSTEM_KEY = "gen_ai.system"
+_DEPRECATED_SYSTEM_KEY = Attr.SYSTEM
 
 
 class _AttributeOverrideSpan(ReadableSpan):
@@ -289,11 +289,10 @@ class IntrospectionSpanProcessor(SpanProcessor):
 
         # An emitter that recorded messages without naming the operation is
         # doing a chat completion.
-        if not attrs.get("gen_ai.operation.name") and (
-            attrs.get("gen_ai.input.messages")
-            or attrs.get("gen_ai.output.messages")
+        if not attrs.get(Attr.OPERATION_NAME) and (
+            attrs.get(Attr.INPUT_MESSAGES) or attrs.get(Attr.OUTPUT_MESSAGES)
         ):
-            attrs["gen_ai.operation.name"] = "chat"
+            attrs[Attr.OPERATION_NAME] = "chat"
 
         # Agent name / id from baggage. Baggage wins so per-call agent
         # identity overrides any default stamped by the emitter.
