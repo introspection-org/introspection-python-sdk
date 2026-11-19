@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 dependencies = [
-    "ag-ui-protocol>=0.1.19,<0.2.0",
+    "ag-ui-protocol>=0.1.19",
     "httpx2>=2.12.0",
     "pydantic>=2.10.0",
 ]
@@ -22,7 +22,7 @@ dependencies = [
 arrow = ["pyarrow>=14.0.0"]
 # Compatibility transport for libraries that have not migrated to httpx2 yet
 # (notably Harbor 0.20 and the current E2B Python SDK).
-proxy-httpx = ["httpx>=0.27.0,<1"]
+proxy-httpx = ["httpx>=0.27.0"]
 # Install with `pip install introspection-sdk[otel]` to enable the
 # OpenTelemetry exporter, `IntrospectionSpanProcessor`, and the
 # IntrospectionLogs (track / feedback / identify) surface. Default
