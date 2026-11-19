@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.51.0...v0.51.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **api:** model cloud 0.87's project previous_slugs and slug rename, simulate tasks, judgement scores and routine skip member ([#301](https://github.com/introspection-org/introspection-python-sdk/issues/301)) ([07ac40c](https://github.com/introspection-org/introspection-python-sdk/commit/07ac40cf3abcc082c203fd90ff8d504607dbb184))
+
 ## [0.51.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.50.0...v0.51.0) (2026-11-19)
 
 
