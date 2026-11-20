@@ -627,7 +627,12 @@ def test_04_recipe(world: World) -> None:
     assert re.fullmatch(
         r"hello-mcp-production-main-[0-9a-f]{12}", w.recipe.slug
     )
-    assert stable({**plain(w.recipe), "slug": None}) == snapshot(
+    # The description is the recipe manifest's, which moves with the recipe
+    # repository.
+    assert w.recipe.description
+    assert stable(
+        {**plain(w.recipe), "slug": None, "description": "[manifest's]"}
+    ) == snapshot(
         {
             "id": "[uuid]",
             "org_id": "[uuid]",
@@ -638,7 +643,7 @@ def test_04_recipe(world: World) -> None:
             "git_ref": "main",
             "git_commit_sha": "[sha]",
             "sub_path": ".",
-            "description": "Harbor E2B task calling a development MCP server",
+            "description": "[manifest's]",
             "created_by_member_id": "[uuid]",
             "created_at": "[timestamp]",
             "updated_at": "[timestamp]",
@@ -882,7 +887,10 @@ def test_07_runtime(world: World) -> None:
     assert runtime is not None
     w.runtime = runtime
     assert w.runtime.image_build_status == "ready"
-    assert stable(w.runtime) == snapshot(
+    assert w.runtime.description == w.recipe.description
+    assert stable(
+        {**plain(w.runtime), "description": "[manifest's]"}
+    ) == snapshot(
         {
             "id": "[uuid]",
             "org_id": "[uuid]",
@@ -891,7 +899,7 @@ def test_07_runtime(world: World) -> None:
             "slug": "hello-mcp",
             "recipe_id": "[uuid]",
             "is_active": False,
-            "description": "Harbor E2B task calling a development MCP server",
+            "description": "[manifest's]",
             "metadata": None,
             "llm_mode": "managed",
             "created_at": "[timestamp]",
@@ -909,7 +917,9 @@ def test_07_runtime(world: World) -> None:
             "image_commit_subject": None,
             "image_repository": None,
             "kind": "byor",
-            "config_json": {"connectors": ["hello-mcp"]},
+            # The manifest's connectors: none since the recipe binds hello-mcp
+            # per lane; the recording predates that.
+            "config_json": IsOneOf({}, {"connectors": ["hello-mcp"]}),
             "runtime_group_id": "[uuid]",
             "recipe_kind": "production",
             "recipe_ref": "main",
@@ -1415,7 +1425,9 @@ def test_11_evidence(world: World) -> None:
                 "has_errors": False,
             },
             "environment": "production",
-            "service_name": "hello-mcp",
+            # Cloud 0.87 names the kind of work, not the runtime; the
+            # recording predates it.
+            "service_name": IsOneOf("introspection-agents", "hello-mcp"),
             "runtime": {"id": "[uuid]", "group_id": "[uuid]"},
             "recipe": {"git_commit_sha": "[sha]"},
             "owner": {"key": "[redacted]"},
