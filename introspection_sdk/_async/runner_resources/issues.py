@@ -170,7 +170,7 @@ class AsyncIssues:
         *,
         title: str,
         description: str,
-        task_id: UUID | str,
+        task_id: UUID | str | None = None,
         priority: IssuePriority | str | None = None,
         attachments: builtins.list[IssueAttachmentCreate] | None = None,
         tags: builtins.list[str] | None = None,
@@ -180,8 +180,11 @@ class AsyncIssues:
         follower_member_ids: builtins.list[UUID] | None = None,
         include: Sequence[IssueStoredInclude] | None = None,
     ) -> Issue:
-        """Open an issue on its fixed worker Task (``task_id``). It starts
-        ``open``; change its status later with :meth:`update`.
+        """Open an issue. It starts ``open``; change its status later with
+        :meth:`update`. ``task_id`` makes that Task, which must be the
+        caller's own (403 otherwise), the issue's fixed worker; omitted, the
+        issue has no Task and its ``task_id`` and ``task_status`` are
+        ``None``.
         ``attachments`` is its evidence, in order. ``include``
         adds ``members`` and ``attachments`` to the returned issue."""
         body = IssueCreate.model_validate(

@@ -288,9 +288,11 @@ class Issue(ApiModel):
     """What this read left out, such as the comments beyond the include's
     cap."""
     task_id: UUID | None = None
-    """The fixed worker Task that carries the issue's chat."""
+    """The fixed worker Task that carries the issue's chat; ``None`` for an
+    issue created without one."""
     task_status: OpenTaskStatus | None = None
-    """Current status of the worker Task."""
+    """Current status of the worker Task; ``None`` when the issue has no
+    Task."""
     member_id: UUID | None = None
     """Owning member of a private issue; ``None`` for a project-owned
     (Operator) issue."""
@@ -340,8 +342,10 @@ class IssueCreate(IssueEvidence):
 
     title: str = Field(min_length=1, max_length=500)
     description: str = Field(min_length=1, max_length=50000)
-    task_id: UUID
-    """The fixed worker Task used by the issue chat and Slack replies."""
+    task_id: UUID | None = None
+    """The fixed worker Task used by the issue chat and Slack replies. It
+    must be the caller's own Task (403 otherwise). Omitted, the issue has no
+    Task."""
     priority: IssuePriority | None = None
     """The server defaults to ``medium``."""
     assignee_member_id: UUID | None = None

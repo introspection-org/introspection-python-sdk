@@ -784,8 +784,8 @@ The routes need the `routines:read` and `routines:write` scopes, so a `native` s
 ## Track issues
 
 `client.issues` / `runner.issues` manage a project's issues on the data
-plane. An issue is a brief (title, description, priority, status) on a fixed
-worker task, which carries its chat, with the people on it (a creator, an
+plane. An issue is a brief (title, description, priority, status), optionally
+on a fixed worker task that carries its chat, with the people on it (a creator, an
 assignee, a reviewer and followers), the evidence it cites (its
 attachments: links, files, events and spans) and its comments.
 
@@ -796,6 +796,8 @@ from introspection_sdk.schemas.issues import (
     IssueUpdate,
 )
 
+# `task_id` is optional: one of the caller's own tasks, which becomes the
+# issue's fixed worker. Without it the issue has no task.
 issue = client.issues.create(
     title="Checkout times out",
     description="Stripe calls exceed 30s under load.",

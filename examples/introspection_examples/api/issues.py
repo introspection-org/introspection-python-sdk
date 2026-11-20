@@ -1,8 +1,8 @@
 """Open an issue, ask a member about it, and close it.
 
-Lists the open issues the caller may read. When INTROSPECTION_TASK_ID and
-INTROSPECTION_MEMBER_ID are set, it also opens an issue on that worker task,
-asks that member a question (assign, move to waiting, comment), reads the
+Lists the open issues the caller may read. When INTROSPECTION_MEMBER_ID is
+set, it also opens an issue (on the worker task INTROSPECTION_TASK_ID when
+that is set, otherwise with no task), asks that member a question (assign, move to waiting, comment), reads the
 comments back, attaches a pull request, edits the brief against the version
 it read, and deletes the issue again.
 
@@ -12,7 +12,7 @@ Run with:
         uv run python -m introspection_examples.api.issues
 
 Optional env:
-    INTROSPECTION_TASK_ID       - worker task the issue lives on
+    INTROSPECTION_TASK_ID       - your own worker task the issue lives on
     INTROSPECTION_MEMBER_ID     - member the issue is assigned to
     INTROSPECTION_BASE_API_URL  - API host (default https://api.introspection.dev)
     INTROSPECTION_DP_URL        - data-plane host, when it differs
@@ -48,14 +48,16 @@ def main() -> None:
 
         task_id = os.getenv("INTROSPECTION_TASK_ID")
         member_id = os.getenv("INTROSPECTION_MEMBER_ID")
-        if not (task_id and member_id):
+        if not member_id:
             return
 
         # #region docs:issues-lifecycle
+        # `task_id` is optional: it must be one of your own Tasks, which then
+        # carries the issue's chat. Without it the issue has no Task.
         issue = client.issues.create(
             title="Checkout times out",
             description="Stripe calls exceed 30s under load.",
-            task_id=UUID(task_id),
+            task_id=UUID(task_id) if task_id else None,
             tags=["area:checkout"],
         )
 
