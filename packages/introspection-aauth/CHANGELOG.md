@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.2](https://github.com/introspection-org/introspection-python-sdk/compare/introspection-aauth-v0.1.0...introspection-aauth-v0.51.2) (2026-11-20)
+
+
+### Miscellaneous Chores
+
+* release 0.51.2 with the cloud 0.87 walk snapshots ([#304](https://github.com/introspection-org/introspection-python-sdk/issues/304)) ([3a55b81](https://github.com/introspection-org/introspection-python-sdk/commit/3a55b81cb28723286875443465bd6d649802bde2))
+
 ## [0.1.0](https://github.com/introspection-org/introspection-python-sdk/compare/introspection-aauth-v1.0.0...introspection-aauth-v0.1.0) (2026-10-22)
 
 
