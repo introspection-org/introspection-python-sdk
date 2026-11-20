@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.52.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.51.1...v0.52.0) (2026-11-20)
+
+
+### Features
+
+* **issues:** make task_id optional on issue creation ([#308](https://github.com/introspection-org/introspection-python-sdk/issues/308)) ([d0f2e08](https://github.com/introspection-org/introspection-python-sdk/commit/d0f2e08a65ecf1209b6955913895c10d2c79132f))
+
+
+### Bug Fixes
+
+* **streaming:** split SSE lines only at CRLF, LF or CR ([#307](https://github.com/introspection-org/introspection-python-sdk/issues/307)) ([63f74b8](https://github.com/introspection-org/introspection-python-sdk/commit/63f74b81322ae303d2515bd81db2050e6860265e))
+
 ## [0.51.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.51.0...v0.51.1) (2026-11-19)
 
 
