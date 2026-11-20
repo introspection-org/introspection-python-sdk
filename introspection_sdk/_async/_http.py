@@ -24,6 +24,7 @@ from introspection_sdk._errors import (
 from introspection_sdk._http_common import (
     RawResponse,
 )
+from introspection_sdk._sse_lines import SseLineSplitter
 from introspection_sdk._strict_schema import note_response
 
 if TYPE_CHECKING:
@@ -267,8 +268,14 @@ class _AsyncHttpClient:
         req_headers = await self._request_headers(
             {"Accept": "text/event-stream", **(headers or {})}
         )
+        # Not httpx's line iterator: it splits where ``str.splitlines`` does,
+        # which cuts a JSON string holding U+2028 and the like (_sse_lines).
+        splitter = SseLineSplitter()
         async with self._open_stream(path, params, req_headers) as res:
-            async for line in res.aiter_lines():
+            async for chunk in res.aiter_bytes():
+                for line in splitter.feed(chunk):
+                    yield line
+            for line in splitter.flush():
                 yield line
 
     @asynccontextmanager
