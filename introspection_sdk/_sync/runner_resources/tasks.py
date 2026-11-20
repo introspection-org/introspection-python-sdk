@@ -12,7 +12,7 @@ from uuid import UUID
 from ag_ui.core import Message
 
 from introspection_sdk._errors import RunFailedError, StreamIncompleteError
-from introspection_sdk._http import _HttpClient
+from introspection_sdk._http import HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -239,7 +239,7 @@ class RunHandle:
 
 
 class TaskRuns:
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
 
     def create(
@@ -368,7 +368,7 @@ class TaskCommands:
     plane with evals enabled.
     """
 
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
 
     def create(
@@ -437,7 +437,7 @@ class TaskCommands:
 
 
 class Tasks:
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
         self.runs = TaskRuns(http)
         self.commands = TaskCommands(http)

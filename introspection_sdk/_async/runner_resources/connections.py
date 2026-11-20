@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._http import AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -90,7 +90,7 @@ def _runner_runtime(
 class AsyncAppConnections:
     """DP ``/v1/connections`` namespace."""
 
-    def __init__(self, http: _AsyncHttpClient) -> None:
+    def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
     def list(
@@ -187,7 +187,7 @@ class AsyncRunnerAppConnections(AsyncAppConnections):
     defaults ``runtime`` to the runner's runtime group."""
 
     def __init__(
-        self, http: _AsyncHttpClient, runtime_group_id: UUID | None
+        self, http: AsyncHttpClient, runtime_group_id: UUID | None
     ) -> None:
         super().__init__(http)
         self._runtime_group_id = runtime_group_id

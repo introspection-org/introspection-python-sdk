@@ -48,7 +48,7 @@ DEFAULT_RETRY_BASE = 0.5
 class StreamedResponse:
     """An open streamed ``GET``: its status and headers before its body.
 
-    Yielded by :meth:`_AsyncHttpClient.open_stream` once the status line and
+    Yielded by :meth:`HttpClient.open_stream` once the status line and
     headers have arrived and the status is not an error, so a caller can read
     a header the server sends ahead of the body and then stream the body.
     Keeps ``httpx`` off the resource layer's surface, as
@@ -76,7 +76,7 @@ class StreamedResponse:
             raise NetworkError(str(exc)) from exc
 
 
-class _HttpClient:
+class HttpClient:
     """Thin wrapper around ``httpx.Client`` for REST calls.
 
     Used both for the CP-facing client (on ``IntrospectionClient``)

@@ -46,7 +46,7 @@ DEFAULT_RETRY_BASE = 0.5
 class AsyncStreamedResponse:
     """An open streamed ``GET``: its status and headers before its body.
 
-    Yielded by :meth:`_AsyncHttpClient.open_stream` once the status line and
+    Yielded by :meth:`AsyncHttpClient.open_stream` once the status line and
     headers have arrived and the status is not an error, so a caller can read
     a header the server sends ahead of the body and then stream the body.
     Keeps ``httpx`` off the resource layer's surface, as
@@ -74,11 +74,11 @@ class AsyncStreamedResponse:
             raise NetworkError(str(exc)) from exc
 
 
-class _AsyncHttpClient:
+class AsyncHttpClient:
     # unasync: async-only (the sync twin's docstring follows)
     """Thin wrapper around ``httpx.AsyncClient`` for REST calls.
 
-    The async twin of :class:`_HttpClient`. Used both for the CP-facing
+    The async twin of :class:`HttpClient`. Used both for the CP-facing
     client (on ``AsyncIntrospectionClient``) and for the DP-facing
     client (on an ``AsyncRunner``). The two only differ in their base
     URL and bearer token.

@@ -7,7 +7,7 @@ import logging
 from uuid import UUID
 
 from introspection_sdk._async.resources._crud import _AsyncResource
-from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._http import AsyncHttpClient
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.schemas.aauth import (
     Approval,
@@ -146,6 +146,6 @@ class AsyncAAuth:
     missions: AsyncMissions
     approvals: AsyncApprovals
 
-    def __init__(self, http: _AsyncHttpClient) -> None:
+    def __init__(self, http: AsyncHttpClient) -> None:
         self.missions = AsyncMissions(http)
         self.approvals = AsyncApprovals(http)

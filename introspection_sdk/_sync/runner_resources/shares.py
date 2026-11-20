@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from introspection_sdk._http import _HttpClient
+from introspection_sdk._http import HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -79,7 +79,7 @@ def _update_body(visible_from: datetime | None) -> dict[str, Any]:
 class Shares:
     """Synchronous `/v1/shares` resource."""
 
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
 
     def list(

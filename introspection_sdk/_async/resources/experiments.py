@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from introspection_sdk._errors import ValidationError
-from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._http import AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -41,7 +41,7 @@ class AsyncExperiments:
 
     def __init__(
         self,
-        http: _AsyncHttpClient,
+        http: AsyncHttpClient,
         *,
         additional_headers: Mapping[str, str] | None = None,
     ) -> None:

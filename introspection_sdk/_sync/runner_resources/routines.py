@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 
 from pydantic import TypeAdapter
 
-from introspection_sdk._http import _HttpClient
+from introspection_sdk._http import HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.runner_resources.files import Files
 from introspection_sdk.pagination import (
@@ -201,7 +201,7 @@ def _starts_own_task(routine: Routine) -> bool:
 class Routines:
     """DP ``/v1/routines`` namespace."""
 
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
         self._files = Files(http)
 

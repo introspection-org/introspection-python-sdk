@@ -52,7 +52,7 @@ def _spec(**over):
     return runner_spec_payload(**over)
 
 
-# --- _AsyncHttpClient ------------------------------------------------
+# --- AsyncHttpClient ------------------------------------------------
 
 
 async def test_http_request_and_error(fake_api: FakeAPI):

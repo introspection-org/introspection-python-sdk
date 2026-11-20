@@ -65,7 +65,7 @@ class _Rule(unasync.Rule):
     def _unasync_name(self, name: str) -> str:
         if name in self.token_replacements:
             return self.token_replacements[name]
-        # AsyncTasks -> Tasks, _AsyncHttpClient -> _HttpClient.
+        # AsyncTasks -> Tasks, _AsyncX -> _X.
         for prefix in ("Async", "_Async"):
             rest = name[len(prefix) :]
             if name.startswith(prefix) and rest[:1].isupper():

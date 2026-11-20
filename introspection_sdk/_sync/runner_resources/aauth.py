@@ -8,7 +8,7 @@ import builtins
 import logging
 from uuid import UUID
 
-from introspection_sdk._http import _HttpClient
+from introspection_sdk._http import HttpClient
 from introspection_sdk._sync.resources._crud import _Resource
 from introspection_sdk.pagination import Pager
 from introspection_sdk.schemas.aauth import (
@@ -146,6 +146,6 @@ class AAuth:
     missions: Missions
     approvals: Approvals
 
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self.missions = Missions(http)
         self.approvals = Approvals(http)

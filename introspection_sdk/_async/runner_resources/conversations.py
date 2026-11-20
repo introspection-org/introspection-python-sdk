@@ -15,7 +15,7 @@ from pydantic import TypeAdapter
 from introspection_sdk._async.runner_resources.conversation_export import (
     AsyncConversationExport,
 )
-from introspection_sdk._http import RawResponse, _AsyncHttpClient
+from introspection_sdk._http import AsyncHttpClient, RawResponse
 from introspection_sdk._jsonl import JSONL_ACCEPT_HEADERS, iter_jsonl_async
 from introspection_sdk._strict_schema import decode, note_response
 from introspection_sdk.pagination import (
@@ -269,7 +269,7 @@ class AsyncConversationItems:
     page's opaque ``next`` token back unchanged.
     """
 
-    def __init__(self, http: _AsyncHttpClient) -> None:
+    def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
     def list(
@@ -443,7 +443,7 @@ class AsyncConversations:
     pass each page's opaque ``next`` token back unchanged.
     """
 
-    def __init__(self, http: _AsyncHttpClient) -> None:
+    def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
         self.items = AsyncConversationItems(http)
 

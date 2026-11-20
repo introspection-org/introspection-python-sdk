@@ -37,7 +37,7 @@ import httpx2 as httpx
 import pytest
 from pydantic import BaseModel
 
-from introspection_sdk._http import _AsyncHttpClient, _HttpClient
+from introspection_sdk._http import AsyncHttpClient, HttpClient
 from introspection_sdk.schemas.connectors import (
     Connector,
     ConnectorAuthorization,
@@ -144,17 +144,17 @@ class FakeAPI:
     def transport(self) -> httpx.MockTransport:
         return httpx.MockTransport(self._dispatch)
 
-    def client(self, **kwargs: Any) -> _HttpClient:
+    def client(self, **kwargs: Any) -> HttpClient:
         kwargs.setdefault("api_url", "https://api.test")
         kwargs.setdefault("token", "test-token")
-        return _HttpClient(transport=self.transport(), **kwargs)
+        return HttpClient(transport=self.transport(), **kwargs)
 
-    def async_client(self, **kwargs: Any) -> _AsyncHttpClient:
+    def async_client(self, **kwargs: Any) -> AsyncHttpClient:
         # ``httpx.MockTransport`` implements both the sync and async
         # transport protocols, so the same route table backs both clients.
         kwargs.setdefault("api_url", "https://api.test")
         kwargs.setdefault("token", "test-token")
-        return _AsyncHttpClient(transport=self.transport(), **kwargs)
+        return AsyncHttpClient(transport=self.transport(), **kwargs)
 
     def _dispatch(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(

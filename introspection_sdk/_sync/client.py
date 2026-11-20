@@ -8,7 +8,7 @@ import os
 
 import httpx2 as httpx
 
-from introspection_sdk._http import _HttpClient
+from introspection_sdk._http import HttpClient
 from introspection_sdk.auth import (
     CredentialProvider,
     service_account_token,
@@ -124,7 +124,7 @@ class IntrospectionClient:
         # mints its JWT from the key row and has no per-request claim to carry.
         # Resolved once here so every resource client below inherits it.
         self._additional_headers = client_headers(additional_headers)
-        self._http = _HttpClient(
+        self._http = HttpClient(
             api_url=self._base_api_url,
             token=self._token,
             cp_session=cp_session,
@@ -132,7 +132,7 @@ class IntrospectionClient:
             transport=transport,
             credentials=credentials,
         )
-        self._dp_http = _HttpClient(
+        self._dp_http = HttpClient(
             api_url=dp_url or self._base_api_url,
             token=self._token,
             additional_headers=self._additional_headers,

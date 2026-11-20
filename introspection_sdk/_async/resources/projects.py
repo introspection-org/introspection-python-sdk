@@ -12,7 +12,7 @@ from introspection_sdk._async.resources._crud import (
     _body,
     _project,
 )
-from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._http import AsyncHttpClient
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.schemas.integrations import IntegrationType
 from introspection_sdk.schemas.pagination import Paginated
@@ -88,7 +88,7 @@ class AsyncProjects(_AsyncResource):
     """CP ``/v1/projects`` namespace: the credential's org's projects,
     addressed by slug or id, with the runtime ``peerings`` each offers."""
 
-    def __init__(self, http: _AsyncHttpClient) -> None:
+    def __init__(self, http: AsyncHttpClient) -> None:
         super().__init__(http)
         self.peerings = AsyncProjectPeerings(http)
 

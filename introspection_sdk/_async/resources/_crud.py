@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._http import AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -43,7 +43,7 @@ def _body(request: type[BaseModel], fields: dict[str, Any]) -> dict[str, Any]:
 
 
 class _AsyncResource:
-    def __init__(self, http: _AsyncHttpClient) -> None:
+    def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
     def _paginate(

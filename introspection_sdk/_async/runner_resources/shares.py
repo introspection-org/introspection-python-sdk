@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from introspection_sdk._http import _AsyncHttpClient
+from introspection_sdk._http import AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -77,7 +77,7 @@ def _update_body(visible_from: datetime | None) -> dict[str, Any]:
 class AsyncShares:
     """Asynchronous `/v1/shares` resource."""
 
-    def __init__(self, http: _AsyncHttpClient) -> None:
+    def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
     def list(

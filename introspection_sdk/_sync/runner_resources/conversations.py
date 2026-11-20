@@ -14,7 +14,7 @@ from uuid import UUID
 
 from pydantic import TypeAdapter
 
-from introspection_sdk._http import RawResponse, _HttpClient
+from introspection_sdk._http import HttpClient, RawResponse
 from introspection_sdk._jsonl import JSONL_ACCEPT_HEADERS, iter_jsonl
 from introspection_sdk._strict_schema import decode, note_response
 from introspection_sdk._sync.runner_resources.conversation_export import (
@@ -263,7 +263,7 @@ class ConversationItems:
     page's opaque ``next`` token back unchanged.
     """
 
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
 
     def list(
@@ -385,7 +385,7 @@ class Conversations:
     pass each page's opaque ``next`` token back unchanged.
     """
 
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
         self.items = ConversationItems(http)
 

@@ -10,7 +10,7 @@ from urllib.parse import quote
 from pydantic import TypeAdapter
 
 from introspection_sdk._errors import ValidationError
-from introspection_sdk._http import _HttpClient
+from introspection_sdk._http import HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -65,7 +65,7 @@ def _update_body(kind: TagKind, patch: TagUpdate) -> dict[str, object]:
 
 
 class Tags:
-    def __init__(self, http: _HttpClient) -> None:
+    def __init__(self, http: HttpClient) -> None:
         self._http = http
 
     def list(
