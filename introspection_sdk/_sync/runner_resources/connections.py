@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -92,7 +92,7 @@ def _runner_runtime(
 class AppConnections:
     """DP ``/v1/connections`` namespace."""
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
 
     def list(
@@ -187,7 +187,7 @@ class RunnerAppConnections(AppConnections):
     defaults ``runtime`` to the runner's runtime group."""
 
     def __init__(
-        self, http: HttpClient, runtime_group_id: UUID | None
+        self, http: _HttpClient, runtime_group_id: UUID | None
     ) -> None:
         super().__init__(http)
         self._runtime_group_id = runtime_group_id

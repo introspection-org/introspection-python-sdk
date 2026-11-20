@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -45,7 +45,7 @@ def _body(request: type[BaseModel], fields: dict[str, Any]) -> dict[str, Any]:
 
 
 class _Resource:
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
 
     def _paginate(

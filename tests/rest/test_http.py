@@ -1,4 +1,4 @@
-"""Tests for :class:`introspection_sdk._http.HttpClient`.
+"""Tests for :class:`introspection_sdk._http._HttpClient`.
 
 Driven through a real in-process ``httpx`` transport (see
 ``tests/rest/conftest.py``).

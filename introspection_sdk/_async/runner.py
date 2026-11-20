@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime
 
 from introspection_sdk._errors import RunnerExpiredError
-from introspection_sdk._http import AsyncHttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.runner_resources import (
     AsyncConversations,
     AsyncEvents,
@@ -76,8 +76,8 @@ class AsyncRunner:
             self._http, spec.runtime_context.runtime_group_id
         )
 
-    def _build_http(self, spec: RunnerSpec) -> AsyncHttpClient:
-        return AsyncHttpClient(
+    def _build_http(self, spec: RunnerSpec) -> _AsyncHttpClient:
+        return _AsyncHttpClient(
             api_url=spec.deployment.endpoint,
             token=spec.session_token,
             additional_headers=self._additional_headers,

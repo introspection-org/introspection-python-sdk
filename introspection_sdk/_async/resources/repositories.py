@@ -10,7 +10,7 @@ from uuid import UUID
 from pydantic import TypeAdapter
 
 from introspection_sdk._async.resources._crud import _body, _project
-from introspection_sdk._http import AsyncHttpClient, RawResponse
+from introspection_sdk._http import RawResponse, _AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -99,7 +99,7 @@ class AsyncRepositoryContents:
     directory or a file's content.
     """
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
 
     def __call__(
@@ -143,7 +143,7 @@ class AsyncRepositoryContents:
 class AsyncRepositoryMerges:
     """DP ``/v1/repositories/{id}/merges`` namespace."""
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
 
     async def create(
@@ -179,7 +179,7 @@ class AsyncRepositories:
     merges: AsyncRepositoryMerges
 
     def __init__(
-        self, http: AsyncHttpClient, dp_http: AsyncHttpClient
+        self, http: _AsyncHttpClient, dp_http: _AsyncHttpClient
     ) -> None:
         self._http = http
         self._dp_http = dp_http

@@ -12,7 +12,7 @@ from introspection_sdk._errors import (
     NotFoundError,
     ValidationError,
 )
-from introspection_sdk._http import AsyncHttpClient, HttpClient
+from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk._uuid import _uuid7
 from introspection_sdk.pagination import (
@@ -90,7 +90,7 @@ def _labels(label: str | Sequence[str] | None) -> str | list[str] | None:
 
 
 class Annotations:
-    def __init__(self, cp_http: HttpClient, dp_http: HttpClient) -> None:
+    def __init__(self, cp_http: _HttpClient, dp_http: _HttpClient) -> None:
         self._cp_http = cp_http
         self._dp_http = dp_http
 
@@ -240,7 +240,7 @@ class Annotations:
 
 class AsyncAnnotations:
     def __init__(
-        self, cp_http: AsyncHttpClient, dp_http: AsyncHttpClient
+        self, cp_http: _AsyncHttpClient, dp_http: _AsyncHttpClient
     ) -> None:
         self._cp_http = cp_http
         self._dp_http = dp_http

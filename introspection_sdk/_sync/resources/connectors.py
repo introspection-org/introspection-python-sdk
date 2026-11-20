@@ -8,7 +8,7 @@ import builtins
 from typing import Any
 from uuid import UUID
 
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import (
     _body,
@@ -254,7 +254,7 @@ class Connectors:
     connector's secrets are :attr:`secrets`.
     """
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
         self.secrets = ConnectorSecrets(http)
 

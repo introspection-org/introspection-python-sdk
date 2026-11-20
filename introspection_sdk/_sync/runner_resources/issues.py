@@ -10,7 +10,7 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -58,7 +58,7 @@ class IssueComments:
     events; there is no comments list.
     """
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
 
     def create(self, issue_id: UUID | str, *, comment: str) -> IssueComment:
@@ -74,7 +74,7 @@ class IssueComments:
 class Issues:
     """DP ``/v1/issues`` namespace."""
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
         self.comments = IssueComments(http)
 

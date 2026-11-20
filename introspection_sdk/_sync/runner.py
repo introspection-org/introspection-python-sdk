@@ -8,7 +8,7 @@ from collections.abc import Callable, Mapping
 from datetime import datetime
 
 from introspection_sdk._errors import RunnerExpiredError
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk.runner_resources import (
     Conversations,
     Events,
@@ -66,8 +66,8 @@ class Runner:
             self._http, spec.runtime_context.runtime_group_id
         )
 
-    def _build_http(self, spec: RunnerSpec) -> HttpClient:
-        return HttpClient(
+    def _build_http(self, spec: RunnerSpec) -> _HttpClient:
+        return _HttpClient(
             api_url=spec.deployment.endpoint,
             token=spec.session_token,
             additional_headers=self._additional_headers,

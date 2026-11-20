@@ -11,7 +11,7 @@ from uuid import UUID
 
 from pydantic import TypeAdapter
 
-from introspection_sdk._http import HttpClient, RawResponse
+from introspection_sdk._http import RawResponse, _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import _body, _project
 from introspection_sdk.pagination import (
@@ -101,7 +101,7 @@ class RepositoryContents:
     directory or a file's content.
     """
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
 
     def __call__(
@@ -145,7 +145,7 @@ class RepositoryContents:
 class RepositoryMerges:
     """DP ``/v1/repositories/{id}/merges`` namespace."""
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
 
     def create(
@@ -180,7 +180,7 @@ class Repositories:
     contents: RepositoryContents
     merges: RepositoryMerges
 
-    def __init__(self, http: HttpClient, dp_http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient, dp_http: _HttpClient) -> None:
         self._http = http
         self._dp_http = dp_http
         self.contents = RepositoryContents(dp_http)

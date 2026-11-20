@@ -11,7 +11,7 @@ from uuid import UUID
 
 from pydantic import TypeAdapter
 
-from introspection_sdk._http import AsyncHttpClient, RawResponse
+from introspection_sdk._http import RawResponse, _AsyncHttpClient
 from introspection_sdk.pagination import (
     AsyncPager,
     async_cursor_paginate,
@@ -189,7 +189,7 @@ class AsyncEvents:
     columnar accessor — raw ``pyarrow.Table`` pages instead of models.
     """
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
 
     def list(

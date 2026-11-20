@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import IO, Any
 from uuid import UUID
 
-from introspection_sdk._http import AsyncHttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -94,7 +94,7 @@ def _upload_form(
 
 
 class AsyncFileVersions:
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
 
     def list(
@@ -166,7 +166,7 @@ class AsyncFileVersions:
 
 
 class AsyncFiles:
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
         self.versions = AsyncFileVersions(http)
 

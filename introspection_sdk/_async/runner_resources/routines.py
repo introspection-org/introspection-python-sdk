@@ -15,7 +15,7 @@ from uuid import UUID, uuid4
 from pydantic import TypeAdapter
 
 from introspection_sdk._async.runner_resources.files import AsyncFiles
-from introspection_sdk._http import AsyncHttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -199,7 +199,7 @@ def _starts_own_task(routine: Routine) -> bool:
 class AsyncRoutines:
     """DP ``/v1/routines`` namespace."""
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
         self._files = AsyncFiles(http)
 

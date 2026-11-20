@@ -12,7 +12,7 @@ from introspection_sdk._async.resources._crud import (
     _body,
     _project,
 )
-from introspection_sdk._http import AsyncHttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import AsyncPager
 from introspection_sdk.schemas.applications import (
@@ -167,7 +167,7 @@ class AsyncApplications(_AsyncResource):
     when the credential does not.
     """
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         super().__init__(http)
         self.idps = AsyncApplicationIdps(http)
         self.secrets = AsyncApplicationSecrets(http)

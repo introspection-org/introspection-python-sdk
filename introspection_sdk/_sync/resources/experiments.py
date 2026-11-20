@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from introspection_sdk._errors import ValidationError
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -35,7 +35,7 @@ class Experiments:
 
     def __init__(
         self,
-        http: HttpClient,
+        http: _HttpClient,
         *,
         additional_headers: Mapping[str, str] | None = None,
     ) -> None:

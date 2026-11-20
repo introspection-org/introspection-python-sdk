@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._sync.resources._crud import (
     _body,
     _project,
@@ -82,7 +82,7 @@ class Projects(_Resource):
     """CP ``/v1/projects`` namespace: the credential's org's projects,
     addressed by slug or id, with the runtime ``peerings`` each offers."""
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         super().__init__(http)
         self.peerings = ProjectPeerings(http)
 

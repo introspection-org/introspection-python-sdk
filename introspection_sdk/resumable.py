@@ -61,7 +61,7 @@ from introspection_sdk._errors import (
     RunFailedError,
     StreamIncompleteError,
 )
-from introspection_sdk._http import AsyncHttpClient, HttpClient
+from introspection_sdk._http import _AsyncHttpClient, _HttpClient
 from introspection_sdk.schemas.agui import (
     AGUIStreamEvent,
     RunFinishedEvent,
@@ -97,7 +97,7 @@ def _resume_headers(last_event_id: str | None) -> dict[str, str] | None:
 
 
 def stream_resumable(
-    http: HttpClient,
+    http: _HttpClient,
     task_id: str,
     run_id: str,
     *,
@@ -213,7 +213,7 @@ def stream_resumable(
 
 
 async def stream_resumable_async(
-    http: AsyncHttpClient,
+    http: _AsyncHttpClient,
     task_id: str,
     run_id: str,
     *,

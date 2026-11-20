@@ -10,7 +10,7 @@ from uuid import UUID
 from ag_ui.core import Message
 
 from introspection_sdk._errors import RunFailedError, StreamIncompleteError
-from introspection_sdk._http import AsyncHttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -248,7 +248,7 @@ class AsyncRunHandle:
 
 
 class AsyncTaskRuns:
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
 
     async def create(
@@ -381,7 +381,7 @@ class AsyncTaskCommands:
     plane with evals enabled.
     """
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
 
     async def create(
@@ -450,7 +450,7 @@ class AsyncTaskCommands:
 
 
 class AsyncTasks:
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
         self.runs = AsyncTaskRuns(http)
         self.commands = AsyncTaskCommands(http)

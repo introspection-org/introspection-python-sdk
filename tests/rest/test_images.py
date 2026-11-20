@@ -12,7 +12,7 @@ import pytest
 from pydantic import ValidationError as PydanticValidationError
 
 from introspection_sdk._errors import ConflictError
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk.runner_resources import (
     MAX_COMMAND_WAIT_SECONDS,
     AsyncImages,
@@ -300,7 +300,7 @@ def test_command_get_caps_the_wait(
 
 
 def test_wait_cap_stays_under_the_client_timeout():
-    timeout = inspect.signature(HttpClient).parameters["timeout"].default
+    timeout = inspect.signature(_HttpClient).parameters["timeout"].default
     assert MAX_COMMAND_WAIT_SECONDS < timeout
 
 

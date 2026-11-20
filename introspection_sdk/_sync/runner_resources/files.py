@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import IO, Any
 from uuid import UUID
 
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     Pager,
@@ -96,7 +96,7 @@ def _upload_form(
 
 
 class FileVersions:
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
 
     def list(
@@ -163,7 +163,7 @@ class FileVersions:
 
 
 class Files:
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         self._http = http
         self.versions = FileVersions(http)
 

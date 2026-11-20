@@ -9,7 +9,7 @@ from uuid import UUID
 
 from pydantic import SecretStr, TypeAdapter
 
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import (
     _body,
@@ -167,7 +167,7 @@ class Applications(_Resource):
     when the credential does not.
     """
 
-    def __init__(self, http: HttpClient) -> None:
+    def __init__(self, http: _HttpClient) -> None:
         super().__init__(http)
         self.idps = ApplicationIdps(http)
         self.secrets = ApplicationSecrets(http)

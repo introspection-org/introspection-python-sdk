@@ -6,7 +6,7 @@ import os
 
 import httpx2 as httpx
 
-from introspection_sdk._http import AsyncHttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk.auth import (
     AsyncCredentialProvider,
     async_service_account_token,
@@ -140,7 +140,7 @@ class AsyncIntrospectionClient:
         # mints its JWT from the key row and has no per-request claim to carry.
         # Resolved once here so every resource client below inherits it.
         self._additional_headers = client_headers(additional_headers)
-        self._http = AsyncHttpClient(
+        self._http = _AsyncHttpClient(
             api_url=self._base_api_url,
             token=self._token,
             cp_session=cp_session,
@@ -148,7 +148,7 @@ class AsyncIntrospectionClient:
             transport=transport,
             credentials=credentials,
         )
-        self._dp_http = AsyncHttpClient(
+        self._dp_http = _AsyncHttpClient(
             api_url=dp_url or self._base_api_url,
             token=self._token,
             additional_headers=self._additional_headers,

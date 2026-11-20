@@ -11,7 +11,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from introspection_sdk._errors import NotFoundError
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk._sync.resources._crud import _body, _project
 from introspection_sdk.pagination import (
@@ -44,7 +44,7 @@ class Runtimes:
 
     def __init__(
         self,
-        http: HttpClient,
+        http: _HttpClient,
         *,
         additional_headers: Mapping[str, str] | None = None,
     ) -> None:

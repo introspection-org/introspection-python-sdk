@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from introspection_sdk._http import AsyncHttpClient
+from introspection_sdk._http import _AsyncHttpClient
 from introspection_sdk._strict_schema import decode
 from introspection_sdk.pagination import (
     AsyncPager,
@@ -56,7 +56,7 @@ class AsyncIssueComments:
     events; there is no comments list.
     """
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
 
     async def create(
@@ -74,7 +74,7 @@ class AsyncIssueComments:
 class AsyncIssues:
     """DP ``/v1/issues`` namespace."""
 
-    def __init__(self, http: AsyncHttpClient) -> None:
+    def __init__(self, http: _AsyncHttpClient) -> None:
         self._http = http
         self.comments = AsyncIssueComments(http)
 

@@ -16,7 +16,7 @@ import pytest
 from pydantic import ValidationError
 
 from introspection_sdk import IntrospectionAPIError, NotFoundError
-from introspection_sdk._http import HttpClient
+from introspection_sdk._http import _HttpClient
 from introspection_sdk._strict_schema import STRICT_SCHEMA_ENV
 from introspection_sdk.resources.runtimes import AsyncRuntimes, Runtimes
 from introspection_sdk.runner import Runner
@@ -139,7 +139,7 @@ WIRE_RUNTIME: dict[str, Any] = {
 
 def _get_from(dp: LocalDP, body: dict[str, Any]) -> Runtime:
     dp.add("GET", f"/v1/runtimes/{RUNTIME_ID}", body)
-    client = HttpClient(api_url=dp.endpoint, token="test-token")
+    client = _HttpClient(api_url=dp.endpoint, token="test-token")
     try:
         return Runtimes(client).get(UUID(RUNTIME_ID), project=PROJECT_ID)
     finally:
