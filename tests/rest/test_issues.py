@@ -543,6 +543,56 @@ def test_create_omits_unset_fields(fake_api: FakeAPI):
     }
 
 
+def test_create_without_a_task_omits_task_id(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/issues",
+        status=201,
+        json_body=issue_body(task_id=None, task_status=None),
+    )
+
+    issue = Issues(fake_api.client()).create(title="t", description="d")
+
+    sent = fake_api.last_request
+    assert (sent.method, sent.path) == ("POST", "/v1/issues")
+    assert sent.json() == {"title": "t", "description": "d"}
+    assert issue.task_id is None
+    assert issue.task_status is None
+
+
+async def test_async_create_without_a_task_omits_task_id(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/issues",
+        status=201,
+        json_body=issue_body(task_id=None, task_status=None),
+    )
+
+    issue = await AsyncIssues(fake_api.async_client()).create(
+        title="t", description="d", task_id=None
+    )
+
+    assert fake_api.last_request.json() == {"title": "t", "description": "d"}
+    assert issue.task_id is None
+    assert issue.task_status is None
+
+
+def test_create_refused_for_another_callers_task(fake_api: FakeAPI):
+    fake_api.add(
+        "POST",
+        "/v1/issues",
+        status=403,
+        json_body={"detail": "task_id is not the caller's own task"},
+    )
+
+    with pytest.raises(IntrospectionAPIError) as raised:
+        Issues(fake_api.client()).create(
+            title="t", description="d", task_id=TASK_ID
+        )
+    assert raised.value.status_code == 403
+    assert fake_api.last_request.json()["task_id"] == TASK_ID
+
+
 def test_create_validates_before_sending(fake_api: FakeAPI):
     with pytest.raises(pydantic.ValidationError):
         Issues(fake_api.client()).create(
