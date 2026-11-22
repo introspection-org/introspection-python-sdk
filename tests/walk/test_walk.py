@@ -864,10 +864,9 @@ def _versioned(client: IntrospectionClient, w: World) -> Runtime | None:
 
 
 def _baked(r: Runtime | None) -> bool:
-    return r is not None and r.image_build_status in (
-        "ready",
-        "failed",
-    )
+    if r is not None and r.image_build_status == "failed":
+        raise AssertionError(f"bake failed: {r.image_build_error_message}")
+    return r is not None and r.image_build_status == "ready"
 
 
 @walk_step(7, "runtime — created from the recipe and baked")
@@ -878,7 +877,15 @@ def test_07_runtime(world: World) -> None:
     runtime = settled(
         w.mode,
         lambda: _versioned(w.sa, w),
-        lambda: _versioned(w.sa_quiet, w),
+        # The owner's list, since the service account's is scoped to its lane
+        # and a version whose bake failed never takes one.
+        lambda: _versioned(
+            w.quiet(
+                cp_session=w.settings.cp_session,
+                base_api_url=w.settings.base_api_url,
+            ),
+            w,
+        ),
         _baked,
         label="push-versioned runtime bake",
         timeout=1800,
