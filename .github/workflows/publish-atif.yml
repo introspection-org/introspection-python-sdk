@@ -1,0 +1,70 @@
+name: Publish introspection-atif to PyPI
+
+run-name: "Publish ${{ inputs.tag || github.ref_name }}"
+
+# packages/introspection-atif is its own distribution, released by
+# release-please as `introspection-atif-v*` tags. PyPI trusts this workflow
+# file and the `publish` environment for the `introspection-atif` project.
+on:
+  push:
+    tags:
+      - "introspection-atif-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, e.g. introspection-atif-v1.0.0"
+        required: true
+        type: string
+
+concurrency:
+  group: release-publish-atif
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.tag || github.ref_name }} to PyPI
+    runs-on: ubuntu-latest
+    environment: publish
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/introspection-atif
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: The tag names the package's version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          VERSION=$(uv version --short)
+          if [ "${TAG}" != "introspection-atif-v${VERSION}" ]; then
+            echo "::error::${TAG} does not name pyproject.toml's version ${VERSION}"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: |
+          uv sync --all-extras
+          uv run pytest tests/ -q
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/introspection-atif/dist

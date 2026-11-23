@@ -5,7 +5,7 @@ boundary. Every span is built as the JSON a conversation read returns and
 validated into :class:`GenAiSpan`, because that boundary is how both callers
 reach the projection. Every trajectory is validated against Harbor's own
 schema (``fixtures/atif.schema.json``), which is what keeps the subset in
-``schemas/atif.py`` from drifting away from the format's owner. The schema
+``introspection_atif/trajectory.py`` from drifting away from the format's owner. The schema
 cannot express the cross-field rules of Harbor's ``Trajectory`` model, so
 ``dump`` checks the ones the projection could break.
 """
@@ -21,9 +21,9 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
-from introspection_sdk.atif import AtifProjection, spans_to_atif
-from introspection_sdk.schemas.atif import AtifStep, AtifTrajectory
-from introspection_sdk.schemas.genai_span import GenAiSpan
+from introspection_atif.genai_span import GenAiSpan
+from introspection_atif.projection import AtifProjection, spans_to_atif
+from introspection_atif.trajectory import AtifStep, AtifTrajectory
 
 ATIF_SCHEMA = Draft202012Validator(
     json.loads(

@@ -18,7 +18,7 @@ from typing import Any, TypeVar
 
 import pytest
 
-from introspection_sdk.schemas.genai_span import GenAiSpan, GenAiSpanList
+from introspection_atif.genai_span import GenAiSpan, GenAiSpanList
 
 T = TypeVar("T")
 

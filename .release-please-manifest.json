@@ -1,4 +1,5 @@
 {
   ".": "0.52.0",
-  "packages/introspection-aauth": "0.51.2"
+  "packages/introspection-aauth": "0.51.2",
+  "packages/introspection-atif": "0.0.0"
 }

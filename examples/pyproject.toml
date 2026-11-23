@@ -21,6 +21,7 @@ packages = ["introspection_examples"]
 
 [tool.uv.sources]
 introspection-aauth = { path = "../packages/introspection-aauth", editable = true }
+introspection-atif = { path = "../packages/introspection-atif", editable = true }
 introspection-sdk = { path = "..", editable = true }
 
 [tool.ruff]

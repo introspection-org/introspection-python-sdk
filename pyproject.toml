@@ -12,6 +12,7 @@ license = "Apache-2.0"
 dependencies = [
     "ag-ui-protocol>=1.0.0",
     "httpx2>=2.12.0",
+    "introspection-atif>=0.1.0",
     "pydantic>=2.10.0",
 ]
 
@@ -58,6 +59,11 @@ test = [
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+# packages/introspection-atif is its own distribution; a release names it by
+# version, development installs it from this tree.
+[tool.uv.sources]
+introspection-atif = { path = "packages/introspection-atif", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["introspection_sdk"]

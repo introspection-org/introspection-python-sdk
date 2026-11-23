@@ -26,7 +26,7 @@ from typing import Any
 import pytest
 from pydantic import TypeAdapter
 
-from introspection_sdk.schemas.genai import (
+from introspection_atif.genai import (
     BinaryPart,
     CompactionPart,
     FilePart,

@@ -2,14 +2,15 @@ version: 2
 
 updates:
   # ── Python dependencies (pyproject.toml + uv.lock) ──
-  # `uv` reads uv.lock. packages/introspection-aauth is its own uv project, not
-  # a workspace member; one entry with both directories opens one PR per group
+  # `uv` reads uv.lock. packages/introspection-aauth and introspection-atif are
+  # each their own uv project, not a workspace member; one entry with both directories opens one PR per group
   # across them. The root's dev tools are optional-dependency extras, which
   # Dependabot types as production, so groups match by name, not dependency-type.
   - package-ecosystem: "uv"
     directories:
       - "/"
       - "/packages/introspection-aauth"
+      - "/packages/introspection-atif"
     schedule:
       interval: "weekly"
       day: "monday"

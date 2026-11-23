@@ -1,4 +1,4 @@
-"""An ATIF trajectory → ``ag_ui.core`` messages (:mod:`introspection_sdk.atif_messages`).
+"""An ATIF trajectory → ``ag_ui.core`` messages (:mod:`introspection_atif.messages`).
 
 Pure-unit tests of a conversion. The main input is Harbor's own ATIF loading
 example (``fixtures/harbor-load-trajectory.json``, see its ``.source``); the
@@ -15,11 +15,11 @@ from typing import Any
 import pytest
 from ag_ui.core import Message, UserMessage
 
-from introspection_sdk.atif import spans_to_atif
-from introspection_sdk.atif_messages import (
+from introspection_atif.messages import (
     AtifConversionError,
     atif_to_messages,
 )
+from introspection_atif.projection import spans_to_atif
 
 from .test_atif import ATIF_SCHEMA, whole_prompt_spans
 

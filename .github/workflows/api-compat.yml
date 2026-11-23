@@ -67,6 +67,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           if uv run griffe check introspection_sdk --search . \
+            --search packages/introspection-atif \
             --against "$BASE_SHA" -e scripts/griffe_reexports.py \
             --format github; then
             exit 0

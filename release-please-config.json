@@ -15,12 +15,28 @@
         }
       ],
       "exclude-paths": [
-        "packages/introspection-aauth"
+        "packages/introspection-aauth",
+        "packages/introspection-atif"
       ]
     },
     "packages/introspection-aauth": {
       "release-type": "simple",
       "component": "introspection-aauth",
+      "include-component-in-tag": true,
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": false,
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "pyproject.toml",
+          "jsonpath": "$.project.version"
+        }
+      ]
+    },
+    "packages/introspection-atif": {
+      "release-type": "simple",
+      "component": "introspection-atif",
       "include-component-in-tag": true,
       "changelog-path": "CHANGELOG.md",
       "bump-minor-pre-major": true,
