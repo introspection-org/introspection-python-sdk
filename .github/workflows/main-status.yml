@@ -2,7 +2,7 @@ name: Main Status
 
 on:
   workflow_run:
-    workflows: ["CI", "Publish to PyPI", "Publish introspection-aauth to PyPI", "Release Please"]
+    workflows: ["CI", "Publish to PyPI", "Publish introspection-aauth to PyPI", "Publish introspection-atif to PyPI", "Release Please"]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -30,7 +30,7 @@ jobs:
     with:
       run_id: ${{ inputs.run_id || '' }}
       run_attempt: ${{ inputs.run_attempt || '' }}
-      release_workflows: ".github/workflows/publish.yml,.github/workflows/publish-aauth.yml"
+      release_workflows: ".github/workflows/publish.yml,.github/workflows/publish-aauth.yml,.github/workflows/publish-atif.yml"
       post_for_real: ${{ github.event_name == 'workflow_run' || inputs.post_for_real == true }}
     secrets:
       slack_webhook_url: ${{ secrets.MAIN_STATUS_SLACK_WEBHOOK_URL }}

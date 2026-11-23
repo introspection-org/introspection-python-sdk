@@ -14,7 +14,7 @@ from __future__ import annotations
 import inspect
 import io
 import json
-from typing import Any
+from typing import Any, TypeVar
 from uuid import UUID
 
 import httpx2 as httpx
@@ -43,9 +43,17 @@ from introspection_sdk.schemas.trajectory import (
     TrajectoryAssistantRecord,
     TrajectoryMetaRecord,
 )
-from tests.schemas.test_genai_span import present
 
 from .conftest import FakeAPI, paginated
+
+T = TypeVar("T")
+
+
+def present(value: T | None) -> T:
+    """Narrow an optional attribute node, failing the test if it is absent."""
+    assert value is not None, "expected this attribute node to be present"
+    return value
+
 
 RUNTIME_ID = "11111111-1111-1111-1111-111111111111"
 RUNTIME_GROUP_ID = "22222222-2222-2222-2222-222222222222"

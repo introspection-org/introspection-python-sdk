@@ -11,6 +11,11 @@ alias whose target lives in the same package for the target object before
 the check runs. Both sides then hold the real objects, and the breakage
 rules apply to them as they do to a class that never moved.
 
+The same holds for what the SDK re-exports from ``introspection_atif``
+(``packages/introspection-atif``), a distribution of its own: the extension
+loads it, so a class there is compared as the SDK's own and a SDK model
+inheriting from one keeps its inherited members.
+
 Loaded by ``griffe check -e scripts/griffe_reexports.py``, on the old
 release and the new code alike.
 """
@@ -36,10 +41,26 @@ class InlineReexports(Extension):
     def on_package(
         self, *, pkg: Module, loader: GriffeLoader, **kwargs: Any
     ) -> None:
-        _inline(pkg, pkg)
+        if pkg.name not in REEXPORTED:
+            loaded = [pkg]
+            for name in REEXPORTED:
+                # A release from before the package existed holds the
+                # objects itself.
+                try:
+                    module = loader.load(name)
+                except ImportError:
+                    continue
+                if isinstance(module, Module):
+                    loaded.append(module)
+            loader.resolve_aliases(implicit=True)
+            _inline(pkg, loaded)
 
 
-def _inline(obj: Module | Class, pkg: Module) -> None:
+#: Distributions of this repository whose objects the SDK re-exports.
+REEXPORTED = ("introspection_atif",)
+
+
+def _inline(obj: Module | Class, pkgs: list[Module]) -> None:
     for name, member in list(obj.members.items()):
         if isinstance(member, Alias):
             if not member.is_public:
@@ -48,11 +69,11 @@ def _inline(obj: Module | Class, pkg: Module) -> None:
                 target = member.final_target
             except (AliasResolutionError, CyclicAliasError):
                 continue
-            if target.package is not pkg:
+            if target.package not in pkgs:
                 continue
             # The target's own module is often private (`_sync/`); it is
             # public here because this module exports it.
             target.public = True
             obj.members[name] = target
         elif isinstance(member, (Module, Class)):
-            _inline(member, pkg)
+            _inline(member, pkgs)

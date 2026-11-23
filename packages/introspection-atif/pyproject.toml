@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "introspection-atif"
+version = "0.1.0"
+description = "GenAI spans to a Harbor ATIF trajectory, and an ATIF trajectory to the AG-UI messages that open a run"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+dependencies = [
+    "ag-ui-protocol>=1.0.0",
+    "pydantic>=2.10.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "jsonschema>=4.23.0",
+    "pytest>=9.0.0",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["introspection_atif"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/README.md", "/introspection_atif"]
+
+[tool.ruff]
+extend = "../../pyproject.toml"
+
+[tool.coverage.run]
+source = ["introspection_atif"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 97
+show_missing = true
+precision = 1
+
+[tool.deptry]
+known_first_party = ["introspection_atif"]
+optional_dependencies_dev_groups = ["test"]
+
+[dependency-groups]
+dev = [
+    "deptry>=0.25.1",
+    "ruff==0.17.6",
+    "ty>=0.0.7",
+]

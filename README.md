@@ -244,7 +244,10 @@ newest-first. Runnable:
 
 `spans_to_atif` projects the GenAI spans of a conversation onto one
 ATIF trajectory, the format Harbor reads. It is a pure function of the spans and needs no
-`harbor` install:
+`harbor` install. It ships as its own package,
+[`introspection-atif`](packages/introspection-atif), for a reader that needs
+the projection without the SDK; `introspection_sdk.atif` and
+`introspection_sdk.atif_messages` re-export it:
 
 ```python
 from pathlib import Path
