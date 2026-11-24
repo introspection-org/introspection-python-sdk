@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.52.0...v0.53.0) (2026-11-24)
+
+
+### Features
+
+* introspection-atif, the GenAI-spans → ATIF projection as its own package ([#315](https://github.com/introspection-org/introspection-python-sdk/issues/315)) ([4941b01](https://github.com/introspection-org/introspection-python-sdk/commit/4941b01f6df2e3e33db45f27f6f46f1fe576731b))
+
 ## [0.52.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.51.1...v0.52.0) (2026-11-20)
 
 
