@@ -1,10 +1,7 @@
 name: Examples
 
-# Examples start real runtime tasks, so they're NOT run on every push.
-#
-# Triggers:
-#   - workflow_dispatch  → manual run from the Actions UI / `gh workflow run`
-#   - push of a v* tag   → verify release-time before publish picks up
+# Examples start real runtime tasks against a live project, so they run only
+# when started by hand (Actions UI or `gh workflow run examples.yml`).
 
 on:
   workflow_dispatch:
@@ -14,9 +11,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    tags:
-      - "v*"
 
 concurrency:
   group: examples-${{ github.ref }}
