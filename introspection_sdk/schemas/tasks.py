@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from ag_ui.core import Message
@@ -17,6 +17,7 @@ from introspection_sdk.schemas.agui import ResumeEntry
 
 __all__ = [
     "AgentInfo",
+    "OpenTaskStatus",
     "Task",
     "TaskCancelMode",
     "TaskCancelRequest",
@@ -70,8 +71,13 @@ class TaskStatus(StrEnum):
     IDLE = "idle"
     COMPLETED = "completed"
     FAILED = "failed"
+    FINISHING = "finishing"
+    """Post-run work (judges, an eval's verifier) before ``completed``."""
     CANCELLING = "cancelling"
     CANCELLED = "cancelled"
+
+
+OpenTaskStatus = Annotated[TaskStatus | str, Field(union_mode="left_to_right")]
 
 
 class AgentInfo(ApiModel):
@@ -88,7 +94,7 @@ class Task(ApiModel):
     title: str | None = None
     display_index: int | None = None
     kind: TaskKind = TaskKind.AGENT
-    status: TaskStatus = TaskStatus.PENDING
+    status: OpenTaskStatus = TaskStatus.PENDING
     member_id: UUID | None = None
     routine_id: UUID | None = None
     runtime_id: UUID | None = None
@@ -271,7 +277,7 @@ class TaskRunResumeRequest(ApiModel):
 class TaskRun(ApiModel):
     id: str
     task_id: UUID
-    status: TaskStatus
+    status: OpenTaskStatus
     error: str | None = None
     """Why the run failed; set only on a failed run."""
     completion_reason: str | None = None
