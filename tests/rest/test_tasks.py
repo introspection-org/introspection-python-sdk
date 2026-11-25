@@ -14,6 +14,7 @@ from introspection_sdk.schemas.tasks import (
     TaskPrompt,
     TaskRepoRequest,
     TaskRunKind,
+    TaskStatus,
 )
 
 from .conftest import (
@@ -329,7 +330,7 @@ def test_runs_get(fake_api: FakeAPI):
         json_body=task_run_payload(status="completed"),
     )
     run = _tasks(fake_api).runs.get(TASK_ID, "run-1")
-    assert run.status.value == "completed"
+    assert run.status is TaskStatus.COMPLETED
 
 
 def test_run_handle_cancel(fake_api: FakeAPI):
@@ -533,3 +534,23 @@ def test_start_signature_stays_a_superset_of_create(fake_api: FakeAPI):
     ), (
         "Tasks.start must forward **kwargs to create, not restate its parameters"
     )
+
+
+def test_task_decodes_finishing(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        f"/v1/tasks/{TASK_ID}",
+        json_body=task_payload(status="finishing"),
+    )
+
+    assert _tasks(fake_api).get(TASK_ID).status is TaskStatus.FINISHING
+
+
+def test_task_decodes_an_unknown_status(fake_api: FakeAPI):
+    fake_api.add(
+        "GET",
+        f"/v1/tasks/{TASK_ID}",
+        json_body=task_payload(status="hibernating"),
+    )
+
+    assert _tasks(fake_api).get(TASK_ID).status == "hibernating"
