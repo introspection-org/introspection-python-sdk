@@ -72,7 +72,6 @@ class TaskStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     FINISHING = "finishing"
-    """Post-run work (judges, an eval's verifier) before ``completed``."""
     CANCELLING = "cancelling"
     CANCELLED = "cancelled"
 
