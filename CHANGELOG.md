@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.1](https://github.com/introspection-org/introspection-python-sdk/compare/v0.53.0...v0.53.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **tasks:** decode the finishing status and any status yet to come ([#320](https://github.com/introspection-org/introspection-python-sdk/issues/320)) ([866df50](https://github.com/introspection-org/introspection-python-sdk/commit/866df504a6c0dbec29de2c31fc8222237434966b))
+
 ## [0.53.0](https://github.com/introspection-org/introspection-python-sdk/compare/v0.52.0...v0.53.0) (2026-11-24)
 
 
